@@ -435,12 +435,15 @@ import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
 
-const NAV_ITEMS = [
+const NAV_CORE = [
   { id: 'tokens',    name: '设计令牌', icon: 'palette' },
   { id: 'components', name: '组件',    icon: 'box' },
   { id: 'motion',    name: '动效',    icon: 'sparkles' },
   { id: 'scenes',    name: '场景模板', icon: 'layout' },
 ];
+// 导航项 ×3 重复 —— 4 个真实模块 + 演示重复项，保证列表高度超过导航容器，
+// 「上下滑动选择 + 居中吸附」真实生效（用户确认的演示方案）
+const NAV_ITEMS = [...NAV_CORE, ...NAV_CORE, ...NAV_CORE];
 
 const app = document.querySelector('#app');
 app.innerHTML = `
@@ -1859,7 +1862,7 @@ import { test, expect } from '@playwright/test';
 test('点击模块滑动到中央并选中', async ({ page }) => {
   await page.goto('/');
   const items = page.locator('.c-navwheel__item');
-  await expect(items).toHaveCount(4);
+  await expect(items).toHaveCount(12); // 4 真实模块 × 3 组演示重复
   await items.nth(3).click();
   await expect(items.nth(3)).toHaveClass(/c-navwheel__item--active/);
   // 选中项应位于导航视口中央附近
@@ -2723,8 +2726,8 @@ git commit -m "feat: 场景模板 1 剪贴板悬浮窗（搜索/固定/删除/�
 - `main-window.js` 导出 `mountMainWindow(root)` — 渲染到 `#scenes`（独立于展示页骨架的完整小应用）：
   - 外层 `.cmain`（880×560 圆角玻璃窗口，`--radius-lg`，内部 `display: grid; grid-template-columns: 176px 1fr; grid-template-rows: 40px 1fr`）
   - 顶部：`renderTitleBar`（title「我的应用」，drag region 属性保留）
-  - 左侧：独立 `mountNavWheel` 实例，5 个模块（仪表盘 home / 数据列表 list / 设置表单 settings / 图片库 image / 空状态 star）— **注意：NavigationWheel 内部用 `.c-navwheel__list` 定位 inset 依赖父容器高度，场景内父容器是 `grid` cell，需确认高度约束生效（`min-height: 0`），如滚动失效则给 `.c-navwheel` 固定高度 560-40px**
-  - 右侧内容区：5 个模块页（默认第 0 个）：
+  - 左侧：独立 `mountNavWheel` 实例，**8 个模块**（仪表盘 home / 数据列表 list / 表单 settings / 图片库 image / 空状态 star / 帮助 help / 关于 info / 更多 folder — 8×64=512px > 视口 520px，可真实滑动；后续用户新增模块即沿用此扩展方式）— **注意：NavigationWheel 内部用 `.c-navwheel__list` 定位 inset 依赖父容器高度，场景内父容器是 `grid` cell，需确认高度约束生效（`min-height: 0`），如滚动失效则给 `.c-navwheel` 固定高度 560-40px**
+  - 右侧内容区：8 个模块页（默认第 0 个；后 3 个模块页为占位形态，复用前 5 种内容形态或纯标题页）：
     - 仪表盘：3 张统计卡（`.c-card` 数字 + 趋势） + 进度条
     - 数据列表：`.c-list` 8 行 + 分页按钮
     - 表单页：Input/Select/Switch/Button 组合表单 + 提交 toast
@@ -2783,13 +2786,15 @@ git commit -m "feat: 场景模板 2 主窗口（一体式标题栏 + 滑动导�
 
 **Interfaces:**
 - `settings-window.js` 导出 `mountSettingsWindow(root)` — 渲染到 `#scenes`：
-  - 外层 `.csettings`（760×520 玻璃窗口）
+  - 外层 `.csettings`（820×520 玻璃窗口，`grid-template-columns: 220px 1fr` — **设置导航比主页更宽**，用户确认的变体规格）
   - 顶部 TitleBar（title「设置」）
-  - 主体左右分栏：左侧**纵向 NavigationWheel 变体**（4 分区：通用 globe / 外观 palette / 快捷键 keyboard（用 'key' 图标）/ 关于 info）— 复用 `mountNavWheel`，容器高 480-40px
-  - 右侧内容：
+  - 主体左右分栏：左侧**纵向 NavigationWheel 变体**（**8 分区**：通用 home / 外观 palette / 界面 layout / 快捷键 key / 通知 bell / 数据 folder / 高级 settings / 关于 info — 8×64=512px > 视口 480px 可真实滑动；界面类模块统一收纳于此）— 复用 `mountNavWheel`，容器高 480-40px
+  - 右侧内容（8 分区，通用/外观/快捷键/关于为完整页，其余为占位页）：
     - 通用：主题三态（复用 `tsw` 结构或 Select）+ 动效开关（Switch）+ 启动行为（Select）+ 保存 toast
     - 外观：**定制器整页形态**（复用 `customizer-panel.js` 的分组渲染函数，抽出 `renderCustomizerGroups()` 供面板与整页共用 — 重构：`customizer-panel.js` 导出 `renderCustomizerGroups(container)`，面板与场景共用同一实现）
     - 快捷键：HotkeyRecorder 列表（4 行：呼出面板 Ctrl+Shift+V / 搜索 / 粘贴纯文本 / 清空）+ 说明
+    - 界面：模块显隐开关列表（占位：Switch 列表 + 说明「界面类模块导航收拢于设置」）
+    - 通知 / 数据 / 高级：占位页（EmptyState 或简单表单）
     - 关于：应用信息卡（logo 占位 + 名称 + 版本 + 开源链接占位）
   - 分区切换 = NavigationWheel onChange（与主窗口一致）
 
