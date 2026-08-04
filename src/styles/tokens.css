@@ -1,0 +1,38 @@
+:root {
+  /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css） */
+  --neutral-50: #f7f8fa;  --neutral-100: #eef0f4;  --neutral-200: #e2e5eb;
+  --neutral-300: #cdd2db;  --neutral-400: #aab1bd;  --neutral-500: #8a92a1;
+  --neutral-600: #6b7280;  --neutral-700: #525a66;  --neutral-800: #3a4049;
+  --neutral-900: #262a31;  --neutral-950: #1a1d23;
+
+  /* 强调色占位：默认靛蓝（themes.css 的 data-accent 块覆盖） */
+  --accent-50: #eef0ff;  --accent-100: #dfe3ff;  --accent-200: #c3caff;
+  --accent-300: #a0a9f9;  --accent-400: #828cf6;  --accent-500: #6e7bf2;
+  --accent-600: #5a63e0;  --accent-700: #4a50b8;  --accent-800: #3c4192;
+  --accent-900: #31356e;  --accent-950: #23254d;
+  --accent: var(--accent-500);
+  --accent-hover: var(--accent-400);
+  --accent-active: var(--accent-600);
+  --accent-contrast: #ffffff;
+
+  /* 字体 */
+  --font-sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --font-size-xs: 10px;  --font-size-sm: 12px;  --font-size-base: 14px;
+  --font-size-lg: 16px;  --font-size-xl: 20px;  --font-size-2xl: 24px;  --font-size-3xl: 28px;
+  --font-weight-regular: 400;  --font-weight-medium: 500;
+  --font-weight-semibold: 600;  --font-weight-bold: 700;
+  --line-height-tight: 1.4;  --line-height-base: 1.6;
+
+  /* 间距（4px 基准） */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;
+  --space-5: 24px;  --space-6: 32px;  --space-7: 48px;
+
+  /* 圆角 */
+  --radius-xs: 6px;  --radius-sm: 8px;  --radius-md: 12px;  --radius-lg: 16px;
+  --radius-xl: 20px;  --radius-full: 999px;
+  --radius-scale: 1; /* 定制器覆盖：实际使用 calc(var(--radius-md) * var(--radius-scale)) */
+
+  /* 层级 */
+  --z-base: 1;  --z-float: 10;  --z-overlay: 20;  --z-modal: 30;  --z-toast: 40;
+}

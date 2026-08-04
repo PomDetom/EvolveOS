@@ -1,0 +1,85 @@
+/* 亮色主题 */
+:root[data-theme="light"] {
+  --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
+  --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
+  --surface-hover: rgba(0,0,0,0.045);
+  --glass-bg: rgba(248,249,251,0.72);  --glass-blur: 20px;
+  --glass-highlight: rgba(255,255,255,0.5);  --glass-border: rgba(255,255,255,0.6);
+  --glass-shadow: 0 8px 32px rgba(20,24,40,0.14), 0 2px 8px rgba(20,24,40,0.08);
+  --shadow-sm: 0 1px 3px rgba(20,24,40,0.10);
+  --shadow-md: 0 4px 16px rgba(20,24,40,0.12);
+  --shadow-lg: 0 12px 40px rgba(20,24,40,0.18);
+  --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
+  --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
+}
+
+/* 暗色主题 */
+:root[data-theme="dark"] {
+  --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
+  --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
+  --surface-hover: rgba(255,255,255,0.06);
+  --glass-bg: rgba(24,26,32,0.62);  --glass-blur: 28px;
+  --glass-highlight: rgba(255,255,255,0.08);  --glass-border: rgba(255,255,255,0.08);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.42);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.55);
+  --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.06);
+  --scrollbar-track: transparent;  --scrollbar-thumb: rgba(255,255,255,0.16);
+}
+
+/* 6 套主题色：仅覆盖强调色系（靛蓝已在 tokens.css 中，其余 5 套在这里定义） */
+:root[data-accent="teal"] {
+  --accent-50: #e8fbf5;  --accent-100: #ccf6ea;  --accent-200: #9bead7;
+  --accent-300: #5fdcc0;  --accent-400: #2dd4bf;  --accent-500: #14b8a6;
+  --accent-600: #0d9488;  --accent-700: #0f766e;  --accent-800: #115e59;
+  --accent-900: #134e4a;  --accent-950: #042f2e;
+  --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+  --accent-active: var(--accent-500);  --accent-contrast: #042f2e;
+}
+:root[data-accent="sky"] {
+  --accent-50: #f0f9ff;  --accent-100: #e0f2fe;  --accent-200: #bae6fd;
+  --accent-300: #7dd3fc;  --accent-400: #38bdf8;  --accent-500: #0ea5e9;
+  --accent-600: #0284c7;  --accent-700: #0369a1;  --accent-800: #075985;
+  --accent-900: #0c4a6e;  --accent-950: #082f49;
+  --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+  --accent-active: var(--accent-500);  --accent-contrast: #082f49;
+}
+:root[data-accent="amber"] {
+  --accent-50: #fffbeb;  --accent-100: #fef3c7;  --accent-200: #fde68a;
+  --accent-300: #fcd34d;  --accent-400: #fbbf24;  --accent-500: #f59e0b;
+  --accent-600: #d97706;  --accent-700: #b45309;  --accent-800: #92400e;
+  --accent-900: #78350f;  --accent-950: #451a03;
+  --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+  --accent-active: var(--accent-500);  --accent-contrast: #451a03;
+}
+:root[data-accent="violet"] {
+  --accent-50: #f5f3ff;  --accent-100: #ede9fe;  --accent-200: #ddd6fe;
+  --accent-300: #c4b5fd;  --accent-400: #a78bfa;  --accent-500: #8b5cf6;
+  --accent-600: #7c3aed;  --accent-700: #6d28d9;  --accent-800: #5b21b6;
+  --accent-900: #4c1d95;  --accent-950: #2e1065;
+  --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+  --accent-active: var(--accent-500);  --accent-contrast: #2e1065;
+}
+:root[data-accent="emerald"] {
+  --accent-50: #ecfdf5;  --accent-100: #d1fae5;  --accent-200: #a7f3d0;
+  --accent-300: #6ee7b7;  --accent-400: #34d399;  --accent-500: #10b981;
+  --accent-600: #059669;  --accent-700: #047857;  --accent-800: #065f46;
+  --accent-900: #064e3b;  --accent-950: #022c22;
+  --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+  --accent-active: var(--accent-500);  --accent-contrast: #022c22;
+}
+
+/* 语义色（两种主题通用基准；深色下自动使用浅档） */
+:root {
+  --success-50: #ecfdf5;  --success-500: #10b981;  --success-600: #059669;
+  --warning-50: #fffbeb;  --warning-500: #f59e0b;  --warning-600: #d97706;
+  --danger-50: #fef2f2;  --danger-500: #ef4444;  --danger-600: #dc2626;
+  --info-50: #eff6ff;  --info-500: #3b82f6;  --info-600: #2563eb;
+}
+:root[data-theme="dark"] {
+  --success-500: #34d399;  --success-600: #10b981;
+  --warning-500: #fbbf24;  --warning-600: #f59e0b;
+  --danger-500: #f87171;  --danger-600: #ef4444;
+  --info-500: #60a5fa;  --info-600: #3b82f6;
+}

@@ -1,0 +1,26 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);  color: var(--text-1);
+  background: var(--glass-bg);  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* 展示页为应用式布局，滚动在内容容器内 */
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, textarea, select { font: inherit; color: inherit; }
+::selection { background: var(--accent-200); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+
+/* 玻璃面板工具类：外壳级材质 */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+}
+
+/* 焦点环（所有可聚焦元素） */
+:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
