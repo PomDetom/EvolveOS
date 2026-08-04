@@ -2922,3 +2922,32 @@ git commit -m "docs: Tauri 接入指南 + README + 视觉回归基线"
 - **动效红线**：所有动画仅 transform/opacity（stagger、scale、translate、clip-path 动画仅用于名称滑入 — clip-path 为合成器友好属性，符合「不触发布局」约束）；模糊永不动画（Toast/Dialog/面板进入动画均只动 transform/opacity）；6 项以上 stagger（剪贴板列表、stagger demo）。
 - **类型一致性**：`springCurve(strength)` / `scaledDurations(scale, enabled)`（Task 4 定义，Task 16/17 复用）；`findNearestIndex` 等几何函数签名（Task 11 定义，Task 12 复用）；`renderXxx` 全组件统一契约；`showcase(title, items)`（Task 6 定义，Task 15 复用）；`toast`/`openDialog` 全局暴露（Task 9 定义，Task 18 清空流程复用）。
 - **已知延迟项**：`cubicBezierY`（Task 11 Step 7 标注实现提示）；`window.__renderIcon` 测试桥（Task 15 移除）；accent 深色对比色（`--accent-contrast` 浅色主题深字/深色主题浅字 — themes.css 已按套定义）。
+
+## 实施修订记录（Task 1-4 已执行，2026-08-04）
+
+以下为 Task 1-4 实际执行中的修正与评审发现，均已通过任务评审。后续任务以本文档为准。
+
+### 已应用的实现修正
+
+1. **Task 1**：vitest 无测试文件时 exit 1 → 配置 `passWithNoTests: true`；playwright 无等价选项 → 新增最小冒烟测试 `tests/e2e/smoke.spec.js`（同时验证 webServer+chromium 链路）。提交 66feb9b。
+2. **Task 4 — spring.js 去尾随零**（简报原实现与测试断言冲突，测试为准）：`toFixed(3)` 产出 `'1.000'`/`'1.560'` 与断言 `'1'`/`'1.56'` 不符，改为 `+(1 + 0.56 * s).toFixed(3)` 保留 3 位精度、去掉尾随零。提交 6c1dc56。
+3. **Task 4 — prefersDark 环境守卫**：jsdom 26 无 `window.matchMedia`，`typeof window.matchMedia === 'function'` 守卫，真实浏览器行为不变。
+4. **Task 4 — themes.css 保留派生别名**：`--glass-bg`/`--glass-border` 仍被 base.css（body 背景）与 layout.css（topbar/navwheel）引用，保留别名并提供兜底值（亮 0.72/0.6/0.5、暗 0.62/0.08/0.08），未接入 applyConfig 时外观不变。
+
+### 待办修复（收尾时统一处理，建议并入 Task 21）
+
+| 修复项 | 位置 | 说明 |
+|---|---|---|
+| radius 包裹 calc | `src/styles/layout.css:9`（`.topbar__nav a`） | `border-radius: var(--radius-sm)` → `calc(var(--radius-sm) * var(--radius-scale, 1))`，否则定制器圆角滑杆不影响顶栏导航项 |
+| 硬编码间距 | `src/styles/layout.css:7` | `.topbar__nav a { padding: 4px 8px }` → `var(--space-1) var(--space-2)` |
+| 弹性默认值对齐 | `src/styles/motion.css:4` | `--ease-spring` 默认 `cubic-bezier(0.34, 1.56, 0.64, 1)`（= 强度 1.0）与 `--spring-strength: 0.6` 声明不一致 → 统一为 `cubic-bezier(0.34, 1.336, 0.64, 1)`（applyConfig 运行后会正确覆盖，此修复保证未运行 applyConfig 的场景一致） |
+| focus-visible 跟随主题色 | `src/styles/base.css` | `:focus-visible` 用 `--accent-500` 固定档 → 改为 `var(--accent)`，切换 6 套主题色后焦点环跟随 |
+
+### 待用户确认的设计点
+
+- **阴影默认强度**：Task 4 的阴影合成公式 `calc(0.14 * var(--shadow-intensity, 0.5))` 下，DEFAULTS.shadow=0.5 使默认阴影视觉为原值一半（0.10→0.05 等）。可选：(a) 接受 — 半强度默认即设计意图；(b) DEFAULTS.shadow 改为 1（全强度默认）；(c) 公式基准改为 `calc(0.14 * (0.5 + var(--shadow-intensity, 0.5) * 0.5))`（0.5 基准 + 强度调节）。展示页可预览后决定，Task 21 前确认即可。
+
+### 评审已确认无问题的观察项
+
+- `base.css` 的 `.glass` 移除 `-webkit-backdrop-filter`（WebView2/Chromium 无影响，可接受）
+- `deepMerge`/`saveConfig` 错误处理达标（损坏 JSON、隐私模式 setItem 抛错、null/标量存储值均安全）
