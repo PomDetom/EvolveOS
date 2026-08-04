@@ -3,12 +3,15 @@
   --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
   --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
   --surface-hover: rgba(0,0,0,0.045);
-  --glass-bg: rgba(248,249,251,0.72);  --glass-blur: 20px;
-  --glass-highlight: rgba(255,255,255,0.5);  --glass-border: rgba(255,255,255,0.6);
-  --glass-shadow: 0 8px 32px rgba(20,24,40,0.14), 0 2px 8px rgba(20,24,40,0.08);
-  --shadow-sm: 0 1px 3px rgba(20,24,40,0.10);
-  --shadow-md: 0 4px 16px rgba(20,24,40,0.12);
-  --shadow-lg: 0 12px 40px rgba(20,24,40,0.18);
+  --glass-bg-rgb: 248 249 251;  --glass-highlight-rgb: 255 255 255;
+  --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));  --glass-blur: 20px;
+  --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.5));
+  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.6));  --glass-border-opacity: 0.6;
+  --glass-shadow: 0 8px 32px rgba(20,24,40,calc(0.14 * var(--shadow-intensity, 0.5))),
+                  0 2px 8px rgba(20,24,40,calc(0.08 * var(--shadow-intensity, 0.5)));
+  --shadow-sm: 0 1px 3px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5)));
+  --shadow-md: 0 4px 16px rgba(20,24,40,calc(0.12 * var(--shadow-intensity, 0.5)));
+  --shadow-lg: 0 12px 40px rgba(20,24,40,calc(0.18 * var(--shadow-intensity, 0.5)));
   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
 }
@@ -18,12 +21,15 @@
   --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
   --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
   --surface-hover: rgba(255,255,255,0.06);
-  --glass-bg: rgba(24,26,32,0.62);  --glass-blur: 28px;
-  --glass-highlight: rgba(255,255,255,0.08);  --glass-border: rgba(255,255,255,0.08);
-  --glass-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.42);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.55);
+  --glass-bg-rgb: 24 26 32;  --glass-highlight-rgb: 255 255 255;
+  --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.62));  --glass-blur: 28px;
+  --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.08));
+  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.08));  --glass-border-opacity: 0.08;
+  --glass-shadow: 0 8px 32px rgba(0,0,0,calc(0.5 * var(--shadow-intensity, 0.5))),
+                  0 2px 8px rgba(0,0,0,calc(0.3 * var(--shadow-intensity, 0.5)));
+  --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
+  --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
+  --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.06);
   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(255,255,255,0.16);
 }
