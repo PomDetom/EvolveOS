@@ -1,0 +1,129 @@
+/* 场景模板 3：设置页（Task 20）—— 滑动选择分区 + 定制器整页嵌入 + 快捷键录制。
+   上下无割裂：窗口玻璃背景与标题栏共享，标题栏无下边框；
+   导航列复用 NavigationWheel 组件类（.c-navwheel__list 绝对定位 inset 依赖父容器高度），
+   场景内 .c-navwheel 固定 480px（520-40 标题栏），列表视口 424px（480-56 返回条）
+   < 8×64px 内容，真实可滑（设置导航 220px 比主页 176px 更宽，用户确认的变体规格）。
+   动画红线：分区切换 page-in 只动 transform/opacity；无模糊动画。 */
+
+.csettings-scene { margin-bottom: var(--space-7); }
+
+.csettings-scene__head { display: flex; align-items: baseline; flex-wrap: wrap;
+  column-gap: var(--space-3); row-gap: var(--space-1); margin-bottom: var(--space-4); }
+.csettings-scene__head h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.csettings-scene__head p { font-size: var(--font-size-sm); color: var(--text-2); }
+.csettings-scene__head code { padding: 1px 5px; font-size: 11px; font-family: var(--font-mono, monospace);
+  color: var(--text-2); background: var(--surface-2);
+  border: 1px solid var(--glass-border); border-radius: var(--radius-xs); }
+
+/* 窗口：820×520 圆角玻璃，内部 grid（220px 1fr / 40px 1fr）—— 设置导航比主页更宽 */
+.csettings { width: 820px; height: 520px; border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 40px 1fr;
+  overflow: hidden; }
+
+.csettings .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+/* 上下无割裂：标题栏无底部边框（title-bar.css 契约），与内容共享玻璃背景 */
+
+/* 导航列：grid cell 需 min-height:0（.c-navwheel__list 绝对定位 inset 依赖父容器高度）；
+   .c-navwheel 固定 480px —— 与 grid 行高一致，规避 1fr 高度解析不确定性（同主页兜底方案） */
+.csettings__nav { position: relative; grid-column: 1; grid-row: 2; min-height: 0;
+  border-right: 1px solid var(--glass-border); overflow: hidden; }
+.csettings__nav .c-navwheel { height: 480px; }
+
+/* 返回入口：场景局部类 .csettings__back —— 不复用 .c-navwheel__settings（该全局类被
+   nav-wheel.spec.js 假设唯一，场景内再挂一个实例会触发 strict mode 冲突）。
+   视觉与侧栏设置入口一致：组件基础样式（高 56px 底部条 + 居中内容）在此补齐 */
+.csettings__back { position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 0 var(--space-4); width: 100%; border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg); color: var(--text-2); font-size: var(--font-size-sm); }
+.csettings__back:hover { color: var(--text-1); background: var(--surface-hover); }
+
+/* 内容区：grid 第 2 列，8 个分区页；非 active 页 display:none，切换时重播 page-in */
+.csettings__pages { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0;
+  position: relative; overflow: hidden; }
+.csettings__page { display: none; height: 100%; overflow-y: auto;
+  padding: var(--space-5) var(--space-6);
+  animation: csettings-page-in var(--dur-base) var(--ease-out); }
+.csettings__page--active { display: block; }
+
+@keyframes csettings-page-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+.csettings__page-head { margin-bottom: var(--space-4); }
+.csettings__page-head h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.csettings__page-head p { margin-top: 2px; font-size: var(--font-size-xs); color: var(--text-3); }
+
+/* 表单字段（通用分区） */
+.csettings__field { display: flex; flex-direction: column; gap: var(--space-2);
+  max-width: 420px; margin-bottom: var(--space-5); }
+.csettings__field--row { flex-direction: row; align-items: center;
+  justify-content: space-between; }
+.csettings__field-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+  color: var(--text-1); }
+.csettings__field-desc { font-size: var(--font-size-xs); color: var(--text-3); }
+.csettings__field .c-select { margin-top: 2px; }
+
+/* 主题三态：分段按钮组（场景局部类，不与顶栏 .tsw__mode 冲突 —— theme-switcher.spec.js
+   全页定位 .tsw__mode 并 click，strict mode 下不能共存第二份） */
+.csettings__modes { display: inline-flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-full);
+  background: var(--surface-1); align-self: flex-start; }
+.csettings__mode { display: flex; align-items: center; gap: var(--space-1);
+  padding: 5px 14px; border-radius: var(--radius-full);
+  font-size: var(--font-size-xs); color: var(--text-2);
+  transition: transform var(--dur-fast) var(--ease-spring), color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out); }
+.csettings__mode:hover { color: var(--text-1); }
+.csettings__mode:active { transform: scale(0.96); }
+.csettings__mode--active { color: var(--accent); background: var(--accent-50); }
+
+.csettings__actions { display: flex; gap: var(--space-2); max-width: 420px; }
+
+/* 界面分区：模块显隐开关列表 */
+.csettings__toggles { display: flex; flex-direction: column; max-width: 460px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  background: var(--surface-1); overflow: hidden; }
+.csettings__toggle { display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.csettings__toggle + .csettings__toggle { border-top: 1px solid var(--glass-border); }
+.csettings__note { margin-top: var(--space-3); font-size: var(--font-size-xs);
+  color: var(--text-3); max-width: 460px; }
+
+/* 快捷键分区：4 行录制器 */
+.csettings__hotkeys { display: flex; flex-direction: column; max-width: 460px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  background: var(--surface-1); overflow: hidden; }
+.csettings__hotkey { display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.csettings__hotkey + .csettings__hotkey { border-top: 1px solid var(--glass-border); }
+
+/* 占位分区（通知/数据/高级）：空态填满页面高度，居中展示 */
+.csettings__empty { height: 100%; }
+
+/* 关于：应用信息卡 */
+.csettings__about { max-width: 380px; display: flex; flex-direction: column;
+  align-items: center; gap: var(--space-2); text-align: center;
+  padding: var(--space-6); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md); background: var(--surface-1); }
+.csettings__logo { display: grid; place-items: center; width: 64px; height: 64px;
+  border-radius: var(--radius-md); color: var(--accent);
+  background: linear-gradient(135deg, var(--accent-100), transparent 70%);
+  border: 1px solid var(--glass-border); margin-bottom: var(--space-1); }
+.csettings__name { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.csettings__ver { font-size: var(--font-size-xs); color: var(--text-3); }
+.csettings__meta { width: 100%; margin-top: var(--space-2); text-align: left; }
+.csettings__row { display: flex; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-1) 0; font-size: var(--font-size-sm); color: var(--text-2); }
+.csettings__row + .csettings__row { border-top: 1px solid var(--glass-border); }
+.csettings__row span:last-child { color: var(--text-1); }
+.csettings__link { display: inline-flex; align-items: center; gap: var(--space-1);
+  margin-top: var(--space-3); font-size: var(--font-size-sm); color: var(--accent);
+  transition: transform var(--dur-fast) var(--ease-spring); }
+.csettings__link:hover { text-decoration: underline; }
+.csettings__link:active { transform: scale(0.97); }

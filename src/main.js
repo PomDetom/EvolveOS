@@ -40,6 +40,7 @@ import './components/hotkey-recorder/hotkey-recorder.css';
 import './components/sidebar-item/sidebar-item.css';
 import './scenes/clipboard-float/clipboard-float.css';
 import './scenes/main-window/main-window.css';
+import './scenes/settings-window/settings-window.css';
 import './styles/customizer.css';
 import { icon } from './components/icon/icon.js';
 import { toast } from './components/toast/toast.js';
@@ -55,6 +56,7 @@ import { mountTokenShowcase } from './demo/token-showcase.js';
 import { mountCustomizer, toggleCustomizer } from './demo/customizer-panel.js';
 import { mountClipboardFloat } from './scenes/clipboard-float/clipboard-float.js';
 import { mountMainWindow } from './scenes/main-window/main-window.js';
+import { mountSettingsWindow } from './scenes/settings-window/settings-window.js';
 import { getConfig, subscribe } from './config/store.js';
 import { applyConfig } from './config/apply.js';
 
@@ -177,11 +179,13 @@ mountMotionLab(document.querySelector('#motion'));
 
 // 场景模板 1：剪贴板悬浮窗（Task 18）—— 第一个完整场景模板，验证悬浮窗场景组件组合。
 // 场景模板 2：主窗口（Task 19）—— 一体式标题栏 + 滑动导航 + 8 模块内容区，追加在其后。
+// 场景模板 3：设置页（Task 20）—— 滑动选择分区 + 定制器整页嵌入 + 快捷键录制。
 // #scenes 标题在此写入；场景自身（标题/说明/实例）由各 mount 函数追加。
 const scenesSection = document.querySelector('#scenes');
 scenesSection.innerHTML = '<h2>场景模板</h2>';
 mountClipboardFloat(scenesSection);
 mountMainWindow(scenesSection);
+mountSettingsWindow(scenesSection);
 
 // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
 window.__toast = toast;

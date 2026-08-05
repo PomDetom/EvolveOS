@@ -11,6 +11,8 @@ import { exportCss } from './customizer-css.js';
  *
  * 契约：
  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
+ * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
+ *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
  * - 6 组 .cust-group（色彩/玻璃材质/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
@@ -157,7 +159,7 @@ function motionSwitchRow(cfg) {
     </div>`;
 }
 
-function panelTemplate(cfg) {
+function panelTemplate() {
   return `
     <header class="cust-header">
       <div class="cust-header__text">
@@ -166,14 +168,7 @@ function panelTemplate(cfg) {
       </div>
       <button type="button" class="cust-close" data-cust-close aria-label="关闭定制器">${icon('close', 18)}</button>
     </header>
-    <div class="cust-body">
-      ${GROUPS.map((g) => `
-        <section class="cust-group">
-          <h4 class="cust-group__title">${g.title}</h4>
-          ${g.pre ? g.pre(cfg) : ''}
-          ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
-        </section>`).join('')}
-    </div>
+    <div class="cust-body"></div>
     <footer class="cust-footer">
       <div class="cust-presets" role="group" aria-label="主题预设">
         <button type="button" class="cust-preset c-btn c-btn--secondary c-btn--sm" data-preset="dark">默认深</button>
@@ -187,62 +182,43 @@ function panelTemplate(cfg) {
     </footer>`;
 }
 
-/** 订阅 store 同步面板态：滑杆值/输出/风格卡片高亮/开关/禁用（不重渲染 DOM） */
-function syncUI(panel, cfg) {
-  panel.querySelectorAll('.cust-range').forEach((input) => {
+/** 订阅 store 同步容器内控件态：滑杆值/输出/风格卡片高亮/开关/禁用（不重渲染 DOM）。
+ *  container 语义：面板 .cust-body 或设置页外观分区 —— 两者各持一个订阅，
+ *  任一侧改动 store 都会双向实时同步。 */
+function syncUI(container, cfg) {
+  container.querySelectorAll('.cust-range').forEach((input) => {
     const key = input.dataset.key;
     const value = readCfg(cfg, key);
     input.value = String(value);
     const [min, max] = RANGES[key];
     input.style.setProperty('--fill', `${((value - min) / (max - min)) * 100}%`);
-    const out = panel.querySelector(`[data-out="${key}"]`);
+    const out = container.querySelector(`[data-out="${key}"]`);
     const spec = GROUPS.flatMap((g) => g.sliders).find((s) => s.key === key);
     if (out && spec) out.textContent = fmtValue(cfg, key, spec.unit);
     if (key === 'durationScale' || key === 'springStrength') {
       input.disabled = !cfg.motion.enabled;
     }
   });
-  panel.querySelectorAll('.cust-accent-card').forEach((card) => {
+  container.querySelectorAll('.cust-accent-card').forEach((card) => {
     const active = card.dataset.accent === cfg.accent;
     card.classList.toggle('cust-accent-card--active', active);
     card.setAttribute('aria-pressed', String(active));
   });
-  const swWrap = panel.querySelector('[data-motion-switch]');
+  const swWrap = container.querySelector('[data-motion-switch]');
   if (swWrap) swWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.motion.enabled));
 }
 
 function resetAll(panel) {
   localStorage.removeItem(KEY);
   const defaults = structuredClone(DEFAULTS);
-  notify(defaults); // 广播：main.js 重渲染展示区 / 面板 syncUI
+  notify(defaults); // 广播：main.js 重渲染展示区 / 各组容器 syncUI
   applyConfig(defaults);
-  syncUI(panel, defaults); // 双保险（订阅回调之外立即同步）
+  syncUI(panel.querySelector('.cust-body'), defaults); // 双保险（订阅回调之外立即同步）
   toast('已恢复默认配置');
 }
 
-function bindPanel(panel) {
-  // 风格卡片：点击切换主题色
-  panel.querySelector('.cust-accent-grid').addEventListener('click', (e) => {
-    const card = e.target.closest('.cust-accent-card');
-    if (!card) return;
-    applyConfig(saveConfig({ accent: card.dataset.accent }));
-  });
-
-  // 滑杆：委托 input（不 debounce —— 即时预览是本设计系统核心卖点）
-  panel.querySelector('.cust-body').addEventListener('input', (e) => {
-    const input = e.target.closest('.cust-range');
-    if (!input) return;
-    applyConfig(saveConfig(writePatch(input.dataset.key, Number(input.value))));
-  });
-
-  // 动效总开关
-  const swWrap = panel.querySelector('[data-motion-switch]');
-  swWrap.addEventListener('click', () => {
-    const sw = swWrap.querySelector('.c-switch');
-    const next = sw.getAttribute('aria-checked') !== 'true';
-    applyConfig(saveConfig({ motion: { enabled: next } }));
-  });
-
+/** 面板底部动作（预设/导出/保存/重置）—— 分组渲染与事件绑定已抽到 renderCustomizerGroups */
+function bindFooter(panel) {
   // 预设：「默认深/浅」= 仅切换主题
   panel.querySelector('.cust-presets').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-preset]');
@@ -270,6 +246,49 @@ function bindPanel(panel) {
 }
 
 /**
+ * 定制器分组（Task 20 重构抽出）：6 组 .cust-group HTML + 事件绑定 + store 双向同步。
+ * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
+ * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
+ * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
+ * @returns {HTMLElement} 同一容器
+ */
+export function renderCustomizerGroups(container) {
+  const cfg = getConfig();
+  container.innerHTML = GROUPS.map((g) => `
+    <section class="cust-group">
+      <h4 class="cust-group__title">${g.title}</h4>
+      ${g.pre ? g.pre(cfg) : ''}
+      ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
+    </section>`).join('');
+
+  // 风格卡片：点击切换主题色
+  container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
+    const card = e.target.closest('.cust-accent-card');
+    if (!card) return;
+    applyConfig(saveConfig({ accent: card.dataset.accent }));
+  });
+
+  // 滑杆：委托 input（不 debounce —— 即时预览是本设计系统核心卖点）
+  container.addEventListener('input', (e) => {
+    const input = e.target.closest('.cust-range');
+    if (!input) return;
+    applyConfig(saveConfig(writePatch(input.dataset.key, Number(input.value))));
+  });
+
+  // 动效总开关
+  const swWrap = container.querySelector('[data-motion-switch]');
+  swWrap?.addEventListener('click', () => {
+    const sw = swWrap.querySelector('.c-switch');
+    const next = sw.getAttribute('aria-checked') !== 'true';
+    applyConfig(saveConfig({ motion: { enabled: next } }));
+  });
+
+  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）
+  subscribe((next) => syncUI(container, next));
+  return container;
+}
+
+/**
  * 挂载定制器：backdrop + 右侧抽屉（两者都是 body 级常驻元素）。
  * @param {HTMLElement} root 挂载容器（main.js 传 document.body）
  * @returns {HTMLElement} 面板元素
@@ -285,11 +304,11 @@ export function mountCustomizer(root) {
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-label', '主题定制器');
   panel.setAttribute('aria-hidden', 'true');
-  panel.innerHTML = panelTemplate(getConfig());
+  panel.innerHTML = panelTemplate();
 
   root.append(backdrop, panel);
-  bindPanel(panel);
-  subscribe((next) => syncUI(panel, next));
+  renderCustomizerGroups(panel.querySelector('.cust-body')); // 分组渲染 + 事件 + store 订阅
+  bindFooter(panel);
   panel.querySelector('[data-cust-close]').addEventListener('click', () => toggleCustomizer(false));
 
   // ESC 关闭（与全局热键监听并存，互不冲突）
