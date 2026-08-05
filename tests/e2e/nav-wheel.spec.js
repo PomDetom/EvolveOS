@@ -26,9 +26,8 @@ test('设置入口在左下角且可点击', async ({ page }) => {
 
 // Task I3 Step 1：滚轮滚动 → 停止 150ms+ 后吸附最近项（规格 §8.3 不得悬置）。
 // 方法参考最终审查复评实测（wheel 滚 100px）：吸附后 scrollTop 收敛到
-// 「最近项中心对齐视口中心」的位置（100 → 128，itemH 52 + gap 12 下最近项为
-// 第 3 项，其中心偏移 28px 小于第 2 项的 36px）—— 断言滚动发生 + 选中项精确居中，
-// 不硬编码具体 index（几何依赖视口高度，随尺寸变化）。
+// 「最近项中心对齐视口 38.2% 锚线」的位置（Task A2 锚点化后按新几何）—— 断言滚动发生
+// + 选中项精确锚定，不硬编码具体 index（几何依赖视口长度，随尺寸变化）。
 test('滚轮滚动停止后吸附最近项并选中', async ({ page }) => {
   await page.goto('/');
   const list = page.locator('.navwheel__list');
@@ -42,14 +41,14 @@ test('滚轮滚动停止后吸附最近项并选中', async ({ page }) => {
   // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
   const scrolled = await list.evaluate(el => el.scrollTop);
   expect(scrolled).toBeGreaterThan(50);
-  // 最近项被选中且中心与视口中心对齐（精确吸附，delta < 4px）
+  // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
   const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
   const listBox = await list.boundingBox();
-  const centerDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height / 2));
-  expect(centerDelta).toBeLessThan(4);
+  const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
+  expect(anchorDelta).toBeLessThan(4);
 });
 
-test('点击模块滑动到中央并选中', async ({ page }) => {
+test('点击模块滑动到锚点并选中', async ({ page }) => {
   await page.goto('/');
   // 侧栏导航轮：限定 .navwheel__list（矩阵内演示实例另含 8 项，不参与计数）
   const items = page.locator('.navwheel__list .c-navwheel__item');
@@ -58,9 +57,9 @@ test('点击模块滑动到中央并选中', async ({ page }) => {
   await expect(items.nth(3)).toHaveClass(/c-navwheel__item--active/);
   // 等待 rAF 滚动动画（--dur-base 200ms）结束后再测量位置
   await page.waitForTimeout(400);
-  // 选中项应位于导航视口中央附近
+  // 选中项应位于导航视口 38.2% 锚线附近（黄金比例锚点）
   const box = await items.nth(3).boundingBox();
   const listBox = await page.locator('.navwheel__list').boundingBox();
-  const centerDelta = Math.abs((box.y + box.height / 2) - (listBox.y + listBox.height / 2));
-  expect(centerDelta).toBeLessThan(4);
+  const anchorDelta = Math.abs((box.y + box.height / 2) - (listBox.y + listBox.height * 0.382));
+  expect(anchorDelta).toBeLessThan(4);
 });
