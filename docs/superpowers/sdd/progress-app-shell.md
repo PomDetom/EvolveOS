@@ -55,6 +55,16 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - **评审修复（2026-08-06，已闭环）**：`ad3e05d` `fix: 退出设置模式后右窗目录轮残留修复` —— 在设置退出路径补 `renderRight()`（`exitSettingsMode` + `collapseRight` wasSettings 分支），任一右Mode 回 'apps' 都同步重渲染右窗轮；覆盖测试 +1 `设置模式退出后右窗目录轮回归`（先红后绿：RED `toHaveCount(3)` 收到 8 → GREEN 3 项 + `[data-id="general"]` 0 项 + 上下文「剪贴板 › 历史」）；验证：app-shell 14/14、e2e 98/98、npm test 45/45、build 通过
 - **Minor 留收尾**：① 设置页交互（主题三态/动效/快捷键）e2e 仅覆盖渲染/导航/定制器挂载，交互行为依赖与场景共用共享模块（同构）；② `exitSettingsMode` 重渲染左窗选中应用页（滚动位置重置，与 A3 收起一致）；③ 设置通用页主题态在挂载时烘焙 getConfig（配置变更后重进设置模式才刷新，与场景一致）
 
+## Task A5: FloatStrip 悬浮条组件
+
+- **状态**：完成（2026-08-06）
+- **提交**：`039800f` `feat: FloatStrip 悬浮条（横竖形态/四边磁吸/无边框）`
+- **验证**：npm test 45/45；npm run test:e2e 104/104（floatstrip 6/6 + app-shell 14/14 + docs 84 零冲击 + 36 基线零变化）；npm run build 通过（float-strip 代码分包，docs 不加载）
+- **实现**：`src/components/float-strip/`（`renderFloatStrip`/`mountFloatStrip`/`renderTokenMonitor`：`.c-strip` + `--strip-orientation` + data-orientation 布局、双形态旋转按钮/双击双通道、四边磁吸 transform 定位 24px 阈值、无边框 hover 浮现控制条）；`src/app/strip-main.js` `?mode=strip` body 级独立渲染（占位 → 实现）；`app-main.js` 右下 FloatBall 模拟演示
+- **简报/报告**：docs/superpowers/sdd/task-A5-brief.md / task-A5-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，6 Minor）
+- **Minor 留收尾**：① 旋转锚点语义（报告称保持左上角，实测 position:fixed right/bottom 重锚右下 + transform 保持；默认贴边主场景良好，侧贴边旋转时垂直轴可能跳变，A6/A7 观察）；② `renderTokenMonitor` value/status 未转义插值（内部受控调用点低风险，可加白名单/escapeHTML）；③ `--strip-orientation` 语义值 horizontal|vertical 未被布局直接消费（布局 key 到 data-orientation，同语句赋值不会漂移，未来配置层覆盖需改 row|column）；④ 微尺寸字面量 gap 2px/按钮 26px/圆角 2px（无对应令牌，结构性可接受）；⑤ floatstrip.spec 用固定 waitForTimeout(400)（当前不 flaky，toHaveCSS 轮询更稳）；⑥ app 壳 FloatBall 与展开 strip 同右下角 z 叠（ball z=40 > strip z=10，无害，strip 有关闭钮）
+
 ## 执行状态
 
 - Task A1 双模式入口：✅ 完成（2026-08-05）

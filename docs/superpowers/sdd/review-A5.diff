@@ -1,0 +1,698 @@
+# Review package: 983f56e..HEAD
+
+## Commits
+039800f feat: FloatStrip 悬浮条（横竖形态/四边磁吸/无边框）
+
+## Files changed
+ docs/superpowers/sdd/task-A5-brief.md      |  24 +++++
+ docs/superpowers/sdd/task-A5-report.md     | 106 +++++++++++++++++++
+ src/app/app-main.css                       |   7 ++
+ src/app/app-main.js                        |  29 ++++++
+ src/app/strip-main.js                      |  21 +++-
+ src/components/float-strip/float-strip.css | 138 +++++++++++++++++++++++++
+ src/components/float-strip/float-strip.js  | 159 +++++++++++++++++++++++++++++
+ tests/e2e/floatstrip.spec.js               |  96 +++++++++++++++++
+ 8 files changed, 576 insertions(+), 4 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-A5-brief.md b/docs/superpowers/sdd/task-A5-brief.md
+new file mode 100644
+index 0000000..bf46197
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A5-brief.md
+@@ -0,0 +1,24 @@
++# Task A5: FloatStrip 悬浮条组件
++
++**Files:**
++- Create: `src/components/float-strip/float-strip.css`、`float-strip.js`
++- Create: `src/app/strip-main.js`（`?mode=strip` 入口：独立渲染悬浮条实例）
++- Modify: `src/app/app-main.js`（右下 FloatBall + 模拟演示）
++- Create: `tests/e2e/floatstrip.spec.js`
++
++**Interfaces:**
++- `float-strip.js` 导出 `renderFloatStrip({ content })` + `mountFloatStrip(root, { onStateChange })`：
++  - DOM：`.c-strip`（`--strip-orientation: horizontal|vertical`）> 内容区 `.c-strip__content` + hover 浮现 `.c-strip__ctrl`（旋转/拖动/关闭）
++  - 双形态：横条（内容横向）/ 竖条（内容纵向）；旋转按钮 + 双击内容区切换（transition 只动 transform/opacity + 布局用 CSS 变量方向）
++  - 四边磁吸：pointer 拖动，距屏幕边缘 < 24px 吸附（transform 定位，不触发 layout 动画）
++  - 无边框：常态零边框零标题栏；hover 浮现半透明细边框 + 控制条
++  - token 监测内容模板：`renderTokenMonitor({ value, status, trend })`（数值 + 状态点 + 迷你趋势条）
++- `strip-main.js`：body 级独立渲染悬浮条（`?mode=strip` 时 main.js 分支进入）
++- `floatstrip.spec.js` 用例：渲染 / 旋转切换（orientation 类翻转 + 内容布局）/ 磁吸（拖动到边缘 → 吸附类）/ 无边框 hover 浮现 / 双击旋转
++
++- [ ] **Step 1-3**: TDD → 组件实现（红线：旋转/磁吸/浮现只动 transform/opacity）→ 绿
++- [ ] **Step 4**: strip 入口接线 + 应用壳 FloatBall 模拟演示（右下贴边可拖）
++- [ ] **Step 5**: 全量回归 + build
++- [ ] **Step 6: 提交** `feat: FloatStrip 悬浮条（横竖形态/四边磁吸/无边框）`
++
++---
+diff --git a/docs/superpowers/sdd/task-A5-report.md b/docs/superpowers/sdd/task-A5-report.md
+new file mode 100644
+index 0000000..45d6266
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A5-report.md
+@@ -0,0 +1,106 @@
++# Task A5 报告：FloatStrip 悬浮条（横竖形态 / 四边磁吸 / 无边框）
++
++- **日期**：2026-08-06
++- **分支**：feature/iteration（Base：A4 修复后 47a1d76 / 本任务在 A4 全量回归之上）
++- **提交**：见本账本（progress-app-shell.md）Task A5 条目
++
++## What you implemented
++
++### 组件 `src/components/float-strip/float-strip.js` + `float-strip.css`（新建）
++- **接口**（与 brief Interfaces 一致）：
++  - `renderFloatStrip({ content })` → `.c-strip`（`--strip-orientation: horizontal|vertical` 语义态 + `data-orientation`）
++    > 内容区 `.c-strip__content` + hover 浮现 `.c-strip__ctrl`（旋转按钮 / 拖动柄 / 关闭按钮）。
++  - `mountFloatStrip(root, { onStateChange, onClose })` → 交互挂载（旋转/拖动/磁吸/关闭），返回
++    `{ setOrientation, getState }` 供宿主调用；`onStateChange({ orientation, snapped })` 回调。
++  - `renderTokenMonitor({ value, status, trend })` → **token 监测内容模板**：数值 + 状态点
++    （ok/warn/err → success/warning/danger 语义色）+ 迷你趋势条（纯 div + `transform: scaleY(var(--tbar))`，
++    红线段）。供后续应用复用。
++- **双形态**：旋转按钮 + 双击内容区**双通道**切换。`data-orientation` / `.c-strip--vertical` 翻转，
++  容器 `flex-direction` 随形态 row→column（布局属性瞬时切换，**不动画**）。旋转切换的视觉过渡在
++  `.c-strip__content` 上做**交叉淡入淡出**（`--rotating` 期间 opacity 0 + scale 0.95，只动 transform/opacity）。
++  > 说明：`--strip-orientation` 值为 brief 规定的 `horizontal|vertical`（语义态），`flex-direction`
++  > 无法直接消费该字面量，故布局规则经同源的 `[data-orientation]` 属性驱动，与 var 恒一致
++  > （见 Issues ①）。
++- **四边磁吸**：pointer 拖动（pointerdown/move/up + `setPointerCapture`，move/up 挂 window 兜底命中），
++  内容区/拖动柄可拖；松手距屏幕边缘 **< 24px** 吸附贴边。**定位模型**：`position:fixed` 底右 dock
++  （`right/bottom = --strip-gap`）+ 全部位移经 `transform: translate(dx,dy)`（`pos − 基准位`），
++  **不触发布局动画**；吸附位移走容器 `transform` transition（`--dur-slow` 300ms spring）。
++  拖动中 `.c-strip--dragging` 关过渡（跟手不滞后）；像素级移动阈值 2px（点击/双击不触发吸附）。
++  吸附态加 `.c-strip--snapped` + `data-snapped` 边。
++- **无边框内容优先**：常态 1px **透明**边框（border-width 恒定，hover 只换 border-color，无布局位移）+ 零标题栏；
++  hover 浮现半透明细边框 + `box-shadow` + 迷你控制条（opacity 0→1 + pointer-events none→auto）。
++  `backdrop-filter` 静态（永不动画）。时长/曲线全经 CSS 变量（`--dur-base/fast/slow`、`--ease-out/spring`）。
++
++### 独立入口 `src/app/strip-main.js`（重写占位）
++- `mountStripMode()`：body 级独立渲染一个 FloatStrip 实例（token 监测内容，`97.2% / ok / 7 段趋势`），
++  挂 `document.body`，关闭即移除。`?mode=strip` 由 main.js 动态 import 进入。组件 CSS 随本模块按需加载
++  （docs 不 import → 样式不进入 docs，零冲击）。Vite build 已确认 float-strip 拆为独立 chunk。
++
++### 应用壳演示 `src/app/app-main.js` + `app-main.css`（仅 app 模式）
++- 右下 FloatBall（复用 `renderFloatBall`/`mountFloatBall`，`iconName: 'bolt'`）；点击展开一个 FloatStrip
++  模拟实例（右下贴边可拖），关闭移除、再点可重开；`.app-main__float-ball` / `.app-main__strip` body 级覆盖层
++  （strip 宿主 pointer-events:none 不拦截应用交互，strip 自身再启用）。docs 互斥不并存。
++
++### 测试 `tests/e2e/floatstrip.spec.js`（新建，6 用例）
++渲染 / 旋转切换（类翻转 + flex-direction）/ 四边磁吸（拖动到左边缘 → `.c-strip--snapped` + 贴边
++boundingBox）/ 无边框 hover 浮现（opacity + borderColor 计算样式）/ 双击旋转 / app 壳 FloatBall→FloatStrip。
++
++## TDD Evidence
++
++- **RED**：先写 6 用例 → `npx playwright test tests/e2e/floatstrip.spec.js` → **6 failed**：
++  - `渲染`：`locator('.c-strip')` toHaveCount 收到 0（strip-main.js 仍是 console.info 占位，无 `.c-strip` DOM）
++  - `旋转 / 磁吸 / 无边框 / 双击`：均因 `.c-strip` 不存在而超时失败
++  - `app 壳`：`locator('.app-main__float-ball .c-float-ball')` toHaveCount 收到 0（app-main 未接 FloatBall）
++  - 预期失败：组件/入口/演示均未实现。
++- **GREEN**：实现组件 + 入口 + 演示后 → **6 passed**（含旋转后 flex-direction=column、磁吸贴边
++  `|after.x| ≤ 2`、hover borderColor 由 transparent 变实色、双击旋转第二通道、app 壳点击出条）。
++
++## Test results
++
++- **floatstrip.spec**：6/6 绿。
++- **全量 `npm run test:e2e`**：**104 passed** —— docs 模式 84 零冲击（回归零失败）+ 36 视觉基线零变化
++  （visual-regression 全绿，快照文件无改动）+ app-shell 14/14 + floatstrip 6/6。
++- **`npm test`**：45/45（单元测试零变化）。
++- **`npm run build`**：通过（105 modules，672ms；`dist/assets/float-strip-*.css/js` 独立 chunk 按需加载）。
++
++## Files changed
++
++- `src/components/float-strip/float-strip.css`（**新建**）
++- `src/components/float-strip/float-strip.js`（**新建**：renderFloatStrip / mountFloatStrip / renderTokenMonitor）
++- `src/app/strip-main.js`（重写：`?mode=strip` 独立渲染）
++- `src/app/app-main.js`（右下 FloatBall + FloatStrip 模拟演示，仅 app 模式）
++- `src/app/app-main.css`（`.app-main__float-ball` / `.app-main__strip` 覆盖层）
++- `tests/e2e/floatstrip.spec.js`（**新建**，6 用例）
++
++## Self-review findings
++
++- **红线合规证据**（旋转 / 磁吸 / 浮现）：
++  - 旋转：`.c-strip__content` 过渡仅 `opacity + transform`（交叉淡入淡出）；容器 `flex-direction` 经
++    `data-orientation` 瞬时切换（无 width/height/left/top 过渡）；容器 transition 列表仅
++    `transform / border-color / box-shadow`。
++  - 磁吸：全部位移 `transform: translate`，吸附位移走 transform transition（`--dur-slow` spring）；
++    **无任何 layout 属性动画**（无 width/height/left/top/margin/padding 在 transition/animation 中）。
++  - 浮现：`.c-strip__ctrl` opacity + transform + border-color（border/box-shadow/color 为 paint-only 豁免）；
++    `backdrop-filter` 静态、永不动画；时长/曲线全经 CSS 变量；`data-motion=off`/reduced-motion 时长归零后
++    JS 旋转延迟同步归零（`readDur('--dur-base')`）。
++- **docs 零冲击**：float-strip CSS 仅经 strip-main / app-main 动态 chunk 按需加载，docs 模式不 import；
++  `.c-strip__*` / `.c-tmon__*` 类名全部组件局部，不进入 docs DOM/样式 → 36 基线像素级零变化 + 84 docs e2e 零失败。
++- **隔离**：app 演示（`.app-main__float-ball` / `.app-main__strip`）仅 app 模式出现，body 级覆盖层，
++  strip 宿主 pointer-events:none 不拦截应用交互；app-shell.spec 14 例全绿（球/条不干扰既有点击路径）。
++- **零运行时依赖**：仅原生 JS，无新增依赖；遵循既有组件风格（BEM `c-` 前缀、icon(name,size)、
++  `calc(var(--radius-*) * var(--radius-scale))`、令牌引用禁硬编码）。
++- **TDD 纪律**：先红后绿（6 红 → 6 绿），提交前全量回归 + build。
++
++## Issues / concerns
++
++- 无 blocker。观察项：
++  1. **`--strip-orientation` 语义态 vs flex-direction**：brief 规定 var 值为 `horizontal|vertical`
++     （语义态），`flex-direction` 不消费该字面量，故布局经同源的 `data-orientation` 属性驱动
++     （CSS 注释已说明）。若需「布局字面量经 var」可在未来把 var 定义为 `row|column` 并保留
++     `horizontal|vertical` 另设语义态 —— 本任务按 brief 字面值实现。
++  2. **旋转锚点**：已吸附边旋转后按新尺寸重新贴边（保持吸附不变量）；自由位旋转后夹在视口内
++     （transform 定位）。自由位旋转保持左上角锚点，dock 角控件旋转后可能轻微位移 —— 可接受，未断言。
++  3. **磁吸阈值语义**：默认 dock（底右 gap 16 < 24）本身即吸附区，小幅拖动松手会吸附贴边（0 gap）——
++     符合「<24px 吸附」规格，属预期行为。
++  4. **e2e 覆盖**：旋转/磁吸/浮现断言了类与计算样式（transform 恒 matrix 故不直接断言矩阵）；
++     关闭按钮行为由 app 演示用例隐式覆盖（未单独断言移除 —— 可留给 A6/收尾）。
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index eae724a..1478081 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -101,10 +101,17 @@
+   background: var(--surface-hover);
+ }
+ 
+ /* —— 设置模式内容区（Task A4：复用 settings-window 页面栈）——
+    壳内非 820×520 场景网格：页面栈随内容区滚动（.app-main__pages overflow-y:auto），
+    覆盖场景专用尺寸（height:100% / overflow:hidden / 内边距 —— 内边距由内容区 space-6 承担）；
+    切页动画沿用壳的 app-main-page-in（120ms，只动 transform/opacity，红线） */
+ .app-main__settings.csettings__pages { overflow: visible; }
+ .app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
+ .app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
++
++/* —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall → 点击展开悬浮条 ——
++   body 级覆盖层（app/docs 互斥，docs 不加载本文件）。.c-strip 自身 position:fixed 定位，
++   宿主仅作容器（pointer-events:none 不拦截应用交互，strip 自身再启用）。 */
++.app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
++.app-main__strip { position: fixed; inset: 0; pointer-events: none; }
++.app-main__strip .c-strip { pointer-events: auto; }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 247f221..be3c077 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -5,23 +5,26 @@
+ // 设置页与场景模板共享 settings-pages.js 实现（类名 .csettings__* 不变，外观分区定制器首次激活惰性挂载）。
+ // 左窗/右窗均为 NavigationWheel 实例（纯 icon，38.2% 黄金比例锚点；名称由标题栏上下文承担，
+ // 栏内 name 经 app-main.css 隐藏，nav-wheel 组件零改动、docs 行为不变）。
+ // MODULES 扩展契约：应用注册 = 模块项（左窗 icon）+ 目录项（右窗 icon）+ 页面渲染函数（内容区）。
+ //   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
+ // 右窗状态为纯 UI 态（会话内），不进配置存储。
+ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
++import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
++import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+ import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
++import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+   { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview },
+   {
+     id: 'clipboard', name: '剪贴板', icon: 'clipboard',
+     dir: [
+       { id: 'history', name: '历史', icon: 'list' },
+       { id: 'pinned', name: '固定', icon: 'pin' },
+@@ -318,20 +321,46 @@ export function mountAppMode(root) {
+   // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
+   //   设置页（第 8 区）已随模板渲染，此处跳过 ——
+   pages.forEach((page) => {
+     if (page.dataset.page === 'settings') return;
+     const mod = MODULES.find((m) => m.id === page.dataset.page);
+     page.innerHTML = mod.render(modCtx(mod));
+   });
+   pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
+   renderRight();
+   applyRightOpen();
++
++  // —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall →
++  //    点击展开一个 FloatStrip 实例（右下贴边可拖）。docs 互斥不并存，零冲击。 ——
++  const ballHost = document.createElement('div');
++  ballHost.className = 'app-main__float-ball';
++  ballHost.innerHTML = renderFloatBall({ iconName: 'bolt', tooltip: '悬浮监测条' });
++  document.body.appendChild(ballHost);
++  let stripHost = null;
++  mountFloatBall(ballHost, {
++    onExpand: () => {
++      if (stripHost) return; // 已展开则不重复创建
++      stripHost = document.createElement('div');
++      stripHost.className = 'app-main__strip';
++      stripHost.innerHTML = renderFloatStrip({
++        content: renderTokenMonitor({
++          value: '97.2%',
++          status: 'ok',
++          trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
++        }),
++      });
++      document.body.appendChild(stripHost);
++      mountFloatStrip(stripHost, {
++        onClose: () => { stripHost?.remove(); stripHost = null; },
++      });
++    },
++  });
+ }
+ 
+ // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
+ function placeholderPage(ctx) {
+   const { module, dirName } = ctx;
+   const sub = dirName ? ` › ${dirName}` : '';
+   return `
+     <div class="app-main__page-head">
+       <h2 class="app-main__page-title">${module.name}</h2>
+       ${dirName ? `<span class="app-main__page-sub">${sub}</span>` : ''}
+diff --git a/src/app/strip-main.js b/src/app/strip-main.js
+index 2f90eb2..8b7ae6c 100644
+--- a/src/app/strip-main.js
++++ b/src/app/strip-main.js
+@@ -1,6 +1,19 @@
+-// FloatStrip 悬浮条入口（Task A5 实现）—— 本任务仅动态 import 占位，保证 Vite build 可解析目标文件。
+-// main.js 在 ?mode=strip 时动态 import 本模块并调用 mountStripMode()（body 级独立渲染）。
++// FloatStrip 悬浮条入口（Task A5，规格 §5）：body 级独立渲染一个悬浮条实例（token 监测内容），
++// 供 Tauri 独立透明窗口接入。main.js 在 ?mode=strip 时动态 import 本模块并调用 mountStripMode()。
++// 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
++import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
++import '../components/float-strip/float-strip.css';
++
+ export function mountStripMode() {
+-  // eslint-disable-next-line no-console
+-  console.info('[strip] Task A5 实现：FloatStrip 悬浮条（横竖形态/四边磁吸/无边框）');
++  const root = document.createElement('div');
++  root.className = 'strip-root';
++  root.innerHTML = renderFloatStrip({
++    content: renderTokenMonitor({
++      value: '97.2%',
++      status: 'ok',
++      trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
++    }),
++  });
++  document.body.appendChild(root);
++  mountFloatStrip(root, { onClose: () => root.remove() });
+ }
+diff --git a/src/components/float-strip/float-strip.css b/src/components/float-strip/float-strip.css
+new file mode 100644
+index 0000000..25f60e4
+--- /dev/null
++++ b/src/components/float-strip/float-strip.css
+@@ -0,0 +1,138 @@
++/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
++   定位模型：position:fixed 底右 dock（right/bottom = --strip-gap），全部位移经
++   transform: translate(dx,dy)（红线段：不触发布局动画，磁吸贴边不 animate 宽/高/left/top）。
++   形态：--strip-orientation 语义态（horizontal|vertical）+ data-orientation 翻转，
++   flex-direction 随形态切换（布局属性瞬时切换，不做动画）。
++   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/阴影/背景为 paint-only 豁免
++   （hover 短暂状态过渡）；模糊（backdrop-filter）静态、永不动画；时长/曲线一律经 CSS 变量。 */
++
++.c-strip {
++  position: fixed;
++  right: var(--strip-gap, var(--space-4));
++  bottom: var(--strip-gap, var(--space-4));
++  z-index: var(--z-float);
++  --strip-gap: var(--space-4);
++  --strip-thick: 48px;
++  --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
++  display: flex;
++  box-sizing: border-box;
++  max-width: calc(100vw - var(--strip-gap) * 2);
++  max-height: calc(100vh - var(--strip-gap) * 2);
++  overflow: hidden;
++  border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
++  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)); /* 静态材质，永不动画 */
++  color: var(--text-1);
++  cursor: grab;
++  user-select: none;
++  -webkit-user-select: none;
++  box-shadow: none;
++  /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
++  transition: transform var(--dur-slow) var(--ease-spring),
++    border-color var(--dur-base) var(--ease-out),
++    box-shadow var(--dur-base) var(--ease-out);
++}
++.c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
++.c-strip--horizontal { min-height: var(--strip-thick); width: max-content; }
++.c-strip--vertical { min-width: var(--strip-thick); height: max-content; }
++/* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
++.c-strip--dragging, .c-strip--rotating { transition: none; }
++.c-strip:hover {
++  border-color: var(--glass-border);
++  box-shadow: var(--glass-shadow);
++}
++
++/* —— 内容区（可拖）——
++   布局随形态：horizontal 内容横向（row）/ vertical 内容纵向（column）；
++   transition 只动 transform/opacity（旋转切换的交叉淡入淡出），布局属性不做动画。 */
++.c-strip__content {
++  display: flex;
++  align-items: center;
++  gap: var(--space-2);
++  min-width: 0;
++  min-height: 0;
++  flex-direction: row;
++  touch-action: none;
++  transition: opacity var(--dur-base) var(--ease-out),
++    transform var(--dur-base) var(--ease-out);
++}
++.c-strip[data-orientation="vertical"] .c-strip__content { flex-direction: column; }
++/* 旋转中：内容淡出 + 轻微缩放（只动 transform/opacity），翻转到新形态后淡入 */
++.c-strip--rotating .c-strip__content { opacity: 0; transform: scale(0.95); }
++
++/* —— hover 浮现控制条（旋转/拖动/关闭）——
++   常态 opacity:0 + pointer-events:none（无边框内容优先）；hover 浮现半透明细边框 + 控制条。 */
++.c-strip__ctrl {
++  display: flex;
++  align-items: center;
++  gap: 2px;
++  padding: 2px;
++  opacity: 0;
++  pointer-events: none;
++  border: 1px solid transparent;
++  transition: opacity var(--dur-base) var(--ease-out),
++    transform var(--dur-base) var(--ease-out),
++    border-color var(--dur-base) var(--ease-out);
++}
++.c-strip:hover .c-strip__ctrl {
++  opacity: 1;
++  pointer-events: auto;
++  border-color: var(--glass-border);
++}
++/* horizontal：控制条竖排在内容右侧；vertical：控制条横排在内容下侧 */
++.c-strip--horizontal .c-strip__ctrl { flex-direction: column; }
++.c-strip--vertical .c-strip__ctrl { flex-direction: row; }
++
++.c-strip__ctrl button, .c-strip__drag {
++  width: 26px;
++  height: 26px;
++  display: grid;
++  place-items: center;
++  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1));
++  color: var(--text-2);
++  transition: color var(--dur-fast) var(--ease-out),
++    background var(--dur-fast) var(--ease-out);
++}
++.c-strip__ctrl button:hover { color: var(--text-1); background: var(--surface-hover); }
++.c-strip__close:hover { color: var(--danger-500); }
++.c-strip__drag { cursor: grab; touch-action: none; }
++.c-strip__drag:hover { color: var(--text-1); background: var(--surface-hover); }
++.c-strip__drag:active { cursor: grabbing; }
++
++/* —— token 监测内容模板（renderTokenMonitor，供后续应用复用）——
++   数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY，红线段）。 */
++.c-tmon {
++  display: flex;
++  align-items: center;
++  gap: var(--space-2);
++  padding: 0 var(--space-3);
++  font-size: var(--font-size-sm);
++  line-height: 1;
++  white-space: nowrap;
++}
++.c-tmon__dot {
++  width: 8px;
++  height: 8px;
++  flex: none;
++  border-radius: var(--radius-full);
++  background: var(--success-500);
++}
++.c-tmon__dot--warn { background: var(--warning-500); }
++.c-tmon__dot--err { background: var(--danger-500); }
++.c-tmon__value { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-semibold); }
++.c-tmon__trend {
++  display: flex;
++  align-items: flex-end;
++  gap: 2px;
++  height: 20px;
++  padding-left: var(--space-1);
++}
++.c-tmon__trend-bar {
++  width: 4px;
++  height: 16px;
++  border-radius: 2px;
++  background: var(--accent-400);
++  transform: scaleY(var(--tbar, 0));
++  transform-origin: bottom;
++}
+diff --git a/src/components/float-strip/float-strip.js b/src/components/float-strip/float-strip.js
+new file mode 100644
+index 0000000..719c829
+--- /dev/null
++++ b/src/components/float-strip/float-strip.js
+@@ -0,0 +1,159 @@
++// FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
++// 定位模型：position:fixed 底右 dock（right/bottom = --strip-gap，见 float-strip.css），
++// 全部位移经 transform: translate(dx, dy)（红线段：磁吸不触发布局动画）。
++//   基准位 = 未变换的 dock 位（vw - gap - w / vh - gap - h）；pos 为 strip 左上角视口坐标，
++//   transform = pos - 基准位。拖动改 transform；松手距边缘 < 24px 吸附贴边（transform 定位）。
++// 形态：--strip-orientation（horizontal|vertical，语义态）+ data-orientation 翻转；
++//   flex-direction 随形态切换（布局属性瞬时切换不做动画，红线段）。
++// 红线证据：旋转（交叉淡入淡出只动 transform/opacity）、磁吸（transform 位移）、
++//   浮现（opacity + border-color/box-shadow paint 豁免），时长/曲线经 CSS 变量。
++import { icon } from '../icon/icon.js';
++
++const SNAP_DIST = 24; // 距屏幕边缘 < 24px 吸附（贴边）
++const MOVE_THRESHOLD = 2; // 像素级移动判定：双击/点击不触发吸附
++
++export function renderFloatStrip({ content = '' } = {}) {
++  return `<div class="c-strip c-strip--horizontal" data-orientation="horizontal">
++    <div class="c-strip__content">${content}</div>
++    <div class="c-strip__ctrl" role="toolbar" aria-label="悬浮条控制">
++      <button class="c-strip__rotate" type="button" title="旋转" aria-label="旋转">${icon('refresh', 14)}</button>
++      <div class="c-strip__drag" role="button" title="拖动" aria-label="拖动">${icon('drag', 14)}</div>
++      <button class="c-strip__close" type="button" title="关闭" aria-label="关闭">${icon('close', 14)}</button>
++    </div>
++  </div>`;
++}
++
++// token 监测内容模板：数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY）。
++// status: 'ok' | 'warn' | 'err'；trend: 0-1 数值数组（每项一根趋势条）。
++export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } = {}) {
++  const LABEL = { ok: '正常', warn: '告警', err: '错误' };
++  const dot = `<span class="c-tmon__dot c-tmon__dot--${status}" role="img" aria-label="状态：${LABEL[status] ?? status}"></span>`;
++  const bars = trend.length
++    ? `<span class="c-tmon__trend" role="img" aria-label="趋势">${trend
++        .map((v) => `<i class="c-tmon__trend-bar" style="--tbar:${Math.max(0, Math.min(1, Number(v) || 0))}"></i>`)
++        .join('')}</span>`
++    : '';
++  return `<div class="c-tmon">${dot}<span class="c-tmon__value">${value}</span>${bars}</div>`;
++}
++
++export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}) {
++  const strip = root.classList.contains('c-strip') ? root : root.querySelector('.c-strip');
++  if (!strip) return null;
++  const content = strip.querySelector('.c-strip__content');
++  const rotateBtn = strip.querySelector('.c-strip__rotate');
++  const closeBtn = strip.querySelector('.c-strip__close');
++  const dragHandle = strip.querySelector('.c-strip__drag');
++
++  let orientation = strip.dataset.orientation === 'vertical' ? 'vertical' : 'horizontal';
++
++  // —— 定位：transform = pos - 未变换基准位（底右 dock）——
++  function getGap() {
++    const v = parseFloat(getComputedStyle(strip).getPropertyValue('--strip-gap'));
++    return Number.isFinite(v) ? v : 16;
++  }
++  function setPos(x, y) {
++    const r = strip.getBoundingClientRect();
++    const gap = getGap();
++    const dx = x - (window.innerWidth - gap - r.width);
++    const dy = y - (window.innerHeight - gap - r.height);
++    strip.style.transform = `translate(${dx}px, ${dy}px)`;
++  }
++  function getPos() {
++    const r = strip.getBoundingClientRect();
++    return { x: r.left, y: r.top };
++  }
++
++  // —— 四边磁吸：距边缘 < 24px 吸附贴边（transform 定位，不触发布局动画）——
++  function snapToEdge(x, y, w, h) {
++    const vw = window.innerWidth, vh = window.innerHeight;
++    let ex = null, ey = null;
++    if (x < SNAP_DIST) { x = 0; ex = 'left'; }
++    else if (x + w > vw - SNAP_DIST) { x = vw - w; ex = 'right'; }
++    if (y < SNAP_DIST) { y = 0; ey = 'top'; }
++    else if (y + h > vh - SNAP_DIST) { y = vh - h; ey = 'bottom'; }
++    return { x, y, edge: [ex, ey].filter(Boolean).join('-') || null };
++  }
++  function applySnapped(edge) {
++    strip.classList.toggle('c-strip--snapped', !!edge);
++    strip.dataset.snapped = edge ?? '';
++  }
++
++  // —— 旋转切换（按钮 + 双击内容区双通道）——
++  // 过渡只动 transform/opacity（交叉淡入淡出）；布局经 --strip-orientation / data-orientation
++  // 切换容器 flex 方向，不 animate 宽/高/left/top（容器尺寸随内容瞬时变化，红线段）。
++  function readDur(name, fallback) {
++    const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
++    return Number.isFinite(n) ? n : fallback;
++  }
++  function toggleOrientation() {
++    orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
++    strip.classList.add('c-strip--rotating');
++    const dur = readDur('--dur-base', 200);
++    setTimeout(() => {
++      strip.classList.toggle('c-strip--vertical', orientation === 'vertical');
++      strip.classList.toggle('c-strip--horizontal', orientation === 'horizontal');
++      strip.dataset.orientation = orientation;
++      // 尺寸变化后保持锚点：已吸附边按新尺寸重新贴边，否则夹在视口内（transform 定位，无布局动画）
++      const p = getPos();
++      const r = strip.getBoundingClientRect();
++      const vw = window.innerWidth, vh = window.innerHeight;
++      let x = Math.max(0, Math.min(p.x, vw - r.width));
++      let y = Math.max(0, Math.min(p.y, vh - r.height));
++      const edge = strip.dataset.snapped;
++      if (edge) {
++        if (edge.includes('left')) x = 0;
++        if (edge.includes('right')) x = vw - r.width;
++        if (edge.includes('top')) y = 0;
++        if (edge.includes('bottom')) y = vh - r.height;
++      }
++      setPos(x, y);
++      strip.classList.remove('c-strip--rotating');
++      onStateChange({ orientation, snapped: strip.dataset.snapped || null });
++    }, dur);
++  }
++
++  // —— 拖动（pointer 事件 + setPointerCapture；move/up 挂 window 兜底命中）——
++  function startDrag(e) {
++    if (e.button !== 0) return;
++    const el = e.currentTarget;
++    const start = getPos();
++    const sx = e.clientX, sy = e.clientY;
++    let moved = false;
++    strip.classList.add('c-strip--dragging');
++    try { el.setPointerCapture(e.pointerId); } catch { /* noop */ }
++    function onMove(ev) {
++      const nx = start.x + ev.clientX - sx;
++      const ny = start.y + ev.clientY - sy;
++      if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > MOVE_THRESHOLD) moved = true;
++      setPos(nx, ny);
++    }
++    function onUp(ev) {
++      window.removeEventListener('pointermove', onMove);
++      window.removeEventListener('pointerup', onUp);
++      strip.classList.remove('c-strip--dragging');
++      try { el.releasePointerCapture(ev.pointerId); } catch { /* noop */ }
++      if (!moved) return; // 点击/双击：不触发吸附
++      const b = strip.getBoundingClientRect();
++      const snapped = snapToEdge(start.x + ev.clientX - sx, start.y + ev.clientY - sy, b.width, b.height);
++      setPos(snapped.x, snapped.y);
++      applySnapped(snapped.edge);
++      onStateChange({ orientation, snapped: snapped.edge });
++    }
++    window.addEventListener('pointermove', onMove);
++    window.addEventListener('pointerup', onUp);
++  }
++
++  rotateBtn?.addEventListener('click', toggleOrientation);
++  content?.addEventListener('pointerdown', startDrag);
++  content?.addEventListener('dblclick', toggleOrientation);
++  dragHandle?.addEventListener('pointerdown', startDrag);
++  closeBtn?.addEventListener('click', () => {
++    if (onClose) onClose(strip);
++    else strip.remove();
++  });
++
++  return {
++    setOrientation: (o) => { if ((o === 'vertical' || o === 'horizontal') && o !== orientation) toggleOrientation(); },
++    getState: () => ({ orientation, snapped: strip.dataset.snapped || null }),
++  };
++}
+diff --git a/tests/e2e/floatstrip.spec.js b/tests/e2e/floatstrip.spec.js
+new file mode 100644
+index 0000000..1f3744d
+--- /dev/null
++++ b/tests/e2e/floatstrip.spec.js
+@@ -0,0 +1,96 @@
++import { test, expect } from '@playwright/test';
++
++// FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
++// 入口 `?mode=strip`（body 级独立渲染）；app 壳演示经 `?mode=app`（右下 FloatBall → 展开）。
++// 动画时长：旋转/浮现 --dur-base 200ms、磁吸 --dur-slow 300ms，点击后 waitForTimeout 覆盖。
++// 红线：旋转/磁吸/浮现只动 transform/opacity —— 断言走 data-orientation 类翻转 +
++// flex-direction（transform 计算值恒为 matrix，见 src/CLAUDE.md 常见坑）。
++
++const STRIP_URL = '/?mode=strip';
++const SETTLE_MS = 400; // 覆盖 300ms 磁吸 + 200ms 浮现/旋转相位
++
++test('渲染：.c-strip 存在 + token 监测内容（数值/状态点/趋势条）', async ({ page }) => {
++  await page.goto(STRIP_URL);
++  const strip = page.locator('.c-strip');
++  await expect(strip).toHaveCount(1);
++  await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
++  await expect(strip.locator('.c-tmon__dot.c-tmon__dot--ok')).toHaveCount(1);
++  await expect(strip.locator('.c-tmon__trend-bar')).toHaveCount(7);
++  await expect(strip.locator('.c-tmon__trend-bar').first()).toBeVisible();
++});
++
++test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类翻转 + 内容布局变化', async ({ page }) => {
++  await page.goto(STRIP_URL);
++  const strip = page.locator('.c-strip');
++  await expect(strip).toHaveClass(/c-strip--horizontal/);
++  await expect(strip).toHaveAttribute('data-orientation', 'horizontal');
++  // hover 使控制条浮现（pointer-events none → auto）后再点旋转按钮
++  await strip.hover();
++  await page.waitForTimeout(SETTLE_MS);
++  await strip.locator('.c-strip__rotate').click();
++  await page.waitForTimeout(SETTLE_MS);
++  await expect(strip).toHaveClass(/c-strip--vertical/);
++  await expect(strip).toHaveAttribute('data-orientation', 'vertical');
++  // 内容布局随形态变化：flex-direction 横向 → 纵向
++  const dir = await strip.locator('.c-strip__content').evaluate((el) => getComputedStyle(el).flexDirection);
++  expect(dir).toBe('column');
++});
++
++test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效（transform 定位）', async ({ page }) => {
++  await page.goto(STRIP_URL);
++  const strip = page.locator('.c-strip');
++  const box = await strip.boundingBox();
++  // 从内容区左侧（可拖区域）拖到视口左边缘
++  const startX = box.x + 20;
++  const startY = box.y + box.height / 2;
++  await page.mouse.move(startX, startY);
++  await page.mouse.down();
++  await page.mouse.move(12, startY, { steps: 10 });
++  await page.mouse.up();
++  await page.waitForTimeout(SETTLE_MS);
++  await expect(strip).toHaveClass(/c-strip--snapped/);
++  const after = await strip.boundingBox();
++  expect(Math.abs(after.x)).toBeLessThanOrEqual(2); // 贴左边缘
++});
++
++test('无边框 hover 浮现：默认无边框 → hover 出现控制条/边框', async ({ page }) => {
++  await page.goto(STRIP_URL);
++  const strip = page.locator('.c-strip');
++  const ctrl = strip.locator('.c-strip__ctrl');
++  // Playwright toBeVisible 对 opacity:0 仍判可见，改用计算样式断言
++  const defaultOpacity = await ctrl.evaluate((el) => getComputedStyle(el).opacity);
++  expect(Number(defaultOpacity)).toBe(0);
++  const defaultBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
++  expect(defaultBorder).toBe('rgba(0, 0, 0, 0)'); // transparent 常态零边框
++  await strip.hover();
++  await page.waitForTimeout(SETTLE_MS);
++  const hoverOpacity = await ctrl.evaluate((el) => getComputedStyle(el).opacity);
++  expect(Number(hoverOpacity)).toBe(1);
++  const hoverBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
++  expect(hoverBorder).not.toBe('rgba(0, 0, 0, 0)'); // hover 浮现半透明细边框
++});
++
++test('双击内容区旋转（第二通道）', async ({ page }) => {
++  await page.goto(STRIP_URL);
++  const strip = page.locator('.c-strip');
++  await expect(strip).toHaveClass(/c-strip--horizontal/);
++  await strip.locator('.c-strip__content').dblclick();
++  await page.waitForTimeout(SETTLE_MS);
++  await expect(strip).toHaveClass(/c-strip--vertical/);
++  await expect(strip).toHaveAttribute('data-orientation', 'vertical');
++});
++
++test('app 壳：右下 FloatBall → 点击展开 FloatStrip 演示（右下贴边可拖）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const ball = page.locator('.app-main__float-ball .c-float-ball');
++  await expect(ball).toHaveCount(1);
++  await ball.click();
++  await page.waitForTimeout(SETTLE_MS);
++  const strip = page.locator('.c-strip');
++  await expect(strip).toHaveCount(1);
++  await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
++  await expect(strip.locator('.c-strip__rotate')).toHaveCount(1);
++  // 演示实例右下贴边（默认吸附位 bottom-right）
++  const box = await strip.boundingBox();
++  expect(box.x + box.width).toBeGreaterThan(700); // 贴右边缘附近
++});
