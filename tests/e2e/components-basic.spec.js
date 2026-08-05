@@ -4,10 +4,12 @@ test('图标渲染为内联 SVG', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
     const div = document.createElement('div');
+    div.id = 'icon-probe';
     div.innerHTML = window.__renderIcon('home');
     document.querySelector('.content').append(div);
   });
-  await expect(page.locator('.content > div svg.c-icon')).toHaveCount(1);
+  // 计数限定在探针元素内：Task 13 起 content 直接子元素含悬浮窗演示（自带图标）
+  await expect(page.locator('#icon-probe svg.c-icon')).toHaveCount(1);
 });
 
 test('按钮四变体渲染', async ({ page }) => {

@@ -152,15 +152,17 @@ titlebarDemo.innerHTML = renderTitleBar({ title: '剪贴板', iconName: 'clipboa
 document.body.prepend(titlebarDemo);
 mountTitleBar(titlebarDemo);
 
-// FloatingWindow 演示：body 顶部独立展示区（position:fixed 组件不进可滚动网格，
-// 与 TitleBar 同策略）。body 内组合 SearchBar —— 拖动/置顶/折叠/搜索全部可交互。
+// FloatingWindow 演示：position:fixed 组件不进 showcase 网格，置于 content 内容区顶部。
+// 修复（评审 Important 1）：窗口按 flow 落到 topbar 之下 —— 加载态不与 #titlebar-demo
+// 重叠（控件可点），滚动时也永不复盖 topbar 导航链接（链接拖拽会劫持 pointercancel）；
+// 悬浮于内容区之上即组件本义。body 内组合 SearchBar —— 拖动/置顶/折叠/搜索全部可交互。
 const fwinDemo = document.createElement('div');
 fwinDemo.style.width = '360px'; fwinDemo.style.margin = 'var(--space-5) auto 0';
 fwinDemo.innerHTML = renderFloatingWindow({
   title: '剪贴板悬浮窗',
   body: renderSearchBar({ placeholder: '搜索剪贴板内容…', hotkey: ['Ctrl', 'K'] }),
 });
-document.body.prepend(fwinDemo);
+document.querySelector('.content').prepend(fwinDemo);
 mountFloatingWindow(fwinDemo);
 mountSearchBar(fwinDemo);
 
