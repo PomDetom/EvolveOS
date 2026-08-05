@@ -51,7 +51,8 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
   - **共享提取**（前置门槛 scene-settings 回归绿）：新建 `src/scenes/settings-window/settings-pages.js` —— 纯渲染（SECTIONS / pageBody / renderSettingsPages 页面栈 / loadHotkeys）+ 交互接线 `mountSettingsInteractions`（主题三态→store、动效开关、保存、快捷键录制、开源链接、开关）；`settings-window.js` 重构复用，场景 DOM 逐字节等价（类名 `.csettings__*` 不变）
   - **设置模式接线**（`app-main.js` + `app-main.css`）：标题栏 ⚙（title-bar.js `settings:true` 选项，默认 false docs 零冲击；窗口控制前）；右窗设置目录 = NavigationWheel（SECTIONS 8 分区，纯 icon，anchorRatio 0.382）；内容区第 8 区 `[data-page=settings]` 复用设置页页面栈（外观定制器首次激活惰性挂载 → cust-group 6）；⚙ toggle（进入/激活高亮/再点收起）+ 返回/Esc/左窗已选中项退出设置模式；左栏应用恒可选（点应用切回应用模式）；上下文「设置 › 分区」联动
 - **简报/报告**：docs/superpowers/sdd/task-A4-brief.md / task-A4-report.md
-- **评审**：待独立评审（规格符合 + 质量）
+- **评审**：规格 ❌ → 修复循环（1 Important：退出设置模式后同应用重开右窗显示**残留设置目录轮**——exitSettingsMode/collapseRight 未 renderRight，左窗同应用重开路径只 applyRightOpen，apps 模式右窗却显示 8 分区设置轮；三通道退出 + 同应用左点都可达，5 个新用例未覆盖重开路径）
+- **评审修复（2026-08-06，已闭环）**：`ad3e05d` `fix: 退出设置模式后右窗目录轮残留修复` —— 在设置退出路径补 `renderRight()`（`exitSettingsMode` + `collapseRight` wasSettings 分支），任一右Mode 回 'apps' 都同步重渲染右窗轮；覆盖测试 +1 `设置模式退出后右窗目录轮回归`（先红后绿：RED `toHaveCount(3)` 收到 8 → GREEN 3 项 + `[data-id="general"]` 0 项 + 上下文「剪贴板 › 历史」）；验证：app-shell 14/14、e2e 98/98、npm test 45/45、build 通过
 - **Minor 留收尾**：① 设置页交互（主题三态/动效/快捷键）e2e 仅覆盖渲染/导航/定制器挂载，交互行为依赖与场景共用共享模块（同构）；② `exitSettingsMode` 重渲染左窗选中应用页（滚动位置重置，与 A3 收起一致）；③ 设置通用页主题态在挂载时烘焙 getConfig（配置变更后重进设置模式才刷新，与场景一致）
 
 ## 执行状态
