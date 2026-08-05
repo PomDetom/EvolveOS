@@ -86,6 +86,20 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - **评审**：规格 ✅ / Approved（0 Critical/Important，2 Minor）
 - **Minor 留收尾**：① README「42 张基线」行是 A2 后预置、本 diff 未改（终态正确，可核实性备注）；② 概览页「当前主题/强调色」文案在 6 张 app-main 基线均为默认 light/indigo（A3 既有行为：仅文案层不随 data-theme 更新，CSS 配色随组合变化，6 张仍真实互异，纯装饰性）
 
+## 最终整体评审（2026-08-06，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-final-branch.diff（47a1d76..HEAD，16 commit）
+- **裁决**：Ready to merge: With fixes —— 0 Critical；**2 Important**（I1 app 冷启动不应用持久化配置；I2 左窗拖拽起于已选中项误触发收起——与 A6 dock 已修缺陷同机制）+ **2 建议顺手修 Minor**（M1 手机设置外观分区 customizer 订阅泄漏；M2 renderTokenMonitor 未转义插值）；M3-M15 记入收尾随合并带入
+- **实测**：评审复核 npm test 45/45、e2e 116/116（42 基线 + docs 零冲击）、build 通过（app/strip/float-strip 分包正确）
+
+## 最终评审修复波（2026-08-06，已闭环）
+
+- **提交**：`05ae68b` `fix: 应用壳冷启动配置 + 左窗拖拽阈值 + 订阅防泄漏 + 转义卫生`；`675e6e2` `docs: 收尾评审修复报告`
+- **修复**：I1 `mountAppMode` 首行 `applyConfig(getConfig())`（镜像 docs-mode，冷启动保持持久化主题/强调色/定制器，与设置页高亮两态一致；覆盖 e2e 写 theme=dark reload 断言 data-theme + 深色按钮激活）；I2 左窗 pointerdown 记录 {active,x,y}，click 阶段位移 >TAP_MAX_MOVE(10) 忽略（与 dock 同机制，模块级常量去重；覆盖 e2e 拖拽已选中项 15px 断言右窗不收起）；M1 `renderCustomizerGroups` 返回退订函数，手机 renderStack 重建前释放（覆盖单测）；M2 `renderTokenMonitor` value escapeHtml + status 白名单非法回落 ok（覆盖单测，既有 97.2%/ok 实例字节等价）
+- **验证**：npm test 51/51；npm run test:e2e 118/118；npm run test:visual 42 张基线零变化；npm run build 通过
+- **基线保真度裁决**：最终评审「默认配置 applyConfig 不产生内联覆盖」的**前提有误**——实测 applyConfig 恒写 `--glass-*`/`--dur-*` 内联变量（light opacity 0.62 vs 回退 0.72、blur 24 vs 20；dark highlight 0.5 vs 0.08），I1 修复后 app-main 冷启动玻璃渲染固有变化。视觉 spec 工作around（/?mode=app 经配置链路注入 + reload + removeAttribute('style') 截图纯主题态）恢复字节等价，42 基线零变化；docs 6 组不受影响。复评裁决：**Option A 可合并**（保真缺口窄——config 变量是全局变量，docs 基线即 applied 态可捕获任何配置管线视觉回归 + apply.test.js + I1 e2e 兜底；app-main 基线仍守卫结构/主题渲染）；**Option B（applied 态重生成 6 张 app-main 基线 + 移除 removeAttribute hack）列为合并后首个跟进**，需重生成权限
+- **Minor 新增**：① 桌面↔手机 resize 可留一份多余外观订阅（有界 ≤2，容器活跃 DOM，无害）；② I2 downState 点击后保留旧 x/y（每次 click 前有 pointerdown 覆盖，无害）；③ I1 引入与 docs 同款 `--dur-*` 内联覆盖（既有行为，animations disabled 下截图稳定）；④ app-main.js:473 `data-index` 非数字会 throw（nav-wheel 恒设数字索引，既有表达式）；⑤ docs/tauri-integration.md:301 renderCustomizerGroups 返回忽略与新契约一致
+
 ## 执行状态
 
 - Task A1 双模式入口：✅ 完成（2026-08-05）
@@ -94,7 +108,7 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - Task A4 设置模式：✅ 完成（2026-08-06）
 - Task A5 FloatStrip：✅ 完成（2026-08-06）
 - Task A6 手机形态：✅ 完成（2026-08-06）
-- Task A7 基线收尾 + 合并 main：✅ 基线/README 完成（2026-08-06）；合并 main 待最终评审
+- Task A7 基线收尾 + 合并 main：✅ 基线/README 完成（2026-08-06）；✅ 最终评审 + 修复波闭环；合并 main 待执行
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
