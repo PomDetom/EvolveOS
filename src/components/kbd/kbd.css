@@ -1,0 +1,4 @@
+.c-kbd { display: inline-block; padding: 2px 6px; font-family: var(--font-mono);
+  font-size: var(--font-size-xs); color: var(--text-2); background: var(--surface-2);
+  border: 1px solid var(--glass-border); border-bottom-width: 2px;
+  border-radius: 6px; }

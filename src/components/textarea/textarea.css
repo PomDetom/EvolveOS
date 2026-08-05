@@ -1,0 +1,9 @@
+.c-textarea { width: 100%; min-height: 80px; padding: 8px 12px; font-size: var(--font-size-sm);
+  color: var(--text-1); background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  resize: vertical; }
+.c-textarea::placeholder { color: var(--text-3); }
+.c-textarea:focus { outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-100); }

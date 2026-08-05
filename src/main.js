@@ -5,8 +5,24 @@ import './styles/base.css';
 import './styles/layout.css';
 import './components/icon/icon.css';
 import './components/button/button.css';
+import './components/input/input.css';
+import './components/textarea/textarea.css';
+import './components/select/select.css';
+import './components/checkbox/checkbox.css';
+import './components/radio/radio.css';
+import './components/switch/switch.css';
+import './components/slider/slider.css';
+import './components/kbd/kbd.css';
 import { icon } from './components/icon/icon.js';
 import { renderButton } from './components/button/button.js';
+import { renderInput } from './components/input/input.js';
+import { renderTextarea } from './components/textarea/textarea.js';
+import { renderSelect } from './components/select/select.js';
+import { renderCheckbox } from './components/checkbox/checkbox.js';
+import { renderRadio } from './components/radio/radio.js';
+import { renderSwitch, mountSwitch } from './components/switch/switch.js';
+import { renderSlider } from './components/slider/slider.js';
+import { renderKbd } from './components/kbd/kbd.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
@@ -60,6 +76,35 @@ componentsSection.appendChild(showcase('按钮 Button', [
   { label: '小尺寸', html: renderButton({ label: '小按钮', size: 'sm' }) },
   { label: '大尺寸', html: renderButton({ label: '大按钮', size: 'lg', iconName: 'plus' }) },
   { label: '禁用', html: renderButton({ label: '禁用', disabled: true }) },
+]));
+componentsSection.appendChild(showcase('输入框 Input', [
+  { label: '默认', html: renderInput({ placeholder: '请输入内容', label: '输入框' }) },
+]));
+componentsSection.appendChild(showcase('文本域 Textarea', [
+  { label: '默认', html: renderTextarea({ placeholder: '请输入多行内容', label: '文本域' }) },
+]));
+componentsSection.appendChild(showcase('选择器 Select', [
+  { label: '默认', html: renderSelect({ placeholder: '请选择', options: [
+    { value: 'a', label: '选项 A' }, { value: 'b', label: '选项 B' }], value: 'a' }) },
+]));
+componentsSection.appendChild(showcase('复选框 Checkbox', [
+  { label: '已选中', html: renderCheckbox({ checked: true, label: '记住我' }) },
+]));
+componentsSection.appendChild(showcase('单选 Radio', [
+  { label: '已选中', html: renderRadio({ checked: true, label: '选项 A' }) },
+]));
+componentsSection.appendChild(showcase('滑杆 Slider', [
+  { label: '默认', html: renderSlider({ label: '音量' }) },
+  { label: '已调整', html: renderSlider({ value: 80, label: '透明度' }) },
+]));
+const switchBox = showcase('开关 Switch', [
+  { label: '关闭', html: renderSwitch({ label: '开关' }) },
+  { label: '开启', html: renderSwitch({ checked: true, label: '开关' }) },
+]);
+componentsSection.appendChild(switchBox);
+mountSwitch(switchBox);
+componentsSection.appendChild(showcase('快捷键键帽 Kbd', [
+  { label: '单键', html: renderKbd('Ctrl') },
 ]));
 
 // 测试桥：Task 15 组件展示区上线后移除（components-basic.spec.js 依赖）
