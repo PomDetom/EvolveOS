@@ -84,3 +84,53 @@ Error: locator.boundingBox: Test timeout of 30000ms exceeded.
 2. **Minor**：手机设置页外观分区定制器每次进入设置会重建（`renderCustomizerGroups` 新增一次 store 订阅）——由「每次渲染容器为空即重挂」策略兜底正确性，订阅数随进入次数线性增长（每次仅 1 个，同步目标为已脱离 DOM 的旧容器，无视觉影响）。demo 壳可接受。
 3. **Edge**：手机形态下按 Esc（桌面逻辑）会切桌面右窗状态，与手机栈状态不同步——手机键盘极少触发 Esc，风险可忽略。
 4. 视口横纵切换（resize）时 dock 几何基于首次挂载视口；手机视口近似恒定，可接受。
+
+---
+
+## 修复循环 1（独立评审 Important #1）— dock 横滑浏览误触发页面推入
+
+### 问题（评审原话要点）
+dock 拖拽滚动后**必然**触发一次页面推入，违反「横滑浏览不弹页」设计意图：
+nav-wheel 未 `preventDefault` pointerdown/pointermove，且 `setPointerCapture` 把随后的 `pointerup`
+重定向到列表 —— 按浏览器规范任意 pointerup 后都会派发 `click`（Chrome 无位移抑制；
+`touch-action: pan-y` 只把纵向 pan 交给浏览器，横向 touch 拖拽同样以 click 收尾）。
+原 dock `click` 处理器消费 `pointerdown` 记录的下标时**无位移阈值**，浏览滑动即调
+`handleDockTap` 推入/替换目录页。原拖拽测试只断言 `scrollLeft`，未断言页面栈数量，
+故未暴露该问题。
+
+### 修复方案（最小稳健）
+`app-main.js` dock 事件：pointerdown 记录「所点项下标 + 起点 clientX/Y」，`click` 阶段按
+位移阈值区分点按与横滑 —— `Math.hypot(e.clientX - x, e.clientY - y) > 10`（`TAP_MAX_MOVE`）
+视为浏览拖拽直接忽略（不调 `handleDockTap`）。真点按位移 ≈ 0，点击推入行为不变。
+未改动 nav-wheel（避免触碰既有 vertical/horizontal 行为面）。
+
+### 覆盖断言
+`tests/e2e/mobile-nav.spec.js` 用例 6（horizontal 渲染层）：拖拽结束后
+`expect(page.locator('.app-main__stack-page')).toHaveCount(1)`（横滑浏览不弹页）。
+
+### RED（先加断言、未修复）
+命令：`npx playwright test tests/e2e/mobile-nav.spec.js -g "horizontal 渲染层"`
+输出（节选）：
+```
+Error: expect(locator).toHaveCount(expected) failed
+  - waiting for locator('.app-main__stack-page')
+    14 × locator resolved to 2 elements
+       - unexpected value "2"
+1 failed
+```
+预期失败原因：拖拽后浏览器派发 `click` → dock 处理器无位移阈值消费下标 → 推入目录页，栈变 2 页。
+
+### GREEN（修复后）
+命令：`npx playwright test tests/e2e/mobile-nav.spec.js`
+输出：`6 passed (24.0s)`
+
+### 全量回归
+- `npm run test:e2e` → **110 passed**（含 app-shell 14 桌面回归 + docs 84 零冲击 + 36 视觉基线零变化）
+- `npm test` → 45 passed
+- `npm run build` → 通过
+
+### 变更文件
+- `src/app/app-main.js` — dock 点击位移阈值（`TAP_MAX_MOVE = 10`）
+- `tests/e2e/mobile-nav.spec.js` — 用例 6 增补覆盖断言
+- `docs/superpowers/sdd/task-A6-report.md` — 本修复留痕
+

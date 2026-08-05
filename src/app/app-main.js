@@ -467,16 +467,20 @@ export function mountAppMode(root) {
 
   // —— 手机形态事件（Task A6）：dock 点击 = 一级导航；页面栈点击委托（返回/目录项/设置分区/概览快捷入口）——
   // nav-wheel 对列表 setPointerCapture → click 事件 target 被重定向到列表本身，不能据 click.target 找项；
-  // 与左窗同模式：pointerdown 记录「所点项下标」，click 阶段消费（拖拽不产生 click，不误触发推入）。
-  let dockDownIndex = -1;
+  // 且 nav-wheel 未 preventDefault，浏览器在任意 pointerup 后仍派发 click（Chrome 无位移抑制）——
+  // 横滑浏览的拖拽也会收尾成一次 click。故 pointerdown 记录「所点项下标 + 起点坐标」，
+  // click 阶段按位移阈值（>10px 视为横滑浏览）区分「点按」与「拖拽」，拖拽不误触发推入。
+  const TAP_MAX_MOVE = 10;
+  let dockDown = { index: -1, x: 0, y: 0 };
   dockList.addEventListener('pointerdown', (e) => {
     const item = e.target.closest('.c-navwheel__item');
-    dockDownIndex = item ? Number(item.dataset.index) : -1;
+    dockDown = { index: item ? Number(item.dataset.index) : -1, x: e.clientX, y: e.clientY };
   });
-  dockList.addEventListener('click', () => {
-    const i = dockDownIndex;
-    dockDownIndex = -1;
-    if (i >= 0) handleDockTap(MODULES[i].id);
+  dockList.addEventListener('click', (e) => {
+    const { index, x, y } = dockDown;
+    dockDown.index = -1;
+    if (index < 0 || Math.hypot(e.clientX - x, e.clientY - y) > TAP_MAX_MOVE) return;
+    handleDockTap(MODULES[index].id);
   });
   stackEl.addEventListener('click', (e) => {
     const back = e.target.closest('.app-main__stack-back');

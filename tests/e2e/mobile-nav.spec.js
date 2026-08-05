@@ -113,6 +113,10 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向�
   await page.waitForTimeout(450); // 惯性/吸附 150ms + 余量
   const scrolled = await dockList.evaluate((el) => el.scrollLeft);
   expect(scrolled).toBeGreaterThan(50);
+  // 覆盖断言（评审 Important #1）：横滑浏览不弹页 —— 拖拽结束后页面栈仍为基底 1 页
+  // （nav-wheel 未 preventDefault，浏览器在 pointerup 后仍派发 click；dock 点击需按位移阈值
+  //   区分「点按」与「横滑浏览」，否则浏览滑动会误触 handleDockTap 推入/替换目录页）
+  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
   // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
   await dockList.locator('.c-navwheel__item').nth(3).click();
   await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
