@@ -2927,7 +2927,7 @@ git commit -m "docs: Tauri 接入指南 + README + 视觉回归基线"
 
 ### 计划项 A：色温滑杆映射（color.temperature 补视觉消费者）
 
-- **状态**：已列入计划，未执行
+- **状态**：已执行（提交 `e235935`，2026-08-05）
 - **背景**：定制器色彩组已有 `temperature` 滑杆（RANGES [-1, 1, 0.05]），但 apply.js/themes.css 无消费者 — 拖动无可见效果（Task 17 评审登记）
 - **目标**：`color.temperature`（-1 冷 → 1 暖）映射到中性色阶的冷暖偏移。参考实现方向：apply.js 写入 `--neutral-temperature`（-1 冷蓝灰 / 0 中性 / 1 暖米灰），themes.css 的 `--neutral-*` 改为基于色相微调的合成（或两套中性色板经变量切换，如 `--neutral-base-hue`）。需保持 6 套主题色 + 深浅主题 × 温度三态组合可读性
 - **验收**：拖动色温滑杆 → 色板卡/组件表面中性色明显变冷/变暖；单测覆盖映射函数；视觉基线默认态（0）不变
