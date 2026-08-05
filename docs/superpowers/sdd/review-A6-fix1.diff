@@ -1,0 +1,151 @@
+# Review package: 396f5fc..HEAD
+
+## Commits
+5ed2071 fix: 手机 dock 横滑浏览不再误触发页面推入
+
+## Files changed
+ docs/superpowers/sdd/task-A6-report.md | 50 ++++++++++++++++++++++++++++++++++
+ src/app/app-main.js                    | 18 +++++++-----
+ tests/e2e/mobile-nav.spec.js           |  4 +++
+ 3 files changed, 65 insertions(+), 7 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-A6-report.md b/docs/superpowers/sdd/task-A6-report.md
+index fe4a800..eb83c50 100644
+--- a/docs/superpowers/sdd/task-A6-report.md
++++ b/docs/superpowers/sdd/task-A6-report.md
+@@ -77,10 +77,60 @@ Error: locator.boundingBox: Test timeout of 30000ms exceeded.
+ - **桌面零冲击**：`updateCtx`/`toggleSettings` 桌面分支逐字节不动；移动 DOM 桌面 `display:none`；nav-wheel 仅新增 horizontal 分支。app-shell 14 + 视觉基线 36 全绿。✔
+ - **零运行时依赖**：纯原生 JS/CSS。✔
+ - **代码风格**：局部类名 `.app-main__*`，BEM `c-` 前缀复用，与既有 app 壳风格一致；注释标注 Task 出处。✔
+ - **状态纪律**：页面栈/右窗状态均会话内纯 UI 态，不进配置存储。✔
+ 
+ ## Issues / Concerns
+ 1. **Minor**：dock 横滑滚动只更新轮内高亮，不回写标题栏上下文（与桌面左窗滚动即联动不同）——钻取模型下上下文应由页面栈承担，属有意设计；若用户希望 dock 滚动预览，可后续接 `onChange` 更新 ctx（不推页）。
+ 2. **Minor**：手机设置页外观分区定制器每次进入设置会重建（`renderCustomizerGroups` 新增一次 store 订阅）——由「每次渲染容器为空即重挂」策略兜底正确性，订阅数随进入次数线性增长（每次仅 1 个，同步目标为已脱离 DOM 的旧容器，无视觉影响）。demo 壳可接受。
+ 3. **Edge**：手机形态下按 Esc（桌面逻辑）会切桌面右窗状态，与手机栈状态不同步——手机键盘极少触发 Esc，风险可忽略。
+ 4. 视口横纵切换（resize）时 dock 几何基于首次挂载视口；手机视口近似恒定，可接受。
++
++---
++
++## 修复循环 1（独立评审 Important #1）— dock 横滑浏览误触发页面推入
++
++### 问题（评审原话要点）
++dock 拖拽滚动后**必然**触发一次页面推入，违反「横滑浏览不弹页」设计意图：
++nav-wheel 未 `preventDefault` pointerdown/pointermove，且 `setPointerCapture` 把随后的 `pointerup`
++重定向到列表 —— 按浏览器规范任意 pointerup 后都会派发 `click`（Chrome 无位移抑制；
++`touch-action: pan-y` 只把纵向 pan 交给浏览器，横向 touch 拖拽同样以 click 收尾）。
++原 dock `click` 处理器消费 `pointerdown` 记录的下标时**无位移阈值**，浏览滑动即调
++`handleDockTap` 推入/替换目录页。原拖拽测试只断言 `scrollLeft`，未断言页面栈数量，
++故未暴露该问题。
++
++### 修复方案（最小稳健）
++`app-main.js` dock 事件：pointerdown 记录「所点项下标 + 起点 clientX/Y」，`click` 阶段按
++位移阈值区分点按与横滑 —— `Math.hypot(e.clientX - x, e.clientY - y) > 10`（`TAP_MAX_MOVE`）
++视为浏览拖拽直接忽略（不调 `handleDockTap`）。真点按位移 ≈ 0，点击推入行为不变。
++未改动 nav-wheel（避免触碰既有 vertical/horizontal 行为面）。
++
++### 覆盖断言
++`tests/e2e/mobile-nav.spec.js` 用例 6（horizontal 渲染层）：拖拽结束后
++`expect(page.locator('.app-main__stack-page')).toHaveCount(1)`（横滑浏览不弹页）。
++
++### RED（先加断言、未修复）
++命令：`npx playwright test tests/e2e/mobile-nav.spec.js -g "horizontal 渲染层"`
++输出（节选）：
++```
++Error: expect(locator).toHaveCount(expected) failed
++  - waiting for locator('.app-main__stack-page')
++    14 × locator resolved to 2 elements
++       - unexpected value "2"
++1 failed
++```
++预期失败原因：拖拽后浏览器派发 `click` → dock 处理器无位移阈值消费下标 → 推入目录页，栈变 2 页。
++
++### GREEN（修复后）
++命令：`npx playwright test tests/e2e/mobile-nav.spec.js`
++输出：`6 passed (24.0s)`
++
++### 全量回归
++- `npm run test:e2e` → **110 passed**（含 app-shell 14 桌面回归 + docs 84 零冲击 + 36 视觉基线零变化）
++- `npm test` → 45 passed
++- `npm run build` → 通过
++
++### 变更文件
++- `src/app/app-main.js` — dock 点击位移阈值（`TAP_MAX_MOVE = 10`）
++- `tests/e2e/mobile-nav.spec.js` — 用例 6 增补覆盖断言
++- `docs/superpowers/sdd/task-A6-report.md` — 本修复留痕
++
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index e19222a..b31c7ee 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -460,30 +460,34 @@ export function mountAppMode(root) {
+       const mod = MODULES.find((m) => m.id === state.moduleId);
+       if (mod.dir.length) {
+         state.rightOpen = !state.rightOpen;
+         applyRightOpen();
+       }
+     }
+   });
+ 
+   // —— 手机形态事件（Task A6）：dock 点击 = 一级导航；页面栈点击委托（返回/目录项/设置分区/概览快捷入口）——
+   // nav-wheel 对列表 setPointerCapture → click 事件 target 被重定向到列表本身，不能据 click.target 找项；
+-  // 与左窗同模式：pointerdown 记录「所点项下标」，click 阶段消费（拖拽不产生 click，不误触发推入）。
+-  let dockDownIndex = -1;
++  // 且 nav-wheel 未 preventDefault，浏览器在任意 pointerup 后仍派发 click（Chrome 无位移抑制）——
++  // 横滑浏览的拖拽也会收尾成一次 click。故 pointerdown 记录「所点项下标 + 起点坐标」，
++  // click 阶段按位移阈值（>10px 视为横滑浏览）区分「点按」与「拖拽」，拖拽不误触发推入。
++  const TAP_MAX_MOVE = 10;
++  let dockDown = { index: -1, x: 0, y: 0 };
+   dockList.addEventListener('pointerdown', (e) => {
+     const item = e.target.closest('.c-navwheel__item');
+-    dockDownIndex = item ? Number(item.dataset.index) : -1;
++    dockDown = { index: item ? Number(item.dataset.index) : -1, x: e.clientX, y: e.clientY };
+   });
+-  dockList.addEventListener('click', () => {
+-    const i = dockDownIndex;
+-    dockDownIndex = -1;
+-    if (i >= 0) handleDockTap(MODULES[i].id);
++  dockList.addEventListener('click', (e) => {
++    const { index, x, y } = dockDown;
++    dockDown.index = -1;
++    if (index < 0 || Math.hypot(e.clientX - x, e.clientY - y) > TAP_MAX_MOVE) return;
++    handleDockTap(MODULES[index].id);
+   });
+   stackEl.addEventListener('click', (e) => {
+     const back = e.target.closest('.app-main__stack-back');
+     if (back) { popStack(); return; }
+     const dirItem = e.target.closest('.app-main__dir-item');
+     if (dirItem) {
+       const pageEl = e.target.closest('.app-main__stack-page');
+       const entry = mobile.stack[[...stackEl.children].indexOf(pageEl)];
+       const mod = MODULES.find((m) => m.id === entry.moduleId);
+       const dir = mod.dir.find((d) => d.id === dirItem.dataset.dir);
+diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
+index fc2286c..946226c 100644
+--- a/tests/e2e/mobile-nav.spec.js
++++ b/tests/e2e/mobile-nav.spec.js
+@@ -106,19 +106,23 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向
+   for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
+   // 横向拖拽 → scrollLeft 增加（主轴为 x：滚动方向正确）
+   const box = await dockList.boundingBox();
+   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+   await page.mouse.down();
+   await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2, { steps: 8 });
+   await page.mouse.up();
+   await page.waitForTimeout(450); // 惯性/吸附 150ms + 余量
+   const scrolled = await dockList.evaluate((el) => el.scrollLeft);
+   expect(scrolled).toBeGreaterThan(50);
++  // 覆盖断言（评审 Important #1）：横滑浏览不弹页 —— 拖拽结束后页面栈仍为基底 1 页
++  // （nav-wheel 未 preventDefault，浏览器在 pointerup 后仍派发 click；dock 点击需按位移阈值
++  //   区分「点按」与「横滑浏览」，否则浏览滑动会误触 handleDockTap 推入/替换目录页）
++  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
+   // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
+   await dockList.locator('.c-navwheel__item').nth(3).click();
+   await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
+   await expect(dockList.locator('.c-navwheel__item--active')).toHaveCount(1);
+   const activeBox = await dockList.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await dockList.boundingBox();
+   const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
+   expect(anchorDelta).toBeLessThan(5);
+ });

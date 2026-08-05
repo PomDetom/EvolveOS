@@ -1,0 +1,810 @@
+# Review package: f9650ff..HEAD
+
+## Commits
+396f5fc feat: 手机形态（底部横滑 + 页面栈）
+
+## Files changed
+ docs/superpowers/sdd/task-A6-brief.md         |  18 +++
+ docs/superpowers/sdd/task-A6-report.md        |  86 +++++++++++
+ src/app/app-main.css                          |  69 +++++++++
+ src/app/app-main.js                           | 197 ++++++++++++++++++++++++++
+ src/components/navigation-wheel/nav-wheel.css |  23 +++
+ src/components/navigation-wheel/nav-wheel.js  |   8 +-
+ tests/e2e/mobile-nav.spec.js                  | 124 ++++++++++++++++
+ 7 files changed, 523 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-A6-brief.md b/docs/superpowers/sdd/task-A6-brief.md
+new file mode 100644
+index 0000000..11219b9
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A6-brief.md
+@@ -0,0 +1,18 @@
++# Task A6: 手机形态（底部横滑 + 全屏页面栈）
++
++**Files:**
++- Modify: `src/app/app-main.js/.css`（≤900px 媒体查询）
++- Create: `tests/e2e/mobile-nav.spec.js`
++
++**Interfaces:**
++- ≤900px：应用壳切换手机形态 — 双窗隐藏，底部横滑应用栏（NavigationWheel horizontal + anchorRatio 0.382，icon 横排）
++- 全屏页面栈：点击应用 → 目录页推入（`.app-main__stack-page`，slide 左进 240ms `--ease-spring`）→ 点击目录项 → 详情页推入；左上返回按钮/边缘右滑回退
++- 设置：标题栏 ⚙ → 设置页推入（同页面栈）
++- 上下滑动逻辑全部横向化（底部栏横滑 + 目录横滑）
++- `mobile-nav.spec.js` 用例（viewport 390×844）：底部栏可见 + 横滑 / 点击应用 → 目录页 / 点击目录项 → 详情页 / 返回回退 / 设置推入
++
++- [ ] **Step 1-3**: TDD → 手机形态实现 → 绿
++- [ ] **Step 4**: 全量回归（桌面形态不受影响）+ build
++- [ ] **Step 5: 提交** `feat: 手机形态（底部横滑 + 页面栈）`
++
++---
+diff --git a/docs/superpowers/sdd/task-A6-report.md b/docs/superpowers/sdd/task-A6-report.md
+new file mode 100644
+index 0000000..fe4a800
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A6-report.md
+@@ -0,0 +1,86 @@
++# Task A6: 手机形态（底部横滑 + 全屏页面栈）— 执行报告
++
++**分支**：`feature/iteration`
++**日期**：2026-08-06
++**状态**：完成（全量回归绿）
++
++## 实现内容
++
++### 手机形态结构（`src/app/app-main.js` / `app-main.css`）
++- **媒体查询切换（同一 URL，无单独 query）**：`.app-main` 新增 `@media (max-width: 900px)`。桌面形态（≥900px）默认隐藏 `.app-main__stack` / `.app-main__dock`（`display:none`，不占网格单元），渲染与既有桌面级联双窗逐字节等价；≤900px 时双窗/内容区隐藏，网格切单列（`40px 1fr 64px`），底部 dock + 页面栈接管。
++- **底部横滑应用栏（dock）**：`.app-main__dock` 内嵌 `mountNavWheel(..., { direction: 'horizontal', anchorRatio: 0.382 })` 横向应用轮，7 应用 icon 横排（名称隐藏，上下文由标题栏承担，与桌面纯 icon 栏同构）。**懒挂载**：桌面视口下 dock 为 `display:none`（`clientWidth=0` 会让几何 pad 计算失真），`isMobile()` 为真或 `matchMedia('(max-width: 900px)').change` 进入手机形态时才挂载一次。
++- **全屏页面栈**：`.app-main__stack` 绝对定位页叠放，`.app-main__stack-page--push` slide 左进 `var(--dur-push)`（= `--dur-base*1.2` = 240ms）+ `--ease-spring`，只动 `transform`/`opacity`（红线）。栈为钻取路径：`基底概览 → 应用目录页 → 详情页`；设置经 ⚙ 推入设置页。
++- **导航模型**：桌面/手机两套独立导航状态，经 `isMobile()` 运行时分支切换。`updateCtx` / `toggleSettings` 分别按当前形态分支（桌面分支逐字节不动）。
++- **交互**：
++  - dock 点击 = 一级导航（home→回基底；其他应用→推/替换目录页）。**推入由显式点击驱动**，滚动/吸附只更新轮内高亮（`onChange` 为 noop）——横滑浏览不弹页。dock 点击经 `pointerdown` 记录下标、`click` 消费（nav-wheel 对列表 `setPointerCapture` → click target 重定向到列表，不能据 `click.target` 找项，与桌面左窗同模式）。
++  - 目录页点击目录项 → 详情页推入；栈内 `click` 委托统一处理返回/目录项/设置分区/概览快捷入口。
++  - 返回：`.app-main__stack-back` 逐步 `popStack`（基底无返回按钮）。
++  - 设置：⚙ → `pushStack({type:'settings'})`，分区 tab 横排切换 + 复用共享 `settings-pages`（8 分区）；再次点击 ⚙ toggle 弹回；⚙ 激活高亮随栈顶同步。外观分区定制器惰性挂载（容器为空即重挂）。
++- **纯 UI 态**：页面栈状态会话内，不进配置存储。
++- 悬浮演示（FloatBall/FloatStrip）手机视口隐藏，避免遮挡 dock。
++
++### A2 Minor ① 闭环：horizontal 渲染层（`nav-wheel.js` / `nav-wheel.css`）
++- 方案：**给 horizontal 提供独立 CSS，vertical 逐字节不动**。`mountNavWheel` 在 `direction==='horizontal'` 时给列表根加 `.c-navwheel__list--horizontal`；跳过顶部/底部竖向渐变遮罩插入（横排无竖向遮罩）。
++- `.c-navwheel__list--horizontal`：`flex-direction: row` / `align-items: center` / `overflow-x: auto` / `overflow-y: hidden` / `touch-action: pan-y`（横向拖轮不吞页面纵向滚动）/ `padding: 0`（% 相对宽度在横排会撑爆纵向空间，首尾精确 padding 由 JS `paddingLeft/Right` 覆盖）。
++- **间距修正**：基础 `.c-navwheel__item { margin: calc(gap/2) 12px }` 在横排会得 24px 项距 ≠ GAP 12，故 horizontal 项改 `margin: 0 calc(gap/2)`（主轴半间距 6px）+ `width: var(--navwheel-item-w, 64px)`，项中心距 = itemW + gap，与 `nav-wheel-geometry.js` 公式严格一致。
++- `:root` 新增 `--navwheel-item-w: 64px`（新变量，vertical 无引用，零影响）。
++
++### A2 Minor ④ 闭环：渲染级 horizontal 测试
++- 原 `geometry.test.js` 的「horizontal 等价性」单测是恒真式（横/纵参数同值代入纯函数，只验证几何层方向无关，不验证渲染）。本任务 `mobile-nav.spec.js` 用例 6 补真实渲染验证：390×844 视口下底部 dock 横向排列（items x 递增）、横向拖拽 `scrollLeft` 增加、点击项 3 后 active 中心对齐 38.2% 锚线（`|center - listBox.x + width*0.382| < 5px`）。
++
++## TDD Evidence
++
++### RED（写失败测试 → 红）
++命令：`npx playwright test tests/e2e/mobile-nav.spec.js --reporter=line`
++
++预期失败原因：手机形态（dock/页面栈/horizontal CSS）尚未实现，`.app-main__stack` / `.app-main__dock` 不存在。
++
++输出（节选）：
++```
++[6/6] ... horizontal 渲染层（闭环 A2 Minor ①/④）...
++Error: locator.boundingBox: Test timeout of 30000ms exceeded.
++  - waiting for locator('.app-main__dock .c-navwheel__list')
++6 failed
++```
++
++### GREEN（实现后 → 绿）
++命令：`npx playwright test tests/e2e/mobile-nav.spec.js --reporter=line`
++
++输出：`6 passed (23.9s)`
++
++实现中途发现并修复一处真 bug：dock 点击因 nav-wheel 的 `setPointerCapture` 使 click target 重定向到列表，`e.target.closest('.c-navwheel__item')` 恒 null → 改 `pointerdown` 记录下标 + `click` 消费（修复后 6 用例全绿）。
++
++## 测试结果
++
++| 项目 | 结果 |
++|---|---|
++| `mobile-nav.spec.js`（手机形态） | **6/6 通过**（390×844：手机形态/目录页推入/详情页推入/返回回退/设置推入/horizontal 渲染层） |
++| `app-shell.spec.js`（桌面回归） | **14/14 通过**（桌面双窗级联零冲击） |
++| 全量 `npm run test:e2e` | **110 通过**（含 docs 全量 + 36 视觉基线零变化 + 14 app-shell + 6 mobile-nav） |
++| `npm test`（单测） | **45 通过** |
++| `npm run build` | 通过（105 模块） |
++
++## A2 Minor ①/④ 闭环说明
++- **① horizontal CSS 方案**：独立 `.c-navwheel__list--horizontal` 分支（如上），vertical 默认无类、规则逐字节等价 → docs 84 e2e + 36 视觉基线 + app-shell 14 全绿零冲击。
++- **④ 渲染级测试**：mobile-nav 用例 6 以真实浏览器渲染验证横排方向、横向滚动与 38.2% 锚点吸附（替代恒真式单测）。
++
++## Files Changed
++- `src/app/app-main.js` — 手机形态结构/页面栈/dock/媒体查询切换/上下文与设置分支（+197）
++- `src/app/app-main.css` — `--app-dock-h` + ≤900px 媒体查询块（+69）
++- `src/components/navigation-wheel/nav-wheel.js` — horizontal 类 + 跳过横向遮罩（+8/-2）
++- `src/components/navigation-wheel/nav-wheel.css` — `--navwheel-item-w` + horizontal 独立规则（+23）
++- `tests/e2e/mobile-nav.spec.js` — 新增 6 用例
++- `docs/superpowers/sdd/task-A6-brief.md` — 随附任务书
++
++## Self-Review Findings
++- **动画红线**：页面栈 slide、设置/目录切换仅 transform/opacity；时长/曲线全经 CSS 变量（`--dur-push`/`--ease-spring`）；模糊不动画。✔
++- **桌面零冲击**：`updateCtx`/`toggleSettings` 桌面分支逐字节不动；移动 DOM 桌面 `display:none`；nav-wheel 仅新增 horizontal 分支。app-shell 14 + 视觉基线 36 全绿。✔
++- **零运行时依赖**：纯原生 JS/CSS。✔
++- **代码风格**：局部类名 `.app-main__*`，BEM `c-` 前缀复用，与既有 app 壳风格一致；注释标注 Task 出处。✔
++- **状态纪律**：页面栈/右窗状态均会话内纯 UI 态，不进配置存储。✔
++
++## Issues / Concerns
++1. **Minor**：dock 横滑滚动只更新轮内高亮，不回写标题栏上下文（与桌面左窗滚动即联动不同）——钻取模型下上下文应由页面栈承担，属有意设计；若用户希望 dock 滚动预览，可后续接 `onChange` 更新 ctx（不推页）。
++2. **Minor**：手机设置页外观分区定制器每次进入设置会重建（`renderCustomizerGroups` 新增一次 store 订阅）——由「每次渲染容器为空即重挂」策略兜底正确性，订阅数随进入次数线性增长（每次仅 1 个，同步目标为已脱离 DOM 的旧容器，无视觉影响）。demo 壳可接受。
++3. **Edge**：手机形态下按 Esc（桌面逻辑）会切桌面右窗状态，与手机栈状态不同步——手机键盘极少触发 Esc，风险可忽略。
++4. 视口横纵切换（resize）时 dock 几何基于首次挂载视口；手机视口近似恒定，可接受。
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index 1478081..7b82e32 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -6,20 +6,21 @@
+ .app-main {
+   position: relative;
+   display: grid;
+   grid-template-columns: 64px var(--app-nav-r-w, 0px) 1fr;
+   grid-template-rows: 40px 1fr;
+   width: 100vw;
+   height: 100vh;
+   overflow: hidden;
+   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
+   --dur-push: calc(var(--dur-base) * 1.2);
++  --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
+ }
+ .app-main--dual { --app-nav-r-w: 64px; }
+ 
+ .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+ 
+ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
+ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+   border-right: 1px solid var(--glass-border); }
+ .app-main__nav-l .c-navwheel__list { inset: 0; }
+ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
+@@ -108,10 +109,78 @@
+ .app-main__settings.csettings__pages { overflow: visible; }
+ .app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
+ .app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+ 
+ /* —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall → 点击展开悬浮条 ——
+    body 级覆盖层（app/docs 互斥，docs 不加载本文件）。.c-strip 自身 position:fixed 定位，
+    宿主仅作容器（pointer-events:none 不拦截应用交互，strip 自身再启用）。 */
+ .app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
+ .app-main__strip { position: fixed; inset: 0; pointer-events: none; }
+ .app-main__strip .c-strip { pointer-events: auto; }
++
++/* —— 手机形态（Task A6，规格：≤900px 底部横滑 + 全屏页面栈）——
++   桌面形态默认隐藏手机元素（display:none，不占网格单元）；≤900px 媒体查询切换：
++   双窗/内容区隐藏，底部 dock + 页面栈接管。dock 为 NavigationWheel horizontal
++   （.c-navwheel__list--horizontal，nav-wheel.css 提供的独立横排规则），纯 icon 横排。
++   页面栈 slide 左进 240ms（--dur-push）+ --ease-spring，只动 transform/opacity（红线）。 */
++.app-main__stack,
++.app-main__dock { display: none; }
++
++@media (max-width: 900px) {
++  /* 单列网格：标题栏 40px + 页面栈 1fr + 底部 dock */
++  .app-main { grid-template-columns: 1fr; grid-template-rows: 40px 1fr var(--app-dock-h); }
++  .app-main__nav-l,
++  .app-main__nav-r,
++  .app-main__pages { display: none; }
++  .app-main__float-ball,
++  .app-main__strip { display: none; } /* 悬浮演示为桌面形态交互，手机隐藏避免遮挡 dock */
++
++  /* —— 全屏页面栈 —— */
++  .app-main__stack { display: block; grid-column: 1; grid-row: 2;
++    position: relative; min-height: 0; overflow: hidden;
++    background: var(--surface-1); }
++  .app-main__stack-page { position: absolute; inset: 0; display: flex;
++    flex-direction: column; overflow-y: auto; background: var(--surface-1); }
++  .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
++  @keyframes app-main-stack-in {
++    from { transform: translateX(100%); opacity: 0; }
++    to { transform: translateX(0); opacity: 1; }
++  }
++  .app-main__stack-head { flex: none; display: flex; align-items: center;
++    height: 40px; padding: 0 var(--space-2); border-bottom: 1px solid var(--glass-border); }
++  .app-main__stack-back { display: grid; place-items: center; width: 40px; height: 32px;
++    color: var(--text-2); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++  .app-main__stack-back:hover { color: var(--text-1); background: var(--surface-hover); }
++  .app-main__stack-body { flex: 1; min-height: 0; padding: var(--space-5); }
++
++  /* —— 应用目录页：模块名 + 目录项列表 —— */
++  .app-main__stack-title { margin-bottom: var(--space-4); }
++  .app-main__dir-list { display: flex; flex-direction: column; }
++  .app-main__dir-item { display: flex; align-items: center; gap: var(--space-3);
++    padding: var(--space-4); color: var(--text-2);
++    border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++  .app-main__dir-item:hover { color: var(--text-1); background: var(--surface-hover); }
++  .app-main__dir-name { flex: 1; color: var(--text-1); }
++  .app-main__dir-item > svg:last-child { color: var(--text-3); }
++
++  /* —— 设置页：分区 tab 横排 + 8 分区内容（复用共享 csettings__*，纵向滚动由栈页承担）—— */
++  .app-main__settings-tabs { display: flex; gap: var(--space-2); overflow-x: auto;
++    margin-bottom: var(--space-4); padding-bottom: var(--space-2); }
++  .app-main__settings-tab { flex: none; padding: var(--space-2) var(--space-3);
++    font-size: var(--font-size-sm); color: var(--text-2);
++    border: 1px solid var(--glass-border);
++    border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
++  .app-main__settings-tab--active { color: var(--accent); border-color: var(--accent); }
++  /* csettings 页随栈滚动：桌面「壳内设置页溢出可见」规则已令各页 height:auto/overflow:visible，
++     纵向滚动由 .app-main__stack-page 的 overflow-y:auto 承担（同内容区行为） */
++
++  /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
++  .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
++    display: flex; align-items: center;
++    border-top: 1px solid var(--glass-border); background: var(--surface-1); }
++  .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
++  .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
++  .app-main__dock .c-navwheel__name { display: none; }
++}
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index be3c077..e19222a 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -88,37 +88,52 @@ export function mountAppMode(root) {
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+     <main class="app-main__pages">
+       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
+       <section class="app-main__page" data-page="settings">
+         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
+       </section>
+     </main>
++    <!-- 手机形态（Task A6）：底部横滑应用栏 + 全屏页面栈 —— 桌面视口 display:none，≤900px 媒体查询接管 -->
++    <div class="app-main__stack"></div>
++    <div class="app-main__dock">
++      <nav class="app-main__dock-wheel c-navwheel__list"></nav>
++    </div>
+   </div>`;
+ 
+   const appMain = root.querySelector('.app-main');
+   const ctx = root.querySelector('.c-titlebar__title');
+   ctx.classList.add('app-main__ctx');
+   ctx.setAttribute('data-ctx', '');
+   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
++  const stackEl = root.querySelector('.app-main__stack');
++  const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+ 
+   // —— 会话内纯 UI 态（不进配置存储）——
+   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
+   const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
+ 
++  // 手机形态（Task A6）：独立导航模型 —— 底部 dock（横向应用轮，点击驱动推入）+ 全屏页面栈。
++  // 栈 = 钻取路径（基底概览 → 应用目录页 → 详情页 / 设置页）；桌面/手机两套模型经媒体查询切换，
++  // 共享标题栏上下文；页面栈状态为纯 UI 态（会话内），不进配置存储。
++  const mobile = { stack: [{ type: 'overview' }], animateTop: false };
++  function isMobile() {
++    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
++  }
++
+   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
+   const leftWheel = mountNavWheel(navL, {
+     items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
+     onChange: (item) => onLeftSelect(item.id),
+     anchorRatio: 0.382,
+   });
+ 
+   // 模块上下文：active 模块取当前目录项，其余取各自首目录项（供初始占位渲染）
+   function modCtx(mod) {
+     const dirId = mod.id === state.moduleId ? state.dirId : (mod.dir[0]?.id ?? null);
+@@ -179,20 +194,21 @@ export function mountAppMode(root) {
+ 
+   function setSettingsSection(id) {
+     if (id === state.settingsId) return;
+     state.settingsId = id;
+     setSettingsPageActive();
+     updateCtx();
+   }
+ 
+   // —— 标题栏上下文「应用名 › 页面名」/「设置 › 分区」（单窗口态只应用名）——
+   function updateCtx() {
++    if (isMobile()) { updateCtxMobile(); return; } // 手机形态：上下文由页面栈栈顶承担
+     if (state.rightMode === 'settings') {
+       const s = SECTIONS.find((x) => x.id === state.settingsId);
+       ctx.textContent = `设置 › ${s.name}`;
+       ctx.dataset.module = 'settings';
+       ctx.dataset.page = state.settingsId;
+       return;
+     }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
+       ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
+@@ -244,20 +260,26 @@ export function mountAppMode(root) {
+   function exitSettingsMode() {
+     if (state.rightMode !== 'settings') return;
+     state.rightMode = 'apps';
+     state.rightOpen = false;
+     renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
+     renderPages(); // 内容区回到左窗选中应用页
+     applyRightOpen();
+   }
+ 
+   function toggleSettings() {
++    if (isMobile()) {
++      // 手机形态：⚙ 推入设置页到页面栈；已在设置页 → 弹回（toggle）
++      if (mobile.stack[mobile.stack.length - 1]?.type === 'settings') popStack();
++      else pushStack({ type: 'settings' });
++      return;
++    }
+     if (state.rightMode === 'settings') exitSettingsMode();
+     else setSettingsMode();
+   }
+ 
+   // 左窗 onChange：选中新应用 → setModule。已选中项的重复 onChange（用户点击 / scroll-snap 对
+   // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
+   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
+   function onLeftSelect(id) {
+     if (id !== state.moduleId) setModule(id);
+   }
+@@ -275,20 +297,151 @@ export function mountAppMode(root) {
+     applyRightOpen();
+   }
+ 
+   // 概览快捷入口 → 展开右窗 + 切到该应用（经左窗轮 scrollToIndex → onChange 联动）
+   function goToModule(id) {
+     const i = MODULES.findIndex((m) => m.id === id);
+     if (i < 0) return;
+     leftWheel.scrollToIndex(i);
+   }
+ 
++  // —— 手机形态（Task A6）：底部 dock + 全屏页面栈 ——
++  // 页面栈 slide 左进 240ms（--dur-push = --dur-base*1.2）+ --ease-spring，只动 transform/opacity（红线）。
++  function renderStackPage(entry, animate) {
++    const isRoot = entry.type === 'overview';
++    const back = isRoot ? '' : `<button class="app-main__stack-back" aria-label="返回" title="返回">${icon('chevron-left', 16)}</button>`;
++    const head = isRoot ? '' : `<header class="app-main__stack-head">${back}</header>`;
++    const cls = animate ? ' app-main__stack-page--push' : '';
++    let body = '';
++    if (entry.type === 'overview') {
++      body = renderOverview();
++    } else if (entry.type === 'dir') {
++      const mod = MODULES.find((m) => m.id === entry.moduleId);
++      body = `
++        <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
++        <div class="app-main__dir-list">
++          ${mod.dir.map((d) => `
++            <button class="app-main__dir-item" data-dir="${d.id}">
++              ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
++            </button>`).join('')}
++        </div>`;
++    } else if (entry.type === 'detail') {
++      const mod = MODULES.find((m) => m.id === entry.moduleId);
++      body = mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName });
++    } else if (entry.type === 'settings') {
++      body = `
++        <div class="app-main__settings-tabs">
++          ${SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
++        </div>
++        <div class="app-main__settings csettings__pages">${renderSettingsPages()}</div>`;
++    }
++    return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
++  }
++
++  function renderStack() {
++    stackEl.innerHTML = mobile.stack.map((entry, i) =>
++      renderStackPage(entry, i === mobile.stack.length - 1 && mobile.animateTop)).join('');
++    const settingsPage = stackEl.querySelector('[data-stack="settings"]');
++    if (settingsPage) mountSettingsInteractions(settingsPage.querySelector('.app-main__settings'));
++    mobile.animateTop = false;
++    activateMobileSettings();
++    updateCtx();
++  }
++
++  function pushStack(entry) {
++    mobile.stack.push(entry);
++    mobile.animateTop = true;
++    renderStack();
++    updateSettingsActive();
++  }
++  function popStack() {
++    if (mobile.stack.length <= 1) return;
++    mobile.stack.pop();
++    mobile.animateTop = false;
++    renderStack();
++    updateSettingsActive();
++  }
++  function resetStack() {
++    mobile.stack = [{ type: 'overview' }];
++    mobile.animateTop = false;
++    renderStack();
++    updateSettingsActive();
++  }
++  function updateSettingsActive() {
++    settingsBtn.classList.toggle('app-main__settings-toggle--active',
++      mobile.stack[mobile.stack.length - 1]?.type === 'settings');
++  }
++
++  // 设置分区激活（移动端复用共享 settings-pages；外观定制器首次激活惰性挂载 ——
++  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）
++  function activateMobileSettings() {
++    const sec = stackEl.querySelector('[data-stack="settings"]');
++    if (!sec) return;
++    sec.querySelectorAll('.csettings__page').forEach((p) =>
++      p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
++    sec.querySelectorAll('.app-main__settings-tab').forEach((t) =>
++      t.classList.toggle('app-main__settings-tab--active', t.dataset.tab === state.settingsId));
++    const cust = sec.querySelector('[data-page="appearance"] .csettings__cust');
++    if (state.settingsId === 'appearance' && cust && !cust.children.length) renderCustomizerGroups(cust);
++  }
++
++  function updateCtxMobile() {
++    const top = mobile.stack[mobile.stack.length - 1];
++    const mod = top?.moduleId ? MODULES.find((m) => m.id === top.moduleId) : null;
++    if (top?.type === 'detail' && mod) {
++      ctx.textContent = `${mod.name} › ${top.dirName}`;
++      ctx.dataset.module = mod.id; ctx.dataset.page = top.dirId;
++    } else if (top?.type === 'dir' && mod) {
++      ctx.textContent = mod.name;
++      ctx.dataset.module = mod.id; ctx.dataset.page = '';
++    } else if (top?.type === 'settings') {
++      const s = SECTIONS.find((x) => x.id === state.settingsId);
++      ctx.textContent = `设置 › ${s.name}`;
++      ctx.dataset.module = 'settings'; ctx.dataset.page = state.settingsId;
++    } else {
++      ctx.textContent = '概览';
++      ctx.dataset.module = 'home'; ctx.dataset.page = '';
++    }
++  }
++
++  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；其他应用 → 目录页。
++  // 滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
++  function handleDockTap(id) {
++    const mod = MODULES.find((m) => m.id === id);
++    const top = mobile.stack[mobile.stack.length - 1];
++    if (!mod.dir.length) { resetStack(); return; }
++    if (top?.type === 'dir' && top.moduleId === id) return; // 已在该应用目录
++    if (top && top.type !== 'overview') {
++      // 栈顶为目录/详情/设置页 → 替换为当前应用目录（底部栏恒为一级入口，不叠加目录页）
++      mobile.stack = [mobile.stack[0], { type: 'dir', moduleId: id }];
++      mobile.animateTop = false;
++      renderStack();
++      updateSettingsActive();
++      return;
++    }
++    pushStack({ type: 'dir', moduleId: id });
++  }
++
++  // dock 懒挂载：桌面视口下 dock 为 display:none（clientWidth=0 会让几何 pad 计算失真），
++  // 首次进入手机形态时才挂载（几何基于实测视口长度；手机视口近似恒定，挂载一次即可）
++  let dockMounted = false;
++  function mountDock() {
++    if (dockMounted) return;
++    dockMounted = true;
++    mountNavWheel(dockList, {
++      items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
++      onChange: () => {}, // 滚动/吸附仅更新轮内高亮，页面推入由点击驱动（钻取模型）
++      anchorRatio: 0.382,
++      direction: 'horizontal',
++    });
++  }
++
+   // —— 事件 ——
+   settingsBtn.addEventListener('click', toggleSettings);
+   navRRoot.querySelector('.app-main__nav-r-back').addEventListener('click', collapseRight);
+   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseRight(); });
+   pagesEl.addEventListener('click', (e) => {
+     const card = e.target.closest('.app-main__shortcut');
+     if (card) goToModule(card.dataset.shortcut);
+   });
+   // 三通道之一：再次点击左窗已选中项 → 收起（toggle）。nav-wheel 对点击/锚定仍会对同 id 补发
+   // onChange（子像素滚动偏差 <1px 使 snapNow 守卫 0.05px 容差未跳过），不能据 onChange 判定用户
+@@ -305,36 +458,80 @@ export function mountAppMode(root) {
+       // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
+       if (state.rightMode === 'settings') { exitSettingsMode(); return; }
+       const mod = MODULES.find((m) => m.id === state.moduleId);
+       if (mod.dir.length) {
+         state.rightOpen = !state.rightOpen;
+         applyRightOpen();
+       }
+     }
+   });
+ 
++  // —— 手机形态事件（Task A6）：dock 点击 = 一级导航；页面栈点击委托（返回/目录项/设置分区/概览快捷入口）——
++  // nav-wheel 对列表 setPointerCapture → click 事件 target 被重定向到列表本身，不能据 click.target 找项；
++  // 与左窗同模式：pointerdown 记录「所点项下标」，click 阶段消费（拖拽不产生 click，不误触发推入）。
++  let dockDownIndex = -1;
++  dockList.addEventListener('pointerdown', (e) => {
++    const item = e.target.closest('.c-navwheel__item');
++    dockDownIndex = item ? Number(item.dataset.index) : -1;
++  });
++  dockList.addEventListener('click', () => {
++    const i = dockDownIndex;
++    dockDownIndex = -1;
++    if (i >= 0) handleDockTap(MODULES[i].id);
++  });
++  stackEl.addEventListener('click', (e) => {
++    const back = e.target.closest('.app-main__stack-back');
++    if (back) { popStack(); return; }
++    const dirItem = e.target.closest('.app-main__dir-item');
++    if (dirItem) {
++      const pageEl = e.target.closest('.app-main__stack-page');
++      const entry = mobile.stack[[...stackEl.children].indexOf(pageEl)];
++      const mod = MODULES.find((m) => m.id === entry.moduleId);
++      const dir = mod.dir.find((d) => d.id === dirItem.dataset.dir);
++      pushStack({ type: 'detail', moduleId: mod.id, dirId: dir.id, dirName: dir.name });
++      return;
++    }
++    const tab = e.target.closest('.app-main__settings-tab');
++    if (tab) {
++      state.settingsId = tab.dataset.tab;
++      activateMobileSettings();
++      updateCtx();
++      return;
++    }
++    const shortcut = e.target.closest('.app-main__shortcut');
++    if (shortcut) handleDockTap(shortcut.dataset.shortcut);
++  });
++  // 视口横纵切换（媒体查询 900px 断点）：进入手机形态懒挂载 dock；上下文切回对应导航模型
++  const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 900px)') : null;
++  mq?.addEventListener?.('change', (e) => {
++    if (e.matches) mountDock();
++    updateCtx();
++  });
++  if (isMobile()) mountDock();
++
+   // 设置页交互接线（主题三态/动效/保存/快捷键/开源链接/开关，与场景模板共用 settings-pages）
+   mountSettingsInteractions(pages.find((p) => p.dataset.page === 'settings'));
+ 
+   mountTitleBar(appMain);
+   bindWindowControls();
+ 
+   // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
+   //   设置页（第 8 区）已随模板渲染，此处跳过 ——
+   pages.forEach((page) => {
+     if (page.dataset.page === 'settings') return;
+     const mod = MODULES.find((m) => m.id === page.dataset.page);
+     page.innerHTML = mod.render(modCtx(mod));
+   });
+   pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
+   renderRight();
+   applyRightOpen();
++  renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
+ 
+   // —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall →
+   //    点击展开一个 FloatStrip 实例（右下贴边可拖）。docs 互斥不并存，零冲击。 ——
+   const ballHost = document.createElement('div');
+   ballHost.className = 'app-main__float-ball';
+   ballHost.innerHTML = renderFloatBall({ iconName: 'bolt', tooltip: '悬浮监测条' });
+   document.body.appendChild(ballHost);
+   let stripHost = null;
+   mountFloatBall(ballHost, {
+     onExpand: () => {
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index b9b19fa..bd017f5 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -1,14 +1,15 @@
+ /* NavigationWheel —— 「滑动选择」核心组件（Task 11 A 部分）
+    几何约定：--navwheel-item-h(52px) + --navwheel-gap(12px)，与 nav-wheel-geometry.js 一致 */
+ :root {
+   --navwheel-item-h: 52px;
++  --navwheel-item-w: 64px; /* horizontal 项宽（Task A6，与 vertical 的 item-h 同语义） */
+   --navwheel-gap: 12px;
+ }
+ 
+ .c-navwheel { position: relative; height: 100%; }
+ 
+ /* 容器：绝对定位铺满（骨架 inset 已存在，此处补齐滚动/遮罩规格）。
+    padding 首尾仅为无 JS 占位回退 —— CSS % 相对宽度、无法等于视口主轴长度（38.2% 锚点），
+    精确值由 mountNavWheel 按实测视口长度覆盖（否则首/末项无法滚到锚线） */
+ .navwheel__list,
+ .c-navwheel__list {
+@@ -42,20 +43,42 @@
+ 
+ .c-navwheel__icon { display: grid; place-items: center; color: var(--text-3); }
+ .c-navwheel__item--active .c-navwheel__icon { color: var(--accent); }
+ 
+ /* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
+ .c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
+   clip-path: inset(0 100% 0 0); opacity: 0;
+   transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
+ .c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
+ 
++/* —— horizontal 渲染层（Task A6，闭环 A2 Minor ①）——
++   仅当 mountNavWheel 收到 direction:'horizontal' 时列表根加 .c-navwheel__list--horizontal。
++   vertical 既有规则逐字节不动（docs 84 e2e + 36 基线 + app-shell 14 零冲击）。
++   间距修正：竖向项的 margin 主轴半间距 = --navwheel-gap/2（6px），但横向需
++   margin 沿主轴（左右）为半间距 6px —— 否则基础规则的「12px 左右」会让横排项间距
++   变成 24px ≠ GAP 12，几何算法（itemW + gap）与渲染错位。padding 纵向归零：
++   % 相对宽度在横排会撑爆纵向空间（顶/底 padding ≈ 视口宽 × 38.2%）。 */
++.c-navwheel__list--horizontal {
++  flex-direction: row;
++  align-items: center;
++  overflow-x: auto;
++  overflow-y: hidden;
++  /* 横向拖轮不应吞掉页面的纵向滚动：允许浏览器接管纵向 pan */
++  touch-action: pan-y;
++  padding: 0; /* 首尾精确 padding 由 JS 以 paddingLeft/Right 覆盖 */
++}
++.c-navwheel__list--horizontal .c-navwheel__item {
++  margin: 0 calc(var(--navwheel-gap) / 2);
++  width: var(--navwheel-item-w);
++  flex: none;
++}
++
+ /* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
+ .c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;
+   pointer-events: none;
+   background: linear-gradient(var(--glass-bg), transparent); }
+ .c-navwheel__mask--bottom { top: auto; bottom: 56px;
+   background: linear-gradient(transparent, var(--glass-bg)); }
+ 
+ /* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
+    此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */
+ .c-navwheel__settings { display: flex; align-items: center; gap: var(--space-2);
+diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
+index 64769bd..f203980 100644
+--- a/src/components/navigation-wheel/nav-wheel.js
++++ b/src/components/navigation-wheel/nav-wheel.js
+@@ -16,30 +16,34 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+   // 主轴抽象：同一套几何/交互按 direction 落到横或纵轴（vertical 默认，行为与旧实现一致）
+   const AXIS = direction === 'horizontal'
+     ? { size: 'width', margin: 'marginLeft', len: 'clientWidth', scroll: 'scrollLeft',
+         offset: 'offsetLeft', translate: 'translateX', padBefore: 'paddingLeft', padAfter: 'paddingRight',
+         pointer: 'clientX', prev: 'ArrowLeft', next: 'ArrowRight' }
+     : { size: 'height', margin: 'marginTop', len: 'clientHeight', scroll: 'scrollTop',
+         offset: 'offsetTop', translate: 'translateY', padBefore: 'paddingTop', padAfter: 'paddingBottom',
+         pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
+ 
+   const list = root.querySelector('.c-navwheel__list') ?? root;
++  // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
++  // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
++  if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
+   list.innerHTML = items.map((it, i) => `
+     <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+       <div class="c-navwheel__glow"></div>
+       <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
+       <span class="c-navwheel__name">${it.name}</span>
+     </div>`).join('');
+   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
+-  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，horizontal 由 A6 接管）
++  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
++  // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
+   const holder = root.closest('.navwheel') ?? root.parentElement;
+-  if (holder && !holder.querySelector('.c-navwheel__mask')) {
++  if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
+     holder.insertAdjacentHTML('beforeend',
+       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
+   }
+   const itemEls = [...list.children];
+   const itemH = parseFloat(getComputedStyle(itemEls[0])[AXIS.size]);
+   // 项上边距（6px = --navwheel-gap/2）：offsetTop 含 margin，pad 须同样扣除，
+   // 否则首/末项中心初始偏下 6px（最终审查 B；CSS 兜底 calc(38.2% - 32px) 已同步修正）
+   const marginTop = parseFloat(getComputedStyle(itemEls[0])[AXIS.margin]);
+   const viewLen = () => list[AXIS.len];
+   // 精确首尾 padding：使首/末项能滚到主轴锚线（38.2%）。锚点非居中 → 上/下 padding 非对称：
+diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
+new file mode 100644
+index 0000000..fc2286c
+--- /dev/null
++++ b/tests/e2e/mobile-nav.spec.js
+@@ -0,0 +1,124 @@
++import { test, expect } from '@playwright/test';
++
++// 手机形态（Task A6）：≤900px 媒体查询 —— 底部横滑应用栏（NavigationWheel horizontal，
++// anchorRatio 0.382，纯 icon 横排）+ 全屏页面栈（点击应用 → 目录页推入 → 点击目录项 → 详情页
++// 推入；返回按钮逐步 pop；⚙ 推入设置页）。桌面双窗/内容区在手机视口隐藏。
++// 同一 URL（?mode=app），形态由视口宽度驱动（test.use viewport 在 goto 前生效）。
++// 坑：页面栈 slide 240ms → 点击后 waitForTimeout 覆盖动画相位；transform 计算值恒为 matrix（不依赖）。
++
++const APP_URL = '/?mode=app';
++
++test.use({ viewport: { width: 390, height: 844 } });
++
++test('手机形态：底部横滑应用栏可见（7 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
++  await page.goto(APP_URL);
++  await expect(page.locator('.app-main')).toBeVisible();
++  // 底部 dock 可见且含 7 个应用项，沿 x 轴横排（位置递增）
++  const dock = page.locator('.app-main__dock');
++  await expect(dock).toBeVisible();
++  const items = dock.locator('.c-navwheel__item');
++  await expect(items).toHaveCount(7);
++  const xs = await items.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
++  for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
++  // 桌面双窗隐藏
++  await expect(page.locator('.app-main__nav-l')).toBeHidden();
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++  // 初始基底页 = 概览
++  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
++  await expect(page.locator('.app-main__stack-page')).toContainText('概览');
++});
++
++test('点击应用 → 目录页推入（页面栈）', async ({ page }) => {
++  await page.goto(APP_URL);
++  // 点击 dock 第 2 项（剪贴板）→ 目录页推入
++  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(350); // slide 240ms
++  const pages = page.locator('.app-main__stack-page');
++  await expect(pages).toHaveCount(2);
++  const top = pages.last();
++  await expect(top).toHaveAttribute('data-stack', 'dir');
++  await expect(top).toContainText('剪贴板');
++  await expect(top.locator('.app-main__dir-item')).toHaveCount(3);
++  // 标题栏上下文联动
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板');
++});
++
++test('点击目录项 → 详情页推入', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板
++  await page.waitForTimeout(350);
++  await page.locator('.app-main__dir-item[data-dir="pinned"]').click();
++  await page.waitForTimeout(350);
++  const pages = page.locator('.app-main__stack-page');
++  await expect(pages).toHaveCount(3);
++  const top = pages.last();
++  await expect(top).toHaveAttribute('data-stack', 'detail');
++  await expect(top).toContainText('固定');
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 固定');
++});
++
++test('返回回退：返回按钮逐步 pop 页面栈', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板目录
++  await page.waitForTimeout(350);
++  await page.locator('.app-main__dir-item[data-dir="pinned"]').click(); // 详情
++  await page.waitForTimeout(350);
++  let pages = page.locator('.app-main__stack-page');
++  await expect(pages).toHaveCount(3);
++  // 详情页返回 → 回目录页
++  await pages.last().locator('.app-main__stack-back').click();
++  await page.waitForTimeout(350);
++  pages = page.locator('.app-main__stack-page');
++  await expect(pages).toHaveCount(2);
++  await expect(pages.last()).toHaveAttribute('data-stack', 'dir');
++  // 目录页返回 → 回概览基底
++  await pages.last().locator('.app-main__stack-back').click();
++  await page.waitForTimeout(350);
++  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
++});
++
++test('设置推入：标题栏 ⚙ → 设置页推入 + toggle 弹回', async ({ page }) => {
++  await page.goto(APP_URL);
++  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
++  await settingsBtn.click();
++  await page.waitForTimeout(350);
++  const pages = page.locator('.app-main__stack-page');
++  await expect(pages).toHaveCount(2);
++  const top = pages.last();
++  await expect(top).toHaveAttribute('data-stack', 'settings');
++  await expect(top).toContainText('通用');
++  await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('设置 › 通用');
++  // 再次点击 ⚙ → 弹回概览（toggle）
++  await settingsBtn.click();
++  await page.waitForTimeout(350);
++  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
++});
++
++test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向滚动 + focal 峰值在 38.2% 锚线', async ({ page }) => {
++  await page.goto(APP_URL);
++  const dockList = page.locator('.app-main__dock .c-navwheel__list');
++  // items 沿 x 轴排列（横向布局，非纵向）
++  const xs = await dockList.locator('.c-navwheel__item')
++    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
++  for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
++  // 横向拖拽 → scrollLeft 增加（主轴为 x：滚动方向正确）
++  const box = await dockList.boundingBox();
++  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
++  await page.mouse.down();
++  await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2, { steps: 8 });
++  await page.mouse.up();
++  await page.waitForTimeout(450); // 惯性/吸附 150ms + 余量
++  const scrolled = await dockList.evaluate((el) => el.scrollLeft);
++  expect(scrolled).toBeGreaterThan(50);
++  // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
++  await dockList.locator('.c-navwheel__item').nth(3).click();
++  await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
++  await expect(dockList.locator('.c-navwheel__item--active')).toHaveCount(1);
++  const activeBox = await dockList.locator('.c-navwheel__item--active').boundingBox();
++  const listBox = await dockList.boundingBox();
++  const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
++  expect(anchorDelta).toBeLessThan(5);
++});

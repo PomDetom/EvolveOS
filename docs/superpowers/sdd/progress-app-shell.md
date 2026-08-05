@@ -65,6 +65,17 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - **评审**：规格 ✅ / Approved（0 Critical/Important，6 Minor）
 - **Minor 留收尾**：① 旋转锚点语义（报告称保持左上角，实测 position:fixed right/bottom 重锚右下 + transform 保持；默认贴边主场景良好，侧贴边旋转时垂直轴可能跳变，A6/A7 观察）；② `renderTokenMonitor` value/status 未转义插值（内部受控调用点低风险，可加白名单/escapeHTML）；③ `--strip-orientation` 语义值 horizontal|vertical 未被布局直接消费（布局 key 到 data-orientation，同语句赋值不会漂移，未来配置层覆盖需改 row|column）；④ 微尺寸字面量 gap 2px/按钮 26px/圆角 2px（无对应令牌，结构性可接受）；⑤ floatstrip.spec 用固定 waitForTimeout(400)（当前不 flaky，toHaveCSS 轮询更稳）；⑥ app 壳 FloatBall 与展开 strip 同右下角 z 叠（ball z=40 > strip z=10，无害，strip 有关闭钮）
 
+## Task A6: 手机形态（底部横滑 + 全屏页面栈）
+
+- **状态**：完成（2026-08-06）
+- **提交**：`396f5fc` `feat: 手机形态（底部横滑 + 页面栈）`
+- **验证**：npm test 45/45；npm run test:e2e 110/110（mobile-nav 6/6 + app-shell 14/14 桌面回归 + docs 84 零冲击 + 36 基线零变化）；npm run build 通过
+- **实现**：≤900px 媒体查询：双窗隐藏，底部横向应用轮（NavigationWheel horizontal + 38.2% 锚点，纯 icon，懒挂载）+ 全屏页面栈（概览→目录页→详情页；返回逐步 pop；⚙ 推入设置页；dock 点击驱动推入、横滑不弹页）；**闭环 A2 Minor ①**（`.c-navwheel__list--horizontal` 独立 CSS：横排半间距 6px/row/overflow-x/touch-action pan-y/padding 归零，vertical 逐字节零冲击）；**闭环 A2 Minor ④**（mobile-nav 用例 6 渲染级验证横向滚动 + 38.2% 锚线吸附，替代恒真式单测）
+- **简报/报告**：docs/superpowers/sdd/task-A6-brief.md / task-A6-report.md
+- **评审**：规格 ❌ → 修复循环（1 Important：**dock 横滑浏览触发页面推入**——nav-wheel 不 preventDefault + setPointerCapture 使 pointerup 后必发 click，app dock click 消费 dockDownIndex 无位移阈值，横滑浏览调用 handleDockTap 推页，违反「横滑浏览不弹页」；报告称「拖拽不产生 click」与机制矛盾且 drag 测试未断言 stack 计数）
+- **评审修复（2026-08-06，已闭环）**：`5ed2071` `fix: 手机 dock 横滑浏览不再误触发页面推入` —— dock 点击处理器按位移阈值区分点按/拖拽（pointerdown 记录起点，click 阶段 `Math.hypot(...) > 10px` 视为横滑忽略，TAP_MAX_MOVE=10）；覆盖断言 +1（mobile-nav 用例 6 拖拽后断言 `.app-main__stack-page` 计数仍 1，先红后绿：RED 收到 2 元素 → GREEN 6/6）；验证：mobile-nav 6/6、全量 e2e 110（app-shell 14 + docs 84 + 36 基线零变化）、npm test 45、build 通过
+- **Minor 留收尾**：① dock 横滑不回写标题栏 ctx（钻取模型下由页面栈承担，有意设计）；② 手机设置外观分区每次进入设置新增一次 customizer store 订阅（线性增长无视觉影响）；③ 手机形态 Esc 切桌面右窗状态不同步（键盘极少触发）；④ 「边缘右滑回退」未实现（仅返回按钮 —— 规格 §11 非目标声明：边缘右滑用简单按钮 + 可选 touch 事件，返回按钮即「简单按钮」实现，待最终评审裁决）；⑤ 「目录横滑」歧义（app 目录页是纵向按钮列表 —— 最宽容读法：设置目录经设置页 tabs overflow-x:auto 横向化已满足）
+
 ## 执行状态
 
 - Task A1 双模式入口：✅ 完成（2026-08-05）
