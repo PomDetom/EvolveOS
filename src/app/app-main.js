@@ -12,9 +12,12 @@ import { icon } from '../components/icon/icon.js';
 import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
 import { renderEmptyState } from '../components/empty-state/empty-state.js';
 import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
 import { bindWindowControls } from '../demo/window-controls.js';
 import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+import '../components/float-strip/float-strip.css';
 import './app-main.css';
 
 // —— MODULES 扩展契约 ——
@@ -325,6 +328,32 @@ export function mountAppMode(root) {
   pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
   renderRight();
   applyRightOpen();
+
+  // —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall →
+  //    点击展开一个 FloatStrip 实例（右下贴边可拖）。docs 互斥不并存，零冲击。 ——
+  const ballHost = document.createElement('div');
+  ballHost.className = 'app-main__float-ball';
+  ballHost.innerHTML = renderFloatBall({ iconName: 'bolt', tooltip: '悬浮监测条' });
+  document.body.appendChild(ballHost);
+  let stripHost = null;
+  mountFloatBall(ballHost, {
+    onExpand: () => {
+      if (stripHost) return; // 已展开则不重复创建
+      stripHost = document.createElement('div');
+      stripHost.className = 'app-main__strip';
+      stripHost.innerHTML = renderFloatStrip({
+        content: renderTokenMonitor({
+          value: '97.2%',
+          status: 'ok',
+          trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
+        }),
+      });
+      document.body.appendChild(stripHost);
+      mountFloatStrip(stripHost, {
+        onClose: () => { stripHost?.remove(); stripHost = null; },
+      });
+    },
+  });
 }
 
 // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——

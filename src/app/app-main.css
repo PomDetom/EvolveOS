@@ -108,3 +108,10 @@
 .app-main__settings.csettings__pages { overflow: visible; }
 .app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
 .app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+
+/* —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall → 点击展开悬浮条 ——
+   body 级覆盖层（app/docs 互斥，docs 不加载本文件）。.c-strip 自身 position:fixed 定位，
+   宿主仅作容器（pointer-events:none 不拦截应用交互，strip 自身再启用）。 */
+.app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
+.app-main__strip { position: fixed; inset: 0; pointer-events: none; }
+.app-main__strip .c-strip { pointer-events: auto; }

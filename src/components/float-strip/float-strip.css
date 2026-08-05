@@ -1,0 +1,138 @@
+/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
+   定位模型：position:fixed 底右 dock（right/bottom = --strip-gap），全部位移经
+   transform: translate(dx,dy)（红线段：不触发布局动画，磁吸贴边不 animate 宽/高/left/top）。
+   形态：--strip-orientation 语义态（horizontal|vertical）+ data-orientation 翻转，
+   flex-direction 随形态切换（布局属性瞬时切换，不做动画）。
+   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/阴影/背景为 paint-only 豁免
+   （hover 短暂状态过渡）；模糊（backdrop-filter）静态、永不动画；时长/曲线一律经 CSS 变量。 */
+
+.c-strip {
+  position: fixed;
+  right: var(--strip-gap, var(--space-4));
+  bottom: var(--strip-gap, var(--space-4));
+  z-index: var(--z-float);
+  --strip-gap: var(--space-4);
+  --strip-thick: 48px;
+  --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
+  display: flex;
+  box-sizing: border-box;
+  max-width: calc(100vw - var(--strip-gap) * 2);
+  max-height: calc(100vh - var(--strip-gap) * 2);
+  overflow: hidden;
+  border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)); /* 静态材质，永不动画 */
+  color: var(--text-1);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: none;
+  /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
+  transition: transform var(--dur-slow) var(--ease-spring),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
+.c-strip--horizontal { min-height: var(--strip-thick); width: max-content; }
+.c-strip--vertical { min-width: var(--strip-thick); height: max-content; }
+/* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
+.c-strip--dragging, .c-strip--rotating { transition: none; }
+.c-strip:hover {
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* —— 内容区（可拖）——
+   布局随形态：horizontal 内容横向（row）/ vertical 内容纵向（column）；
+   transition 只动 transform/opacity（旋转切换的交叉淡入淡出），布局属性不做动画。 */
+.c-strip__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 0;
+  flex-direction: row;
+  touch-action: none;
+  transition: opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+.c-strip[data-orientation="vertical"] .c-strip__content { flex-direction: column; }
+/* 旋转中：内容淡出 + 轻微缩放（只动 transform/opacity），翻转到新形态后淡入 */
+.c-strip--rotating .c-strip__content { opacity: 0; transform: scale(0.95); }
+
+/* —— hover 浮现控制条（旋转/拖动/关闭）——
+   常态 opacity:0 + pointer-events:none（无边框内容优先）；hover 浮现半透明细边框 + 控制条。 */
+.c-strip__ctrl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  opacity: 0;
+  pointer-events: none;
+  border: 1px solid transparent;
+  transition: opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+.c-strip:hover .c-strip__ctrl {
+  opacity: 1;
+  pointer-events: auto;
+  border-color: var(--glass-border);
+}
+/* horizontal：控制条竖排在内容右侧；vertical：控制条横排在内容下侧 */
+.c-strip--horizontal .c-strip__ctrl { flex-direction: column; }
+.c-strip--vertical .c-strip__ctrl { flex-direction: row; }
+
+.c-strip__ctrl button, .c-strip__drag {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1));
+  color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.c-strip__ctrl button:hover { color: var(--text-1); background: var(--surface-hover); }
+.c-strip__close:hover { color: var(--danger-500); }
+.c-strip__drag { cursor: grab; touch-action: none; }
+.c-strip__drag:hover { color: var(--text-1); background: var(--surface-hover); }
+.c-strip__drag:active { cursor: grabbing; }
+
+/* —— token 监测内容模板（renderTokenMonitor，供后续应用复用）——
+   数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY，红线段）。 */
+.c-tmon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+}
+.c-tmon__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--success-500);
+}
+.c-tmon__dot--warn { background: var(--warning-500); }
+.c-tmon__dot--err { background: var(--danger-500); }
+.c-tmon__value { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-semibold); }
+.c-tmon__trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+  padding-left: var(--space-1);
+}
+.c-tmon__trend-bar {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent-400);
+  transform: scaleY(var(--tbar, 0));
+  transform-origin: bottom;
+}
