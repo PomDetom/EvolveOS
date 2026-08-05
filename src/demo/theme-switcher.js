@@ -1,4 +1,4 @@
-import { getConfig, saveConfig } from '../config/store.js';
+import { getConfig, saveConfig, subscribe } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
 import { ACCENTS } from '../config/defaults.js';
 import { icon } from '../components/icon/icon.js';
@@ -29,10 +29,13 @@ export function mountThemeSwitcher(root) {
     const next = saveConfig({ accent: btn.dataset.accent });
     applyConfig(next); syncUI(next);
   });
-  if (getConfig().theme === 'system') {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      applyConfig(getConfig());
-    });
+  // OS 主题监听：theme === 'system' 时挂载，离开时卸载（幂等：同函数引用反复 add/remove 无害）。
+  // 修复（最终审查 C）：此前仅在挂载时按初始 theme 判断，中途切「跟随」后 OS 变化不传播
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const onSystemChange = () => applyConfig(getConfig());
+  function watchSystemTheme(c) {
+    if (c.theme === 'system') mql.addEventListener('change', onSystemChange);
+    else mql.removeEventListener('change', onSystemChange);
   }
   function syncUI(c) {
     root.querySelectorAll('.tsw__mode').forEach(b =>
@@ -40,4 +43,11 @@ export function mountThemeSwitcher(root) {
     root.querySelectorAll('.tsw__accent').forEach(b =>
       b.classList.toggle('tsw__accent--active', b.dataset.accent === c.accent));
   }
+  watchSystemTheme(getConfig());
+  // 订阅 store：定制器改主题/主题色、预设、重置等外部变更 → 同步顶栏高亮态 + 挂/卸监听
+  // （saveConfig 与 notify 都会广播；同步回调不 applyConfig，避免与 main.js 订阅重复应用）
+  subscribe((next) => {
+    syncUI(next);
+    watchSystemTheme(next);
+  });
 }

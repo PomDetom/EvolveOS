@@ -19,7 +19,7 @@
   /* 拖拽由 JS pointer 事件接管（Task 12），禁用原生触控滚动，避免双滚动竞争 */
   touch-action: none;
   user-select: none; /* 快速拖拽不选中文案（Task 12 收尾修复） */
-  padding: calc(50% - 26px) 0 50% 0;
+  padding: calc(50% - 32px) 0 50% 0; /* 32 = itemH/2(26) + 项上边距(6)，与 JS 实测 pad 同系 */
 }
 .navwheel__list::-webkit-scrollbar,
 .c-navwheel__list::-webkit-scrollbar { display: none; }

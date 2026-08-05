@@ -4,8 +4,13 @@
   --ease-spring: cubic-bezier(0.34, 1.336, 0.64, 1); /* 默认弹性 0.6，config 覆盖 */
   --spring-strength: 0.6;
 }
+/* 配置关停动效（data-motion="off"，由 applyConfig 设置）：无条件归零，不依赖 reduced-motion
+   （最终审查 D —— 原写法在媒体查询内，无 reduced-motion 时该选择器不生效） */
+:root[data-motion="off"] {
+  --dur-fast: 0ms;  --dur-base: 0ms;  --dur-slow: 0ms;
+}
 @media (prefers-reduced-motion: reduce) {
-  :root, :root[data-motion="off"] {
+  :root {
     --dur-fast: 0ms;  --dur-base: 0ms;  --dur-slow: 0ms;
   }
 }

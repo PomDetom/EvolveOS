@@ -24,14 +24,42 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
   }
   const itemEls = [...list.children];
   const itemH = parseFloat(getComputedStyle(itemEls[0]).height);
+  // 项上边距（6px = --navwheel-gap/2）：offsetTop 含 margin，pad 须同样扣除，
+  // 否则首/末项中心初始偏下 6px（最终审查 B；CSS 兜底 calc(50% - 32px) 已同步修正）
+  const marginTop = parseFloat(getComputedStyle(itemEls[0]).marginTop);
   const viewH = () => list.clientHeight;
-  // 精确首尾 padding：使首/末项也能滚到视口中央（CSS calc(50% - 26px) 相对宽度，实测值才正确）
-  const pad = Math.max(0, viewH() / 2 - itemH / 2);
+  // 精确首尾 padding：使首/末项也能滚到视口中央（CSS calc(50% - 32px) 相对宽度，实测值才正确）
+  const pad = Math.max(0, viewH() / 2 - itemH / 2 - marginTop);
   list.style.paddingTop = list.style.paddingBottom = `${pad}px`;
   // 内容起点偏移 = 首项 offsetTop（padding + margin，布局实测），保证几何公式与 CSS 一致
   const CONTENT_TOP = itemEls[0].offsetTop;
   let active = 0, raf = 0;
 
+  // —— 拖拽 + 惯性 + 居中吸附（Task 12 B 部分 + 最终审查 A：滚轮停止吸附）——
+  // 坐标约定：几何函数用「内容坐标」（不含容器 padding/margin），list.scrollTop 是原始坐标，
+  // 二者差 CONTENT_TOP。吸附路径统一传补偿坐标（list.scrollTop - CONTENT_TOP）——
+  // 与 scrollTopForCenter/select 同系，findNearestIndex 公式才精确（见 nav-wheel-geometry.js 注释）。
+  let pointerId = null, lastY = 0, velocity = 0, lastT = 0,
+      inertiaRaf = 0, moved = 0, snapTimer = 0, downItem = null;
+
+  // 吸附本体：最近项居中 + 选中。守卫——位置已在精确中心且该项已选中
+  // （click/键盘/程序化选中的居中动画产物，误差 <1e-9px；或 snapNow 自身吸附后的回环）
+  // → 跳过，避免 onScroll debounce 对每次选中补发重复 onChange。
+  function snapNow() {
+    const s = list.scrollTop - CONTENT_TOP; // 补偿坐标
+    const i = findNearestIndex(s, itemEls.length, itemH, GAP, viewH());
+    const target = scrollTopForCenter(i, itemH, GAP, viewH()) + CONTENT_TOP;
+    if (itemEls[i].classList.contains('c-navwheel__item--active')
+        && Math.abs(list.scrollTop - target) < 0.05) return;
+    if (list.scrollTop !== target) list.scrollTop = target; // 无动画直接吸附（跳变，合成器无感）
+    select(i, false);
+  }
+  // 150ms 后吸附。拖拽路径（pointerup/惯性结束/pointercancel）与滚轮路径
+  // （onScroll debounce）复用同一计时器：clearTimeout 即 debounce，二者永不叠加
+  function scheduleSnap() {
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(snapNow, 150);
+  }
   function setFocal() {
     const st = list.scrollTop;
     const vh = viewH();
@@ -44,6 +72,11 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
   function onScroll() {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(setFocal);
+    // 滚动停止 150ms → 吸附并选中最近项（规格 §8.3：滚轮停在两项之间时不得悬置）。
+    // 拖拽中（pointerId 非空）跳过：吸附由 pointerup/惯性/pointercancel 接管，
+    // 且慢拖拽停顿 >150ms 时不会中途吸附与手指打架；pointerdown 已清掉滚轮残留定时器。
+    if (pointerId !== null) return;
+    scheduleSnap();
   }
   function select(i, animate = true) {
     active = i;
@@ -80,23 +113,6 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
     if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, active - 1)); }
   }));
 
-  // —— 拖拽 + 惯性 + 居中吸附（Task 12 B 部分）——
-  // 坐标约定：几何函数用「内容坐标」（不含容器 padding/margin），list.scrollTop 是原始坐标，
-  // 二者差 CONTENT_TOP。吸附路径统一传补偿坐标（list.scrollTop - CONTENT_TOP）——
-  // 与 scrollTopForCenter/select 同系，findNearestIndex 公式才精确（见 nav-wheel-geometry.js 注释）。
-  let pointerId = null, lastY = 0, velocity = 0, lastT = 0,
-      inertiaRaf = 0, moved = 0, snapTimer = 0, downItem = null;
-
-  function scheduleSnap() {
-    clearTimeout(snapTimer);
-    snapTimer = setTimeout(() => {
-      const s = list.scrollTop - CONTENT_TOP; // 补偿坐标
-      const i = findNearestIndex(s, itemEls.length, itemH, GAP, viewH());
-      const target = scrollTopForCenter(i, itemH, GAP, viewH()) + CONTENT_TOP;
-      if (list.scrollTop !== target) list.scrollTop = target; // 无动画直接吸附（跳变，合成器无感）
-      select(i, false);
-    }, 150);
-  }
   function startInertia() {
     cancelAnimationFrame(inertiaRaf);
     (function tick() {
