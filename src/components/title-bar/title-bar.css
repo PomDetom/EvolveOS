@@ -1,0 +1,14 @@
+.c-titlebar { height: 40px; display: flex; align-items: center;
+  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  user-select: none; }
+/* 无底部边框：与内容共享玻璃背景，上下无割裂 */
+.c-titlebar__drag { flex: 1; height: 100%; display: flex; align-items: center;
+  gap: var(--space-2); padding: 0 var(--space-4); }
+.c-titlebar__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+  color: var(--text-2); }
+.c-titlebar__controls { display: flex; height: 100%; }
+.c-titlebar__control { width: 44px; height: 100%; display: grid; place-items: center;
+  color: var(--text-2); transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out); }
+.c-titlebar__control:hover { background: var(--surface-hover); color: var(--text-1); }
+.c-titlebar__control--close:hover { background: var(--danger-500); color: #fff; }

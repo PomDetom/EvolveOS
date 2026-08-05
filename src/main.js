@@ -27,6 +27,7 @@ import './components/popover/popover.css';
 import './components/context-menu/context-menu.css';
 import './components/tab/tab.css';
 import './components/breadcrumb/breadcrumb.css';
+import './components/title-bar/title-bar.css';
 import { icon } from './components/icon/icon.js';
 import { renderButton } from './components/button/button.js';
 import { renderInput } from './components/input/input.js';
@@ -51,6 +52,7 @@ import { renderPopover, mountPopover } from './components/popover/popover.js';
 import { mountContextMenu } from './components/context-menu/context-menu.js';
 import { renderTabs, mountTabs } from './components/tab/tab.js';
 import { renderBreadcrumb } from './components/breadcrumb/breadcrumb.js';
+import { renderTitleBar, mountTitleBar } from './components/title-bar/title-bar.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
@@ -92,6 +94,16 @@ app.innerHTML = `
 
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+
+// TitleBar 演示：独立展示区（body 顶部，尺寸与场景模板一致便于评审）
+const titlebarDemo = document.createElement('div');
+titlebarDemo.id = 'titlebar-demo';
+titlebarDemo.style.width = '360px'; titlebarDemo.style.borderRadius = 'var(--radius-xl)'; titlebarDemo.style.overflow = 'hidden';
+titlebarDemo.style.border = '1px solid var(--glass-border)'; titlebarDemo.style.boxShadow = 'var(--glass-shadow)';
+titlebarDemo.style.margin = '0 auto'; titlebarDemo.style.marginTop = 'var(--space-5)';
+titlebarDemo.innerHTML = renderTitleBar({ title: '剪贴板', iconName: 'clipboard' }) + '<div style="height:120px" class="glass"></div>';
+document.body.prepend(titlebarDemo);
+mountTitleBar(titlebarDemo);
 
 // 组件展示区初始渲染（Task 15 起替换为完整矩阵）
 const componentsSection = document.querySelector('#components');
