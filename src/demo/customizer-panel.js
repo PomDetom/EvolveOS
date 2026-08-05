@@ -282,7 +282,8 @@ function bindFooter(panel) {
  * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
- * @returns {HTMLElement} 同一容器
+ * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
+ *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
  */
 export function renderCustomizerGroups(container) {
   const cfg = getConfig();
@@ -315,12 +316,13 @@ export function renderCustomizerGroups(container) {
     applyConfig(saveConfig({ motion: { enabled: next } }));
   });
 
-  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）
-  subscribe((next) => syncUI(container, next));
+  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
+  // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
+  const unsub = subscribe((next) => syncUI(container, next));
   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
   syncUI(container, cfg);
-  return container;
+  return unsub;
 }
 
 /**

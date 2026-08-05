@@ -17,8 +17,14 @@ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../compon
 import { bindWindowControls } from '../demo/window-controls.js';
 import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+import { getConfig } from '../config/store.js';
+import { applyConfig } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
+
+// 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+// 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+const TAP_MAX_MOVE = 10;
 
 // —— MODULES 扩展契约 ——
 const MODULES = [
@@ -78,6 +84,9 @@ const MODULES = [
 ];
 
 export function mountAppMode(root) {
+  // 冷启动应用持久化配置（闭环 I1，镜像 docs-mode.js）：重启/Tauri 重开后界面保持
+  // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+  applyConfig(getConfig());
   const settingsPagesHtml = renderSettingsPages();
   root.innerHTML = `
   <div class="app-main">
@@ -337,7 +346,13 @@ export function mountAppMode(root) {
     return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
   }
 
+  // 外观分区定制器退订句柄（闭环 M1）：手机路径每次 renderStack 重建 DOM → 重挂
+  // renderCustomizerGroups 新增一次 store 订阅。重建前释放旧订阅（回调引用已脱离容器的旧 DOM），
+  // 防订阅数随进入设置次数线性累积。renderCustomizerGroups 现返回 subscribe 的退订函数。
+  let mobileCustUnsub = null;
   function renderStack() {
+    mobileCustUnsub?.(); // 重建前释放上一订阅（可能未挂载 = noop）
+    mobileCustUnsub = null;
     stackEl.innerHTML = mobile.stack.map((entry, i) =>
       renderStackPage(entry, i === mobile.stack.length - 1 && mobile.animateTop)).join('');
     const settingsPage = stackEl.querySelector('[data-stack="settings"]');
@@ -381,7 +396,10 @@ export function mountAppMode(root) {
     sec.querySelectorAll('.app-main__settings-tab').forEach((t) =>
       t.classList.toggle('app-main__settings-tab--active', t.dataset.tab === state.settingsId));
     const cust = sec.querySelector('[data-page="appearance"] .csettings__cust');
-    if (state.settingsId === 'appearance' && cust && !cust.children.length) renderCustomizerGroups(cust);
+    if (state.settingsId === 'appearance' && cust && !cust.children.length) {
+      mobileCustUnsub?.(); // 防御：同容器重复挂载先释放旧订阅
+      mobileCustUnsub = renderCustomizerGroups(cust);
+    }
   }
 
   function updateCtxMobile() {
@@ -445,16 +463,22 @@ export function mountAppMode(root) {
   });
   // 三通道之一：再次点击左窗已选中项 → 收起（toggle）。nav-wheel 对点击/锚定仍会对同 id 补发
   // onChange（子像素滚动偏差 <1px 使 snapNow 守卫 0.05px 容差未跳过），不能据 onChange 判定用户
-  // 是否真的再次点击了已选中项 —— 故在 pointerdown 记录「所点项当时是否已选中」，click 阶段判定。
-  let downWasActive = false;
+  // 是否真的再次点击了已选中项 —— 故在 pointerdown 记录「所点项当时是否已选中 + 起点坐标」，
+  // click 阶段判定。拖拽阈值（闭环 I2，与 dock 同机制）：位移 > TAP_MAX_MOVE 视为浏览滑动，
+  // 不误触发收起（nav-wheel 未 preventDefault，pointer 捕获下拖拽松手后浏览器仍派发 click）。
+  let downState = { active: false, x: 0, y: 0 };
   navL.addEventListener('pointerdown', (e) => {
     const item = e.target.closest('.c-navwheel__item');
-    if (item) downWasActive = MODULES[Number(item.dataset.index)].id === state.moduleId;
+    downState = {
+      active: !!item && MODULES[Number(item.dataset.index)].id === state.moduleId,
+      x: e.clientX, y: e.clientY,
+    };
   });
-  navL.addEventListener('click', () => {
-    const wasActive = downWasActive;
-    downWasActive = false;
-    if (wasActive) {
+  navL.addEventListener('click', (e) => {
+    const { active, x, y } = downState;
+    downState.active = false;
+    if (Math.hypot(e.clientX - x, e.clientY - y) > TAP_MAX_MOVE) return; // 拖拽浏览，忽略
+    if (active) {
       // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
       if (state.rightMode === 'settings') { exitSettingsMode(); return; }
       const mod = MODULES.find((m) => m.id === state.moduleId);
@@ -469,8 +493,7 @@ export function mountAppMode(root) {
   // nav-wheel 对列表 setPointerCapture → click 事件 target 被重定向到列表本身，不能据 click.target 找项；
   // 且 nav-wheel 未 preventDefault，浏览器在任意 pointerup 后仍派发 click（Chrome 无位移抑制）——
   // 横滑浏览的拖拽也会收尾成一次 click。故 pointerdown 记录「所点项下标 + 起点坐标」，
-  // click 阶段按位移阈值（>10px 视为横滑浏览）区分「点按」与「拖拽」，拖拽不误触发推入。
-  const TAP_MAX_MOVE = 10;
+  // click 阶段按位移阈值（>TAP_MAX_MOVE 视为横滑浏览）区分「点按」与「拖拽」，拖拽不误触发推入。
   let dockDown = { index: -1, x: 0, y: 0 };
   dockList.addEventListener('pointerdown', (e) => {
     const item = e.target.closest('.c-navwheel__item');

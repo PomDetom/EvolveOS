@@ -190,6 +190,53 @@ test('设置模式：标题栏上下文「设置 › 分区」联动', async ({ 
   await expect(ctx).toHaveText('设置 › 关于');
 });
 
+// —— 收尾评审修复覆盖：I1 冷启动配置持久化 / I2 左窗拖拽阈值 ——
+
+test('冷启动应用持久化配置：localStorage theme=dark → reload → 深色生效 + 通用页高亮一致', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 写入持久化配置（模拟应用壳设置里切深色主题并重启/Tauri 重开）
+  await page.evaluate(() => {
+    localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'dark' }));
+  });
+  await page.reload();
+  // 等 app 壳挂载完成（app-main 为动态 import，reload 的 load 事件不等待其 resolve）
+  await expect(page.locator('.app-main')).toBeVisible();
+  // 冷启动即应用持久化主题：data-theme 由 applyConfig(getConfig()) 写入
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  expect(theme).toBe('dark');
+  // 设置「通用」页按持久化配置高亮「深色」——与实际渲染一致，两态不再自相矛盾
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+  await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+});
+
+test('左窗对已选中项拖拽（位移 >10px）松手不触发收起（拖拽阈值，与 dock 同机制）', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 选中剪贴板（右窗展开）
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  // 在已选中项上慢速拖拽 ~15px（>10px 阈值、<半项 32px）——模拟浏览滑动后松手。
+  // 慢速步进（间隔 50ms）令速度 <0.3 不触发惯性；scroll 位移不足半项，吸附仍回剪贴板
+  // （避免 snap 换项干扰断言 —— 换到有目录的项右窗仍开，只有 home 会收起）。
+  const item = page.locator('.app-main__nav-l .c-navwheel__item').nth(1);
+  const box = await item.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 5; i++) {
+    await page.mouse.move(x, y - i * 3);
+    await page.waitForTimeout(50);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(400); // 覆盖吸附 150ms + 余量
+  // 拖拽不得误收起右窗：仍为剪贴板目录
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+});
+
 test('设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录', async ({ page }) => {
   await page.goto(APP_URL);
   // 应用模式：选中剪贴板（右窗 = 剪贴板目录 3 项）

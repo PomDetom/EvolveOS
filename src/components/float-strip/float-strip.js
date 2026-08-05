@@ -25,15 +25,27 @@ export function renderFloatStrip({ content = '' } = {}) {
 
 // token 监测内容模板：数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY）。
 // status: 'ok' | 'warn' | 'err'；trend: 0-1 数值数组（每项一根趋势条）。
+// 作为「供后续应用复用」的公开模板，value/status 是外部输入 —— 必须转义/白名单（闭环 M2），
+// 未来传用户数据不得成为 XSS sink。
+const TOKEN_STATUSES = ['ok', 'warn', 'err'];
+
+/** 最小化 HTML 转义（本地实现，零依赖）：仅转义可注入的 5 个字符 */
+function escapeHtml(v) {
+  return String(v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } = {}) {
   const LABEL = { ok: '正常', warn: '告警', err: '错误' };
-  const dot = `<span class="c-tmon__dot c-tmon__dot--${status}" role="img" aria-label="状态：${LABEL[status] ?? status}"></span>`;
+  const st = TOKEN_STATUSES.includes(status) ? status : 'ok'; // 状态白名单：非法值回落默认
+  const dot = `<span class="c-tmon__dot c-tmon__dot--${st}" role="img" aria-label="状态：${LABEL[st]}"></span>`;
   const bars = trend.length
     ? `<span class="c-tmon__trend" role="img" aria-label="趋势">${trend
         .map((v) => `<i class="c-tmon__trend-bar" style="--tbar:${Math.max(0, Math.min(1, Number(v) || 0))}"></i>`)
         .join('')}</span>`
     : '';
-  return `<div class="c-tmon">${dot}<span class="c-tmon__value">${value}</span>${bars}</div>`;
+  return `<div class="c-tmon">${dot}<span class="c-tmon__value">${escapeHtml(value)}</span>${bars}</div>`;
 }
 
 export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}) {
