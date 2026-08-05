@@ -4,12 +4,32 @@
   padding: 0 var(--space-4); background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)); border-bottom: 1px solid var(--glass-border); }
 .topbar__brand { font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); }
+/* 窄屏折叠下拉（Task I4，规格 §10）：默认隐藏，≤900px 接管模块跳转（见下方媒体查询）。
+   类名 .topbar__nav-mobile 为展示页局部类 —— 不与组件 .c-select 等全局类冲突 */
+.topbar__nav-mobile { display: none; }
 .topbar__nav { display: flex; gap: var(--space-3); }
 .topbar__nav a { font-size: var(--font-size-sm); color: var(--text-2); text-decoration: none;
   padding: var(--space-1) var(--space-2);
   border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
 .topbar__nav a:hover { color: var(--text-1); background: var(--surface-hover); }
 .topbar__actions { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
+/* 窄屏自动折叠导航（规格 §10）：≤900px 侧栏 NavigationWheel 折叠为顶部下拉。
+   断点与 token-showcase.css 的 900px 同口径；≥900px 渲染零变化（基线不重生成）。
+   取舍：同时隐藏顶部 12 项快捷跳转（.topbar__nav 在 800px 已溢出），下拉 4 项
+   真实模块（NAV_CORE 去重）完整接管模块导航能力。 */
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .navwheel { display: none; }
+  .topbar__nav { display: none; }
+  .topbar__nav-mobile { display: block; height: 28px; padding: 0 var(--space-3);
+    font-size: var(--font-size-sm); color: var(--text-1);
+    background: var(--surface-1); border: 1px solid var(--glass-border);
+    border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .topbar__nav-mobile:hover { border-color: var(--text-3); }
+  .topbar__nav-mobile:focus { outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-100); }
+}
 .navwheel { position: relative; border-right: 1px solid var(--glass-border); overflow: hidden; }
 .navwheel__list { position: absolute; inset: 0 0 56px 0; overflow-y: auto; }
 .navwheel__settings { position: absolute; bottom: 0; left: 0; right: 0; height: 56px;

@@ -58,7 +58,7 @@ import { mountCustomizer, toggleCustomizer } from './demo/customizer-panel.js';
 import { mountClipboardFloat } from './scenes/clipboard-float/clipboard-float.js';
 import { mountMainWindow } from './scenes/main-window/main-window.js';
 import { mountSettingsWindow } from './scenes/settings-window/settings-window.js';
-import { getConfig, subscribe } from './config/store.js';
+import { getConfig, subscribe, onStorageError } from './config/store.js';
 import { applyConfig } from './config/apply.js';
 
 const NAV_CORE = [
@@ -76,6 +76,11 @@ app.innerHTML = `
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar__brand">UI Design System</div>
+      <!-- 窄屏折叠导航（Task I4，规格 §10）：≤900px 侧栏隐藏，顶部下拉接管模块跳转；
+           仅取去重后的 NAV_CORE（真实模块），CSS 控制 display，≥900px 不可见 -->
+      <select class="topbar__nav-mobile" aria-label="模块导航">
+        ${NAV_CORE.map(i => `<option value="${i.id}">${i.name}</option>`).join('')}
+      </select>
       <nav class="topbar__nav">${NAV_ITEMS.map(i => `<a href="#${i.id}">${i.name}</a>`).join('')}</nav>
       <div class="topbar__actions">
         <div class="topbar__theme" data-mount="theme-switcher"></div>
@@ -98,6 +103,11 @@ app.innerHTML = `
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
 
+// 存储降级提示（Task I4，规格 §13）：隐私模式下 localStorage 写失败 → 一次性 toast。
+// store 是纯配置层（只发事件），UI 接线在此 —— toast 不侵入配置层依赖。
+// 模块级防重复由 store 内 flag 保证（多次 saveConfig 只触发一次回调）。
+onStorageError(() => toast('隐私模式下配置仅在本次会话内生效，刷新后恢复默认', { variant: 'warning' }));
+
 // 主题定制器（Task 17）：body 级抽屉常驻挂载；顶栏「定制」按钮打开。
 // 令牌展示区玻璃卡的「定制器」链接经 .topbar__customizer.click() 委托到这里（token-showcase.js）。
 mountCustomizer(document.body);
@@ -113,12 +123,17 @@ subscribe((cfg) => {
 });
 
 // NavigationWheel：滑动选择导航（Task 11 + 12）—— 选中项在侧栏居中，主内容滚动到对应区块
+const navMobile = document.querySelector('.topbar__nav-mobile'); // 窄屏折叠下拉（Task I4）
 const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {
   items: NAV_ITEMS,
   onChange: (item) => {
+    if (navMobile) navMobile.value = item.id; // 宽屏操作后缩窗：下拉选中态跟随
     document.querySelector(`#${item.id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 });
+// 窄屏下拉选择 → wheel.setActive(id) 同步侧栏实例选中态（切回宽屏状态一致），
+// onChange 复用同一 scrollIntoView 跳转路径（setActive 触发 onChange）
+navMobile?.addEventListener('change', () => wheel.setActive(navMobile.value));
 
 // 全局热键（Task 13）：最小实现 —— document keydown 匹配已注册组合键
 // （如 Ctrl+K → 聚焦第一个 .c-search-bar input，由 search-bar mount 时注册）
