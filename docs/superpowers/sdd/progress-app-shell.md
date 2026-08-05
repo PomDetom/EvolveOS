@@ -76,15 +76,25 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - **评审修复（2026-08-06，已闭环）**：`5ed2071` `fix: 手机 dock 横滑浏览不再误触发页面推入` —— dock 点击处理器按位移阈值区分点按/拖拽（pointerdown 记录起点，click 阶段 `Math.hypot(...) > 10px` 视为横滑忽略，TAP_MAX_MOVE=10）；覆盖断言 +1（mobile-nav 用例 6 拖拽后断言 `.app-main__stack-page` 计数仍 1，先红后绿：RED 收到 2 元素 → GREEN 6/6）；验证：mobile-nav 6/6、全量 e2e 110（app-shell 14 + docs 84 + 36 基线零变化）、npm test 45、build 通过
 - **Minor 留收尾**：① dock 横滑不回写标题栏 ctx（钻取模型下由页面栈承担，有意设计）；② 手机设置外观分区每次进入设置新增一次 customizer store 订阅（线性增长无视觉影响）；③ 手机形态 Esc 切桌面右窗状态不同步（键盘极少触发）；④ 「边缘右滑回退」未实现（仅返回按钮 —— 规格 §11 非目标声明：边缘右滑用简单按钮 + 可选 touch 事件，返回按钮即「简单按钮」实现，待最终评审裁决）；⑤ 「目录横滑」歧义（app 目录页是纵向按钮列表 —— 最宽容读法：设置目录经设置页 tabs overflow-x:auto 横向化已满足）
 
+## Task A7: 基线收尾与合并指引
+
+- **状态**：完成（2026-08-06；合并 main 待最终评审后由控制器执行）
+- **提交**：`e4676c9` `docs: 应用壳收尾（基线 + README）`
+- **验证**：npm test 45/45；npm run test:e2e 116/116（110 + 6 新 app-main 视觉）；npm run test:visual 42/42；npm run build 通过；既有 36 张基线逐字节零变化（git 显示 0 个 png 被修改，仅 6 张 app-main-* 新增，两两互异）
+- **实现**：SHOTS 加 mode 维度 `[name, selector, mode='/']`（app-main 用 `/?mode=app`，其余 6 组 goto('/') 字节等价）；6 张 app-main 基线（data-motion=off + animations disabled 稳定化，单窗口态概览页）；README：形态表两→三形态（FloatStrip/手机形态升级为已实现）、目录注释、特性列表、基线数量 42
+- **简报/报告**：docs/superpowers/sdd/task-A7-brief.md / task-A7-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，2 Minor）
+- **Minor 留收尾**：① README「42 张基线」行是 A2 后预置、本 diff 未改（终态正确，可核实性备注）；② 概览页「当前主题/强调色」文案在 6 张 app-main 基线均为默认 light/indigo（A3 既有行为：仅文案层不随 data-theme 更新，CSS 配色随组合变化，6 张仍真实互异，纯装饰性）
+
 ## 执行状态
 
 - Task A1 双模式入口：✅ 完成（2026-08-05）
 - Task A2 NavigationWheel 参数化：✅ 完成（2026-08-05，基线重生成 18 张）
 - Task A3 应用壳骨架：✅ 完成（2026-08-05）
 - Task A4 设置模式：✅ 完成（2026-08-06）
-- Task A5 FloatStrip：待执行
-- Task A6 手机形态：待执行
-- Task A7 基线收尾 + 合并 main：待执行
+- Task A5 FloatStrip：✅ 完成（2026-08-06）
+- Task A6 手机形态：✅ 完成（2026-08-06）
+- Task A7 基线收尾 + 合并 main：✅ 基线/README 完成（2026-08-06）；合并 main 待最终评审
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
