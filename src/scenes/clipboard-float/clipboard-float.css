@@ -3,7 +3,11 @@
    随 #scenes 文档流呈现（同 Task 15 的 .csg-fwin-static 方案）。
    动画红线：stagger 进入只动 transform/opacity；悬停操作组只动 opacity。 */
 
-.cfloat { margin-bottom: var(--space-7); }
+.cfloat { margin-bottom: var(--space-7); --stagger-step: 30ms; }
+/* stagger 步进随动效关闭归零（评审 Minor 2，参考 Task 16 的 --stagger-step 方案）：
+   双通道 —— prefers-reduced-motion（motion.css 同款）与定制器动效总开关 data-motion="off" */
+@media (prefers-reduced-motion: reduce) { .cfloat { --stagger-step: 0ms; } }
+:root[data-motion="off"] .cfloat { --stagger-step: 0ms; }
 
 .cfloat__header { display: flex; align-items: baseline; flex-wrap: wrap;
   column-gap: var(--space-3); row-gap: var(--space-1); margin-bottom: var(--space-4); }
@@ -34,7 +38,10 @@
   border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
   transition: background var(--dur-fast) var(--ease-out);
   animation: item-in var(--dur-base) var(--ease-out) both;
-  animation-delay: calc(var(--i) * 30ms); }
+  animation-delay: calc(var(--i) * var(--stagger-step)); }
+/* 评审 Important 1：首渲染（进入动画播放一次）后容器挂 .cfloat--entered，
+   重渲染新建的列表项不再播动画 —— 搜索/固定/删除/清空不整列重放 */
+.cfloat--entered .cfloat__item { animation: none; }
 .cfloat__item:hover { background: var(--surface-hover); }
 /* 固定项：accent 浅底 + 图钉变色（cfloat__op--on），排列表头由 JS 稳定排序 */
 .cfloat__item--pinned { background: var(--accent-50); }

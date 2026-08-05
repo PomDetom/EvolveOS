@@ -84,7 +84,13 @@ export function mountClipboardFloat(root) {
   const pinnedEl = scene.querySelector('.cfloat__pinned');
   const fwin = scene.querySelector('.c-fwin');
 
+  // 评审 Important 1：首渲染后抑制 stagger 重放 —— 重渲染（搜索/固定/删除/清空）重建列表节点前
+  // 给容器加 .cfloat--entered（CSS animation: none），避免整列回退 opacity 0 再逐个淡入
+  // （搜索每敲一键闪一次）。首渲染不加类，进入动画只播一次。
+  let entered = false;
   const render = () => {
+    if (entered) listEl.classList.add('cfloat--entered');
+    entered = true;
     listEl.innerHTML = renderListBody(state.items, state.query);
     const pinnedCount = state.items.filter((it) => it.pinned).length;
     pinnedEl.innerHTML = state.items.length === 0 ? '' : `
