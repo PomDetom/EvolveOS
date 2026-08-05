@@ -2923,6 +2923,21 @@ git commit -m "docs: Tauri 接入指南 + README + 视觉回归基线"
 - **类型一致性**：`springCurve(strength)` / `scaledDurations(scale, enabled)`（Task 4 定义，Task 16/17 复用）；`findNearestIndex` 等几何函数签名（Task 11 定义，Task 12 复用）；`renderXxx` 全组件统一契约；`showcase(title, items)`（Task 6 定义，Task 15 复用）；`toast`/`openDialog` 全局暴露（Task 9 定义，Task 18 清空流程复用）。
 - **已知延迟项**：`cubicBezierY`（Task 11 Step 7 标注实现提示）；`window.__renderIcon` 测试桥（Task 15 移除）；accent 深色对比色（`--accent-contrast` 浅色主题深字/深色主题浅字 — themes.css 已按套定义）。
 
+## 后续计划项（用户确认，2026-08-05）
+
+### 计划项 A：色温滑杆映射（color.temperature 补视觉消费者）
+
+- **状态**：已列入计划，未执行
+- **背景**：定制器色彩组已有 `temperature` 滑杆（RANGES [-1, 1, 0.05]），但 apply.js/themes.css 无消费者 — 拖动无可见效果（Task 17 评审登记）
+- **目标**：`color.temperature`（-1 冷 → 1 暖）映射到中性色阶的冷暖偏移。参考实现方向：apply.js 写入 `--neutral-temperature`（-1 冷蓝灰 / 0 中性 / 1 暖米灰），themes.css 的 `--neutral-*` 改为基于色相微调的合成（或两套中性色板经变量切换，如 `--neutral-base-hue`）。需保持 6 套主题色 + 深浅主题 × 温度三态组合可读性
+- **验收**：拖动色温滑杆 → 色板卡/组件表面中性色明显变冷/变暖；单测覆盖映射函数；视觉基线默认态（0）不变
+- **参考**：色相滑杆实现（applyColorTint + hexToHsl + tintHsl 模式，提交 b97c4b0）可作为映射结构范本
+
+### 已确认的设计决策（记录）
+
+- 阴影默认强度：**接受半强度默认**（DEFAULTS.shadow=0.5 不变，合成公式 `calc(0.14 * var(--shadow-intensity, 0.5))`）
+- 色相滑杆：**已实现**（b97c4b0，见 HANDOFF.md「设计点决策记录」）
+
 ## 实施修订记录（Task 1-4 已执行，2026-08-04）
 
 以下为 Task 1-4 实际执行中的修正与评审发现，均已通过任务评审。后续任务以本文档为准。

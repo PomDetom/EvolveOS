@@ -31,3 +31,20 @@ test('重置恢复默认配置', async ({ page }) => {
     JSON.parse(localStorage.getItem('ui-design-config') ?? 'null'));
   expect(cfg).toBeNull(); // 重置 = 清除存储 + applyConfig(DEFAULTS)
 });
+
+test('色相滑杆实时覆盖 --accent 且重置后恢复', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.topbar__customizer').click();
+  const hue = page.locator('.cust-row:has-text("色相") input[type="range"]');
+  await hue.fill('200');
+  let accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+  expect(accent).toMatch(/^hsl\(200 /);
+  // 数值区显示自定义色相（非「跟随」）
+  await expect(page.locator('[data-out="hue"]')).toContainText('200°');
+  // 重置恢复跟随主题色（无覆盖）
+  await page.locator('.cust-reset').click();
+  accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+  expect(accent).not.toMatch(/^hsl\(200 /);
+});
