@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { applyConfig } from '../../src/config/apply.js';
+import { applyConfig, temperatureToHue } from '../../src/config/apply.js';
 import { DEFAULTS } from '../../src/config/defaults.js';
 
 describe('applyConfig', () => {
@@ -54,5 +54,20 @@ describe('applyConfig', () => {
     expect(root.style.getPropertyValue('--accent')).toBe('');
     applyConfig({ ...DEFAULTS, accent: 'teal', color: { hue: 120, saturation: 100, temperature: 0 } }, root);
     expect(root.style.getPropertyValue('--accent')).toBe('hsl(120 66% 50.4%)'); // #2dd4bf 基色 HSL
+  });
+  // —— 色温：中性色阶冷暖偏移 ——
+  it('temperatureToHue 端点与中点映射正确', () => {
+    expect(temperatureToHue(-1)).toBe(210); // 冷端：更冷偏蓝
+    expect(temperatureToHue(0)).toBe(235);  // 默认中性
+    expect(temperatureToHue(0.5)).toBe(138); // 235-97.5=137.5 → round 138
+    expect(temperatureToHue(1)).toBe(40);    // 暖端：暖橙灰
+  });
+  it('temperature 为 0（默认）时不写 --neutral-hue 覆盖', () => {
+    applyConfig(DEFAULTS, root);
+    expect(root.style.getPropertyValue('--neutral-hue')).toBe('');
+  });
+  it('temperature 0.5 写入 --neutral-hue: 138 覆盖', () => {
+    applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 100, temperature: 0.5 } }, root);
+    expect(root.style.getPropertyValue('--neutral-hue')).toBe('138');
   });
 });

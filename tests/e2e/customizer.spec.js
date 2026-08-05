@@ -48,3 +48,18 @@ test('色相滑杆实时覆盖 --accent 且重置后恢复', async ({ page }) =>
     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
   expect(accent).not.toMatch(/^hsl\(200 /);
 });
+
+test('色温滑杆映射 --neutral-hue 且重置后恢复默认冷调', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.topbar__customizer').click();
+  const temp = page.locator('.cust-row:has-text("色温") input[type="range"]');
+  await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
+  let hue = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
+  expect(hue).toBe('40');
+  // 重置后覆盖移除，回退 :root 默认 --neutral-hue: 235（基线态冷调）
+  await page.locator('.cust-reset').click();
+  hue = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
+  expect(hue).toBe('235');
+});

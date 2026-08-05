@@ -1,5 +1,5 @@
 import { springCurve, scaledDurations } from '../motion/spring.js';
-import { hexToHsl } from '../config/apply.js';
+import { hexToHsl, temperatureToHue } from '../config/apply.js';
 import { ACCENTS } from '../config/defaults.js';
 
 /** 色相/饱和度覆盖的 HSL（与 apply.js applyColorTint 公式一致） */
@@ -27,6 +27,9 @@ export function exportCss(cfg) {
   const tintLine = tint
     ? `  --accent: hsl(${tint.H} ${tint.S}% ${tint.L}%); /* 色彩微调覆盖（色相/饱和度） */`
     : `  --accent: var(--accent-500); /* 主题色全阶 --accent-50…950 见 themes.css */`;
+  const tempLine = cfg.color.temperature !== 0
+    ? `  --neutral-hue: ${temperatureToHue(cfg.color.temperature)}; /* 色温覆盖（中性色冷暖偏移） */`
+    : null;
   return `/* 由主题定制器导出 — ${new Date().toLocaleString('zh-CN')} */
 /* 定制参数层（玻璃/排版/圆角/动效/阴影）—— 粘贴到应用 :root */
 :root {
@@ -42,6 +45,7 @@ export function exportCss(cfg) {
   --ease-spring: ${springCurve(motion.springStrength)};
   --spring-strength: ${motion.springStrength};
 ${tintLine}
+${tempLine ?? ''}
 }
 
 /* 主题令牌（--text-* / --surface-* / --glass-* / 语义色）见 themes.css — 当前主题：${theme} */

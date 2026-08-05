@@ -1,9 +1,14 @@
 :root {
-  /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css） */
-  --neutral-50: #f7f8fa;  --neutral-100: #eef0f4;  --neutral-200: #e2e5eb;
-  --neutral-300: #cdd2db;  --neutral-400: #aab1bd;  --neutral-500: #8a92a1;
-  --neutral-600: #6b7280;  --neutral-700: #525a66;  --neutral-800: #3a4049;
-  --neutral-900: #262a31;  --neutral-950: #1a1d23;
+  /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css）。
+     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致；定制器色温滑杆（color.temperature）
+     经 apply.js 写 --neutral-hue 覆盖实现全局冷暖偏移。sat/light 由原 hex 逐级转换（视觉等效）。 */
+  --neutral-hue: 235;
+  --neutral-50: hsl(var(--neutral-hue) 23.1% 97.5%);  --neutral-100: hsl(var(--neutral-hue) 21.4% 94.5%);
+  --neutral-200: hsl(var(--neutral-hue) 18.4% 90.4%);  --neutral-300: hsl(var(--neutral-hue) 16.3% 83.1%);
+  --neutral-400: hsl(var(--neutral-hue) 12.6% 70.4%);  --neutral-500: hsl(var(--neutral-hue) 10.9% 58.6%);
+  --neutral-600: hsl(var(--neutral-hue) 8.9% 46.1%);  --neutral-700: hsl(var(--neutral-hue) 10.9% 36.1%);
+  --neutral-800: hsl(var(--neutral-hue) 11.5% 25.7%);  --neutral-900: hsl(var(--neutral-hue) 12.6% 17.1%);
+  --neutral-950: hsl(var(--neutral-hue) 14.8% 12%);
 
   /* 强调色占位：默认靛蓝（themes.css 的 data-accent 块覆盖） */
   --accent-50: #eef0ff;  --accent-100: #dfe3ff;  --accent-200: #c3caff;
