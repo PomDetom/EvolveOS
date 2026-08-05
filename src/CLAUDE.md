@@ -17,10 +17,11 @@
 
 ## 动画红线
 
-- 只用 `transform` + `opacity`（GPU 合成）；禁止动画 layout 属性。
+- 布局/几何属性的动画只用 `transform` + `opacity`（GPU 合成）；禁止动画 layout 属性（left/top/width/height/margin/padding）。
 - **模糊（backdrop-filter）永不动画**。
 - 超过 6 项同时动画必须 stagger。
 - 动效降级（reduced-motion / 动效关闭）时，时长与 animation-delay **一并归零**。
+- **paint-only 过渡豁免**：`background`/`border-color`/`box-shadow`/`color` 允许用于 hover/focus/active 等短暂状态切换的过渡（不做入场/离场动效主体）；完整口径见 `docs/CLAUDE.md`「动画红线口径」。
 
 ## 验证要求
 
