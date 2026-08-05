@@ -108,6 +108,8 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
     })();
   }
   list.addEventListener('pointerdown', (e) => {
+    // 只响应主键（左键 0）：右键/中键不进入拖拽/点击选择（Task 12 收尾守卫）
+    if (e.button !== 0) return;
     // 抓取/点击都打断惯性或待吸附，避免吸附跳到新位置
     cancelAnimationFrame(inertiaRaf);
     clearTimeout(snapTimer);
@@ -127,7 +129,7 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
     setFocal(); // 实时跟手变形
   });
   list.addEventListener('pointerup', (e) => {
-    if (e.pointerId !== pointerId) return;
+    if (e.pointerId !== pointerId || e.button !== 0) return;
     pointerId = null;
     // 位移 < 5px = 点击：指针捕获使原生 click 落在 list 上（target=list，找不到项），
     // 这里手动复刻「点项选中 + 居中」，与 Task 11 点击行为一致

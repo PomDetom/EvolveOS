@@ -211,10 +211,9 @@ export function mountMainWindow(root) {
   const nextBtn = scene.querySelector('.cmain__pager-next');
   const renderPager = () => {
     pagerLabel.textContent = `第 ${pageNo} / 3 页`;
+    // 禁用态由 disabled 属性承担（.c-btn:disabled 规则）—— c-btn--disabled 类无样式，不再 toggle
     prevBtn.disabled = pageNo === 1;
     nextBtn.disabled = pageNo === 3;
-    prevBtn.classList.toggle('c-btn--disabled', pageNo === 1);
-    nextBtn.classList.toggle('c-btn--disabled', pageNo === 3);
   };
   prevBtn.addEventListener('click', () => { pageNo = Math.max(1, pageNo - 1); renderPager(); });
   nextBtn.addEventListener('click', () => { pageNo = Math.min(3, pageNo + 1); renderPager(); });

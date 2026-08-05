@@ -27,10 +27,11 @@
 /* 上下无割裂：标题栏无底部边框（title-bar.css 契约），与内容共享玻璃背景 */
 
 /* 导航列：grid cell 需 min-height:0（.c-navwheel__list 绝对定位 inset 依赖父容器高度）；
-   .c-navwheel 固定 480px —— 与 grid 行高一致，规避 1fr 高度解析不确定性（同主页兜底方案） */
+   .c-navwheel 用 height:100% 跟随 grid cell 实际高度（520 - 2 边框 - 40 标题栏 = 478px，
+   组件类默认同此值）—— 固定 480px 会溢出 2px、裁切列表底缘（Task 20 收尾修复） */
 .csettings__nav { position: relative; grid-column: 1; grid-row: 2; min-height: 0;
   border-right: 1px solid var(--glass-border); overflow: hidden; }
-.csettings__nav .c-navwheel { height: 480px; }
+.csettings__nav .c-navwheel { height: 100%; }
 
 /* 返回入口：场景局部类 .csettings__back —— 不复用 .c-navwheel__settings（该全局类被
    nav-wheel.spec.js 假设唯一，场景内再挂一个实例会触发 strict mode 冲突）。

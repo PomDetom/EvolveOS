@@ -285,6 +285,9 @@ export function renderCustomizerGroups(container) {
 
   // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）
   subscribe((next) => syncUI(container, next));
+  // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
+  // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
+  syncUI(container, cfg);
   return container;
 }
 

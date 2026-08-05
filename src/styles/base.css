@@ -21,5 +21,5 @@ input, textarea, select { font: inherit; color: inherit; }
   box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
 }
 
-/* 焦点环（所有可聚焦元素） */
-:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
+/* 焦点环（所有可聚焦元素）—— 用 --accent 而非固定档，切换 6 套主题色后焦点环跟随 */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

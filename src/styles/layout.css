@@ -6,7 +6,8 @@
 .topbar__brand { font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); }
 .topbar__nav { display: flex; gap: var(--space-3); }
 .topbar__nav a { font-size: var(--font-size-sm); color: var(--text-2); text-decoration: none;
-  padding: 4px 8px; border-radius: var(--radius-sm); }
+  padding: var(--space-1) var(--space-2);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
 .topbar__nav a:hover { color: var(--text-1); background: var(--surface-hover); }
 .topbar__actions { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
 .navwheel { position: relative; border-right: 1px solid var(--glass-border); overflow: hidden; }
