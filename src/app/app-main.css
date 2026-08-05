@@ -93,3 +93,18 @@
   font-size: var(--font-size-sm); color: var(--text-2); }
 .app-main__theme-swatch { width: 14px; height: 14px; border-radius: 50%;
   background: var(--accent-500); }
+
+/* —— 标题栏 ⚙ 设置按钮（Task A4，app 模式唯一实例）——
+   基础尺寸随 .c-titlebar__control（44px）；激活态仅 paint（color/background，豁免过渡） */
+.app-main .c-titlebar__control--settings.app-main__settings-toggle--active {
+  color: var(--accent);
+  background: var(--surface-hover);
+}
+
+/* —— 设置模式内容区（Task A4：复用 settings-window 页面栈）——
+   壳内非 820×520 场景网格：页面栈随内容区滚动（.app-main__pages overflow-y:auto），
+   覆盖场景专用尺寸（height:100% / overflow:hidden / 内边距 —— 内边距由内容区 space-6 承担）；
+   切页动画沿用壳的 app-main-page-in（120ms，只动 transform/opacity，红线） */
+.app-main__settings.csettings__pages { overflow: visible; }
+.app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
+.app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }

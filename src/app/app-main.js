@@ -1,5 +1,8 @@
-// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
+// 应用壳（Task A3 骨架 + Task A4 设置模式，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文。
 // 模式状态机：单窗口态（右窗收起，内容区 = 左窗选中应用首屏）/ 双窗口态（右窗展开，右窗驱动内容区）。
+//   rightMode: 'apps'（右窗 = 应用内目录，内容区 = 模块页）/ 'settings'（右窗 = 设置目录 8 分区，
+//   内容区 = 设置页）。⚙ 进入设置模式（激活高亮）；再次点击/返回/Esc/左窗已选中项 = 退出回应用模式。
+// 设置页与场景模板共享 settings-pages.js 实现（类名 .csettings__* 不变，外观分区定制器首次激活惰性挂载）。
 // 左窗/右窗均为 NavigationWheel 实例（纯 icon，38.2% 黄金比例锚点；名称由标题栏上下文承担，
 // 栏内 name 经 app-main.css 隐藏，nav-wheel 组件零改动、docs 行为不变）。
 // MODULES 扩展契约：应用注册 = 模块项（左窗 icon）+ 目录项（右窗 icon）+ 页面渲染函数（内容区）。
@@ -10,6 +13,8 @@ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar
 import { renderEmptyState } from '../components/empty-state/empty-state.js';
 import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
 import { bindWindowControls } from '../demo/window-controls.js';
+import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import './app-main.css';
 
 // —— MODULES 扩展契约 ——
@@ -70,9 +75,10 @@ const MODULES = [
 ];
 
 export function mountAppMode(root) {
+  const settingsPagesHtml = renderSettingsPages();
   root.innerHTML = `
   <div class="app-main">
-    ${renderTitleBar({ title: '概览', iconName: 'box' })}
+    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
     <div class="app-main__nav-l">
       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
     </div>
@@ -82,6 +88,9 @@ export function mountAppMode(root) {
     </div>
     <main class="app-main__pages">
       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
+      <section class="app-main__page" data-page="settings">
+        <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
+      </section>
     </main>
   </div>`;
 
@@ -89,6 +98,7 @@ export function mountAppMode(root) {
   const ctx = root.querySelector('.c-titlebar__title');
   ctx.classList.add('app-main__ctx');
   ctx.setAttribute('data-ctx', '');
+  const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
   const navRRoot = root.querySelector('.app-main__nav-r');
   const navRBody = root.querySelector('.app-main__nav-r-body');
@@ -96,7 +106,8 @@ export function mountAppMode(root) {
   const pages = [...pagesEl.children];
 
   // —— 会话内纯 UI 态（不进配置存储）——
-  const state = { moduleId: 'home', dirId: null, rightOpen: false };
+  // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
+  const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
 
   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
   const leftWheel = mountNavWheel(navL, {
@@ -111,8 +122,18 @@ export function mountAppMode(root) {
     return { module: mod, dirId, dirName: mod.dir.find((d) => d.id === dirId)?.name ?? null };
   }
 
-  // —— 右窗：应用目录轮（按 active 模块重建；概览无目录 → 空提示）——
+  // —— 右窗：按 rightMode 渲染应用目录轮 / 设置目录轮（纯 icon，38.2% 锚点）——
   function renderRight() {
+    if (state.rightMode === 'settings') {
+      navRBody.innerHTML = `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`;
+      const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
+        items: SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
+        onChange: (item) => setSettingsSection(item.id),
+        anchorRatio: 0.382,
+      });
+      wheel.setActive(state.settingsId); // 保持上次选中的设置分区
+      return wheel;
+    }
     const mod = MODULES.find((m) => m.id === state.moduleId);
     navRBody.innerHTML = mod.dir.length
       ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
@@ -127,16 +148,48 @@ export function mountAppMode(root) {
     return wheel;
   }
 
-  // —— 内容区：唯一 active 页（data-page 对应模块），切换/目录项变化重渲染 ——
+  // —— 内容区：唯一 active 页（data-page 对应模块；设置模式 = settings 页）——
   function renderPages() {
+    if (state.rightMode === 'settings') {
+      pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === 'settings'));
+      setSettingsPageActive();
+      return;
+    }
     const mod = MODULES.find((m) => m.id === state.moduleId);
     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
     const page = pages.find((p) => p.dataset.page === state.moduleId);
     page.innerHTML = mod.render(modCtx(mod));
   }
 
-  // —— 标题栏上下文「应用名 › 页面名」（单窗口态只应用名）——
+  // —— 设置页分区切换：唯一 active 页 + 外观分区定制器首次激活惰性挂载（与场景同构，
+  //   类名 .csettings__* 不变；.cust-group 只在 app 模式出现，docs 互斥不并存）——
+  let custMounted = false;
+  function setSettingsPageActive() {
+    const sec = pages.find((p) => p.dataset.page === 'settings');
+    sec.querySelectorAll('.csettings__page').forEach((p) =>
+      p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
+    if (state.settingsId === 'appearance' && !custMounted) {
+      renderCustomizerGroups(sec.querySelector('[data-page="appearance"] .csettings__cust'));
+      custMounted = true;
+    }
+  }
+
+  function setSettingsSection(id) {
+    if (id === state.settingsId) return;
+    state.settingsId = id;
+    setSettingsPageActive();
+    updateCtx();
+  }
+
+  // —— 标题栏上下文「应用名 › 页面名」/「设置 › 分区」（单窗口态只应用名）——
   function updateCtx() {
+    if (state.rightMode === 'settings') {
+      const s = SECTIONS.find((x) => x.id === state.settingsId);
+      ctx.textContent = `设置 › ${s.name}`;
+      ctx.dataset.module = 'settings';
+      ctx.dataset.page = state.settingsId;
+      return;
+    }
     const mod = MODULES.find((m) => m.id === state.moduleId);
     ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
       ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
@@ -148,16 +201,19 @@ export function mountAppMode(root) {
   function applyRightOpen() {
     appMain.classList.toggle('app-main--dual', state.rightOpen);
     navRRoot.setAttribute('aria-hidden', String(!state.rightOpen));
+    settingsBtn.classList.toggle('app-main__settings-toggle--active', state.rightMode === 'settings');
     updateCtx();
   }
 
   // —— 级联联动 ——
-  // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）
+  // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）；
+  // 若当前处于设置模式则一并切回应用模式（左栏应用恒可选中，规格 §5）
   function setModule(id) {
     if (id === state.moduleId) return;
     state.moduleId = id;
     const mod = MODULES.find((m) => m.id === id);
     state.dirId = mod.dir.length ? mod.dir[0].id : null;
+    state.rightMode = 'apps';
     state.rightOpen = mod.dir.length > 0;
     renderRight();
     renderPages();
@@ -172,6 +228,29 @@ export function mountAppMode(root) {
     updateCtx();
   }
 
+  // —— 设置模式（⚙）：进入 = 右窗切为设置目录（内容区设置页）；再次点击/收起 = 退出回应用模式 ——
+  function setSettingsMode() {
+    if (state.rightMode === 'settings') return;
+    state.rightMode = 'settings';
+    state.rightOpen = true;
+    renderRight();
+    renderPages();
+    applyRightOpen();
+  }
+
+  function exitSettingsMode() {
+    if (state.rightMode !== 'settings') return;
+    state.rightMode = 'apps';
+    state.rightOpen = false;
+    renderPages(); // 内容区回到左窗选中应用页
+    applyRightOpen();
+  }
+
+  function toggleSettings() {
+    if (state.rightMode === 'settings') exitSettingsMode();
+    else setSettingsMode();
+  }
+
   // 左窗 onChange：选中新应用 → setModule。已选中项的重复 onChange（用户点击 / scroll-snap 对
   // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
@@ -179,10 +258,15 @@ export function mountAppMode(root) {
     if (id !== state.moduleId) setModule(id);
   }
 
-  // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）
+  // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）。设置模式收起 = 退出设置模式
   function collapseRight() {
     if (!state.rightOpen) return;
+    const wasSettings = state.rightMode === 'settings';
     state.rightOpen = false;
+    if (wasSettings) {
+      state.rightMode = 'apps';
+      renderPages();
+    }
     applyRightOpen();
   }
 
@@ -194,6 +278,7 @@ export function mountAppMode(root) {
   }
 
   // —— 事件 ——
+  settingsBtn.addEventListener('click', toggleSettings);
   navRRoot.querySelector('.app-main__nav-r-back').addEventListener('click', collapseRight);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseRight(); });
   pagesEl.addEventListener('click', (e) => {
@@ -212,6 +297,8 @@ export function mountAppMode(root) {
     const wasActive = downWasActive;
     downWasActive = false;
     if (wasActive) {
+      // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
+      if (state.rightMode === 'settings') { exitSettingsMode(); return; }
       const mod = MODULES.find((m) => m.id === state.moduleId);
       if (mod.dir.length) {
         state.rightOpen = !state.rightOpen;
@@ -220,11 +307,16 @@ export function mountAppMode(root) {
     }
   });
 
+  // 设置页交互接线（主题三态/动效/保存/快捷键/开源链接/开关，与场景模板共用 settings-pages）
+  mountSettingsInteractions(pages.find((p) => p.dataset.page === 'settings'));
+
   mountTitleBar(appMain);
   bindWindowControls();
 
-  // —— 初始渲染：全部 7 页 + 激活概览页 + 右窗收起（单窗口态）——
+  // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
+  //   设置页（第 8 区）已随模板渲染，此处跳过 ——
   pages.forEach((page) => {
+    if (page.dataset.page === 'settings') return;
     const mod = MODULES.find((m) => m.id === page.dataset.page);
     page.innerHTML = mod.render(modCtx(mod));
   });

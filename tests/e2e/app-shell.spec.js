@@ -118,3 +118,74 @@ test('概览页结构：欢迎卡 + 7 快捷入口 + 主题状态卡', async ({ 
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'clipboard');
 });
+
+// —— 设置模式（Task A4：⚙ 按钮 + 右窗设置目录 + 设置页共享）——
+
+test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活高亮', async ({ page }) => {
+  await page.goto(APP_URL);
+  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+  await expect(settingsBtn).toHaveCount(1);
+  // 初始未激活
+  await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
+  // 点击 ⚙ → 右窗展开 + 8 项设置目录 + 内容区显示通用设置页
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  const active = page.locator('.app-main__page--active');
+  await expect(active).toHaveAttribute('data-page', 'settings');
+  await expect(active).toContainText('通用');
+  // ⚙ 激活态高亮
+  await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
+});
+
+test('设置模式：选择「外观」→ 内容区设置页含 cust-group 6', async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+  const settings = page.locator('.app-main__page[data-page="settings"]');
+  await expect(settings.locator('.cust-group')).toHaveCount(6);
+  await expect(settings).toContainText('外观');
+});
+
+test('设置模式：再次点击 ⚙ 收起右窗（toggle）+ 取消激活', async ({ page }) => {
+  await page.goto(APP_URL);
+  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
+  // 再次点击 → 收起（toggle）
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeHidden();
+  await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
+});
+
+test('设置模式：左栏应用仍可选（点应用切回应用模式）', async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+  const active = page.locator('.app-main__page--active');
+  await expect(active).toHaveAttribute('data-page', 'clipboard');
+  await expect(active).toContainText('剪贴板');
+  await expect(page.locator('.app-main .c-titlebar__control--settings')).not.toHaveClass(/settings-toggle--active/);
+});
+
+test('设置模式：标题栏上下文「设置 › 分区」联动', async ({ page }) => {
+  await page.goto(APP_URL);
+  const ctx = page.locator('.app-main [data-ctx]');
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await expect(ctx).toHaveText('设置 › 通用');
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+  await expect(ctx).toHaveText('设置 › 外观');
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="about"]').click();
+  await expect(ctx).toHaveText('设置 › 关于');
+});
