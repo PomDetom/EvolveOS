@@ -1,20 +1,23 @@
 import { test, expect } from '@playwright/test';
 
-// 视觉回归（Task 21）：深/浅 × 3 accent 对 3 个内容区 + 3 个场景模板截图。
+// 视觉回归（Task 21 + Task A7）：深/浅 × 3 accent 对 3 个内容区 + 3 个场景模板 + 应用壳截图。
 // 稳定性：Windows GPU 文字抗锯齿跨实例抖动会让 toHaveScreenshot 偶发失败，
 // 已在 playwright.config.js 强制 --use-angle=swiftshader 软件栅格化（像素级确定性）。
 // 基线须在相同参数下生成（--update-snapshots）。
 // 首次运行生成基线：npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots
 // 之后 npm run test:visual 对比基线；界面有意变更（含新组件/令牌）后需重新生成。
 // accent 抽样取 3 套（默认靛蓝 + 暖色琥珀 + 冷色翡翠）覆盖色相两端，基线不膨胀。
+// SHOTS 第三字段 mode = 页面入口：docs 6 组固定 '/'；app-main 走 '?mode=app'（应用壳，
+// 右窗默认收起单窗口态，无入场相位 —— 截图稳定性与 docs 组一致，沿用 data-motion=off + animations disabled）。
 
 const SHOTS = [
-  ['tokens', '#tokens'],
-  ['components', '#components'],
-  ['scenes', '#scenes'],
-  ['main-window', '.cmain'],
-  ['settings-window', '.csettings'],
-  ['clipboard', '.cfloat'],
+  ['tokens', '#tokens', '/'],
+  ['components', '#components', '/'],
+  ['scenes', '#scenes', '/'],
+  ['main-window', '.cmain', '/'],
+  ['settings-window', '.csettings', '/'],
+  ['clipboard', '.cfloat', '/'],
+  ['app-main', '.app-main', '/?mode=app'],
 ];
 
 const THEMES = ['light', 'dark'];
@@ -22,11 +25,11 @@ const ACCENTS = ['indigo', 'amber', 'emerald'];
 // 最长入场动效：剪贴板列表 stagger（30ms × 8 + 200ms = 440ms），留余量
 const SETTLE_MS = 600;
 
-for (const [name, selector] of SHOTS) {
+for (const [name, selector, mode = '/'] of SHOTS) {
   for (const theme of THEMES) {
     for (const accent of ACCENTS) {
       test(`视觉回归 — ${name} · ${theme} / ${accent}`, async ({ page }) => {
-        await page.goto('/');
+        await page.goto(mode);
         await page.evaluate(([t, a]) => {
           document.documentElement.dataset.theme = t;
           document.documentElement.dataset.accent = a;
