@@ -24,3 +24,8 @@
 .csg-fwin .c-fwin { right: 24px; bottom: 24px; }
 .csg-fwin__balls { display: flex; gap: var(--space-3); align-items: center;
   margin-top: var(--space-3); }
+
+/* FloatingWindow 静态变体（置顶/折叠态）：fixed 组件局部覆盖为 relative，
+   随网格流式展示 —— 与右下角交互实例的 fixed 定位互不干扰 */
+.csg-fwin-static { position: relative; }
+.csg-fwin-static .c-fwin { position: relative; }

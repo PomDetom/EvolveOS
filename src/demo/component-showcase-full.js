@@ -297,7 +297,19 @@ export function mountComponentsShowcase(root) {
     { label: '点击录制', html: renderHotkeyRecorder({ placeholder: '点击设置快捷键' }) },
     { label: '已有组合键', html: renderHotkeyRecorder({ value: ['Ctrl', 'Alt', 'C'] }) },
   ]);
-  root.appendChild(group('悬浮窗专属', 'layout', searchBox, hintBox, ballBox, recBox));
+  // FloatingWindow 静态变体（置顶/折叠态展示）：fixed 组件经局部覆盖为 relative，
+  // 随网格流式布局 —— 与右下角交互实例的 fixed 定位互不干扰（纯展示，不挂载交互）
+  const fwinStaticBox = showcase('悬浮窗 FloatingWindow（静态变体）', [
+    { label: '置顶态（accent 高亮描边）', wide: true, html: `<div class="csg-fwin-static">${renderFloatingWindow({
+      title: '剪贴板悬浮窗',
+      body: '<div class="demo-tab-content"><span>置顶后窗口固定于屏幕之上，高亮描边提示状态。</span></div>',
+    })}</div>` },
+    { label: '折叠态（正文收起）', wide: true, html: `<div class="csg-fwin-static">${renderFloatingWindow({
+      title: '剪贴板悬浮窗',
+      body: '<div class="demo-tab-content"><span>折叠后正文收起（scaleY 0 + opacity 0），仅保留标题栏。</span></div>',
+    })}</div>` },
+  ]);
+  root.appendChild(group('悬浮窗专属', 'layout', searchBox, hintBox, ballBox, recBox, fwinStaticBox));
 
   mountSearchBar(searchBox);
   ballBox.querySelectorAll('.c-float-ball').forEach((ball) => {
@@ -306,6 +318,13 @@ export function mountComponentsShowcase(root) {
   recBox.querySelectorAll('.c-hotkey-recorder').forEach((rec) => {
     mountHotkeyRecorder(rec, { onChange: (keys) => toast(`已设置快捷键 ${keys.join(' + ')}`) });
   });
+  // 静态变体状态类：置顶（accent 描边 + 按钮点亮）/ 折叠（正文收起）—— 纯展示，不挂载交互
+  const [fwinStaticWin1, fwinStaticWin2] = fwinStaticBox.querySelectorAll('.c-fwin');
+  if (fwinStaticWin1) {
+    fwinStaticWin1.classList.add('c-fwin--pinned');
+    fwinStaticWin1.querySelector('.c-fwin__pin')?.classList.add('c-fwin__btn--on');
+  }
+  if (fwinStaticWin2) fwinStaticWin2.classList.add('c-fwin--folded');
 
   // 可交互实例（#components 底部）：FloatingWindow 悬浮于视口右下角 —— 组件本义为
   // fixed 浮层，若留在滚动内容内，其「静态位」落在内容深处（fixed 不随滚动），
