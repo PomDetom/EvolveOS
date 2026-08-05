@@ -28,6 +28,7 @@ import './components/context-menu/context-menu.css';
 import './components/tab/tab.css';
 import './components/breadcrumb/breadcrumb.css';
 import './components/title-bar/title-bar.css';
+import './components/navigation-wheel/nav-wheel.css';
 import { icon } from './components/icon/icon.js';
 import { renderButton } from './components/button/button.js';
 import { renderInput } from './components/input/input.js';
@@ -53,6 +54,7 @@ import { mountContextMenu } from './components/context-menu/context-menu.js';
 import { renderTabs, mountTabs } from './components/tab/tab.js';
 import { renderBreadcrumb } from './components/breadcrumb/breadcrumb.js';
 import { renderTitleBar, mountTitleBar } from './components/title-bar/title-bar.js';
+import { mountNavWheel } from './components/navigation-wheel/nav-wheel.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
@@ -94,6 +96,14 @@ app.innerHTML = `
 
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+
+// NavigationWheel：滑动选择导航（Task 11）—— 选中项在侧栏居中，主内容滚动到对应区块
+const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {
+  items: NAV_ITEMS,
+  onChange: (item) => {
+    document.querySelector(`#${item.id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+});
 
 // TitleBar 演示：独立展示区（body 顶部，尺寸与场景模板一致便于评审）
 const titlebarDemo = document.createElement('div');

@@ -1,0 +1,54 @@
+/* NavigationWheel —— 「滑动选择」核心组件（Task 11 A 部分）
+   几何约定：--navwheel-item-h(52px) + --navwheel-gap(12px)，与 nav-wheel-geometry.js 一致 */
+:root {
+  --navwheel-item-h: 52px;
+  --navwheel-gap: 12px;
+}
+
+.c-navwheel { position: relative; height: 100%; }
+
+/* 容器：绝对定位铺满（骨架 inset 已存在，此处补齐滚动/遮罩规格）。
+   padding 首尾 50% 仅为无 JS 占位回退 —— CSS % 相对宽度、无法等于视口高度一半，
+   精确值由 mountNavWheel 按实测视口高度覆盖（否则首尾项无法滚到中央） */
+.navwheel__list,
+.c-navwheel__list {
+  position: absolute; inset: 0 0 56px 0; overflow-y: auto;
+  /* flex 列：flex 项外边距不折叠，项间间距严格 = --navwheel-gap（12px = 6+6），与几何算法一致 */
+  display: flex; flex-direction: column;
+  scrollbar-width: none;
+  padding: calc(50% - 26px) 0 50% 0;
+}
+.navwheel__list::-webkit-scrollbar,
+.c-navwheel__list::-webkit-scrollbar { display: none; }
+
+.c-navwheel__item { position: relative; height: var(--navwheel-item-h);
+  margin: calc(var(--navwheel-gap) / 2) 12px;
+  /* flex-shrink: 0 —— 滚动容器高度固定，默认 flex-shrink 会把项压缩到最小内容高 */
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  cursor: pointer; will-change: transform, opacity;
+  transition: color var(--dur-fast) var(--ease-out); }
+.c-navwheel__item:hover { color: var(--text-1); }
+.c-navwheel__item--active { color: var(--accent); }
+
+.c-navwheel__glow { position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(120% 120% at 50% 50%, var(--accent-100) 0%, transparent 70%);
+  opacity: 0; pointer-events: none; }
+.c-navwheel__item--active .c-navwheel__glow { opacity: 1; }
+
+.c-navwheel__icon { display: grid; place-items: center; color: var(--text-3); }
+.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); }
+
+/* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
+.c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
+  clip-path: inset(0 100% 0 0); opacity: 0;
+  transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
+.c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
+
+/* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
+.c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;
+  pointer-events: none;
+  background: linear-gradient(var(--glass-bg), transparent); }
+.c-navwheel__mask--bottom { top: auto; bottom: 56px;
+  background: linear-gradient(transparent, var(--glass-bg)); }
