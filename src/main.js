@@ -29,6 +29,11 @@ import './components/tab/tab.css';
 import './components/breadcrumb/breadcrumb.css';
 import './components/title-bar/title-bar.css';
 import './components/navigation-wheel/nav-wheel.css';
+import './components/floating-window/floating-window.css';
+import './components/search-bar/search-bar.css';
+import './components/hotkey-hint/hotkey-hint.css';
+import './components/float-ball/float-ball.css';
+import './components/hotkey-recorder/hotkey-recorder.css';
 import { icon } from './components/icon/icon.js';
 import { renderButton } from './components/button/button.js';
 import { renderInput } from './components/input/input.js';
@@ -55,6 +60,11 @@ import { renderTabs, mountTabs } from './components/tab/tab.js';
 import { renderBreadcrumb } from './components/breadcrumb/breadcrumb.js';
 import { renderTitleBar, mountTitleBar } from './components/title-bar/title-bar.js';
 import { mountNavWheel } from './components/navigation-wheel/nav-wheel.js';
+import { renderFloatingWindow, mountFloatingWindow } from './components/floating-window/floating-window.js';
+import { renderSearchBar, mountSearchBar } from './components/search-bar/search-bar.js';
+import { renderHotkeyHint } from './components/hotkey-hint/hotkey-hint.js';
+import { renderFloatBall, mountFloatBall } from './components/float-ball/float-ball.js';
+import { renderHotkeyRecorder, mountHotkeyRecorder } from './components/hotkey-recorder/hotkey-recorder.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
@@ -105,6 +115,26 @@ const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {
   },
 });
 
+// 全局热键（Task 13）：最小实现 —— document keydown 匹配已注册组合键
+// （如 Ctrl+K → 聚焦第一个 .c-search-bar input，由 search-bar mount 时注册）
+const __hotkeyHandlers = new Map();
+window.__bindHotkey = (keys, cb) => { __hotkeyHandlers.set(keys.join('+'), cb); };
+const matchHotkey = (e, sig) => {
+  const parts = sig.split('+');
+  const main = parts.find((p) => !['Ctrl', 'Alt', 'Shift', 'Meta'].includes(p));
+  return parts.includes('Ctrl') === e.ctrlKey
+    && parts.includes('Alt') === e.altKey
+    && parts.includes('Shift') === e.shiftKey
+    && parts.includes('Meta') === e.metaKey
+    && !!main && e.key.toLowerCase() === main.toLowerCase();
+};
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  for (const [sig, cb] of __hotkeyHandlers) {
+    if (matchHotkey(e, sig)) { e.preventDefault(); cb(); return; }
+  }
+});
+
 // 设置入口（Task 12）：左下角按钮填图标 + 「设置」，点击滚动到设置页场景模板（#scenes）
 const settingsEntry = document.querySelector('.c-navwheel__settings');
 settingsEntry.innerHTML = `${icon('settings', 20)}<span>设置</span>`;
@@ -121,6 +151,18 @@ titlebarDemo.style.margin = '0 auto'; titlebarDemo.style.marginTop = 'var(--spac
 titlebarDemo.innerHTML = renderTitleBar({ title: '剪贴板', iconName: 'clipboard' }) + '<div style="height:120px" class="glass"></div>';
 document.body.prepend(titlebarDemo);
 mountTitleBar(titlebarDemo);
+
+// FloatingWindow 演示：body 顶部独立展示区（position:fixed 组件不进可滚动网格，
+// 与 TitleBar 同策略）。body 内组合 SearchBar —— 拖动/置顶/折叠/搜索全部可交互。
+const fwinDemo = document.createElement('div');
+fwinDemo.style.width = '360px'; fwinDemo.style.margin = 'var(--space-5) auto 0';
+fwinDemo.innerHTML = renderFloatingWindow({
+  title: '剪贴板悬浮窗',
+  body: renderSearchBar({ placeholder: '搜索剪贴板内容…', hotkey: ['Ctrl', 'K'] }),
+});
+document.body.prepend(fwinDemo);
+mountFloatingWindow(fwinDemo);
+mountSearchBar(fwinDemo);
 
 // 组件展示区初始渲染（Task 15 起替换为完整矩阵）
 const componentsSection = document.querySelector('#components');
@@ -261,6 +303,34 @@ toastBox.querySelectorAll('[data-toast]').forEach((btn) => {
     const msgs = { success: '操作成功', warning: '请注意', danger: '操作失败', info: '新消息提醒' };
     toast(msgs[variant], { variant });
   });
+});
+
+const searchBox = showcase('搜索栏 SearchBar（Ctrl+K 聚焦）', [
+  { label: '搜索剪贴板', html: renderSearchBar({ placeholder: '搜索内容…', hotkey: ['Ctrl', 'K'] }) },
+  { label: '搜索设置', html: renderSearchBar({ placeholder: '搜索设置项…', hotkey: ['Ctrl', 'K'] }) },
+]);
+componentsSection.appendChild(searchBox);
+mountSearchBar(searchBox);
+componentsSection.appendChild(showcase('快捷键提示 HotkeyHint', [
+  { label: '双键组合', html: renderHotkeyHint(['Ctrl', 'K']) },
+  { label: '三键组合', html: renderHotkeyHint(['Ctrl', 'Shift', 'V']) },
+  { label: '单键', html: renderHotkeyHint(['F2']) },
+]));
+const ballBox = showcase('悬浮球 FloatBall', [
+  { label: '剪贴板', html: renderFloatBall({ iconName: 'clipboard', tooltip: '打开剪贴板' }) },
+  { label: '设置', html: renderFloatBall({ iconName: 'settings', tooltip: '打开设置' }) },
+]);
+componentsSection.appendChild(ballBox);
+ballBox.querySelectorAll('.c-float-ball').forEach((ball) => {
+  mountFloatBall(ball, { onExpand: () => toast('展开面板（场景模板演示）') });
+});
+const recBox = showcase('快捷键录制 HotkeyRecorder', [
+  { label: '点击录制', html: renderHotkeyRecorder({ placeholder: '点击设置快捷键' }) },
+  { label: '已有组合键', html: renderHotkeyRecorder({ value: ['Ctrl', 'Alt', 'C'] }) },
+]);
+componentsSection.appendChild(recBox);
+recBox.querySelectorAll('.c-hotkey-recorder').forEach((rec) => {
+  mountHotkeyRecorder(rec, { onChange: (keys) => toast(`已设置快捷键 ${keys.join(' + ')}`) });
 });
 
 // 测试桥：Task 15 组件展示区上线后移除（components-basic.spec.js 依赖）

@@ -32,5 +32,6 @@ test('表单组件结构完整', async ({ page }) => {
   await expect(page.locator('#components .c-select')).toHaveCount(1);
   await expect(page.locator('#components .c-checkbox')).toHaveCount(1);
   await expect(page.locator('#components .c-radio')).toHaveCount(1);
-  await expect(page.locator('#components .c-kbd')).toHaveCount(1);
+  // Task 13 起 kbd 被 SearchBar/HotkeyHint/HotkeyRecorder 组合复用，断言存在即可
+  expect(await page.locator('#components .c-kbd').count()).toBeGreaterThanOrEqual(1);
 });

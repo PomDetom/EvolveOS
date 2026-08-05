@@ -1,0 +1,2 @@
+.c-hotkey-hint { display: inline-flex; align-items: center; gap: 2px;
+  font-size: 0; /* 尺寸由内部 kbd 决定 */ }

@@ -1,0 +1,31 @@
+.c-fwin { position: fixed; z-index: var(--z-float); width: 360px;
+  border-radius: calc(var(--radius-xl) * var(--radius-scale, 1));
+  overflow: hidden; border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+  will-change: transform; }
+/* 置顶：accent 高亮边框（0 0 0 1px 描边，不改布局） */
+.c-fwin--pinned { box-shadow: 0 0 0 1px var(--accent-300), var(--glass-shadow),
+  var(--shadow-inset-highlight); }
+
+.c-fwin__titlebar { display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); cursor: grab; user-select: none;
+  border-bottom: 1px solid var(--glass-border); }
+.c-fwin__titlebar:active { cursor: grabbing; }
+.c-fwin__title { flex: 1; font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium); color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-fwin__btn { width: 24px; height: 24px; flex: none; display: grid;
+  place-items: center; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  color: var(--text-3); transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out); }
+.c-fwin__btn:hover { background: var(--surface-hover); color: var(--text-1); }
+.c-fwin__pin.c-fwin__btn--on { color: var(--accent); }
+
+.c-fwin__body { padding: var(--space-4); transform-origin: top center;
+  transition: transform var(--dur-base) var(--ease-spring),
+    opacity var(--dur-base) var(--ease-out); }
+/* 折叠：scaleY 塌缩 + 淡出（transform-origin top，不触发 layout） */
+.c-fwin--folded .c-fwin__body { transform: scaleY(0); opacity: 0; }

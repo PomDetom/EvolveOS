@@ -1,0 +1,19 @@
+.c-search-bar { display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; height: 36px; padding: 0 var(--space-3);
+  background: var(--surface-1); border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out); }
+.c-search-bar:focus-within { border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-100); }
+.c-search-bar__icon { flex: none; display: grid; place-items: center;
+  color: var(--text-3); }
+.c-search-bar__input { flex: 1; min-width: 0; height: 100%; border: none;
+  outline: none; background: none; font-size: var(--font-size-sm);
+  color: var(--text-1); }
+.c-search-bar__input::placeholder { color: var(--text-3); }
+/* 快捷键提示仅在空态显示（--has-input 由 mount 切换；placeholder-shown 兜底） */
+.c-search-bar__hint { flex: none; display: inline-flex; }
+.c-search-bar--has-input .c-search-bar__hint,
+.c-search-bar__input:not(:placeholder-shown) ~ .c-search-bar__hint { display: none; }
+.c-search-bar__hint .c-kbd { padding: 1px 5px; }
