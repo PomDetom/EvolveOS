@@ -3,6 +3,7 @@ import './styles/themes.css';
 import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
+import './demo/token-showcase.css';
 import './components/icon/icon.css';
 import './components/button/button.css';
 import './components/input/input.css';
@@ -67,7 +68,8 @@ import { renderFloatBall, mountFloatBall } from './components/float-ball/float-b
 import { renderHotkeyRecorder, mountHotkeyRecorder } from './components/hotkey-recorder/hotkey-recorder.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
-import { getConfig } from './config/store.js';
+import { mountTokenShowcase } from './demo/token-showcase.js';
+import { getConfig, subscribe } from './config/store.js';
 import { applyConfig } from './config/apply.js';
 
 const NAV_CORE = [
@@ -106,6 +108,15 @@ app.innerHTML = `
 
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+
+// 令牌展示区（Task 14）：订阅 store —— 主题/主题色/定制器变更时重渲染
+// （subscribe 回调内只 applyConfig + 重渲染，不再 saveConfig，避免循环）
+const tokensSection = document.querySelector('#tokens');
+mountTokenShowcase(tokensSection);
+subscribe((cfg) => {
+  applyConfig(cfg);
+  mountTokenShowcase(tokensSection, true);
+});
 
 // NavigationWheel：滑动选择导航（Task 11 + 12）—— 选中项在侧栏居中，主内容滚动到对应区块
 const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {

@@ -1,0 +1,61 @@
+/* 令牌展示区（Task 14）：tk- 前缀 · 展示页专用 · 两列网格 */
+
+.tk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+@media (max-width: 900px) { .tk-grid { grid-template-columns: 1fr; } }
+
+.tk-card { background: var(--surface-1); border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1)); padding: var(--space-5); }
+.tk-card__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); }
+.tk-card__desc { font-size: var(--font-size-xs); color: var(--text-3);
+  margin-top: 2px; margin-bottom: var(--space-4); }
+
+/* 色板 */
+.tk-palette { display: flex; flex-direction: column; gap: var(--space-4); }
+.tk-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-group__name { font-size: var(--font-size-xs); color: var(--text-2); }
+.tk-group__swatches { display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px; }
+
+.tk-swatch { display: flex; align-items: flex-end; min-height: 64px; padding: 6px;
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); text-align: left; cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out); }
+.tk-swatch:hover { transform: translateY(-2px); }
+.tk-swatch:active { transform: translateY(0); }
+.tk-swatch__label { font-family: var(--font-mono); font-size: 9px; line-height: 1.35;
+  word-break: break-all; opacity: 0.92; }
+
+/* 通用行（字体/间距/圆角/阴影共用） */
+.tk-row { display: grid; grid-template-columns: 118px 44px 1fr; align-items: center;
+  gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px dashed var(--glass-border);
+  cursor: pointer; }
+.tk-row:last-child { border-bottom: none; }
+.tk-row:hover .tk-row__name { color: var(--accent); }
+.tk-row__name { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-2); }
+.tk-row__value { font-family: var(--font-mono); font-size: var(--font-size-xs);
+  color: var(--text-3); text-align: right; }
+.tk-row__sample { overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: var(--text-1); }
+
+.tk-block { height: 16px; justify-self: start; background: var(--accent);
+  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1)); opacity: 0.85; }
+.tk-block--square { width: 56px; height: 56px; }
+.tk-block--shadow { width: 96px; height: 56px; background: var(--surface-2);
+  opacity: 1; border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
+
+/* 玻璃卡 */
+.tk-glass { display: flex; flex-direction: column; gap: var(--space-4); }
+.tk-glass__panel { display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-height: 104px; padding: var(--space-5);
+  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1)); }
+.tk-glass__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); }
+.tk-glass__hint { font-size: var(--font-size-xs); color: var(--text-2); }
+.tk-glass__meta { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tk-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 8px; cursor: pointer;
+  font-size: var(--font-size-xs); color: var(--text-2); background: var(--surface-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
+.tk-chip b { font-family: var(--font-mono); font-weight: var(--font-weight-regular);
+  color: var(--text-1); }
+.tk-card__note { margin-top: var(--space-4); font-size: var(--font-size-xs);
+  color: var(--text-3); }
+.tk-link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
