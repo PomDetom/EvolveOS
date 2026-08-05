@@ -1,0 +1,174 @@
+# Review package: a5710eb..HEAD
+
+## Commits
+8b7c6e9 docs: Task A4 评审修复闭环留痕（残留设置轮修复 + 覆盖测试）
+ad3e05d fix: 退出设置模式后右窗目录轮残留修复
+
+## Files changed
+ docs/superpowers/sdd/progress-app-shell.md |  3 ++-
+ docs/superpowers/sdd/task-A4-report.md     | 29 +++++++++++++++++++++++++++++
+ src/app/app-main.js                        |  2 ++
+ tests/e2e/app-shell.spec.js                | 25 +++++++++++++++++++++++++
+ 4 files changed, 58 insertions(+), 1 deletion(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-app-shell.md b/docs/superpowers/sdd/progress-app-shell.md
+index 9a837d8..0379b46 100644
+--- a/docs/superpowers/sdd/progress-app-shell.md
++++ b/docs/superpowers/sdd/progress-app-shell.md
+@@ -44,21 +44,22 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
+ 
+ ## Task A4: 设置模式（⚙ 按钮 + 右窗设置目录 + 设置页共享）
+ 
+ - **状态**：完成（2026-08-06）
+ - **提交**：`7368011` `feat: 应用壳设置模式（⚙ 按钮 + 右窗设置目录）`
+ - **验证**：npm test 45/45；npm run test:e2e 97/97（app-shell 13/13 = 8+5，docs 84 零冲击 + 36 基线零变化）；npm run build 通过
+ - **实现**：
+   - **共享提取**（前置门槛 scene-settings 回归绿）：新建 `src/scenes/settings-window/settings-pages.js` —— 纯渲染（SECTIONS / pageBody / renderSettingsPages 页面栈 / loadHotkeys）+ 交互接线 `mountSettingsInteractions`（主题三态→store、动效开关、保存、快捷键录制、开源链接、开关）；`settings-window.js` 重构复用，场景 DOM 逐字节等价（类名 `.csettings__*` 不变）
+   - **设置模式接线**（`app-main.js` + `app-main.css`）：标题栏 ⚙（title-bar.js `settings:true` 选项，默认 false docs 零冲击；窗口控制前）；右窗设置目录 = NavigationWheel（SECTIONS 8 分区，纯 icon，anchorRatio 0.382）；内容区第 8 区 `[data-page=settings]` 复用设置页页面栈（外观定制器首次激活惰性挂载 → cust-group 6）；⚙ toggle（进入/激活高亮/再点收起）+ 返回/Esc/左窗已选中项退出设置模式；左栏应用恒可选（点应用切回应用模式）；上下文「设置 › 分区」联动
+ - **简报/报告**：docs/superpowers/sdd/task-A4-brief.md / task-A4-report.md
+-- **评审**：待独立评审（规格符合 + 质量）
++- **评审**：规格 ❌ → 修复循环（1 Important：退出设置模式后同应用重开右窗显示**残留设置目录轮**——exitSettingsMode/collapseRight 未 renderRight，左窗同应用重开路径只 applyRightOpen，apps 模式右窗却显示 8 分区设置轮；三通道退出 + 同应用左点都可达，5 个新用例未覆盖重开路径）
++- **评审修复（2026-08-06，已闭环）**：`ad3e05d` `fix: 退出设置模式后右窗目录轮残留修复` —— 在设置退出路径补 `renderRight()`（`exitSettingsMode` + `collapseRight` wasSettings 分支），任一右Mode 回 'apps' 都同步重渲染右窗轮；覆盖测试 +1 `设置模式退出后右窗目录轮回归`（先红后绿：RED `toHaveCount(3)` 收到 8 → GREEN 3 项 + `[data-id="general"]` 0 项 + 上下文「剪贴板 › 历史」）；验证：app-shell 14/14、e2e 98/98、npm test 45/45、build 通过
+ - **Minor 留收尾**：① 设置页交互（主题三态/动效/快捷键）e2e 仅覆盖渲染/导航/定制器挂载，交互行为依赖与场景共用共享模块（同构）；② `exitSettingsMode` 重渲染左窗选中应用页（滚动位置重置，与 A3 收起一致）；③ 设置通用页主题态在挂载时烘焙 getConfig（配置变更后重进设置模式才刷新，与场景一致）
+ 
+ ## 执行状态
+ 
+ - Task A1 双模式入口：✅ 完成（2026-08-05）
+ - Task A2 NavigationWheel 参数化：✅ 完成（2026-08-05，基线重生成 18 张）
+ - Task A3 应用壳骨架：✅ 完成（2026-08-05）
+ - Task A4 设置模式：✅ 完成（2026-08-06）
+ - Task A5 FloatStrip：待执行
+ - Task A6 手机形态：待执行
+diff --git a/docs/superpowers/sdd/task-A4-report.md b/docs/superpowers/sdd/task-A4-report.md
+index ab9eea7..51a32b0 100644
+--- a/docs/superpowers/sdd/task-A4-report.md
++++ b/docs/superpowers/sdd/task-A4-report.md
+@@ -70,10 +70,39 @@
+ - **零运行时依赖**：仅原生 JS，无新增依赖。
+ 
+ ## Issues / concerns
+ 
+ - 无 blocker。观察项：
+   1. 应用壳设置页交互（主题三态/动效/快捷键）与场景共用同一实现，但 e2e 仅覆盖渲染/导航/定制器挂载，
+      交互行为依赖共享模块与场景同构（场景侧由 scene-settings.spec 隐式覆盖 DOM 结构）。
+   2. `exitSettingsMode` 会重渲染左窗选中应用页（`renderPages`），滚动位置重置 —— 与 A3 收起行为一致，可接受。
+   3. `renderSettingsPages()` 在挂载时读取 `getConfig()`（通用页主题态烘焙），配置变更后需重新进入设置模式
+      才会重渲染 —— 与场景模板行为一致（A3 Minor ⑥ 留收尾，A4 未扩展）。
++
++---
++
++## 独立评审修复（2026-08-06）：退出设置模式后右窗目录轮残留
++
++### 评审发现（1 Important，原文摘录）
++**Stale settings directory wheel after exiting settings and re-opening via the same left-app click** ——
++`exitSettingsMode()` / `collapseRight()` 退出设置模式时未调用 `renderRight()`，左窗重开路径只 `applyRightOpen()`
++不重渲染；复现：选剪贴板（右窗=应用目录）→ ⚙（右窗=设置目录 8 项）→ ⚙ 退出 → 再点仍选中的剪贴板项 →
++右窗重开仍显示设置轮，而标题栏/内容区已是「剪贴板 › 历史」应用模式 —— 违反「apps 模式右窗=应用目录」不变量。
++
++### 修复内容（`src/app/app-main.js`）
++在**所有**设置模式退出路径补 `renderRight()`（退出即重渲染应用目录轮，重开后不残留设置轮）：
++- `exitSettingsMode()`：`rightMode→'apps'` 后加 `renderRight()`（覆盖 ⚙ toggle 退出、左窗已选中项退出）
++- `collapseRight()`：`wasSettings` 分支内加 `renderRight()`（覆盖返回按钮 / Esc 退出）
++
++根因修复：任一右Mode 回到 'apps' 的路径都同步重渲染右窗轮 → 右窗内容与 rightMode 恒一致。
++
++### 覆盖测试（`tests/e2e/app-shell.spec.js`，+1）
++`设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录`
++- **RED**：修复前运行 —— `toHaveCount(3)` 收到 8（残留设置轮）
++- **GREEN**：修复后运行 —— 右窗 3 项剪贴板目录、`[data-id="general"]` 0 项、上下文「剪贴板 › 历史」
++
++### 验证
++- `npx playwright test tests/e2e/app-shell.spec.js`：14/14（13 + 新 1）
++- `npm run test:e2e`：98/98（app-shell 14/14 + docs 84 零冲击 + 36 基线零变化）
++- `npm test`：45/45
++- `npm run build`：通过
++- 提交：`fix: 退出设置模式后右窗目录轮残留修复`（见下）
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 66ccf95..247f221 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -235,20 +235,21 @@ export function mountAppMode(root) {
+     state.rightOpen = true;
+     renderRight();
+     renderPages();
+     applyRightOpen();
+   }
+ 
+   function exitSettingsMode() {
+     if (state.rightMode !== 'settings') return;
+     state.rightMode = 'apps';
+     state.rightOpen = false;
++    renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
+     renderPages(); // 内容区回到左窗选中应用页
+     applyRightOpen();
+   }
+ 
+   function toggleSettings() {
+     if (state.rightMode === 'settings') exitSettingsMode();
+     else setSettingsMode();
+   }
+ 
+   // 左窗 onChange：选中新应用 → setModule。已选中项的重复 onChange（用户点击 / scroll-snap 对
+@@ -258,20 +259,21 @@ export function mountAppMode(root) {
+     if (id !== state.moduleId) setModule(id);
+   }
+ 
+   // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）。设置模式收起 = 退出设置模式
+   function collapseRight() {
+     if (!state.rightOpen) return;
+     const wasSettings = state.rightMode === 'settings';
+     state.rightOpen = false;
+     if (wasSettings) {
+       state.rightMode = 'apps';
++      renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
+       renderPages();
+     }
+     applyRightOpen();
+   }
+ 
+   // 概览快捷入口 → 展开右窗 + 切到该应用（经左窗轮 scrollToIndex → onChange 联动）
+   function goToModule(id) {
+     const i = MODULES.findIndex((m) => m.id === id);
+     if (i < 0) return;
+     leftWheel.scrollToIndex(i);
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index d76c85f..7c71721 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -182,10 +182,35 @@ test('设置模式：左栏应用仍可选（点应用切回应用模式）', as
+ test('设置模式：标题栏上下文「设置 › 分区」联动', async ({ page }) => {
+   await page.goto(APP_URL);
+   const ctx = page.locator('.app-main [data-ctx]');
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+   await expect(ctx).toHaveText('设置 › 通用');
+   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+   await expect(ctx).toHaveText('设置 › 外观');
+   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="about"]').click();
+   await expect(ctx).toHaveText('设置 › 关于');
+ });
++
++test('设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录', async ({ page }) => {
++  await page.goto(APP_URL);
++  // 应用模式：选中剪贴板（右窗 = 剪贴板目录 3 项）
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  // 进入设置模式（右窗 = 设置目录 8 项）
++  await page.locator('.app-main .c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  // 退出设置模式（⚙ 再点 → 右窗收起）
++  await page.locator('.app-main .c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++  // 再次点击仍选中的剪贴板项 → 右窗重开：应显示剪贴板目录，而非残留的设置目录轮
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="general"]')).toHaveCount(0);
++  // 上下文为应用模式（剪贴板 › 历史）
++  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 历史');
++});

@@ -1,0 +1,1141 @@
+# Review package: 9a481a1..HEAD
+
+## Commits
+a5710eb docs: Task A4 执行留痕（设置模式共享实现 + 接线 + 验证）
+7368011 feat: 应用壳设置模式（⚙ 按钮 + 右窗设置目录）
+
+## Files changed
+ docs/superpowers/sdd/progress-app-shell.md    |  35 +++-
+ docs/superpowers/sdd/task-A4-report.md        |  79 +++++++++
+ src/app/app-main.css                          |  15 ++
+ src/app/app-main.js                           | 110 +++++++++++-
+ src/components/title-bar/title-bar.js         |   5 +-
+ src/scenes/settings-window/settings-pages.js  | 241 ++++++++++++++++++++++++++
+ src/scenes/settings-window/settings-window.js | 221 +----------------------
+ tests/e2e/app-shell.spec.js                   |  71 ++++++++
+ 8 files changed, 546 insertions(+), 231 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-app-shell.md b/docs/superpowers/sdd/progress-app-shell.md
+index 48260a7..9a837d8 100644
+--- a/docs/superpowers/sdd/progress-app-shell.md
++++ b/docs/superpowers/sdd/progress-app-shell.md
+@@ -17,33 +17,56 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
+ - **提交**：`cf7f52f` `feat: 应用/文档双模式入口`
+ - **验证**：npm test 41/41（+5 mode.test.js）；npm run test:e2e 84/84（36 基线零变化）；npm run build 通过；手动 Playwright 4 分支（docs/app/strip/Tauri 探测）正确
+ - **实现**：`src/app/mode.js` `resolveMode(params, hasTauri)` 纯函数（显式优先/非法回落 docs/Tauri 探测注入）；`src/docs/docs-mode.js` docs 渲染逐字节搬移（模板字面量字节等价）；`src/main.js` 只留 CSS + 模式分支 + 动态 import；`src/app/app-main.js` + `src/app/strip-main.js` Task A3/A5 最小占位（build 可解析）
+ - **简报/报告/审查包**：docs/superpowers/sdd/task-A1-brief.md / task-A1-report.md / review-A1.diff
+ - **评审**：规格 ✅ / Approved（0 Critical/Important）
+ - **Minor 留收尾**：① `?mode=strip` 未入单测（与显式分支共用，A5 落地时补 1 例）；② main.js:46 `typeof window !== 'undefined'` 冗余守卫（浏览器入口恒真，无害）；③ docs 静态 import 使主 chunk 含 docs 依赖树（与旧 main.js 同，A3 起 app 变生产路径时可考虑 docs 改动态）
+ 
+ ## Task A2: NavigationWheel 几何参数化（黄金比例锚点 + 方向）
+ 
+ - **状态**：完成（2026-08-05）
+-- **提交**：`70f8a7d` `feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化`
++- **提交**：`70f8a7d` `feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化`；`6bbea44` `docs: Task A2 执行留痕`
+ - **验证**：npm test 45/45（geometry 9→13）；npm run test:e2e 84/84；npm run test:visual 36/36（18 张重生成）；npm run build 通过
+-- **实现**：`nav-wheel-geometry.js` 纯函数参数化（anchorY / scrollTopForAnchor / findNearestIndex(+anchorRatio)，focal offset 相对锚线，删 itemCenterY/scrollTopForCenter）；`nav-wheel.js` `mountNavWheel({items,onChange,anchorRatio=0.382,direction='vertical'})` + AXIS 主轴抽象（scrollTop↔scrollLeft、translateY↔translateX 等）+ 非对称首尾 padding；`nav-wheel.css` 无 JS 回退 → 38.2%/61.8%
++- **实现**：`nav-wheel-geometry.js` 参数化（anchorY / scrollTopForAnchor / findNearestIndex(+anchorRatio)，focal offset 相对锚线，删 itemCenterY/scrollTopForCenter）；`nav-wheel.js` `mountNavWheel({items,onChange,anchorRatio=0.382,direction='vertical'})` + AXIS 主轴抽象（scrollTop↔scrollLeft、translateY↔translateX 等）+ 非对称首尾 padding（两端都达锚点）；`nav-wheel.css` 无 JS 回退 → 38.2%/61.8%
++- **基线重生成**：实际 **18 张**（非 24）——`components-*.png` 6 张实测**零变化**：展示轮 `.c-navwheel--demo` 未进入 `#components` 全元素截图捕获（该区域新旧基线均为纯背景，预存渲染现象，非本任务引入），经解码比对确认差异仅导航轮图标带竖向条（锚点位移），内容页像素级不变。tokens/clipboard 零变化。
+ - **简报/报告**：docs/superpowers/sdd/task-A2-brief.md / task-A2-report.md
++- **评审**：规格 ✅ / Approved（0 Critical/Important，5 Minor）
++- **Minor 留收尾**：① horizontal 渲染层未闭环（无实例挂载，方向等价性仅几何层单测；A6 落地时补渲染级测试 + 修正 AXIS 假设——AXIS map 假定 marginLeft=6px，实际 CSS 横排 margin 12px，横向间距 24px≠GAP 12，且 flex-direction/overflow-y 未随方向切换，A6 横滑落地前必须处理）；② focal 衰减在视口边缘不对称（38.2% 锚线上缘 t=0.588 保热、下缘 t=0.951 冷，视觉后果 A6/A7 观察）；③ `anchorY` 5 参签名含未用参数（viewportLength/anchorRatio，按 brief 接口保留；可选精简为 3 参）；④ 「horizontal 等价性」单测是恒真式（同参调同函数断言相等，仅证确定性），A6 补渲染级测试
++
++## Task A3: 应用壳骨架（双窗口级联 + 标题栏上下文 + 7 模块）
++
++- **状态**：完成（2026-08-05）
++- **提交**：`9a481a1` `feat: 应用壳骨架（双窗口级联 + 7 模块占位）`
++- **验证**：npm test 45/45；npm run test:e2e 92/92（app-shell 8/8 + docs 84 零冲击）；npm run build 通过
++- **实现**：`src/app/app-main.js`（A1 占位 → 完整壳）：MODULES 扩展契约（模块项 + 目录项 + 页面渲染函数，7 模块 dir 2-4 项）；左右窗 NavigationWheel（anchorRatio 0.382，纯 icon 经局部类名隐藏 name —— nav-wheel 组件零改动、docs 字节等价）；标题栏 `[data-ctx]`「应用名 › 页面名」联动；右窗收起三通道（返回按钮/二次点击左选中/Esc）；单窗口态默认概览页；EmptyState 占位页 + 概览页（欢迎卡 + 7 快捷入口 + 主题状态卡）；`src/app/app-main.css`（grid 40px/64px/64px/1fr，右窗推入/内容切页只动 transform/opacity，时长经 CSS 变量）
++- **简报/报告**：docs/superpowers/sdd/task-A3-brief.md / task-A3-report.md
++- **评审**：规格 ✅ / Approved（0 Critical/Important，7 Minor）
++- **Minor 留收尾**：① `downWasActive` 拖拽>5px 起于选中项时 click 仍触发 toggle（概率低，未测）；② 概览 `dir: []` 与「每应用 2-4 项」字面冲突（单窗口态默认概览的合理解释）；③ 左右窗 item 居中规则 CSS 重复（可合并选择器）；④ Esc 监听器不 remove（app 每生命周期仅挂一次，无害）；⑤ `bindWindowControls` 从 demo/ import（生产壳用 demo 目录的层次小异味，复用既有绑定 DRY）；⑥ 概览主题状态卡静态渲染（配置变更不刷新，A4 设置模式处理）；⑦ A6 注意：nav-wheel `snapNow` 同 id onChange 重复触发是既有行为（scrollTop 整数截断 vs 0.05px 小数守卫），本任务在 app 侧规避，A6 复用 nav-wheel 勿在 onChange 上建「同 id 二次选中即 toggle」逻辑
++
++## Task A4: 设置模式（⚙ 按钮 + 右窗设置目录 + 设置页共享）
++
++- **状态**：完成（2026-08-06）
++- **提交**：`7368011` `feat: 应用壳设置模式（⚙ 按钮 + 右窗设置目录）`
++- **验证**：npm test 45/45；npm run test:e2e 97/97（app-shell 13/13 = 8+5，docs 84 零冲击 + 36 基线零变化）；npm run build 通过
++- **实现**：
++  - **共享提取**（前置门槛 scene-settings 回归绿）：新建 `src/scenes/settings-window/settings-pages.js` —— 纯渲染（SECTIONS / pageBody / renderSettingsPages 页面栈 / loadHotkeys）+ 交互接线 `mountSettingsInteractions`（主题三态→store、动效开关、保存、快捷键录制、开源链接、开关）；`settings-window.js` 重构复用，场景 DOM 逐字节等价（类名 `.csettings__*` 不变）
++  - **设置模式接线**（`app-main.js` + `app-main.css`）：标题栏 ⚙（title-bar.js `settings:true` 选项，默认 false docs 零冲击；窗口控制前）；右窗设置目录 = NavigationWheel（SECTIONS 8 分区，纯 icon，anchorRatio 0.382）；内容区第 8 区 `[data-page=settings]` 复用设置页页面栈（外观定制器首次激活惰性挂载 → cust-group 6）；⚙ toggle（进入/激活高亮/再点收起）+ 返回/Esc/左窗已选中项退出设置模式；左栏应用恒可选（点应用切回应用模式）；上下文「设置 › 分区」联动
++- **简报/报告**：docs/superpowers/sdd/task-A4-brief.md / task-A4-report.md
+ - **评审**：待独立评审（规格符合 + 质量）
+-- **Minor 留收尾**：① horizontal 渲染层未闭环（无实例挂载，方向等价性仅几何层单测；A6 落地时补渲染级测试）；② `anchorY` 5 参签名含未用参数（viewportLength/anchorRatio，按 brief 接口保留；可选精简为 3 参）
++- **Minor 留收尾**：① 设置页交互（主题三态/动效/快捷键）e2e 仅覆盖渲染/导航/定制器挂载，交互行为依赖与场景共用共享模块（同构）；② `exitSettingsMode` 重渲染左窗选中应用页（滚动位置重置，与 A3 收起一致）；③ 设置通用页主题态在挂载时烘焙 getConfig（配置变更后重进设置模式才刷新，与场景一致）
+ 
+ ## 执行状态
+ 
+ - Task A1 双模式入口：✅ 完成（2026-08-05）
+ - Task A2 NavigationWheel 参数化：✅ 完成（2026-08-05，基线重生成 18 张）
+-- Task A3 应用壳骨架：待执行
+-- Task A4 设置模式：待执行
++- Task A3 应用壳骨架：✅ 完成（2026-08-05）
++- Task A4 设置模式：✅ 完成（2026-08-06）
+ - Task A5 FloatStrip：待执行
+ - Task A6 手机形态：待执行
+ - Task A7 基线收尾 + 合并 main：待执行
+ 
+ ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
+ 
+ - 测试仅在 Web 环境执行（不跑 tauri dev）
+-- docs 模式零冲击：84 e2e + 36 基线（A2 后按 24/12 划分）不得越界变化
++- docs 模式零冲击：84 e2e + 36 基线（A2 落地后按 18/18 划分）不得越界变化
+ - 每任务：简报 → 派发 → 报告 → 审查包 → 评审 → 修复循环 → 本账本留痕（随代码提交）
+ - 完成后按 Task A7 合并 main
+diff --git a/docs/superpowers/sdd/task-A4-report.md b/docs/superpowers/sdd/task-A4-report.md
+new file mode 100644
+index 0000000..ab9eea7
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A4-report.md
+@@ -0,0 +1,79 @@
++# Task A4 报告：设置模式（⚙ 按钮 + 右窗设置目录 + 设置页共享）
++
++- **日期**：2026-08-06
++- **提交**：见本账本（progress-app-shell.md）Task A4 条目
++- **分支**：feature/iteration（Base 9a481a1 Task A3）
++
++## What you implemented
++
++### 共享提取结构（前置门槛：scene-settings.spec 回归绿）
++- **新建 `src/scenes/settings-window/settings-pages.js`**：从 settings-window.js 抽出**纯渲染部分**——
++  - `SECTIONS`（8 分区数据）、`pageBody(id)`（各分区页渲染：通用/外观/界面/快捷键/通知/数据/高级/关于）、
++    `renderSettingsPages()`（8 个 `.csettings__page` 页面栈 HTML，首项 active，模板与原 SECTIONS.map 逐字节一致）、
++    `loadHotkeys` / `HOTKEY_STORAGE`（快捷键持久化，会话级）；
++  - **交互接线** `mountSettingsInteractions(root)`（主题三态 click→store、动效开关→store、保存→toast、
++    快捷键 mount→sessionStorage、开源链接→toast、`mountSwitch` 开关视觉）—— 场景模板与应用壳共用，行为一致。
++  - 类名 `.csettings__*` **保持不变**（scene-settings.spec 断言 `.csettings` / `.c-navwheel__item` 8 /
++    `.csettings__page--active` / `.cust-group` 6）。
++- **`settings-window.js` 重构**：删除已抽出内容，改 import settings-pages.js；保留场景布局、NavigationWheel 分区切换、
++  外观分区定制器首次激活惰性挂载（`renderCustomizerGroups`）、返回入口、`mountTitleBar`。场景 DOM **逐字节等价**。
++
++### 设置模式接线（src/app/app-main.js + app-main.css）
++- **标题栏 ⚙ 按钮**：`title-bar.js` `renderTitleBar` 新增 `settings: false` 选项（默认 false → docs/场景输出逐字节不变），
++  app-main 传 `settings: true` 在窗口控制（min/max/close）之前渲染 ⚙（`icon('settings', 16)`）；激活态高亮
++  `.app-main__settings-toggle--active`（accent 色 + surface-hover，仅 paint）。
++- **右窗设置目录**：复用 A3 右窗 NavigationWheel 机制（纯 icon 64px，anchorRatio 0.382，名称由标题栏承担）；
++  `state.rightMode: 'apps' | 'settings'` 分支渲染 —— settings 时右窗轮 items = SECTIONS 8 分区，选中项 `setSettingsSection`。
++- **内容区设置页**：新增第 8 区 `.app-main__page[data-page="settings"]`，包 `.csettings__pages.app-main__settings`
++  （8 个 `.csettings__page`，唯一 active；切页动画沿用壳 `app-main-page-in`，120ms transform/opacity）；
++  外观分区定制器首次激活惰性挂载 `renderCustomizerGroups`（与场景同构，`.cust-group` 6）。
++- **⚙ toggle 状态机**：进入 = rightMode→'settings' + 右窗展开 + 内容区设置页 + ⚙ 高亮；
++  再次点击 / 返回按钮 / Esc / 左窗已选中项 = 退出设置模式回应用模式（右窗收起，内容区回左窗选中应用页）。
++  **左栏应用恒可选中**：设置模式点左窗应用 → 切回应用模式（右窗变该应用目录）。
++- **上下文联动**：「设置 › 分区」（设置目录选中项实时联动）。
++- **右窗状态纯 UI 态**：`rightMode` / `settingsId` 在会话内 `state` 对象，不进配置存储。
++
++## TDD Evidence
++
++- **RED**：先写 5 个新 e2e 用例 → `git stash push -u -- src/` 还原到 A3 → 5 例**全红**
++  （`locator.click` 等待 `.app-main .c-titlebar__control--settings` 超时，A3 无 ⚙ 按钮/无设置模式）→ `git stash pop` 恢复。
++- **GREEN**：实现后 5 例全绿。scene-settings 回归绿（前置门槛）。
++
++## Test results
++
++- **scene-settings.spec 回归**：2/2 绿（前置门槛，共享提取后类名不变）。
++- **app-shell.spec**：13/13（原 8 + 新增 5 设置模式用例）。
++- **全量 `npm run test:e2e`**：**97 passed** —— docs 模式 84 零冲击 + app-shell 13（8+5）。
++- **36 视觉基线零变化**：visual-regression 全绿（docs 模式逐字节等价 + 场景 DOM 不变）。
++- **`npm test`**：45/45（单元测试零变化）。
++- **`npm run build`**：通过（103 modules，655ms）。
++
++## Files changed
++
++- `src/scenes/settings-window/settings-pages.js`（**新建**，共享模块）
++- `src/scenes/settings-window/settings-window.js`（重构为复用共享模块，DOM 逐字节等价）
++- `src/app/app-main.js`（设置模式状态机 + ⚙ 接线 + 右窗设置轮 + 设置页第 8 区 + 上下文联动）
++- `src/app/app-main.css`（⚙ 激活态 + 设置页内容区尺寸覆盖）
++- `src/components/title-bar/title-bar.js`（`settings` 选项，默认 false）
++- `tests/e2e/app-shell.spec.js`（+5 设置模式用例）
++
++## Self-review findings
++
++- **docs 模式零冲击**（硬门槛）：场景渲染 `renderSettingsPages()` 与原 `SECTIONS.map` 模板逐字节一致；
++  title-bar 默认 `settings:false`；36 视觉基线像素级零变化；84 docs e2e 全绿。
++- **动画红线**：右窗推入/收起沿用 transform/opacity + `--dur-push`（240ms）；设置页切页 `app-main-page-in`
++  （transform/opacity + `--dur-fast` 120ms）；⚙ 激活态仅 paint（color/background，豁免过渡）；无模糊动画。
++- **隔离**：`.cust-group` / `.csettings__*` 仅在 app 模式出现（docs 互斥渲染不并存），
++  app-shell.spec 与 scene-settings.spec 各自页面选择器唯一。
++- **共享度**：渲染 + 交互接线均抽入 settings-pages.js，场景与应用壳各只保留布局/导航轮/生命周期接线，
++  未来改分区页只动共享模块。
++- **零运行时依赖**：仅原生 JS，无新增依赖。
++
++## Issues / concerns
++
++- 无 blocker。观察项：
++  1. 应用壳设置页交互（主题三态/动效/快捷键）与场景共用同一实现，但 e2e 仅覆盖渲染/导航/定制器挂载，
++     交互行为依赖共享模块与场景同构（场景侧由 scene-settings.spec 隐式覆盖 DOM 结构）。
++  2. `exitSettingsMode` 会重渲染左窗选中应用页（`renderPages`），滚动位置重置 —— 与 A3 收起行为一致，可接受。
++  3. `renderSettingsPages()` 在挂载时读取 `getConfig()`（通用页主题态烘焙），配置变更后需重新进入设置模式
++     才会重渲染 —— 与场景模板行为一致（A3 Minor ⑥ 留收尾，A4 未扩展）。
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index fde30f8..eae724a 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -86,10 +86,25 @@
+   gap: var(--space-2); padding: var(--space-3);
+   border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+   color: var(--text-2);
+   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+ .app-main__shortcut:hover { color: var(--accent); background: var(--surface-hover); }
+ .app-main__shortcut-name { font-size: var(--font-size-sm); }
+ .app-main__theme-row { display: flex; align-items: center; gap: var(--space-2);
+   font-size: var(--font-size-sm); color: var(--text-2); }
+ .app-main__theme-swatch { width: 14px; height: 14px; border-radius: 50%;
+   background: var(--accent-500); }
++
++/* —— 标题栏 ⚙ 设置按钮（Task A4，app 模式唯一实例）——
++   基础尺寸随 .c-titlebar__control（44px）；激活态仅 paint（color/background，豁免过渡） */
++.app-main .c-titlebar__control--settings.app-main__settings-toggle--active {
++  color: var(--accent);
++  background: var(--surface-hover);
++}
++
++/* —— 设置模式内容区（Task A4：复用 settings-window 页面栈）——
++   壳内非 820×520 场景网格：页面栈随内容区滚动（.app-main__pages overflow-y:auto），
++   覆盖场景专用尺寸（height:100% / overflow:hidden / 内边距 —— 内边距由内容区 space-6 承担）；
++   切页动画沿用壳的 app-main-page-in（120ms，只动 transform/opacity，红线） */
++.app-main__settings.csettings__pages { overflow: visible; }
++.app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
++.app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 22c4f86..66ccf95 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -1,22 +1,27 @@
+-// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
++// 应用壳（Task A3 骨架 + Task A4 设置模式，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文。
+ // 模式状态机：单窗口态（右窗收起，内容区 = 左窗选中应用首屏）/ 双窗口态（右窗展开，右窗驱动内容区）。
++//   rightMode: 'apps'（右窗 = 应用内目录，内容区 = 模块页）/ 'settings'（右窗 = 设置目录 8 分区，
++//   内容区 = 设置页）。⚙ 进入设置模式（激活高亮）；再次点击/返回/Esc/左窗已选中项 = 退出回应用模式。
++// 设置页与场景模板共享 settings-pages.js 实现（类名 .csettings__* 不变，外观分区定制器首次激活惰性挂载）。
+ // 左窗/右窗均为 NavigationWheel 实例（纯 icon，38.2% 黄金比例锚点；名称由标题栏上下文承担，
+ // 栏内 name 经 app-main.css 隐藏，nav-wheel 组件零改动、docs 行为不变）。
+ // MODULES 扩展契约：应用注册 = 模块项（左窗 icon）+ 目录项（右窗 icon）+ 页面渲染函数（内容区）。
+ //   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
+ // 右窗状态为纯 UI 态（会话内），不进配置存储。
+ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
++import { renderCustomizerGroups } from '../demo/customizer-panel.js';
++import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import './app-main.css';
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+   { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview },
+   {
+     id: 'clipboard', name: '剪贴板', icon: 'clipboard',
+     dir: [
+       { id: 'history', name: '历史', icon: 'list' },
+       { id: 'pinned', name: '固定', icon: 'pin' },
+@@ -63,175 +68,262 @@ const MODULES = [
+     id: 'info', name: '关于', icon: 'info',
+     dir: [
+       { id: 'version', name: '版本', icon: 'box' },
+       { id: 'license', name: '许可', icon: 'shield' },
+     ],
+     render: placeholderPage,
+   },
+ ];
+ 
+ export function mountAppMode(root) {
++  const settingsPagesHtml = renderSettingsPages();
+   root.innerHTML = `
+   <div class="app-main">
+-    ${renderTitleBar({ title: '概览', iconName: 'box' })}
++    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+     <main class="app-main__pages">
+       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
++      <section class="app-main__page" data-page="settings">
++        <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
++      </section>
+     </main>
+   </div>`;
+ 
+   const appMain = root.querySelector('.app-main');
+   const ctx = root.querySelector('.c-titlebar__title');
+   ctx.classList.add('app-main__ctx');
+   ctx.setAttribute('data-ctx', '');
++  const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
+ 
+   // —— 会话内纯 UI 态（不进配置存储）——
+-  const state = { moduleId: 'home', dirId: null, rightOpen: false };
++  // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
++  const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
+ 
+   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
+   const leftWheel = mountNavWheel(navL, {
+     items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
+     onChange: (item) => onLeftSelect(item.id),
+     anchorRatio: 0.382,
+   });
+ 
+   // 模块上下文：active 模块取当前目录项，其余取各自首目录项（供初始占位渲染）
+   function modCtx(mod) {
+     const dirId = mod.id === state.moduleId ? state.dirId : (mod.dir[0]?.id ?? null);
+     return { module: mod, dirId, dirName: mod.dir.find((d) => d.id === dirId)?.name ?? null };
+   }
+ 
+-  // —— 右窗：应用目录轮（按 active 模块重建；概览无目录 → 空提示）——
++  // —— 右窗：按 rightMode 渲染应用目录轮 / 设置目录轮（纯 icon，38.2% 锚点）——
+   function renderRight() {
++    if (state.rightMode === 'settings') {
++      navRBody.innerHTML = `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`;
++      const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
++        items: SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
++        onChange: (item) => setSettingsSection(item.id),
++        anchorRatio: 0.382,
++      });
++      wheel.setActive(state.settingsId); // 保持上次选中的设置分区
++      return wheel;
++    }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     navRBody.innerHTML = mod.dir.length
+       ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
+       : `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无子目录</span></div>`;
+     if (!mod.dir.length) return null;
+     const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
+       items: mod.dir.map((d) => ({ id: d.id, name: d.name, icon: d.icon })),
+       onChange: (item) => setDir(item.id),
+       anchorRatio: 0.382,
+     });
+     wheel.setActive(state.dirId); // 首项即锚点初始位（scrollTop 0），无需滚动
+     return wheel;
+   }
+ 
+-  // —— 内容区：唯一 active 页（data-page 对应模块），切换/目录项变化重渲染 ——
++  // —— 内容区：唯一 active 页（data-page 对应模块；设置模式 = settings 页）——
+   function renderPages() {
++    if (state.rightMode === 'settings') {
++      pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === 'settings'));
++      setSettingsPageActive();
++      return;
++    }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
+     const page = pages.find((p) => p.dataset.page === state.moduleId);
+     page.innerHTML = mod.render(modCtx(mod));
+   }
+ 
+-  // —— 标题栏上下文「应用名 › 页面名」（单窗口态只应用名）——
++  // —— 设置页分区切换：唯一 active 页 + 外观分区定制器首次激活惰性挂载（与场景同构，
++  //   类名 .csettings__* 不变；.cust-group 只在 app 模式出现，docs 互斥不并存）——
++  let custMounted = false;
++  function setSettingsPageActive() {
++    const sec = pages.find((p) => p.dataset.page === 'settings');
++    sec.querySelectorAll('.csettings__page').forEach((p) =>
++      p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
++    if (state.settingsId === 'appearance' && !custMounted) {
++      renderCustomizerGroups(sec.querySelector('[data-page="appearance"] .csettings__cust'));
++      custMounted = true;
++    }
++  }
++
++  function setSettingsSection(id) {
++    if (id === state.settingsId) return;
++    state.settingsId = id;
++    setSettingsPageActive();
++    updateCtx();
++  }
++
++  // —— 标题栏上下文「应用名 › 页面名」/「设置 › 分区」（单窗口态只应用名）——
+   function updateCtx() {
++    if (state.rightMode === 'settings') {
++      const s = SECTIONS.find((x) => x.id === state.settingsId);
++      ctx.textContent = `设置 › ${s.name}`;
++      ctx.dataset.module = 'settings';
++      ctx.dataset.page = state.settingsId;
++      return;
++    }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
+       ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
+       : mod.name;
+     ctx.dataset.module = mod.id;
+     ctx.dataset.page = state.rightOpen ? state.dirId : '';
+   }
+ 
+   function applyRightOpen() {
+     appMain.classList.toggle('app-main--dual', state.rightOpen);
+     navRRoot.setAttribute('aria-hidden', String(!state.rightOpen));
++    settingsBtn.classList.toggle('app-main__settings-toggle--active', state.rightMode === 'settings');
+     updateCtx();
+   }
+ 
+   // —— 级联联动 ——
+-  // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）
++  // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）；
++  // 若当前处于设置模式则一并切回应用模式（左栏应用恒可选中，规格 §5）
+   function setModule(id) {
+     if (id === state.moduleId) return;
+     state.moduleId = id;
+     const mod = MODULES.find((m) => m.id === id);
+     state.dirId = mod.dir.length ? mod.dir[0].id : null;
++    state.rightMode = 'apps';
+     state.rightOpen = mod.dir.length > 0;
+     renderRight();
+     renderPages();
+     applyRightOpen();
+   }
+ 
+   // 右窗选中目录项 → 内容区切页 + 上下文联动
+   function setDir(id) {
+     if (id === state.dirId) return;
+     state.dirId = id;
+     renderPages();
+     updateCtx();
+   }
+ 
++  // —— 设置模式（⚙）：进入 = 右窗切为设置目录（内容区设置页）；再次点击/收起 = 退出回应用模式 ——
++  function setSettingsMode() {
++    if (state.rightMode === 'settings') return;
++    state.rightMode = 'settings';
++    state.rightOpen = true;
++    renderRight();
++    renderPages();
++    applyRightOpen();
++  }
++
++  function exitSettingsMode() {
++    if (state.rightMode !== 'settings') return;
++    state.rightMode = 'apps';
++    state.rightOpen = false;
++    renderPages(); // 内容区回到左窗选中应用页
++    applyRightOpen();
++  }
++
++  function toggleSettings() {
++    if (state.rightMode === 'settings') exitSettingsMode();
++    else setSettingsMode();
++  }
++
+   // 左窗 onChange：选中新应用 → setModule。已选中项的重复 onChange（用户点击 / scroll-snap 对
+   // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
+   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
+   function onLeftSelect(id) {
+     if (id !== state.moduleId) setModule(id);
+   }
+ 
+-  // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）
++  // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）。设置模式收起 = 退出设置模式
+   function collapseRight() {
+     if (!state.rightOpen) return;
++    const wasSettings = state.rightMode === 'settings';
+     state.rightOpen = false;
++    if (wasSettings) {
++      state.rightMode = 'apps';
++      renderPages();
++    }
+     applyRightOpen();
+   }
+ 
+   // 概览快捷入口 → 展开右窗 + 切到该应用（经左窗轮 scrollToIndex → onChange 联动）
+   function goToModule(id) {
+     const i = MODULES.findIndex((m) => m.id === id);
+     if (i < 0) return;
+     leftWheel.scrollToIndex(i);
+   }
+ 
+   // —— 事件 ——
++  settingsBtn.addEventListener('click', toggleSettings);
+   navRRoot.querySelector('.app-main__nav-r-back').addEventListener('click', collapseRight);
+   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseRight(); });
+   pagesEl.addEventListener('click', (e) => {
+     const card = e.target.closest('.app-main__shortcut');
+     if (card) goToModule(card.dataset.shortcut);
+   });
+   // 三通道之一：再次点击左窗已选中项 → 收起（toggle）。nav-wheel 对点击/锚定仍会对同 id 补发
+   // onChange（子像素滚动偏差 <1px 使 snapNow 守卫 0.05px 容差未跳过），不能据 onChange 判定用户
+   // 是否真的再次点击了已选中项 —— 故在 pointerdown 记录「所点项当时是否已选中」，click 阶段判定。
+   let downWasActive = false;
+   navL.addEventListener('pointerdown', (e) => {
+     const item = e.target.closest('.c-navwheel__item');
+     if (item) downWasActive = MODULES[Number(item.dataset.index)].id === state.moduleId;
+   });
+   navL.addEventListener('click', () => {
+     const wasActive = downWasActive;
+     downWasActive = false;
+     if (wasActive) {
++      // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
++      if (state.rightMode === 'settings') { exitSettingsMode(); return; }
+       const mod = MODULES.find((m) => m.id === state.moduleId);
+       if (mod.dir.length) {
+         state.rightOpen = !state.rightOpen;
+         applyRightOpen();
+       }
+     }
+   });
+ 
++  // 设置页交互接线（主题三态/动效/保存/快捷键/开源链接/开关，与场景模板共用 settings-pages）
++  mountSettingsInteractions(pages.find((p) => p.dataset.page === 'settings'));
++
+   mountTitleBar(appMain);
+   bindWindowControls();
+ 
+-  // —— 初始渲染：全部 7 页 + 激活概览页 + 右窗收起（单窗口态）——
++  // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
++  //   设置页（第 8 区）已随模板渲染，此处跳过 ——
+   pages.forEach((page) => {
++    if (page.dataset.page === 'settings') return;
+     const mod = MODULES.find((m) => m.id === page.dataset.page);
+     page.innerHTML = mod.render(modCtx(mod));
+   });
+   pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
+   renderRight();
+   applyRightOpen();
+ }
+ 
+ // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
+ function placeholderPage(ctx) {
+diff --git a/src/components/title-bar/title-bar.js b/src/components/title-bar/title-bar.js
+index 8c70ace..3162b7f 100644
+--- a/src/components/title-bar/title-bar.js
++++ b/src/components/title-bar/title-bar.js
+@@ -1,23 +1,26 @@
+ import { icon } from '../icon/icon.js';
+ 
+ // data-tauri-drag-region：Tauri 场景下由系统接管拖动窗口。
+ // 只挂在 .c-titlebar__drag（最小安全拖区）—— 不挂根元素：整条 .c-titlebar 含三按钮，
+ // 若挂根元素则按钮 mousedown 会被原生拖拽劫持（真实点击被吞、最小化/最大化后会被
+ // 拖拽动作立即还原 —— 接入指南 §2 明确此坑；真机验证 I2 实测复现后按指南修正）。
+-export function renderTitleBar({ title = 'UI Design System', iconName = 'palette' } = {}) {
++// settings: 是否渲染 ⚙ 设置按钮（右缘窗口控制之前）。默认 false —— docs 模式/场景模板
++// 输出逐字节不变；应用壳（app-main.js）传 true 并自行接线（共享 mountTitleBar 不感知）。
++export function renderTitleBar({ title = 'UI Design System', iconName = 'palette', settings = false } = {}) {
+   return `
+   <div class="c-titlebar">
+     <div class="c-titlebar__drag" data-tauri-drag-region>
+       ${icon(iconName, 16)}<span class="c-titlebar__title">${title}</span>
+     </div>
+     <div class="c-titlebar__controls">
++      ${settings ? `<button class="c-titlebar__control c-titlebar__control--settings" aria-label="设置" title="设置">${icon('settings', 16)}</button>` : ''}
+       <button class="c-titlebar__control c-titlebar__control--min" aria-label="最小化">${icon('minus', 14)}</button>
+       <button class="c-titlebar__control c-titlebar__control--max" aria-label="最大化">${icon('maximize', 12)}</button>
+       <button class="c-titlebar__control c-titlebar__control--close" aria-label="关闭">${icon('close', 14)}</button>
+     </div>
+   </div>`;
+ }
+ 
+ export function mountTitleBar(root) {
+   const maxBtn = root.querySelector('.c-titlebar__control--max');
+   maxBtn.addEventListener('click', () => {
+diff --git a/src/scenes/settings-window/settings-pages.js b/src/scenes/settings-window/settings-pages.js
+new file mode 100644
+index 0000000..6c81640
+--- /dev/null
++++ b/src/scenes/settings-window/settings-pages.js
+@@ -0,0 +1,241 @@
++// 设置页共享实现（Task A4 提取）：SECTIONS 数据 + 各分区页渲染 + 页面栈包装 + 交互接线。
++// 场景模板（settings-window.js，Task 20）与应用壳设置模式（app-main.js）共用同一实现，
++// 类名 .csettings__* 不变 —— scene-settings.spec 依赖（.csettings / .c-navwheel__item 8 /
++//   .csettings__page--active / .cust-group 6）。
++// 分工：
++// - 纯渲染：SECTIONS / pageBody / renderSettingsPages —— 调用方负责布局容器与导航轮；
++//   外观分区定制器惰性挂载（renderCustomizerGroups）由调用方在首次激活时执行（隔离原因见
++//   settings-window.js 文件头注释：面板与设置页同构类并存会触发 strict mode 冲突）。
++// - 交互接线：mountSettingsInteractions(root) —— 主题三态 click→store、动效开关、保存、
++//   快捷键录制、开源链接、开关视觉（场景与应用壳行为一致）。
++import { icon } from '../../components/icon/icon.js';
++import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
++import { renderSelect } from '../../components/select/select.js';
++import { renderEmptyState } from '../../components/empty-state/empty-state.js';
++import { renderHotkeyRecorder, mountHotkeyRecorder } from '../../components/hotkey-recorder/hotkey-recorder.js';
++import { getConfig, saveConfig } from '../../config/store.js';
++import { applyConfig } from '../../config/apply.js';
++import { toast } from '../../components/toast/toast.js';
++
++// 8 分区（pre-flight 修订）：8×64px = 512px > 列表视口 424px，滑动选择真实生效。
++// 界面类模块（原第 3 分区）统一收纳于「界面」分区，其余沿用原分区结构。
++export const SECTIONS = [
++  { id: 'general',    name: '通用',   icon: 'home' },
++  { id: 'appearance', name: '外观',   icon: 'palette' },
++  { id: 'interface',  name: '界面',   icon: 'layout' },
++  { id: 'shortcuts',  name: '快捷键', icon: 'key' },
++  { id: 'notify',     name: '通知',   icon: 'bell' },
++  { id: 'data',       name: '数据',   icon: 'folder' },
++  { id: 'advanced',   name: '高级',   icon: 'settings' },
++  { id: 'about',      name: '关于',   icon: 'info' },
++];
++
++// —— 通用分区 ——
++
++// 主题三态：与顶栏 tsw 同语义（浅/深/跟随系统），类名场景局部（.csettings__mode）
++const THEME_MODES = [
++  { id: 'light',  label: '浅色',   icon: 'sun' },
++  { id: 'dark',   label: '深色',   icon: 'moon' },
++  { id: 'system', label: '跟随系统', icon: 'monitor' },
++];
++
++function pageHead(title, desc = '') {
++  return `<div class="csettings__page-head"><h4>${title}</h4>${desc ? `<p>${desc}</p>` : ''}</div>`;
++}
++
++function generalPage() {
++  const cfg = getConfig();
++  return `
++    ${pageHead('通用', '应用基础偏好，保存后即时生效')}
++    <div class="csettings__field">
++      <span class="csettings__field-label">主题</span>
++      <p class="csettings__field-desc">跟随系统或固定深/浅主题</p>
++      <div class="csettings__modes" role="group" aria-label="主题模式">
++        ${THEME_MODES.map((m) => `
++          <button type="button" class="csettings__mode${cfg.theme === m.id ? ' csettings__mode--active' : ''}"
++            data-mode="${m.id}" aria-pressed="${cfg.theme === m.id}">
++            ${icon(m.icon, 16)}<span>${m.label}</span>
++          </button>`).join('')}
++      </div>
++    </div>
++    <div class="csettings__field csettings__field--row">
++      <div>
++        <span class="csettings__field-label">动效</span>
++        <p class="csettings__field-desc">界面过渡与微动效开关</p>
++      </div>
++      ${renderSwitch({ checked: cfg.motion.enabled, label: '动效' })}
++    </div>
++    <div class="csettings__field">
++      <span class="csettings__field-label">启动行为</span>
++      <p class="csettings__field-desc">应用启动时的窗口状态</p>
++      ${renderSelect({ options: ['上次关闭时的状态', '默认窗口', '最小化到托盘'], value: '上次关闭时的状态' })}
++    </div>
++    <div class="csettings__actions">
++      <button type="button" class="c-btn c-btn--primary c-btn--sm" data-save-general>${icon('check', 16)}保存设置</button>
++    </div>`;
++}
++
++// —— 外观分区 ——
++
++// 定制器整页形态：占位容器由调用方首次激活时惰性渲染（renderCustomizerGroups），
++// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见 settings-window.js 文件头注释）
++function appearancePage() {
++  return `
++    ${pageHead('外观', '主题定制器整页形态 —— 与右侧抽屉面板共用同一份配置')}
++    <div class="csettings__cust"></div>`;
++}
++
++// —— 界面分区：模块显隐开关列表（演示级，不写 store）——
++
++const MODULE_TOGGLES = [
++  { id: 'float',    label: '剪贴板悬浮窗', desc: '全局呼出的小窗，复制记录即时可查' },
++  { id: 'main',     label: '主窗口',       desc: '完整功能窗口：仪表盘与数据列表' },
++  { id: 'lab',      label: '动效实验室',   desc: '动效演示卡与参数试玩器' },
++  { id: 'showcase', label: '组件展示区',   desc: '32 组件变体矩阵与悬浮窗实例' },
++];
++
++function interfacePage() {
++  return `
++    ${pageHead('界面', '模块显隐控制')}
++    <div class="csettings__toggles">
++      ${MODULE_TOGGLES.map((m) => `
++        <div class="csettings__toggle">
++          <div>
++            <span class="csettings__field-label">${m.label}</span>
++            <p class="csettings__field-desc">${m.desc}</p>
++          </div>
++          ${renderSwitch({ checked: true, label: m.label })}
++        </div>`).join('')}
++    </div>
++    <p class="csettings__note">界面类模块导航统一收拢于设置：以上开关为演示占位，实际显隐由接入应用的模块系统决定。</p>`;
++}
++
++// —— 快捷键分区：4 行 HotkeyRecorder，录制结果存 sessionStorage（演示级）——
++
++const HOTKEY_DEFS = [
++  { key: 'show',   label: '呼出面板',    desc: '全局呼出剪贴板悬浮窗',    defaults: ['Ctrl', 'Shift', 'V'] },
++  { key: 'search', label: '搜索',        desc: '聚焦悬浮窗搜索框',        defaults: ['Ctrl', 'Shift', 'F'] },
++  { key: 'paste',  label: '粘贴纯文本',  desc: '以纯文本格式粘贴剪贴板内容', defaults: ['Ctrl', 'Shift', 'X'] },
++  { key: 'clear',  label: '清空',        desc: '清空全部复制记录',        defaults: ['Ctrl', 'Shift', 'Backspace'] },
++];
++
++export const HOTKEY_STORAGE = 'ui-design-hotkeys';
++
++export function loadHotkeys() {
++  try { return JSON.parse(sessionStorage.getItem(HOTKEY_STORAGE) ?? '{}'); }
++  catch { return {}; }
++}
++
++function shortcutsPage() {
++  const saved = loadHotkeys();
++  return `
++    ${pageHead('快捷键', '点击录制，结果保存于本会话（演示级）')}
++    <div class="csettings__hotkeys">
++      ${HOTKEY_DEFS.map((h) => `
++        <div class="csettings__hotkey" data-hotkey="${h.key}">
++          <div>
++            <span class="csettings__field-label">${h.label}</span>
++            <p class="csettings__field-desc">${h.desc}</p>
++          </div>
++          ${renderHotkeyRecorder({ value: saved[h.key] ?? h.defaults, placeholder: '点击设置快捷键' })}
++        </div>`).join('')}
++    </div>`;
++}
++
++// —— 通知/数据/高级：占位页 ——
++
++function emptyPage(iconName, title, desc) {
++  return `<div class="c-empty-state csettings__empty">${renderEmptyState({ iconName, title, desc })}</div>`;
++}
++
++// —— 关于分区：应用信息卡 ——
++
++function aboutPage() {
++  return `
++    ${pageHead('关于', '应用信息与版本')}
++    <div class="csettings__about">
++      <div class="csettings__logo">${icon('palette', 36)}</div>
++      <div class="csettings__name">UI Design System</div>
++      <div class="csettings__ver">版本 1.0.0</div>
++      <div class="csettings__meta">
++        <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
++        <div class="csettings__row"><span>设计语言</span><span>克制的玻璃质感 · 深/浅双主题 · 6 主题色</span></div>
++      </div>
++      <button type="button" class="csettings__link" data-open-source>${icon('globe', 16)}开源仓库</button>
++    </div>`;
++}
++
++// —— 分区 → 页面主体 ——
++
++export function pageBody(id) {
++  switch (id) {
++    case 'general':    return generalPage();
++    case 'appearance': return appearancePage();
++    case 'interface':  return interfacePage();
++    case 'shortcuts':  return shortcutsPage();
++    case 'notify':     return emptyPage('bell', '通知设置', '新复制提醒、声音与角标等将在接入应用后开放');
++    case 'data':       return emptyPage('folder', '数据管理', '导出备份与多端同步将在接入应用后开放');
++    case 'advanced':   return emptyPage('shield', '高级设置', '实验性功能与调试选项将在接入应用后开放');
++    case 'about':      return aboutPage();
++    default: return '';
++  }
++}
++
++/**
++ * 页面栈 HTML：8 个 .csettings__page（首项 active，类名不变）。
++ * 调用方负责包一层 .csettings__pages 容器（场景 820×520 网格 / 应用壳内容区各自接管尺寸）。
++ * @returns {string} 8 个分区页的 HTML 拼接
++ */
++export function renderSettingsPages() {
++  return SECTIONS.map((s, i) => `
++    <div class="csettings__page${i === 0 ? ' csettings__page--active' : ''}" data-page="${s.id}">
++      ${pageBody(s.id)}
++    </div>`).join('');
++}
++
++/**
++ * 设置页交互接线（场景模板与应用壳共用，行为一致）。
++ * @param {HTMLElement} root 含 8 个分区页的容器（scene 传 .csettings；应用壳传设置页 section）
++ */
++export function mountSettingsInteractions(root) {
++  // 通用分区：主题三态 → store 即时生效；动效开关 → store；保存 → toast
++  root.querySelector('.csettings__modes')?.addEventListener('click', (e) => {
++    const btn = e.target.closest('.csettings__mode');
++    if (!btn) return;
++    const next = saveConfig({ theme: btn.dataset.mode });
++    applyConfig(next);
++    root.querySelectorAll('.csettings__mode').forEach((b) => {
++      const on = b.dataset.mode === next.theme;
++      b.classList.toggle('csettings__mode--active', on);
++      b.setAttribute('aria-pressed', String(on));
++    });
++  });
++  root.querySelector('.csettings__field--row .c-switch')?.addEventListener('click', (e) => {
++    const sw = e.currentTarget;
++    const next = saveConfig({ motion: { enabled: sw.getAttribute('aria-checked') !== 'true' } });
++    applyConfig(next);
++  });
++  root.querySelector('[data-save-general]')?.addEventListener('click', () => {
++    toast('设置已保存', { variant: 'success' });
++  });
++
++  // 快捷键分区：每行独立 mount，onChange → sessionStorage
++  root.querySelectorAll('.csettings__hotkey').forEach((row) => {
++    mountHotkeyRecorder(row, {
++      onChange: (keys) => {
++        const saved = loadHotkeys();
++        saved[row.dataset.hotkey] = keys;
++        sessionStorage.setItem(HOTKEY_STORAGE, JSON.stringify(saved));
++        toast('快捷键已更新');
++      },
++    });
++  });
++
++  // 关于分区：开源链接占位
++  root.querySelector('[data-open-source]')?.addEventListener('click', () => {
++    toast('开源仓库链接占位：接入 Tauri 后指向真实仓库');
++  });
++
++  // 开关视觉（通用分区动效 / 界面分区模块显隐）
++  mountSwitch(root);
++}
+diff --git a/src/scenes/settings-window/settings-window.js b/src/scenes/settings-window/settings-window.js
+index ed6411b..243d866 100644
+--- a/src/scenes/settings-window/settings-window.js
++++ b/src/scenes/settings-window/settings-window.js
+@@ -1,207 +1,37 @@
+ // 场景模板 3：设置页（Task 20）—— 滑动选择分区 + 定制器整页嵌入 + 快捷键录制。
++// Task A4 重构：纯渲染（SECTIONS / pageBody / 页面栈）与交互接线抽到 settings-pages.js 共享，
++// 场景模板与应用壳设置模式共用同一实现（类名 .csettings__* 不变）。
+ // 820×520 玻璃窗口，grid（220px 1fr / 40px 1fr）—— 设置导航比主页（176px）更宽（用户确认变体）。
+ // 左侧纵向 NavigationWheel 变体：8 分区（8×64px = 512px > 列表视口 424px，真实可滑）；
+ // 右侧 8 分区页：通用/外观/快捷键/关于为完整页，界面为模块开关列表，通知/数据/高级为占位页。
+ // 隔离（Task 19 教训：场景局部类）：
+ // - 底部返回入口用 .csettings__back —— 不复用 .c-navwheel__settings（nav-wheel.spec.js
+ //   假设该选择器唯一）；主题三态用 .csettings__mode —— 不复用 .tsw__mode
+ //   （theme-switcher.spec.js 全页定位 .tsw__mode 并 click，strict mode 不能并存第二份）
+ // - 外观分区惰性挂载 renderCustomizerGroups：定制器面板与设置页同构类（.cust-row/
+ //   .cust-glass-preview）会被 customizer.spec.js 的全页 fill/hover 选择器命中，两实例
+ //   并存即触发 strict mode 冲突 —— 首次激活分区时才渲染，此后常驻并与面板双向实时同步
+ // 动画红线：分区切换只动 transform/opacity（page-in），无模糊动画。
+ import { icon } from '../../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../../components/title-bar/title-bar.js';
+ import { mountNavWheel } from '../../components/navigation-wheel/nav-wheel.js';
+-import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
+-import { renderSelect } from '../../components/select/select.js';
+-import { renderEmptyState } from '../../components/empty-state/empty-state.js';
+-import { renderHotkeyRecorder, mountHotkeyRecorder } from '../../components/hotkey-recorder/hotkey-recorder.js';
+ import { renderCustomizerGroups } from '../../demo/customizer-panel.js';
+-import { getConfig, saveConfig } from '../../config/store.js';
+-import { applyConfig } from '../../config/apply.js';
+ import { toast } from '../../components/toast/toast.js';
+-
+-// 8 分区（pre-flight 修订）：8×64px = 512px > 列表视口 424px，滑动选择真实生效。
+-// 界面类模块（原第 3 分区）统一收纳于「界面」分区，其余沿用原分区结构。
+-const SECTIONS = [
+-  { id: 'general',    name: '通用',   icon: 'home' },
+-  { id: 'appearance', name: '外观',   icon: 'palette' },
+-  { id: 'interface',  name: '界面',   icon: 'layout' },
+-  { id: 'shortcuts',  name: '快捷键', icon: 'key' },
+-  { id: 'notify',     name: '通知',   icon: 'bell' },
+-  { id: 'data',       name: '数据',   icon: 'folder' },
+-  { id: 'advanced',   name: '高级',   icon: 'settings' },
+-  { id: 'about',      name: '关于',   icon: 'info' },
+-];
+-
+-// —— 通用分区 ——
+-
+-// 主题三态：与顶栏 tsw 同语义（浅/深/跟随系统），类名场景局部（.csettings__mode）
+-const THEME_MODES = [
+-  { id: 'light',  label: '浅色',   icon: 'sun' },
+-  { id: 'dark',   label: '深色',   icon: 'moon' },
+-  { id: 'system', label: '跟随系统', icon: 'monitor' },
+-];
+-
+-function pageHead(title, desc = '') {
+-  return `<div class="csettings__page-head"><h4>${title}</h4>${desc ? `<p>${desc}</p>` : ''}</div>`;
+-}
+-
+-function generalPage() {
+-  const cfg = getConfig();
+-  return `
+-    ${pageHead('通用', '应用基础偏好，保存后即时生效')}
+-    <div class="csettings__field">
+-      <span class="csettings__field-label">主题</span>
+-      <p class="csettings__field-desc">跟随系统或固定深/浅主题</p>
+-      <div class="csettings__modes" role="group" aria-label="主题模式">
+-        ${THEME_MODES.map((m) => `
+-          <button type="button" class="csettings__mode${cfg.theme === m.id ? ' csettings__mode--active' : ''}"
+-            data-mode="${m.id}" aria-pressed="${cfg.theme === m.id}">
+-            ${icon(m.icon, 16)}<span>${m.label}</span>
+-          </button>`).join('')}
+-      </div>
+-    </div>
+-    <div class="csettings__field csettings__field--row">
+-      <div>
+-        <span class="csettings__field-label">动效</span>
+-        <p class="csettings__field-desc">界面过渡与微动效开关</p>
+-      </div>
+-      ${renderSwitch({ checked: cfg.motion.enabled, label: '动效' })}
+-    </div>
+-    <div class="csettings__field">
+-      <span class="csettings__field-label">启动行为</span>
+-      <p class="csettings__field-desc">应用启动时的窗口状态</p>
+-      ${renderSelect({ options: ['上次关闭时的状态', '默认窗口', '最小化到托盘'], value: '上次关闭时的状态' })}
+-    </div>
+-    <div class="csettings__actions">
+-      <button type="button" class="c-btn c-btn--primary c-btn--sm" data-save-general>${icon('check', 16)}保存设置</button>
+-    </div>`;
+-}
+-
+-// —— 外观分区 ——
+-
+-// 定制器整页形态：占位容器由 switchPage 首次激活时惰性渲染（renderCustomizerGroups），
+-// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见文件头注释）
+-function appearancePage() {
+-  return `
+-    ${pageHead('外观', '主题定制器整页形态 —— 与右侧抽屉面板共用同一份配置')}
+-    <div class="csettings__cust"></div>`;
+-}
+-
+-// —— 界面分区：模块显隐开关列表（演示级，不写 store）——
+-
+-const MODULE_TOGGLES = [
+-  { id: 'float',    label: '剪贴板悬浮窗', desc: '全局呼出的小窗，复制记录即时可查' },
+-  { id: 'main',     label: '主窗口',       desc: '完整功能窗口：仪表盘与数据列表' },
+-  { id: 'lab',      label: '动效实验室',   desc: '动效演示卡与参数试玩器' },
+-  { id: 'showcase', label: '组件展示区',   desc: '32 组件变体矩阵与悬浮窗实例' },
+-];
+-
+-function interfacePage() {
+-  return `
+-    ${pageHead('界面', '模块显隐控制')}
+-    <div class="csettings__toggles">
+-      ${MODULE_TOGGLES.map((m) => `
+-        <div class="csettings__toggle">
+-          <div>
+-            <span class="csettings__field-label">${m.label}</span>
+-            <p class="csettings__field-desc">${m.desc}</p>
+-          </div>
+-          ${renderSwitch({ checked: true, label: m.label })}
+-        </div>`).join('')}
+-    </div>
+-    <p class="csettings__note">界面类模块导航统一收拢于设置：以上开关为演示占位，实际显隐由接入应用的模块系统决定。</p>`;
+-}
+-
+-// —— 快捷键分区：4 行 HotkeyRecorder，录制结果存 sessionStorage（演示级）——
+-
+-const HOTKEY_DEFS = [
+-  { key: 'show',   label: '呼出面板',    desc: '全局呼出剪贴板悬浮窗',    defaults: ['Ctrl', 'Shift', 'V'] },
+-  { key: 'search', label: '搜索',        desc: '聚焦悬浮窗搜索框',        defaults: ['Ctrl', 'Shift', 'F'] },
+-  { key: 'paste',  label: '粘贴纯文本',  desc: '以纯文本格式粘贴剪贴板内容', defaults: ['Ctrl', 'Shift', 'X'] },
+-  { key: 'clear',  label: '清空',        desc: '清空全部复制记录',        defaults: ['Ctrl', 'Shift', 'Backspace'] },
+-];
+-
+-const HOTKEY_STORAGE = 'ui-design-hotkeys';
+-
+-function loadHotkeys() {
+-  try { return JSON.parse(sessionStorage.getItem(HOTKEY_STORAGE) ?? '{}'); }
+-  catch { return {}; }
+-}
+-
+-function shortcutsPage() {
+-  const saved = loadHotkeys();
+-  return `
+-    ${pageHead('快捷键', '点击录制，结果保存于本会话（演示级）')}
+-    <div class="csettings__hotkeys">
+-      ${HOTKEY_DEFS.map((h) => `
+-        <div class="csettings__hotkey" data-hotkey="${h.key}">
+-          <div>
+-            <span class="csettings__field-label">${h.label}</span>
+-            <p class="csettings__field-desc">${h.desc}</p>
+-          </div>
+-          ${renderHotkeyRecorder({ value: saved[h.key] ?? h.defaults, placeholder: '点击设置快捷键' })}
+-        </div>`).join('')}
+-    </div>`;
+-}
+-
+-// —— 通知/数据/高级：占位页 ——
+-
+-function emptyPage(iconName, title, desc) {
+-  return `<div class="c-empty-state csettings__empty">${renderEmptyState({ iconName, title, desc })}</div>`;
+-}
+-
+-// —— 关于分区：应用信息卡 ——
+-
+-function aboutPage() {
+-  return `
+-    ${pageHead('关于', '应用信息与版本')}
+-    <div class="csettings__about">
+-      <div class="csettings__logo">${icon('palette', 36)}</div>
+-      <div class="csettings__name">UI Design System</div>
+-      <div class="csettings__ver">版本 1.0.0</div>
+-      <div class="csettings__meta">
+-        <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
+-        <div class="csettings__row"><span>设计语言</span><span>克制的玻璃质感 · 深/浅双主题 · 6 主题色</span></div>
+-      </div>
+-      <button type="button" class="csettings__link" data-open-source>${icon('globe', 16)}开源仓库</button>
+-    </div>`;
+-}
+-
+-// —— 分区 → 页面主体 ——
+-
+-function pageBody(id) {
+-  switch (id) {
+-    case 'general':    return generalPage();
+-    case 'appearance': return appearancePage();
+-    case 'interface':  return interfacePage();
+-    case 'shortcuts':  return shortcutsPage();
+-    case 'notify':     return emptyPage('bell', '通知设置', '新复制提醒、声音与角标等将在接入应用后开放');
+-    case 'data':       return emptyPage('folder', '数据管理', '导出备份与多端同步将在接入应用后开放');
+-    case 'advanced':   return emptyPage('shield', '高级设置', '实验性功能与调试选项将在接入应用后开放');
+-    case 'about':      return aboutPage();
+-    default: return '';
+-  }
+-}
++import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from './settings-pages.js';
+ 
+ /**
+  * 挂载设置页场景（追加到 #scenes 内，主窗口场景之后）。
+  * @param {HTMLElement} root #scenes section（外层 h2 由 main.js 写入）
+  */
+ export function mountSettingsWindow(root) {
+-  const pagesHtml = SECTIONS.map((s, i) => `
+-    <div class="csettings__page${i === 0 ? ' csettings__page--active' : ''}" data-page="${s.id}">
+-      ${pageBody(s.id)}
+-    </div>`).join('');
++  const pagesHtml = renderSettingsPages();
+ 
+   root.insertAdjacentHTML('beforeend', `
+     <section class="csettings-scene">
+       <header class="csettings-scene__head">
+         <h3>设置页</h3>
+         <p>滑动选择分区 + 定制器整页嵌入 + 快捷键录制；Tauri 接入见 <code>docs/tauri-integration.md</code>。</p>
+       </header>
+       <div class="csettings">
+         ${renderTitleBar({ title: '设置', iconName: 'settings' })}
+         <div class="csettings__nav">
+@@ -237,53 +67,14 @@ export function mountSettingsWindow(root) {
+   });
+ 
+   // 返回入口：滚动回展示页顶部（设置页自身无「设置」入口，改为返回主页语义）
+   const backBtn = scene.querySelector('.csettings__back');
+   backBtn.innerHTML = `${icon('arrow-left', 16)}<span>返回</span>`;
+   backBtn.addEventListener('click', () => {
+     document.querySelector('.content').scrollIntoView({ behavior: 'smooth' });
+     toast('已返回主页');
+   });
+ 
+-  // 通用分区：主题三态 → store 即时生效；动效开关 → store；保存 → toast
+-  const modes = scene.querySelector('.csettings__modes');
+-  modes.addEventListener('click', (e) => {
+-    const btn = e.target.closest('.csettings__mode');
+-    if (!btn) return;
+-    const next = saveConfig({ theme: btn.dataset.mode });
+-    applyConfig(next);
+-    modes.querySelectorAll('.csettings__mode').forEach((b) => {
+-      const on = b.dataset.mode === next.theme;
+-      b.classList.toggle('csettings__mode--active', on);
+-      b.setAttribute('aria-pressed', String(on));
+-    });
+-  });
+-  scene.querySelector('.csettings__field--row .c-switch').addEventListener('click', (e) => {
+-    const sw = e.currentTarget;
+-    const next = saveConfig({ motion: { enabled: sw.getAttribute('aria-checked') !== 'true' } });
+-    applyConfig(next);
+-  });
+-  scene.querySelector('[data-save-general]').addEventListener('click', () => {
+-    toast('设置已保存', { variant: 'success' });
+-  });
+-
+-  // 快捷键分区：每行独立 mount，onChange → sessionStorage
+-  scene.querySelectorAll('.csettings__hotkey').forEach((row) => {
+-    mountHotkeyRecorder(row, {
+-      onChange: (keys) => {
+-        const saved = loadHotkeys();
+-        saved[row.dataset.hotkey] = keys;
+-        sessionStorage.setItem(HOTKEY_STORAGE, JSON.stringify(saved));
+-        toast('快捷键已更新');
+-      },
+-    });
+-  });
+-
+-  // 关于分区：开源链接占位
+-  scene.querySelector('[data-open-source]').addEventListener('click', () => {
+-    toast('开源仓库链接占位：接入 Tauri 后指向真实仓库');
+-  });
+-
+-  // 挂载交互：标题栏（最大化切换）/ 模块显隐开关
++  // 共享交互接线（主题三态/动效/保存/快捷键/开源链接/开关）+ 标题栏（最大化切换）
++  mountSettingsInteractions(scene);
+   mountTitleBar(scene);
+-  mountSwitch(scene);
+ }
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index d9e82b0..d76c85f 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -111,10 +111,81 @@ test('概览页结构：欢迎卡 + 7 快捷入口 + 主题状态卡', async ({
+   const overview = page.locator('.app-main__page[data-page="home"]');
+   await expect(overview.locator('.app-main__welcome')).toBeVisible();
+   await expect(overview.locator('.app-main__shortcut')).toHaveCount(7);
+   await expect(overview.locator('.app-main__theme-status')).toBeVisible();
+   // 快捷入口点击 = 展开右窗 + 切到该应用（点击剪贴板入口）
+   await overview.locator('.app-main__shortcut[data-shortcut="clipboard"]').click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeVisible();
+   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'clipboard');
+ });
++
++// —— 设置模式（Task A4：⚙ 按钮 + 右窗设置目录 + 设置页共享）——
++
++test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活高亮', async ({ page }) => {
++  await page.goto(APP_URL);
++  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
++  await expect(settingsBtn).toHaveCount(1);
++  // 初始未激活
++  await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
++  // 点击 ⚙ → 右窗展开 + 8 项设置目录 + 内容区显示通用设置页
++  await settingsBtn.click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  const active = page.locator('.app-main__page--active');
++  await expect(active).toHaveAttribute('data-page', 'settings');
++  await expect(active).toContainText('通用');
++  // ⚙ 激活态高亮
++  await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
++});
++
++test('设置模式：选择「外观」→ 内容区设置页含 cust-group 6', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main .c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
++  const settings = page.locator('.app-main__page[data-page="settings"]');
++  await expect(settings.locator('.cust-group')).toHaveCount(6);
++  await expect(settings).toContainText('外观');
++});
++
++test('设置模式：再次点击 ⚙ 收起右窗（toggle）+ 取消激活', async ({ page }) => {
++  await page.goto(APP_URL);
++  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
++  await settingsBtn.click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
++  // 再次点击 → 收起（toggle）
++  await settingsBtn.click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++  await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
++});
++
++test('设置模式：左栏应用仍可选（点应用切回应用模式）', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main .c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  const active = page.locator('.app-main__page--active');
++  await expect(active).toHaveAttribute('data-page', 'clipboard');
++  await expect(active).toContainText('剪贴板');
++  await expect(page.locator('.app-main .c-titlebar__control--settings')).not.toHaveClass(/settings-toggle--active/);
++});
++
++test('设置模式：标题栏上下文「设置 › 分区」联动', async ({ page }) => {
++  await page.goto(APP_URL);
++  const ctx = page.locator('.app-main [data-ctx]');
++  await page.locator('.app-main .c-titlebar__control--settings').click();
++  await expect(ctx).toHaveText('设置 › 通用');
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
++  await expect(ctx).toHaveText('设置 › 外观');
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="about"]').click();
++  await expect(ctx).toHaveText('设置 › 关于');
++});

@@ -1,0 +1,811 @@
+# Review package: cf7f52f..HEAD
+
+## Commits
+6bbea44 docs: Task A2 执行留痕（黄金比例锚点 + 方向参数化，18 张基线重生成）
+70f8a7d feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化
+
+## Files changed
+ docs/superpowers/sdd/progress-app-shell.md         |  34 +++++-
+ docs/superpowers/sdd/task-A2-brief.md              |  23 ++++
+ docs/superpowers/sdd/task-A2-report.md             | 119 +++++++++++++++++++++
+ .../navigation-wheel/nav-wheel-geometry.js         |  34 +++---
+ src/components/navigation-wheel/nav-wheel.css      |   6 +-
+ src/components/navigation-wheel/nav-wheel.js       | 113 +++++++++++--------
+ tests/e2e/nav-wheel.spec.js                        |  19 ++--
+ .../main-window-dark-amber-chromium-win32.png      | Bin 40545 -> 41042 bytes
+ .../main-window-dark-emerald-chromium-win32.png    | Bin 40459 -> 40930 bytes
+ .../main-window-dark-indigo-chromium-win32.png     | Bin 40505 -> 40895 bytes
+ .../main-window-light-amber-chromium-win32.png     | Bin 39091 -> 39536 bytes
+ .../main-window-light-emerald-chromium-win32.png   | Bin 39446 -> 39860 bytes
+ .../main-window-light-indigo-chromium-win32.png    | Bin 39055 -> 39467 bytes
+ .../scenes-dark-amber-chromium-win32.png           | Bin 81123 -> 81556 bytes
+ .../scenes-dark-emerald-chromium-win32.png         | Bin 81282 -> 81622 bytes
+ .../scenes-dark-indigo-chromium-win32.png          | Bin 81011 -> 81369 bytes
+ .../scenes-light-amber-chromium-win32.png          | Bin 73161 -> 73246 bytes
+ .../scenes-light-emerald-chromium-win32.png        | Bin 73424 -> 73437 bytes
+ .../scenes-light-indigo-chromium-win32.png         | Bin 73125 -> 73047 bytes
+ .../settings-window-dark-amber-chromium-win32.png  | Bin 43687 -> 43554 bytes
+ ...settings-window-dark-emerald-chromium-win32.png | Bin 43703 -> 43528 bytes
+ .../settings-window-dark-indigo-chromium-win32.png | Bin 43604 -> 43502 bytes
+ .../settings-window-light-amber-chromium-win32.png | Bin 40759 -> 40548 bytes
+ ...ettings-window-light-emerald-chromium-win32.png | Bin 40877 -> 40605 bytes
+ ...settings-window-light-indigo-chromium-win32.png | Bin 40193 -> 40006 bytes
+ tests/unit/geometry.test.js                        |  69 ++++++++----
+ 26 files changed, 319 insertions(+), 98 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-app-shell.md b/docs/superpowers/sdd/progress-app-shell.md
+index 7928ecc..48260a7 100644
+--- a/docs/superpowers/sdd/progress-app-shell.md
++++ b/docs/superpowers/sdd/progress-app-shell.md
+@@ -1,23 +1,49 @@
+ # SDD ledger — 应用壳实施（2026-08-05 起）
+ 
+-Base: 待定（下一个空白会话从 main 或 feature/iteration 检出后记录）
++Base: 47a1d76（branch feature/iteration，自 main 检出）
+ 
+ 规格：docs/superpowers/specs/2026-08-05-app-shell-ui-design.md
+ 计划书：docs/superpowers/plans/2026-08-05-app-shell.md
+ 
++## Pre-flight 决策（2026-08-05，用户确认）
++
++1. **A2 基线重生成范围**：接受 **24 张**（scenes/main-window/settings-window/components × 2 主题 × 3 accent）——`#components` 展示区挂有导航轮实例（component-showcase-full.js:89），锚点变化必然移动其 focal 峰值/初始 padding，`components-*.png` 6 张一并重生成。计划「18/18」数字更新为「24/12」（不变：tokens/clipboard）。
++   - **A2 落地修订**（2026-08-05，实施实测）：最终重生成 **18 张**（scenes/main-window/settings-window × 2 主题 × 3 accent）。`components-*.png` 6 张实测**零变化**——展示轮 `.c-navwheel--demo` 未进入 `#components` 全元素截图的捕获（该区域新旧基线均为纯背景，预存渲染现象，非本任务引入）。tokens/clipboard 零变化（18 张不变）。差异区域经解码比对确认仅导航轮图标带竖向条（锚点位移），内容页像素级不变。
++2. **A1 docs 顶栏**：按计划**不加**「应用壳」链接——docs 模式逐字节等价（84 e2e + 基线零冲击硬门槛），应用壳入口经 `?mode=app` / README 说明。
++
++## Task A1: 双模式入口（mode 解析 + docs 渲染搬移）
++
++- **状态**：完成（2026-08-05）
++- **提交**：`cf7f52f` `feat: 应用/文档双模式入口`
++- **验证**：npm test 41/41（+5 mode.test.js）；npm run test:e2e 84/84（36 基线零变化）；npm run build 通过；手动 Playwright 4 分支（docs/app/strip/Tauri 探测）正确
++- **实现**：`src/app/mode.js` `resolveMode(params, hasTauri)` 纯函数（显式优先/非法回落 docs/Tauri 探测注入）；`src/docs/docs-mode.js` docs 渲染逐字节搬移（模板字面量字节等价）；`src/main.js` 只留 CSS + 模式分支 + 动态 import；`src/app/app-main.js` + `src/app/strip-main.js` Task A3/A5 最小占位（build 可解析）
++- **简报/报告/审查包**：docs/superpowers/sdd/task-A1-brief.md / task-A1-report.md / review-A1.diff
++- **评审**：规格 ✅ / Approved（0 Critical/Important）
++- **Minor 留收尾**：① `?mode=strip` 未入单测（与显式分支共用，A5 落地时补 1 例）；② main.js:46 `typeof window !== 'undefined'` 冗余守卫（浏览器入口恒真，无害）；③ docs 静态 import 使主 chunk 含 docs 依赖树（与旧 main.js 同，A3 起 app 变生产路径时可考虑 docs 改动态）
++
++## Task A2: NavigationWheel 几何参数化（黄金比例锚点 + 方向）
++
++- **状态**：完成（2026-08-05）
++- **提交**：`70f8a7d` `feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化`
++- **验证**：npm test 45/45（geometry 9→13）；npm run test:e2e 84/84；npm run test:visual 36/36（18 张重生成）；npm run build 通过
++- **实现**：`nav-wheel-geometry.js` 纯函数参数化（anchorY / scrollTopForAnchor / findNearestIndex(+anchorRatio)，focal offset 相对锚线，删 itemCenterY/scrollTopForCenter）；`nav-wheel.js` `mountNavWheel({items,onChange,anchorRatio=0.382,direction='vertical'})` + AXIS 主轴抽象（scrollTop↔scrollLeft、translateY↔translateX 等）+ 非对称首尾 padding；`nav-wheel.css` 无 JS 回退 → 38.2%/61.8%
++- **简报/报告**：docs/superpowers/sdd/task-A2-brief.md / task-A2-report.md
++- **评审**：待独立评审（规格符合 + 质量）
++- **Minor 留收尾**：① horizontal 渲染层未闭环（无实例挂载，方向等价性仅几何层单测；A6 落地时补渲染级测试）；② `anchorY` 5 参签名含未用参数（viewportLength/anchorRatio，按 brief 接口保留；可选精简为 3 参）
++
+ ## 执行状态
+ 
+-- Task A1 双模式入口：待执行
+-- Task A2 NavigationWheel 参数化：待执行
++- Task A1 双模式入口：✅ 完成（2026-08-05）
++- Task A2 NavigationWheel 参数化：✅ 完成（2026-08-05，基线重生成 18 张）
+ - Task A3 应用壳骨架：待执行
+ - Task A4 设置模式：待执行
+ - Task A5 FloatStrip：待执行
+ - Task A6 手机形态：待执行
+ - Task A7 基线收尾 + 合并 main：待执行
+ 
+ ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
+ 
+ - 测试仅在 Web 环境执行（不跑 tauri dev）
+-- docs 模式零冲击：84 e2e + 36 基线（除导航轮 18 张）不得变化
++- docs 模式零冲击：84 e2e + 36 基线（A2 后按 24/12 划分）不得越界变化
+ - 每任务：简报 → 派发 → 报告 → 审查包 → 评审 → 修复循环 → 本账本留痕（随代码提交）
+ - 完成后按 Task A7 合并 main
+diff --git a/docs/superpowers/sdd/task-A2-brief.md b/docs/superpowers/sdd/task-A2-brief.md
+new file mode 100644
+index 0000000..98d7e18
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A2-brief.md
+@@ -0,0 +1,23 @@
++# Task A2: NavigationWheel 几何参数化（黄金比例锚点 + 方向）
++
++**Files:**
++- Modify: `src/components/navigation-wheel/nav-wheel-geometry.js`、`nav-wheel.js`、`nav-wheel.css`
++- Modify: `tests/unit/geometry.test.js`、`tests/e2e/nav-wheel.spec.js`
++- Modify: `tests/e2e/visual-regression.spec.js`（导航轮相关 24 张基线重生成 —— 用户已确认：scenes/main-window/settings-window/components 各 2 主题 × 3 accent）
++
++**Interfaces:**
++- geometry 新增/改造（全部纯函数可单测）：
++  - `anchorY(index, itemHeight, gap, viewportHeight, anchorRatio)` → 主轴锚点位置（替代 scrollTopForCenter 的中心语义；anchorRatio 默认 0.382）
++  - `scrollTopForAnchor(index, itemHeight, gap, viewportHeight, anchorRatio)`
++  - `findNearestIndex(scrollTop, count, itemHeight, gap, viewportHeight, anchorRatio)`（用锚点替代中心）
++  - `focalScale/focalOpacity(offset, viewportLength, maxScale, falloff)` — offset 相对锚点
++  - `direction: 'vertical' | 'horizontal'` — 主轴抽象（几何/渲染/滚动沿主轴；horizontal 供 Task A6 底部栏）
++- `mountNavWheel(root, { items, onChange, anchorRatio = 0.382, direction = 'vertical' })`；setActive/scrollToIndex 保留
++
++- [ ] **Step 1: 写失败单测**：geometry.test.js 适配 + 新增（anchorRatio 0.382 的锚点数学：首项初始态在 38.2%、末项 clamp、focal 峰值在锚点；horizontal 方向等价性）
++- [ ] **Step 2: 实现几何参数化**（保持向后兼容默认值 0.382 直接生效）
++- [ ] **Step 3: nav-wheel.spec 适配**：居中断言（delta < 4px 相对中心）→ 锚点断言（delta < 4px 相对 38.2% 锚点）
++- [ ] **Step 4: 重生成 24 张导航轮相关基线**：确认仅选中位置变化（解码比对差异区域）后 `--update-snapshots`
++- [ ] **Step 5: 全量回归 + 提交** `feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化`
++
++---
+diff --git a/docs/superpowers/sdd/task-A2-report.md b/docs/superpowers/sdd/task-A2-report.md
+new file mode 100644
+index 0000000..cc7abd4
+--- /dev/null
++++ b/docs/superpowers/sdd/task-A2-report.md
+@@ -0,0 +1,119 @@
++# Task A2 Report — NavigationWheel 几何参数化（黄金比例锚点 + 方向）
++
++**Status:** DONE_WITH_CONCERNS（1 项范围偏差 + 2 项已知限制，均已在下方说明）
++**日期:** 2026-08-05
++
++## What I implemented
++
++将 NavigationWheel 选中锚点从 50% 中心改为 38.2% 黄金比例（`anchorRatio` 默认 0.382），并加 `direction: 'vertical' | 'horizontal'` 主轴抽象。
++
++### geometry 层（`src/components/navigation-wheel/nav-wheel-geometry.js`，全部纯函数）
++- `anchorY(index, itemHeight, gap, viewportLength, anchorRatio = 0.382)` — 项锚点位置（= 项中心，主轴坐标）。`viewportLength`/`anchorRatio` 按 brief 接口签名保留（值只取决于项几何），注释说明。
++- `scrollTopForAnchor(index, itemHeight, gap, viewportLength, anchorRatio = 0.382)` = `anchorY(i) - viewportLength * anchorRatio`（替代 `scrollTopForCenter` 的 `- viewportLength/2`）。
++- `findNearestIndex(scrollTop, count, itemHeight, gap, viewportLength, anchorRatio = 0.382)` — `viewAnchor = scrollTop + viewportLength * anchorRatio`，其余（clamp/无守卫补偿坐标说明）保留。
++- `focalScale/focalOpacity(offset, viewportLength, maxScale, falloff)` — 参数 `viewportHeight` 更名 `viewportLength`；**offset 相对主轴锚线**（调用方按 `viewportLength * anchorRatio` 计算），峰值在锚点而非视口中心。falloff 默认保留（scale 1.3 / opacity 1.4）。
++- 删除 `itemCenterY`/`scrollTopForCenter` —— 不留中心语义残留（`anchorRatio=0.5` 即恢复旧中心数学，单测锁定向后兼容基准）。
++
++### 渲染层（`src/components/navigation-wheel/nav-wheel.js`）
++- `mountNavWheel(root, { items, onChange, anchorRatio = 0.382, direction = 'vertical' })`；`setActive`/`scrollToIndex` 保留。
++- 主轴抽象 `AXIS` 映射表（vertical 默认解析为旧的全部属性）：`size`（height/width）、`margin`（marginTop/marginLeft）、`len`（clientHeight/clientWidth）、`scroll`（scrollTop/scrollLeft）、`offset`（offsetTop/offsetLeft）、`translate`（translateY/translateX）、`padBefore/padAfter`、`pointer`（clientY/clientX）、`prev/next`（ArrowUp/ArrowDown 或 ArrowLeft/ArrowRight）。**vertical 路径行为与旧实现逐点等价**（同一组属性/同式）。
++- 首尾 padding **非对称**：`padTop = max(0, len*anchorRatio - itemH/2 - marginTop)`、`padBottom = max(0, len*(1-anchorRatio) - itemH/2 - marginTop)`。
++  - 设计决策（偏离 brief 单公式但符合其目标「首/末项能滚到锚点」）：brief 给出的 `pad = max(0, len*anchorRatio - itemH/2 - marginTop)` 只保证**首项**能滚到锚线；锚点非居中（38.2%）时对称 padding 会让**末项**滚不到锚线。推导：`padBottom ≥ len*(1-anchorRatio) - itemH/2 - marginTop`（利用 gap=12=2*marginTop=12）。`anchorRatio=0.5` 时二者相等 = 旧中心 pad（vh=400 下均 168，已数值验证）。
++  - 数值验证：侧栏 624px 视口 → padTop=206.368（=0.382*624-32）、padBottom=353.632（=0.618*624-32）；末项锚点 raw scrollTop = 704 = maxScroll，首项 = 0，**两端精确可达**。
++- `setFocal` 的 offset 改为相对锚线：`anchorY(i) + CONTENT_TOP - st - vl*anchorRatio`；transform 轴向经 `AXIS.translate`。
++- `snapNow`/`select`/`animateScrollTo` 全部改 `scrollTopForAnchor`，滚动轴经 `AXIS.scroll`。
++- 指针/键盘事件沿主轴（`AXIS.pointer`、`AXIS.prev/next`）。
++
++### CSS（`src/components/navigation-wheel/nav-wheel.css`）
++- 无 JS 占位回退 padding 由 `calc(50% - 32px) 0 50% 0` 改为 `calc(38.2% - 32px) 0 calc(61.8% - 32px) 0`（注释同步；JS 实测值仍覆盖）。
++
++### 设计决策要点
++- **geometry 层方向无关**：只有「主轴长度」语义，horizontal 渲染复用同一套公式（scrollTop→scrollLeft、clientHeight→clientWidth 等）。等价性由单测覆盖。本任务**未挂载任何 horizontal 实例**（Task A6 范围，brief 明确不要求）。
++- anchorRatio/direction 是**组件实例参数**（mount 时传入），非全局配置项，按 brief 铁律不进 store/config 链路。
++- 向后兼容：默认值直接生效，全部既有调用点（docs-mode.js / component-showcase-full.js / main-window.js / settings-window.js）未传参即得新锚点行为，无需改动调用点。
++
++## TDD Evidence
++
++### RED
++- 步骤：先改写 `tests/unit/geometry.test.js`（锚点数学、anchorRatio=0.5 恢复、末项 clamp、focal 峰值在锚点、horizontal 等价性），此时 geometry 仍导出旧函数。
++- 命令：`npm test`
++- 输出（摘要）：
++  ```
++  tests/unit/geometry.test.js > findNearestIndex > anchorRatio=0.5 时与旧中心语义一致
++  TypeError: (0 , scrollTopForAnchor) is not a function
++  Test Files 1 failed | 5 passed (6)；Tests 9 failed | 36 passed (45)
++  ```
++- 为何预期失败：新接口（`anchorY`/`scrollTopForAnchor`/带 `anchorRatio` 的 `findNearestIndex`）尚不存在，所有 9 个新/适配用例 import 即失败。
++
++### GREEN
++- 步骤：实现 geometry 参数化 + nav-wheel.js 主轴抽象 + CSS 回退。
++- 命令：`npm test`
++- 输出（摘要）：
++  ```
++  tests/unit/geometry.test.js (13 tests) ✓
++  Test Files 6 passed；Tests 45 passed (45)
++  ```
++
++## Test results（全绿）
++
++| 命令 | 结果 |
++|---|---|
++| `npm test` | **45/45**（原 41；geometry 9→13） |
++| `npm run test:e2e` | **84/84**（含 36 视觉） |
++| `npm run test:visual` | **36/36**（重生成后新基线全绿） |
++| `npm run build` | **通过**（101 modules，621ms） |
++
++## 基线重生成清单 + 差异区域比对
++
++### 范围偏差：预期 24 张 → 实际 18 张（`components` 6 张不变）
++brief/账本预判 `scenes/main-window/settings-window/components` 各 2 主题 × 3 accent = 24 张变化。实测 **`components-*.png` 6 张零变化**：
++- 证据：`#components` 全元素截图（1040×7597）中，展示轮 `.c-navwheel--demo`（176×280，位于 `[432,163]`）区域**新旧均为纯背景色**（surface 251,251,253，0 非背景像素）——该轮未进入 `#components` 元素截图的捕获（预存渲染现象，非本任务引入）。`components` 视觉测试改动前后均通过。
++- 处理：**未重生成** components 基线（已正确）。18 张已重生成清单（grep 过滤只动这 18）：
++
++```
++main-window-{light,dark}-{indigo,amber,emerald}        (6)
++scenes-{light,dark}-{indigo,amber,emerald}             (6)
++settings-window-{light,dark}-{indigo,amber,emerald}    (6)
++```
++
++不变（12+6=18 张，git 仅见上述 18 张 PNG 变更）：`tokens` 6 + `clipboard` 6 + `components` 6。
++
++### 差异区域比对（重生成前，解码比对新旧基线）
++对 18 张失败的 actual vs expected（均按测试条件捕获）做像素差异分析，可见阈值（单像素 RGB 差和 > 30）下：
++- `main-window`：changed=1728px，bbox **[17,206,45,497]**（29×292 竖向条）；内容区（x≥176）**0 变化**。
++- `settings-window`：bbox **[14,191,44,462]**（31×272）；内容区（x≥220）**0 变化**。
++- `scenes`：bbox **[17,881,45,1172]**（29px 宽同轴条）。
++- 结论：全部可见差异收敛在导航轮图标带的竖向条内 = **锚点位移**（38.2% vs 50% 使项整体上移 ~0.118×viewLen），内容页像素级不变。锚点数学另经数值探针确认（showcase 轮 padTop=53.568=0.382*224-32、item0 中心在 38.2% 线；侧栏轮 padTop=206.368）。
++
++重生成命令（grep 过滤，避免碰其余 18 张）：
++```
++npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots --grep "main-window|settings-window|scenes"
++```
++
++## Files changed
++
++- `src/components/navigation-wheel/nav-wheel-geometry.js`（参数化重写）
++- `src/components/navigation-wheel/nav-wheel.js`（anchorRatio + AXIS 主轴抽象）
++- `src/components/navigation-wheel/nav-wheel.css`（无 JS 回退 padding → 38.2%/61.8%）
++- `tests/unit/geometry.test.js`（13 用例：锚点数学/anchorRatio=0.5 恢复/clamp/focal 峰值/方向等价性）
++- `tests/e2e/nav-wheel.spec.js`（居中断言 → 38.2% 锚点断言，3 用例）
++- `tests/e2e/visual-regression.spec.js-snapshots/*.png`（18 张重生成）
++- `docs/superpowers/sdd/task-A2-report.md`（本报告）
++- `docs/superpowers/sdd/task-A2-brief.md`（需求源，随任务提交）
++
++未改动：`tests/e2e/visual-regression.spec.js`（无需代码变更）。
++
++## Self-review findings
++
++- **完整性**：brief 全部接口齐备（anchorY/scrollTopForAnchor/findNearestIndex(+anchorRatio)/focal 系列/方向参数化/mountNavWheel 签名/setActive·scrollToIndex 保留）；CSS 回退同步。
++- **向后兼容**：默认 0.382 直接生效、调用点零改动；`anchorRatio=0.5` 恢复旧中心数学（单测）；vertical 路径属性等价（e2e 84 全绿证明）。
++- **纪律**：TDD 先红后绿；不留中心语义残留（grep 确认代码仅锚点函数，注释中「中心」仅为解释旧行为）；动画红线只动 transform/opacity、锚点吸附沿用 `--dur-base`/`--ease-spring`、pad 非动画；零新依赖；测试仅在 Web 环境执行；构建通过。
++- **配置链路**：anchorRatio/direction 为实例参数，未入 store（符合 brief 铁律）。
++- **quality**：geometry 保持纯函数可单测；AXIS 映射表集中方向分歧点；非对称 pad 数学精确（两端可达，数值验证）。
++
++## Issues / concerns
++
++1. **范围偏差（已确认，非错误）**：`components` 6 张基线未变化（展示轮未进入 `#components` 元素截图，预存现象）。24→18 张。若未来展示轮在截图内可见，届时需补重生成。已在账本说明。
++2. **horizontal 渲染层未闭环**：方向等价性仅几何层单测覆盖；渲染层 horizontal 分支（无实例挂载）未经渲染级测试，留待 Task A6 闭环。
++3. **horizontal CSS/几何假设**：JS 轴向抽象假设横向 gap = 2×marginLeft（同 vertical 的 12=6+6）；横向 item 尺寸/间距/mask 朝向由 A6 定义。
++4. **`anchorY` 签名含未用参数**（viewportLength/anchorRatio）按 brief 接口保留；值只取决于项几何（代码注释说明）。可选收尾：改为 3 参精简签名。
+diff --git a/src/components/navigation-wheel/nav-wheel-geometry.js b/src/components/navigation-wheel/nav-wheel-geometry.js
+index 2086cc2..eab6f5d 100644
+--- a/src/components/navigation-wheel/nav-wheel-geometry.js
++++ b/src/components/navigation-wheel/nav-wheel-geometry.js
+@@ -1,27 +1,33 @@
+ // NavigationWheel 几何纯函数 —— 视口规格：itemHeight=52px, gap=12px（--navwheel-item-h/--navwheel-gap）
+ // 全部纯函数，供 nav-wheel.js 与单测共用；坐标系：内容从 y=0 起（不含容器 padding/margin）。
++// Task A2：选中锚点从 50% 中心改为 38.2% 黄金比例（anchorRatio，默认 0.382），并做主轴方向参数化 ——
++// 几何层方向无关（只有「主轴长度」语义），horizontal 渲染仅需 scrollTop→scrollLeft、clientHeight→clientWidth
++// 代入同一套公式（方向等价性由单测覆盖）。anchorRatio=0.5 即恢复旧中心语义（向后兼容基准）。
+ 
+-export function itemCenterY(index, itemHeight, gap) {
++export function anchorY(index, itemHeight, gap, viewportLength, anchorRatio = 0.382) {
++  // 项锚点位置（主轴坐标）= 项中心；viewportLength/anchorRatio 为签名统一（与 scrollTopForAnchor 同系），
++  // 值只取决于项几何 —— 该位置正是 scrollTopForAnchor 对齐到视口锚线（viewportLength*anchorRatio）的点。
+   return index * (itemHeight + gap) + itemHeight / 2;
+ }
+-export function scrollTopForCenter(index, itemHeight, gap, viewportHeight) {
+-  return itemCenterY(index, itemHeight, gap) - viewportHeight / 2;
++export function scrollTopForAnchor(index, itemHeight, gap, viewportLength, anchorRatio = 0.382) {
++  return anchorY(index, itemHeight, gap) - viewportLength * anchorRatio;
+ }
+-export function findNearestIndex(scrollTop, count, itemHeight, gap, viewportHeight) {
++export function findNearestIndex(scrollTop, count, itemHeight, gap, viewportLength, anchorRatio = 0.382) {
+   // 坐标系：内容坐标（不含容器 padding/margin；nav-wheel.js 调用处传 list.scrollTop - CONTENT_TOP）。
+-  // 旧 scrollTop===0 守卫是「原始 scrollTop」语义：补偿坐标下 0 并非初始位置（初始 = scrollTopForCenter(0)，
+-  // 负值），会把「视口中心在第 2~3 项处」误判为第 0 项 → 拖拽/惯性后吸附错误。公式在补偿坐标下
+-  // 精确（单测：scrollTopForCenter(i) → i），初始位置处自然得 0，两端由 clamp 兜底，故无守卫。
+-  const viewCenter = scrollTop + viewportHeight / 2;
+-  const i = Math.round((viewCenter - itemHeight / 2) / (itemHeight + gap));
++  // 旧 scrollTop===0 守卫是「原始 scrollTop」语义：补偿坐标下 0 并非初始位置（初始 = scrollTopForAnchor(0)，
++  // 负值），会把「视口锚线在第 2~3 项处」误判为第 0 项 → 拖拽/惯性后吸附错误。公式在补偿坐标下
++  // 精确（单测：scrollTopForAnchor(i) → i），初始位置处自然得 0，两端由 clamp 兜底，故无守卫。
++  const viewAnchor = scrollTop + viewportLength * anchorRatio;
++  const i = Math.round((viewAnchor - itemHeight / 2) / (itemHeight + gap));
+   return Math.max(0, Math.min(count - 1, i));
+ }
+-export function focalScale(offset, viewportHeight, maxScale = 1.15, falloff = 1.3) {
+-  // falloff 默认 1.3：保证 offset=viewH/2 处二次衰减到 < 1.01（单测约束；1.4 会得到 1.012）
+-  const t = Math.min(1, Math.abs(offset) / (viewportHeight / 2 * falloff));
++export function focalScale(offset, viewportLength, maxScale = 1.15, falloff = 1.3) {
++  // falloff 默认 1.3：保证 offset=viewportLength/2 处二次衰减到 < 1.01（单测约束；1.4 会得到 1.012）。
++  // offset 相对「主轴锚线」（调用方按 viewportLength*anchorRatio 计算），峰值在锚点而非视口中心。
++  const t = Math.min(1, Math.abs(offset) / (viewportLength / 2 * falloff));
+   return 1 + (maxScale - 1) * (1 - t) ** 2;
+ }
+-export function focalOpacity(offset, viewportHeight, falloff = 1.4) {
+-  const t = Math.min(1, Math.abs(offset) / (viewportHeight / 2 * falloff));
++export function focalOpacity(offset, viewportLength, falloff = 1.4) {
++  const t = Math.min(1, Math.abs(offset) / (viewportLength / 2 * falloff));
+   return 1 - 0.65 * t;
+ }
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index f3b3bf6..b9b19fa 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -1,32 +1,32 @@
+ /* NavigationWheel —— 「滑动选择」核心组件（Task 11 A 部分）
+    几何约定：--navwheel-item-h(52px) + --navwheel-gap(12px)，与 nav-wheel-geometry.js 一致 */
+ :root {
+   --navwheel-item-h: 52px;
+   --navwheel-gap: 12px;
+ }
+ 
+ .c-navwheel { position: relative; height: 100%; }
+ 
+ /* 容器：绝对定位铺满（骨架 inset 已存在，此处补齐滚动/遮罩规格）。
+-   padding 首尾 50% 仅为无 JS 占位回退 —— CSS % 相对宽度、无法等于视口高度一半，
+-   精确值由 mountNavWheel 按实测视口高度覆盖（否则首尾项无法滚到中央） */
++   padding 首尾仅为无 JS 占位回退 —— CSS % 相对宽度、无法等于视口主轴长度（38.2% 锚点），
++   精确值由 mountNavWheel 按实测视口长度覆盖（否则首/末项无法滚到锚线） */
+ .navwheel__list,
+ .c-navwheel__list {
+   position: absolute; inset: 0 0 56px 0; overflow-y: auto;
+   /* flex 列：flex 项外边距不折叠，项间间距严格 = --navwheel-gap（12px = 6+6），与几何算法一致 */
+   display: flex; flex-direction: column;
+   scrollbar-width: none;
+   /* 拖拽由 JS pointer 事件接管（Task 12），禁用原生触控滚动，避免双滚动竞争 */
+   touch-action: none;
+   user-select: none; /* 快速拖拽不选中文案（Task 12 收尾修复） */
+-  padding: calc(50% - 32px) 0 50% 0; /* 32 = itemH/2(26) + 项上边距(6)，与 JS 实测 pad 同系 */
++  padding: calc(38.2% - 32px) 0 calc(61.8% - 32px) 0; /* 38.2% 锚点；32 = itemH/2(26) + 项上边距(6)，与 JS 实测 pad 同系 */
+ }
+ .navwheel__list::-webkit-scrollbar,
+ .c-navwheel__list::-webkit-scrollbar { display: none; }
+ 
+ .c-navwheel__item { position: relative; height: var(--navwheel-item-h);
+   margin: calc(var(--navwheel-gap) / 2) 12px;
+   /* flex-shrink: 0 —— 滚动容器高度固定，默认 flex-shrink 会把项压缩到最小内容高 */
+   flex-shrink: 0;
+   display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
+index 6e66a25..64769bd 100644
+--- a/src/components/navigation-wheel/nav-wheel.js
++++ b/src/components/navigation-wheel/nav-wheel.js
+@@ -1,184 +1,203 @@
+-// NavigationWheel：滚动 focal 变形 + 点击居中吸附 + 键盘选择（A，Task 11）
+-// + 拖拽惯性 + 跟手变形 + 居中吸附 + 设置入口（B，Task 12）
+-// 只动 transform/opacity（合成器友好）；滚动由原生 overflow-y:auto + scroll/rAF 驱动
++// NavigationWheel：滚动 focal 变形 + 点击锚定吸附 + 键盘选择（A，Task 11）
++// + 拖拽惯性 + 跟手变形 + 锚定吸附 + 设置入口（B，Task 12）
++// Task A2：选中锚点从 50% 中心改为 38.2% 黄金比例（anchorRatio 默认 0.382），并加主轴方向参数化
++// （direction: 'vertical' | 'horizontal'；horizontal 供 Task A6 手机底部横滑栏）。
++// 只动 transform/opacity（合成器友好）；滚动由原生 overflow-{x,y}:auto + scroll/rAF 驱动。
++// 几何/渲染/滚动沿主轴：direction 只切换轴属性（scrollTop↔scrollLeft、clientHeight↔clientWidth、
++// translateY↔translateX、offsetTop↔offsetLeft、paddingTop/Bottom↔paddingLeft/Right、clientY↔clientX），
++// 公式复用同一套纯函数（nav-wheel-geometry.js，方向无关，等价性由单测覆盖）。
+ import { icon } from '../icon/icon.js';
+-import { itemCenterY, scrollTopForCenter, findNearestIndex, focalScale, focalOpacity }
++import { anchorY, scrollTopForAnchor, findNearestIndex, focalScale, focalOpacity }
+   from './nav-wheel-geometry.js';
+ 
+ const GAP = 12; // 与 :root --navwheel-gap 一致（几何约定；itemH 按实测读取）
+ 
+-export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
++export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 0.382, direction = 'vertical' } = {}) {
++  // 主轴抽象：同一套几何/交互按 direction 落到横或纵轴（vertical 默认，行为与旧实现一致）
++  const AXIS = direction === 'horizontal'
++    ? { size: 'width', margin: 'marginLeft', len: 'clientWidth', scroll: 'scrollLeft',
++        offset: 'offsetLeft', translate: 'translateX', padBefore: 'paddingLeft', padAfter: 'paddingRight',
++        pointer: 'clientX', prev: 'ArrowLeft', next: 'ArrowRight' }
++    : { size: 'height', margin: 'marginTop', len: 'clientHeight', scroll: 'scrollTop',
++        offset: 'offsetTop', translate: 'translateY', padBefore: 'paddingTop', padAfter: 'paddingBottom',
++        pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
++
+   const list = root.querySelector('.c-navwheel__list') ?? root;
+   list.innerHTML = items.map((it, i) => `
+     <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+       <div class="c-navwheel__glow"></div>
+       <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
+       <span class="c-navwheel__name">${it.name}</span>
+     </div>`).join('');
+-  // 顶部/底部渐变遮罩：列表 overflow-y:auto 内绝对定位会随内容滚动，故挂到
+-  // .navwheel（position:relative，见 layout.css）下、位于列表之上
++  // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
++  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，horizontal 由 A6 接管）
+   const holder = root.closest('.navwheel') ?? root.parentElement;
+   if (holder && !holder.querySelector('.c-navwheel__mask')) {
+     holder.insertAdjacentHTML('beforeend',
+       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
+   }
+   const itemEls = [...list.children];
+-  const itemH = parseFloat(getComputedStyle(itemEls[0]).height);
++  const itemH = parseFloat(getComputedStyle(itemEls[0])[AXIS.size]);
+   // 项上边距（6px = --navwheel-gap/2）：offsetTop 含 margin，pad 须同样扣除，
+-  // 否则首/末项中心初始偏下 6px（最终审查 B；CSS 兜底 calc(50% - 32px) 已同步修正）
+-  const marginTop = parseFloat(getComputedStyle(itemEls[0]).marginTop);
+-  const viewH = () => list.clientHeight;
+-  // 精确首尾 padding：使首/末项也能滚到视口中央（CSS calc(50% - 32px) 相对宽度，实测值才正确）
+-  const pad = Math.max(0, viewH() / 2 - itemH / 2 - marginTop);
+-  list.style.paddingTop = list.style.paddingBottom = `${pad}px`;
++  // 否则首/末项中心初始偏下 6px（最终审查 B；CSS 兜底 calc(38.2% - 32px) 已同步修正）
++  const marginTop = parseFloat(getComputedStyle(itemEls[0])[AXIS.margin]);
++  const viewLen = () => list[AXIS.len];
++  // 精确首尾 padding：使首/末项能滚到主轴锚线（38.2%）。锚点非居中 → 上/下 padding 非对称：
++  // 首项对齐 viewportLen*anchorRatio，末项对齐 viewportLen*(1-anchorRatio)；anchorRatio=0.5 时
++  // 二者相等 = 旧中心语义（CSS calc(38.2% - 32px) 相对宽度，实测值才正确）
++  const padTop = Math.max(0, viewLen() * anchorRatio - itemH / 2 - marginTop);
++  const padBottom = Math.max(0, viewLen() * (1 - anchorRatio) - itemH / 2 - marginTop);
++  list.style[AXIS.padBefore] = `${padTop}px`;
++  list.style[AXIS.padAfter] = `${padBottom}px`;
+   // 内容起点偏移 = 首项 offsetTop（padding + margin，布局实测），保证几何公式与 CSS 一致
+-  const CONTENT_TOP = itemEls[0].offsetTop;
++  const CONTENT_TOP = itemEls[0][AXIS.offset];
+   let active = 0, raf = 0;
+ 
+-  // —— 拖拽 + 惯性 + 居中吸附（Task 12 B 部分 + 最终审查 A：滚轮停止吸附）——
++  // —— 拖拽 + 惯性 + 锚定吸附（Task 12 B 部分 + 最终审查 A：滚轮停止吸附）——
+   // 坐标约定：几何函数用「内容坐标」（不含容器 padding/margin），list.scrollTop 是原始坐标，
+   // 二者差 CONTENT_TOP。吸附路径统一传补偿坐标（list.scrollTop - CONTENT_TOP）——
+-  // 与 scrollTopForCenter/select 同系，findNearestIndex 公式才精确（见 nav-wheel-geometry.js 注释）。
+-  let pointerId = null, lastY = 0, velocity = 0, lastT = 0,
++  // 与 scrollTopForAnchor/select 同系，findNearestIndex 公式才精确（见 nav-wheel-geometry.js 注释）。
++  let pointerId = null, lastPos = 0, velocity = 0, lastT = 0,
+       inertiaRaf = 0, moved = 0, snapTimer = 0, downItem = null;
+ 
+-  // 吸附本体：最近项居中 + 选中。守卫——位置已在精确中心且该项已选中
+-  // （click/键盘/程序化选中的居中动画产物，误差 <1e-9px；或 snapNow 自身吸附后的回环）
++  // 吸附本体：最近项锚定 + 选中。守卫——位置已在精确锚点且该项已选中
++  // （click/键盘/程序化选中的锚定动画产物，误差 <1e-9px；或 snapNow 自身吸附后的回环）
+   // → 跳过，避免 onScroll debounce 对每次选中补发重复 onChange。
+   function snapNow() {
+-    const s = list.scrollTop - CONTENT_TOP; // 补偿坐标
+-    const i = findNearestIndex(s, itemEls.length, itemH, GAP, viewH());
+-    const target = scrollTopForCenter(i, itemH, GAP, viewH()) + CONTENT_TOP;
++    const s = list[AXIS.scroll] - CONTENT_TOP; // 补偿坐标
++    const i = findNearestIndex(s, itemEls.length, itemH, GAP, viewLen(), anchorRatio);
++    const target = scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP;
+     if (itemEls[i].classList.contains('c-navwheel__item--active')
+-        && Math.abs(list.scrollTop - target) < 0.05) return;
+-    if (list.scrollTop !== target) list.scrollTop = target; // 无动画直接吸附（跳变，合成器无感）
++        && Math.abs(list[AXIS.scroll] - target) < 0.05) return;
++    if (list[AXIS.scroll] !== target) list[AXIS.scroll] = target; // 无动画直接吸附（跳变，合成器无感）
+     select(i, false);
+   }
+   // 150ms 后吸附。拖拽路径（pointerup/惯性结束/pointercancel）与滚轮路径
+   // （onScroll debounce）复用同一计时器：clearTimeout 即 debounce，二者永不叠加
+   function scheduleSnap() {
+     clearTimeout(snapTimer);
+     snapTimer = setTimeout(snapNow, 150);
+   }
+   function setFocal() {
+-    const st = list.scrollTop;
+-    const vh = viewH();
++    const st = list[AXIS.scroll];
++    const vl = viewLen();
+     itemEls.forEach((el, i) => {
+-      const offset = itemCenterY(i, itemH, GAP) + CONTENT_TOP - st - vh / 2;
+-      el.style.transform = `translateY(${offset * 0.06}px) scale(${focalScale(offset, vh)})`;
+-      el.style.opacity = String(focalOpacity(offset, vh));
++      // offset 相对主轴锚线（不再是视口中心）：峰值在锚点（38.2%）处
++      const offset = anchorY(i, itemH, GAP) + CONTENT_TOP - st - vl * anchorRatio;
++      el.style.transform = `${AXIS.translate}(${offset * 0.06}px) scale(${focalScale(offset, vl)})`;
++      el.style.opacity = String(focalOpacity(offset, vl));
+     });
+   }
+   function onScroll() {
+     cancelAnimationFrame(raf);
+     raf = requestAnimationFrame(setFocal);
+     // 滚动停止 150ms → 吸附并选中最近项（规格 §8.3：滚轮停在两项之间时不得悬置）。
+     // 拖拽中（pointerId 非空）跳过：吸附由 pointerup/惯性/pointercancel 接管，
+     // 且慢拖拽停顿 >150ms 时不会中途吸附与手指打架；pointerdown 已清掉滚轮残留定时器。
+     if (pointerId !== null) return;
+     scheduleSnap();
+   }
+   function select(i, animate = true) {
+     active = i;
+     itemEls.forEach((el, idx) => el.classList.toggle('c-navwheel__item--active', idx === i));
+     onChange(items[i]);
+-    if (animate) animateScrollTo(scrollTopForCenter(i, itemH, GAP, viewH()) + CONTENT_TOP);
++    if (animate) animateScrollTo(scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP);
+   }
+   function animateScrollTo(target) {
+-    const start = list.scrollTop, diff = target - start;
++    const start = list[AXIS.scroll], diff = target - start;
+     if (diff === 0) return; // 已在目标位，无需动画
+     const durRaw = parseFloat(getComputedStyle(root).getPropertyValue('--dur-base'));
+     // reduced-motion（--dur-base: 0ms）→ 直接跳转；|| 200 只兜底未定义，不能把 0 兜成 200ms
+-    if (durRaw === 0) { list.scrollTop = target; setFocal(); return; }
++    if (durRaw === 0) { list[AXIS.scroll] = target; setFocal(); return; }
+     const dur = durRaw || 200;
+     const curve = getComputedStyle(root).getPropertyValue('--ease-spring');
+     const t0 = performance.now();
+     (function step(now) {
+       const t = Math.min(1, (now - t0) / dur);
+       const eased = curve.startsWith('cubic-bezier')
+         ? cubicBezierY(curve, t) : t;
+-      list.scrollTop = start + diff * eased;
++      list[AXIS.scroll] = start + diff * eased;
+       setFocal();
+       if (t < 1) requestAnimationFrame(step);
+     })(t0);
+   }
+   list.addEventListener('scroll', onScroll);
+   list.addEventListener('click', (e) => {
+     const el = e.target.closest('.c-navwheel__item'); if (!el) return;
+     select(Number(el.dataset.index));
+   });
+   itemEls.forEach((el) => el.addEventListener('keydown', (e) => {
+-    // preventDefault：阻止方向键触发容器的原生滚动，与居中动画竞争
+-    if (e.key === 'ArrowDown') { e.preventDefault(); select(Math.min(items.length - 1, active + 1)); }
+-    if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, active - 1)); }
++    // preventDefault：阻止方向键触发容器的原生滚动，与锚定动画竞争
++    if (e.key === AXIS.next) { e.preventDefault(); select(Math.min(items.length - 1, active + 1)); }
++    if (e.key === AXIS.prev) { e.preventDefault(); select(Math.max(0, active - 1)); }
+   }));
+ 
+   function startInertia() {
+     cancelAnimationFrame(inertiaRaf);
+     (function tick() {
+-      list.scrollTop += velocity * 16;
++      list[AXIS.scroll] += velocity * 16;
+       velocity *= 0.95;
+       setFocal();
+       if (Math.abs(velocity) > 0.05) inertiaRaf = requestAnimationFrame(tick);
+       else scheduleSnap();
+     })();
+   }
+   list.addEventListener('pointerdown', (e) => {
+     // 只响应主键（左键 0）：右键/中键不进入拖拽/点击选择（Task 12 收尾守卫）
+     if (e.button !== 0) return;
+     // 抓取/点击都打断惯性或待吸附，避免吸附跳到新位置
+     cancelAnimationFrame(inertiaRaf);
+     clearTimeout(snapTimer);
+-    pointerId = e.pointerId; lastY = e.clientY; lastT = performance.now(); moved = 0;
++    pointerId = e.pointerId; lastPos = e[AXIS.pointer]; lastT = performance.now(); moved = 0;
+     velocity = 0; // EMA 首样本直接采用（见 pointermove）
+     downItem = e.target.closest('.c-navwheel__item'); // 点击回退目标（位移 < 5px 视为点击）
+     list.setPointerCapture(e.pointerId); // 拖出列表仍持续接收 pointermove
+   });
+   list.addEventListener('pointermove', (e) => {
+     if (e.pointerId !== pointerId) return;
+-    const dy = e.clientY - lastY;
+-    lastY = e.clientY;
++    const dPos = e[AXIS.pointer] - lastPos;
++    lastPos = e[AXIS.pointer];
+     const now = performance.now();
+-    // 速度取滚动增量方向（-dy）：向上拖（dy<0）→ scrollTop 增 → 惯性继续正向滚动；
+-    // 若沿用指针方向（dy），惯性会把刚拖出的位移打回原点（方向相反）
++    // 速度取滚动增量方向（-dPos）：沿主轴反向拖（dPos<0）→ 滚动增量增 → 惯性继续正向滚动；
++    // 若沿用指针方向（dPos），惯性会把刚拖出的位移打回原点（方向相反）
+     // Task I3 4g：单样本导数一甩到底/抖振 → EMA 平滑（首样本直接采用，之后 0.3 新样本权重），
+     // 慢速微抖不再产生虚假高初速惯性，快速甩动仍保留惯性（拖拽 e2e 回归确认）
+-    const sample = -dy / Math.max(1, now - lastT);
++    const sample = -dPos / Math.max(1, now - lastT);
+     velocity = velocity === 0 ? sample : velocity * 0.7 + sample * 0.3; lastT = now;
+-    list.scrollTop -= dy; moved += Math.abs(dy);
++    list[AXIS.scroll] -= dPos; moved += Math.abs(dPos);
+     setFocal(); // 实时跟手变形
+   });
+   list.addEventListener('pointerup', (e) => {
+     if (e.pointerId !== pointerId || e.button !== 0) return;
+     pointerId = null;
+     // 位移 < 5px = 点击：指针捕获使原生 click 落在 list 上（target=list，找不到项），
+-    // 这里手动复刻「点项选中 + 居中」，与 Task 11 点击行为一致
++    // 这里手动复刻「点项选中 + 锚定」，与 Task 11 点击行为一致
+     if (moved <= 5 && downItem) { select(Number(downItem.dataset.index)); return; }
+     if (moved > 5 && Math.abs(velocity) > 0.3) startInertia();
+     else scheduleSnap();
+   });
+   list.addEventListener('pointercancel', () => {
+     if (pointerId === null) return;
+     pointerId = null;
+     cancelAnimationFrame(inertiaRaf);
+     scheduleSnap();
+   });
+ 
+   setFocal();
+   return {
+     setActive: (id) => {
+       const i = items.findIndex(it => it.id === id);
+       if (i < 0) return; // 未知名 id 不选中，避免 onChange 收到 undefined 崩溃
+       select(i, false);
+     },
+-    // 对外：场景模板按索引滚动选中（含居中动画），越界 clamp
++    // 对外：场景模板按索引滚动选中（含锚定动画），越界 clamp
+     scrollToIndex: (i) => select(Math.max(0, Math.min(items.length - 1, i))),
+   };
+ }
+ // cubic-bezier 求值：解析 --ease-spring 曲线，对输入 t ∈ [0,1] 用二分求 x(u)=t 的 u，再返回 y(u)
+ function cubicBezierY(cssCurve, t) {
+   const m = cssCurve.match(/cubic-bezier\(([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)\)/);
+   if (!m) return t;
+   const [x1, y1, x2, y2] = [1, 2, 3, 4].map((i) => parseFloat(m[i]));
+   const bez = (a, b, c, d, u) =>
+     a * (1 - u) ** 3 + 3 * b * (1 - u) ** 2 * u + 3 * c * (1 - u) * u * u + d * u ** 3;
+diff --git a/tests/e2e/nav-wheel.spec.js b/tests/e2e/nav-wheel.spec.js
+index 45f06fe..dda7076 100644
+--- a/tests/e2e/nav-wheel.spec.js
++++ b/tests/e2e/nav-wheel.spec.js
+@@ -19,48 +19,47 @@ test('设置入口在左下角且可点击', async ({ page }) => {
+   await page.goto('/');
+   const btn = page.locator('.c-navwheel__settings');
+   await expect(btn).toContainText('设置');
+   await btn.click();
+   // 当前实现：滚动到设置页场景模板（Task 19 前为占位：触发 data-mount=settings-entry 回调）
+   await expect(btn).toBeVisible();
+ });
+ 
+ // Task I3 Step 1：滚轮滚动 → 停止 150ms+ 后吸附最近项（规格 §8.3 不得悬置）。
+ // 方法参考最终审查复评实测（wheel 滚 100px）：吸附后 scrollTop 收敛到
+-// 「最近项中心对齐视口中心」的位置（100 → 128，itemH 52 + gap 12 下最近项为
+-// 第 3 项，其中心偏移 28px 小于第 2 项的 36px）—— 断言滚动发生 + 选中项精确居中，
+-// 不硬编码具体 index（几何依赖视口高度，随尺寸变化）。
++// 「最近项中心对齐视口 38.2% 锚线」的位置（Task A2 锚点化后按新几何）—— 断言滚动发生
++// + 选中项精确锚定，不硬编码具体 index（几何依赖视口长度，随尺寸变化）。
+ test('滚轮滚动停止后吸附最近项并选中', async ({ page }) => {
+   await page.goto('/');
+   const list = page.locator('.navwheel__list');
+   const box = await list.boundingBox();
+   // wheel 需要指针悬停在列表上（Chromium 将 wheel 派发到 hover 元素）
+   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+   await page.mouse.wheel(0, 100);
+   // 吸附延迟 150ms；toHaveClass 自动重试，覆盖计时窗口
+   await expect(list.locator('.c-navwheel__item--active')).toHaveCount(1);
+   await page.waitForTimeout(400); // 吸附完成后测量位置
+   // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
+   const scrolled = await list.evaluate(el => el.scrollTop);
+   expect(scrolled).toBeGreaterThan(50);
+-  // 最近项被选中且中心与视口中心对齐（精确吸附，delta < 4px）
++  // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
+   const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await list.boundingBox();
+-  const centerDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height / 2));
+-  expect(centerDelta).toBeLessThan(4);
++  const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
++  expect(anchorDelta).toBeLessThan(4);
+ });
+ 
+-test('点击模块滑动到中央并选中', async ({ page }) => {
++test('点击模块滑动到锚点并选中', async ({ page }) => {
+   await page.goto('/');
+   // 侧栏导航轮：限定 .navwheel__list（矩阵内演示实例另含 8 项，不参与计数）
+   const items = page.locator('.navwheel__list .c-navwheel__item');
+   await expect(items).toHaveCount(12); // 4 真实模块 × 3 组演示重复
+   await items.nth(3).click();
+   await expect(items.nth(3)).toHaveClass(/c-navwheel__item--active/);
+   // 等待 rAF 滚动动画（--dur-base 200ms）结束后再测量位置
+   await page.waitForTimeout(400);
+-  // 选中项应位于导航视口中央附近
++  // 选中项应位于导航视口 38.2% 锚线附近（黄金比例锚点）
+   const box = await items.nth(3).boundingBox();
+   const listBox = await page.locator('.navwheel__list').boundingBox();
+-  const centerDelta = Math.abs((box.y + box.height / 2) - (listBox.y + listBox.height / 2));
+-  expect(centerDelta).toBeLessThan(4);
++  const anchorDelta = Math.abs((box.y + box.height / 2) - (listBox.y + listBox.height * 0.382));
++  expect(anchorDelta).toBeLessThan(4);
+ });
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png
+index 1e86816..f9078ae 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png
+index c67ec37..d8b7c55 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png
+index 0359a32..294c0a0 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png
+index 312ebab..90451c7 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png
+index 64b4006..6cb9057 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png
+index f1471d5..3c76efe 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png
+index 4f646c6..55ebeb6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png
+index bef1839..c34ed56 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png
+index d9caaa1..fc90117 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png
+index 0f88b9a..169b3f0 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png
+index 6b86037..8e13e0e 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png
+index 80bea88..d54e9ba 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png
+index afae935..e1cf553 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png
+index 61f55fa..b2761e7 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png
+index 882b696..a7e6316 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png
+index 6c83948..669dfab 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png
+index 14c5443..94036bc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png
+index 876c9ec..87f0092 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png differ
+diff --git a/tests/unit/geometry.test.js b/tests/unit/geometry.test.js
+index 35c9f01..294b2dd 100644
+--- a/tests/unit/geometry.test.js
++++ b/tests/unit/geometry.test.js
+@@ -1,46 +1,75 @@
+ import { describe, it, expect } from 'vitest';
+-import { itemCenterY, scrollTopForCenter, findNearestIndex, focalScale, focalOpacity } from
++import { anchorY, scrollTopForAnchor, findNearestIndex, focalScale, focalOpacity } from
+   '../../src/components/navigation-wheel/nav-wheel-geometry.js';
+ 
+-const ITEM_H = 52, GAP = 12, VIEW_H = 400;
++const ITEM_H = 52, GAP = 12, VIEW_H = 400, RATIO = 0.382;
+ 
+-describe('itemCenterY / scrollTopForCenter', () => {
+-  it('第 0 项中心在 itemHeight/2', () => {
+-    expect(itemCenterY(0, ITEM_H, GAP)).toBe(26);
++describe('anchorY / scrollTopForAnchor', () => {
++  it('anchorY(0) = itemH/2（首项锚点在内容起点半个项高）', () => {
++    expect(anchorY(0, ITEM_H, GAP, VIEW_H, RATIO)).toBe(26);
+   });
+-  it('第 2 项中心 = 2*64 + 26', () => {
+-    expect(itemCenterY(2, ITEM_H, GAP)).toBe(154);
++  it('anchorY(2) = 2*64 + 26', () => {
++    expect(anchorY(2, ITEM_H, GAP, VIEW_H, RATIO)).toBe(154);
+   });
+-  it('滚动到第 2 项居中的 scrollTop', () => {
+-    expect(scrollTopForCenter(2, ITEM_H, GAP, VIEW_H)).toBe(154 - 200);
++  it('anchorRatio=0.382 时首项初始 scrollTop = anchorY(0) - viewH*0.382（锚点上三分线）', () => {
++    // 黄金比例锚点：选中项中心对齐视口 38.2% 处（非居中）—— 初始态负偏移 = itemH/2 - viewH*0.382
++    expect(scrollTopForAnchor(0, ITEM_H, GAP, VIEW_H, RATIO)).toBeCloseTo(26 - 400 * 0.382, 10);
++  });
++  it('滚动到第 2 项锚点的 scrollTop = anchorY(2) - viewH*0.382', () => {
++    expect(scrollTopForAnchor(2, ITEM_H, GAP, VIEW_H, RATIO)).toBeCloseTo(154 - 400 * 0.382, 10);
++  });
++  it('anchorRatio=0.5 时恢复旧中心语义（向后兼容基准）', () => {
++    expect(scrollTopForAnchor(2, ITEM_H, GAP, VIEW_H, 0.5)).toBeCloseTo(154 - 200, 10);
+   });
+ });
+ 
+ describe('findNearestIndex', () => {
+-  it('初始位置（第 0 项居中）选中第 0 项', () => {
+-    // 补偿坐标：初始位置 = scrollTopForCenter(0)（负值），公式在此处精确得 0
+-    expect(findNearestIndex(scrollTopForCenter(0, ITEM_H, GAP, VIEW_H), 5, ITEM_H, GAP, VIEW_H)).toBe(0);
++  it('初始位置（第 0 项锚定 38.2%）选中第 0 项', () => {
++    // 补偿坐标：初始位置 = scrollTopForAnchor(0)（负值），公式在此处精确得 0
++    expect(findNearestIndex(scrollTopForAnchor(0, ITEM_H, GAP, VIEW_H, RATIO), 5, ITEM_H, GAP, VIEW_H, RATIO)).toBe(0);
++  });
++  it('锚点在视口 38.2% 处时选中对应项', () => {
++    const st = scrollTopForAnchor(2, ITEM_H, GAP, VIEW_H, RATIO);
++    expect(findNearestIndex(st, 5, ITEM_H, GAP, VIEW_H, RATIO)).toBe(2);
+   });
+-  it('中心在视口中间时选中对应项', () => {
+-    // scrollTop 使第 2 项中心正好在 200（视口中心）
+-    const st = scrollTopForCenter(2, ITEM_H, GAP, VIEW_H);
+-    expect(findNearestIndex(st, 5, ITEM_H, GAP, VIEW_H)).toBe(2);
++  it('anchorRatio=0.5 时与旧中心语义一致', () => {
++    const st = scrollTopForAnchor(2, ITEM_H, GAP, VIEW_H, 0.5);
++    expect(findNearestIndex(st, 5, ITEM_H, GAP, VIEW_H, 0.5)).toBe(2);
+   });
+   it('两端 clamp 不越界', () => {
+-    expect(findNearestIndex(99999, 5, ITEM_H, GAP, VIEW_H)).toBe(4);
++    expect(findNearestIndex(99999, 5, ITEM_H, GAP, VIEW_H, RATIO)).toBe(4);
++    expect(findNearestIndex(-99999, 5, ITEM_H, GAP, VIEW_H, RATIO)).toBe(0);
+   });
+ });
+ 
+ describe('focalScale / focalOpacity', () => {
+-  it('中心处 scale 最大', () => {
++  it('锚点处（offset=0）scale 最大', () => {
+     expect(focalScale(0, VIEW_H)).toBe(1.15);
+   });
+-  it('远离中心衰减，不越过 1', () => {
++  it('远离锚点衰减，不越过 1', () => {
+     expect(focalScale(VIEW_H / 2, VIEW_H)).toBeLessThan(1.01);
+     expect(focalScale(VIEW_H * 2, VIEW_H)).toBeGreaterThanOrEqual(1);
+   });
+-  it('中心处 opacity 1，远处衰减', () => {
++  it('锚点处 opacity 1，远处衰减', () => {
+     expect(focalOpacity(0, VIEW_H)).toBe(1);
+     expect(focalOpacity(VIEW_H, VIEW_H)).toBeLessThan(0.4);
+   });
+ });
++
++describe('horizontal 方向等价性（几何层方向无关）', () => {
++  it('横/纵同名参数代入得同值 —— horizontal 渲染只换 scrollLeft/clientWidth，几何函数不变', () => {
++    // 设计不变量：几何层纯函数不感知方向（只有「主轴长度」语义），horizontal 实例复用同一套
++    // 公式（scrollTop→scrollLeft、clientHeight→clientWidth）。断言竖直与水平（参数同值）的
++    // 锚点/吸附/聚焦整条管道结果一致，防止未来引入纵轴特化假设。
++    const v = { len: VIEW_H, item: ITEM_H, gap: GAP, ratio: RATIO };
++    const h = { len: VIEW_H, item: ITEM_H, gap: GAP, ratio: RATIO }; // 水平：换名为 itemWidth/scrollLeft，数值同
++    const stV = scrollTopForAnchor(3, v.item, v.gap, v.len, v.ratio);
++    const stH = scrollTopForAnchor(3, h.item, h.gap, h.len, h.ratio); // 水平调用 = 竖直调用同式
++    expect(stH).toBe(stV);
++    expect(anchorY(3, h.item, h.gap, h.len, h.ratio)).toBe(anchorY(3, v.item, v.gap, v.len, v.ratio));
++    expect(findNearestIndex(stH, 5, h.item, h.gap, h.len, h.ratio))
++      .toBe(findNearestIndex(stV, 5, v.item, v.gap, v.len, v.ratio));
++    // focal 峰值在锚点：offset = 锚点处内容偏移 - 视口主轴锚线，为 0 时达峰值
++    expect(focalScale(stH - scrollTopForAnchor(3, h.item, h.gap, h.len, h.ratio), h.len)).toBe(1.15);
++  });
++});

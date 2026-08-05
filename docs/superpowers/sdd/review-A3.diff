@@ -1,0 +1,534 @@
+# Review package: 6bbea44..HEAD
+
+## Commits
+9a481a1 feat: 应用壳骨架（双窗口级联 + 7 模块占位）
+
+## Files changed
+ src/app/app-main.css        |  95 +++++++++++++++
+ src/app/app-main.js         | 288 +++++++++++++++++++++++++++++++++++++++++++-
+ tests/e2e/app-shell.spec.js | 120 ++++++++++++++++++
+ 3 files changed, 499 insertions(+), 4 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+new file mode 100644
+index 0000000..fde30f8
+--- /dev/null
++++ b/src/app/app-main.css
+@@ -0,0 +1,95 @@
++/* 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
++   布局 .app-main grid：标题栏 40px 行 + 左窗 64px / 右窗 64px（--app-nav-r-w 收起时 0）/ 内容区 1fr。
++   右窗收起：网格列宽瞬时归 0（布局非动画）+ 面板 transform/opacity 过渡（只动 transform/opacity，红线）。
++   局部类名 .app-main__* 前缀：app/docs 互斥渲染，仍避免与展示页严格计数断言冲突。 */
++
++.app-main {
++  position: relative;
++  display: grid;
++  grid-template-columns: 64px var(--app-nav-r-w, 0px) 1fr;
++  grid-template-rows: 40px 1fr;
++  width: 100vw;
++  height: 100vh;
++  overflow: hidden;
++  /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
++  --dur-push: calc(var(--dur-base) * 1.2);
++}
++.app-main--dual { --app-nav-r-w: 64px; }
++
++.app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
++
++/* —— 左窗（恒为应用列表，纯 icon 64px）—— */
++.app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
++  border-right: 1px solid var(--glass-border); }
++.app-main__nav-l .c-navwheel__list { inset: 0; }
++/* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
++.app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
++  justify-content: center; }
++.app-main__nav-l .c-navwheel__name { display: none; }
++.app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
++
++/* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
++   面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
++   网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
++.app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
++  position: relative; z-index: var(--z-float);
++  display: flex; flex-direction: column;
++  border-right: 1px solid var(--glass-border);
++  transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
++  transition: transform var(--dur-push) var(--ease-spring),
++              opacity var(--dur-push) var(--ease-spring); }
++.app-main--dual .app-main__nav-r { transform: translateX(0); opacity: 1;
++  visibility: visible; pointer-events: auto; }
++.app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
++  color: var(--text-2); border-bottom: 1px solid var(--glass-border);
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
++.app-main__nav-r-body { flex: 1; position: relative; min-height: 0; }
++.app-main__nav-r .c-navwheel__list { inset: 0; }
++.app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
++  justify-content: center; }
++.app-main__nav-r .c-navwheel__name { display: none; }
++.app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
++.app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
++  align-items: center; justify-content: center; gap: var(--space-2);
++  color: var(--text-3); font-size: var(--font-size-sm); }
++
++/* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
++.app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
++  padding: var(--space-6); }
++.app-main__page { display: none; max-width: 720px; }
++.app-main__page--active { display: block; }
++.app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
++  margin-bottom: var(--space-5); }
++.app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
++.app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
++/* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
++   body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
++.app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
++@keyframes app-main-page-in {
++  from { opacity: 0; transform: translateY(4px); }
++  to { opacity: 1; transform: translateY(0); }
++}
++
++/* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
++.app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
++.app-main__card { background: var(--surface-1); border: 1px solid var(--glass-border);
++  border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
++.app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
++  margin-bottom: var(--space-3); }
++.app-main__card-desc { font-size: var(--font-size-sm); color: var(--text-3); }
++.app-main__welcome { display: flex; flex-direction: column; gap: var(--space-2); }
++.app-main__welcome .app-main__card-title { margin-bottom: 0; }
++.app-main__shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
++  gap: var(--space-3); }
++.app-main__shortcut { display: flex; flex-direction: column; align-items: center;
++  gap: var(--space-2); padding: var(--space-3);
++  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++  color: var(--text-2);
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.app-main__shortcut:hover { color: var(--accent); background: var(--surface-hover); }
++.app-main__shortcut-name { font-size: var(--font-size-sm); }
++.app-main__theme-row { display: flex; align-items: center; gap: var(--space-2);
++  font-size: var(--font-size-sm); color: var(--text-2); }
++.app-main__theme-swatch { width: 14px; height: 14px; border-radius: 50%;
++  background: var(--accent-500); }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 9e82222..22c4f86 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -1,6 +1,286 @@
+-// 应用壳入口（Task A3 实现）—— 本任务仅动态 import 占位，保证 Vite build 可解析目标文件。
+-// main.js 在 ?mode=app / Tauri 探测命中时动态 import 本模块并调用 mountAppMode(root)。
++// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
++// 模式状态机：单窗口态（右窗收起，内容区 = 左窗选中应用首屏）/ 双窗口态（右窗展开，右窗驱动内容区）。
++// 左窗/右窗均为 NavigationWheel 实例（纯 icon，38.2% 黄金比例锚点；名称由标题栏上下文承担，
++// 栏内 name 经 app-main.css 隐藏，nav-wheel 组件零改动、docs 行为不变）。
++// MODULES 扩展契约：应用注册 = 模块项（左窗 icon）+ 目录项（右窗 icon）+ 页面渲染函数（内容区）。
++//   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
++// 右窗状态为纯 UI 态（会话内），不进配置存储。
++import { icon } from '../components/icon/icon.js';
++import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
++import { renderEmptyState } from '../components/empty-state/empty-state.js';
++import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
++import { bindWindowControls } from '../demo/window-controls.js';
++import './app-main.css';
++
++// —— MODULES 扩展契约 ——
++const MODULES = [
++  { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview },
++  {
++    id: 'clipboard', name: '剪贴板', icon: 'clipboard',
++    dir: [
++      { id: 'history', name: '历史', icon: 'list' },
++      { id: 'pinned', name: '固定', icon: 'pin' },
++      { id: 'groups', name: '分组', icon: 'folder' },
++    ],
++    render: placeholderPage,
++  },
++  {
++    id: 'key', name: '密码', icon: 'key',
++    dir: [
++      { id: 'all', name: '全部', icon: 'box' },
++      { id: 'groups', name: '分组', icon: 'folder' },
++      { id: 'trash', name: '回收站', icon: 'trash' },
++    ],
++    render: placeholderPage,
++  },
++  {
++    id: 'wallet', name: '记账', icon: 'wallet',
++    dir: [
++      { id: 'overview', name: '概览', icon: 'wallet' },
++      { id: 'flows', name: '流水', icon: 'list' },
++      { id: 'categories', name: '分类', icon: 'folder' },
++    ],
++    render: placeholderPage,
++  },
++  {
++    id: 'search', name: '搜索', icon: 'search',
++    dir: [
++      { id: 'all', name: '全部', icon: 'search' },
++      { id: 'web', name: '网页', icon: 'globe' },
++      { id: 'files', name: '文件', icon: 'image' },
++    ],
++    render: placeholderPage,
++  },
++  {
++    id: 'help', name: '帮助', icon: 'help',
++    dir: [
++      { id: 'usage', name: '使用', icon: 'list' },
++      { id: 'faq', name: '常见问题', icon: 'help' },
++    ],
++    render: placeholderPage,
++  },
++  {
++    id: 'info', name: '关于', icon: 'info',
++    dir: [
++      { id: 'version', name: '版本', icon: 'box' },
++      { id: 'license', name: '许可', icon: 'shield' },
++    ],
++    render: placeholderPage,
++  },
++];
++
+ export function mountAppMode(root) {
+-  // eslint-disable-next-line no-console
+-  console.info('[app] Task A3 实现：应用壳骨架（双窗口级联 + 标题栏上下文 + 7 模块）');
++  root.innerHTML = `
++  <div class="app-main">
++    ${renderTitleBar({ title: '概览', iconName: 'box' })}
++    <div class="app-main__nav-l">
++      <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
++    </div>
++    <div class="app-main__nav-r" aria-hidden="true">
++      <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
++      <div class="app-main__nav-r-body"></div>
++    </div>
++    <main class="app-main__pages">
++      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
++    </main>
++  </div>`;
++
++  const appMain = root.querySelector('.app-main');
++  const ctx = root.querySelector('.c-titlebar__title');
++  ctx.classList.add('app-main__ctx');
++  ctx.setAttribute('data-ctx', '');
++  const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
++  const navRRoot = root.querySelector('.app-main__nav-r');
++  const navRBody = root.querySelector('.app-main__nav-r-body');
++  const pagesEl = root.querySelector('.app-main__pages');
++  const pages = [...pagesEl.children];
++
++  // —— 会话内纯 UI 态（不进配置存储）——
++  const state = { moduleId: 'home', dirId: null, rightOpen: false };
++
++  // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
++  const leftWheel = mountNavWheel(navL, {
++    items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
++    onChange: (item) => onLeftSelect(item.id),
++    anchorRatio: 0.382,
++  });
++
++  // 模块上下文：active 模块取当前目录项，其余取各自首目录项（供初始占位渲染）
++  function modCtx(mod) {
++    const dirId = mod.id === state.moduleId ? state.dirId : (mod.dir[0]?.id ?? null);
++    return { module: mod, dirId, dirName: mod.dir.find((d) => d.id === dirId)?.name ?? null };
++  }
++
++  // —— 右窗：应用目录轮（按 active 模块重建；概览无目录 → 空提示）——
++  function renderRight() {
++    const mod = MODULES.find((m) => m.id === state.moduleId);
++    navRBody.innerHTML = mod.dir.length
++      ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
++      : `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无子目录</span></div>`;
++    if (!mod.dir.length) return null;
++    const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
++      items: mod.dir.map((d) => ({ id: d.id, name: d.name, icon: d.icon })),
++      onChange: (item) => setDir(item.id),
++      anchorRatio: 0.382,
++    });
++    wheel.setActive(state.dirId); // 首项即锚点初始位（scrollTop 0），无需滚动
++    return wheel;
++  }
++
++  // —— 内容区：唯一 active 页（data-page 对应模块），切换/目录项变化重渲染 ——
++  function renderPages() {
++    const mod = MODULES.find((m) => m.id === state.moduleId);
++    pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
++    const page = pages.find((p) => p.dataset.page === state.moduleId);
++    page.innerHTML = mod.render(modCtx(mod));
++  }
++
++  // —— 标题栏上下文「应用名 › 页面名」（单窗口态只应用名）——
++  function updateCtx() {
++    const mod = MODULES.find((m) => m.id === state.moduleId);
++    ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
++      ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
++      : mod.name;
++    ctx.dataset.module = mod.id;
++    ctx.dataset.page = state.rightOpen ? state.dirId : '';
++  }
++
++  function applyRightOpen() {
++    appMain.classList.toggle('app-main--dual', state.rightOpen);
++    navRRoot.setAttribute('aria-hidden', String(!state.rightOpen));
++    updateCtx();
++  }
++
++  // —— 级联联动 ——
++  // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）
++  function setModule(id) {
++    if (id === state.moduleId) return;
++    state.moduleId = id;
++    const mod = MODULES.find((m) => m.id === id);
++    state.dirId = mod.dir.length ? mod.dir[0].id : null;
++    state.rightOpen = mod.dir.length > 0;
++    renderRight();
++    renderPages();
++    applyRightOpen();
++  }
++
++  // 右窗选中目录项 → 内容区切页 + 上下文联动
++  function setDir(id) {
++    if (id === state.dirId) return;
++    state.dirId = id;
++    renderPages();
++    updateCtx();
++  }
++
++  // 左窗 onChange：选中新应用 → setModule。已选中项的重复 onChange（用户点击 / scroll-snap 对
++  // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
++  // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
++  function onLeftSelect(id) {
++    if (id !== state.moduleId) setModule(id);
++  }
++
++  // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）
++  function collapseRight() {
++    if (!state.rightOpen) return;
++    state.rightOpen = false;
++    applyRightOpen();
++  }
++
++  // 概览快捷入口 → 展开右窗 + 切到该应用（经左窗轮 scrollToIndex → onChange 联动）
++  function goToModule(id) {
++    const i = MODULES.findIndex((m) => m.id === id);
++    if (i < 0) return;
++    leftWheel.scrollToIndex(i);
++  }
++
++  // —— 事件 ——
++  navRRoot.querySelector('.app-main__nav-r-back').addEventListener('click', collapseRight);
++  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseRight(); });
++  pagesEl.addEventListener('click', (e) => {
++    const card = e.target.closest('.app-main__shortcut');
++    if (card) goToModule(card.dataset.shortcut);
++  });
++  // 三通道之一：再次点击左窗已选中项 → 收起（toggle）。nav-wheel 对点击/锚定仍会对同 id 补发
++  // onChange（子像素滚动偏差 <1px 使 snapNow 守卫 0.05px 容差未跳过），不能据 onChange 判定用户
++  // 是否真的再次点击了已选中项 —— 故在 pointerdown 记录「所点项当时是否已选中」，click 阶段判定。
++  let downWasActive = false;
++  navL.addEventListener('pointerdown', (e) => {
++    const item = e.target.closest('.c-navwheel__item');
++    if (item) downWasActive = MODULES[Number(item.dataset.index)].id === state.moduleId;
++  });
++  navL.addEventListener('click', () => {
++    const wasActive = downWasActive;
++    downWasActive = false;
++    if (wasActive) {
++      const mod = MODULES.find((m) => m.id === state.moduleId);
++      if (mod.dir.length) {
++        state.rightOpen = !state.rightOpen;
++        applyRightOpen();
++      }
++    }
++  });
++
++  mountTitleBar(appMain);
++  bindWindowControls();
++
++  // —— 初始渲染：全部 7 页 + 激活概览页 + 右窗收起（单窗口态）——
++  pages.forEach((page) => {
++    const mod = MODULES.find((m) => m.id === page.dataset.page);
++    page.innerHTML = mod.render(modCtx(mod));
++  });
++  pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
++  renderRight();
++  applyRightOpen();
++}
++
++// —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
++function placeholderPage(ctx) {
++  const { module, dirName } = ctx;
++  const sub = dirName ? ` › ${dirName}` : '';
++  return `
++    <div class="app-main__page-head">
++      <h2 class="app-main__page-title">${module.name}</h2>
++      ${dirName ? `<span class="app-main__page-sub">${sub}</span>` : ''}
++    </div>
++    <div class="app-main__page-body">
++      ${renderEmptyState({
++        iconName: module.icon,
++        title: '功能开发中',
++        desc: `「${module.name}${sub}」为应用壳占位骨架，接入真实功能后替换此处。`,
++      })}
++    </div>`;
++}
++
++// —— 概览页：欢迎卡 + 7 快捷入口卡（点击 = 展开右窗 + 切到该应用）+ 主题状态卡 ——
++function renderOverview() {
++  const theme = document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色';
++  const accent = document.documentElement.dataset.accent || 'indigo';
++  return `
++    <div class="app-main__page-head"><h2 class="app-main__page-title">概览</h2></div>
++    <div class="app-main__page-body">
++      <div class="app-main__overview">
++        <div class="app-main__card app-main__welcome">
++          <div class="app-main__card-title">欢迎使用</div>
++          <div class="app-main__card-desc">多应用壳设计系统 —— 左侧选择应用、右侧进入其目录，标题栏显示当前上下文。</div>
++        </div>
++        <div class="app-main__card app-main__shortcuts">
++          <div class="app-main__card-title">快捷入口</div>
++          <div class="app-main__shortcut-grid">
++            ${MODULES.map((m) => `
++              <button class="app-main__shortcut" data-shortcut="${m.id}">
++                ${icon(m.icon, 20)}
++                <span class="app-main__shortcut-name">${m.name}</span>
++              </button>`).join('')}
++          </div>
++        </div>
++        <div class="app-main__card app-main__theme-status">
++          <div class="app-main__card-title">主题状态</div>
++          <div class="app-main__theme-row">
++            <span>当前主题：${theme}</span>
++            <span class="app-main__theme-swatch"></span>
++            <span>强调色：${accent}</span>
++          </div>
++        </div>
++      </div>
++    </div>`;
+ }
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+new file mode 100644
+index 0000000..d9e82b0
+--- /dev/null
++++ b/tests/e2e/app-shell.spec.js
+@@ -0,0 +1,120 @@
++import { test, expect } from '@playwright/test';
++
++// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
++// 入口 `?mode=app`（docs 模式零冲击是硬门槛，本 spec 只测 app 路径）。
++// 动画时长：右窗推入 --dur-push 240ms（calc(--dur-base*1.2)）、切页 --dur-fast 120ms，
++// 点击后 waitForTimeout 覆盖动画相位。
++
++const APP_URL = '/?mode=app';
++
++test('壳结构：标题栏/左窗 7 模块/单窗口态右窗隐藏/内容区概览页', async ({ page }) => {
++  await page.goto(APP_URL);
++  await expect(page.locator('.app-main')).toBeVisible();
++  // 标题栏存在（app 模式唯一实例）
++  await expect(page.locator('.app-main .c-titlebar')).toHaveCount(1);
++  await expect(page.locator('.app-main [data-ctx]')).toBeVisible();
++  // 左窗 7 个模块项
++  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
++  // 单窗口态：右窗隐藏
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++  // 内容区：概览页为默认 active 页
++  const active = page.locator('.app-main__page--active');
++  await expect(active).toHaveAttribute('data-page', 'home');
++  await expect(active).toContainText('概览');
++});
++
++test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
++  await page.goto(APP_URL);
++  // 点击左窗第 2 项（剪贴板）
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  // 右窗展开且含剪贴板目录 3 项
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['历史', '固定', '分组']);
++  // 内容区切到剪贴板首屏
++  const active = page.locator('.app-main__page--active');
++  await expect(active).toHaveAttribute('data-page', 'clipboard');
++  await expect(active).toContainText('剪贴板');
++  await expect(active).toContainText('功能开发中');
++});
++
++test('收起通道一：右窗顶部返回按钮', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await page.locator('.app-main__nav-r-back').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++});
++
++test('收起通道二：再次点击左窗已选中项', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  // 再次点击已选中左项 → 收起（toggle）
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++});
++
++test('收起通道三：Esc', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await page.keyboard.press('Escape');
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeHidden();
++});
++
++test('换应用：右窗目录内容切换（不收起）', async ({ page }) => {
++  await page.goto(APP_URL);
++  // 剪贴板（目录：历史/固定/分组）
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
++  // 换到密码（目录：全部/分组/回收站）→ 右窗保持展开，目录内容切换
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(2).click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(0);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="all"]')).toHaveCount(1);
++  // 内容区切到密码页
++  const active = page.locator('.app-main__page--active');
++  await expect(active).toHaveAttribute('data-page', 'key');
++  await expect(active).toContainText('密码');
++});
++
++test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ page }) => {
++  await page.goto(APP_URL);
++  const ctx = page.locator('.app-main [data-ctx]');
++  // 单窗口态：只有应用名
++  await expect(ctx).toHaveText('概览');
++  // 选中剪贴板 → 右窗展开 → 应用名 › 首目录项
++  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
++  await expect(ctx).toHaveText('剪贴板 › 历史');
++  // 选中右窗目录项「固定」→ 页面名联动
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="pinned"]').click();
++  await expect(ctx).toHaveText('剪贴板 › 固定');
++  // 收起右窗 → 回到单窗口态（只有应用名）
++  await page.locator('.app-main__nav-r-back').click();
++  await expect(ctx).toHaveText('剪贴板');
++});
++
++test('概览页结构：欢迎卡 + 7 快捷入口 + 主题状态卡', async ({ page }) => {
++  await page.goto(APP_URL);
++  const overview = page.locator('.app-main__page[data-page="home"]');
++  await expect(overview.locator('.app-main__welcome')).toBeVisible();
++  await expect(overview.locator('.app-main__shortcut')).toHaveCount(7);
++  await expect(overview.locator('.app-main__theme-status')).toBeVisible();
++  // 快捷入口点击 = 展开右窗 + 切到该应用（点击剪贴板入口）
++  await overview.locator('.app-main__shortcut[data-shortcut="clipboard"]').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__nav-r')).toBeVisible();
++  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'clipboard');
++});
