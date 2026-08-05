@@ -46,6 +46,7 @@ import { icon } from './components/icon/icon.js';
 import { toast } from './components/toast/toast.js';
 import { openDialog } from './components/dialog/dialog.js';
 import { renderTitleBar, mountTitleBar } from './components/title-bar/title-bar.js';
+import { bindWindowControls } from './demo/window-controls.js';
 import { mountNavWheel } from './components/navigation-wheel/nav-wheel.js';
 import { renderFloatingWindow, mountFloatingWindow } from './components/floating-window/floating-window.js';
 import { renderSearchBar, mountSearchBar } from './components/search-bar/search-bar.js';
@@ -190,3 +191,11 @@ mountSettingsWindow(scenesSection);
 // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
 window.__toast = toast;
 window.__openDialog = openDialog;
+
+// 窗口控制桥（Task I2）：放在全部挂载之后 —— 场景模板/组件矩阵的 .c-titlebar 实例
+// 此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，无副作用）。
+// Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
+// 图标按真实状态同步、close → close，失败静默降级）；浏览器环境探测不到 API 不绑定，
+// 保留 mountTitleBar 演示行为（含 max 图标切换）。
+// 测试经 /src/demo/window-controls.js 动态 import 注入 mock windowApi 验证绑定逻辑。
+bindWindowControls();

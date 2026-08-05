@@ -1,10 +1,12 @@
 import { icon } from '../icon/icon.js';
 
-// data-tauri-drag-region：Tauri 场景下由系统接管拖动窗口，
-// 页面内模拟不做真实拖动（测试契约要求挂根元素，drag 区同时提供）
+// data-tauri-drag-region：Tauri 场景下由系统接管拖动窗口。
+// 只挂在 .c-titlebar__drag（最小安全拖区）—— 不挂根元素：整条 .c-titlebar 含三按钮，
+// 若挂根元素则按钮 mousedown 会被原生拖拽劫持（真实点击被吞、最小化/最大化后会被
+// 拖拽动作立即还原 —— 接入指南 §2 明确此坑；真机验证 I2 实测复现后按指南修正）。
 export function renderTitleBar({ title = 'UI Design System', iconName = 'palette' } = {}) {
   return `
-  <div class="c-titlebar" data-tauri-drag-region>
+  <div class="c-titlebar">
     <div class="c-titlebar__drag" data-tauri-drag-region>
       ${icon(iconName, 16)}<span class="c-titlebar__title">${title}</span>
     </div>
