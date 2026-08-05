@@ -1,0 +1,154 @@
+/* 动效实验室（Task 16）：5 个动效演示卡 + 参数试玩器。
+   红线：全部 keyframes 只动 transform/opacity；stagger 用 animation-delay 40ms 递增；
+   试玩器把局部 CSS 变量写到 .ml-card（不碰全局）；时长/曲线经 CSS 变量引用。 */
+
+.ml-lead { margin-bottom: var(--space-5); font-size: var(--font-size-sm); color: var(--text-2); }
+
+.ml-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-5); align-items: start;
+}
+
+.ml-card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4); border-radius: var(--radius-lg);
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
+}
+.ml-card__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-1); }
+.ml-card__desc { margin-top: -8px; font-size: var(--font-size-xs); color: var(--text-3); }
+
+/* 舞台：点阵底便于观察淡入；居中承载演示元素 */
+.ml-stage {
+  position: relative; min-height: 132px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; gap: var(--space-3);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-1);
+  background-image: radial-gradient(var(--neutral-300) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* ---------- 演示 1：面板呼出 ---------- */
+.ml-pop {
+  display: flex; flex-direction: column; gap: 6px; width: 150px;
+  padding: var(--space-3); border-radius: var(--radius-md);
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--glass-blur));
+}
+.ml-pop__dots { display: flex; gap: 4px; margin-bottom: 2px; }
+.ml-pop__dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--neutral-300); }
+.ml-pop__dot:nth-child(1) { background: var(--danger-500); }
+.ml-pop__dot:nth-child(2) { background: var(--warning-500); }
+.ml-pop__dot:nth-child(3) { background: var(--success-500); }
+.ml-pop__line { height: 6px; border-radius: 3px; background: var(--neutral-200); }
+.ml-pop__line--short { width: 55%; }
+
+/* ---------- 演示 2：hover 提升（transition，只动 transform/opacity） ---------- */
+.ml-hover {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+  background: var(--surface-2); border: 1px solid var(--glass-border);
+  cursor: default;
+  transition: transform var(--dur-base, 200ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.ml-hover::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 32%, transparent), transparent 65%);
+  opacity: 0; transition: opacity var(--dur-base, 200ms) var(--ease-out);
+}
+.ml-hover:hover { transform: translateY(calc(var(--lift, 1px) * -1)); }
+.ml-hover:hover::before { opacity: 1; }
+.ml-hover .c-icon { color: var(--accent); position: relative; }
+.ml-hover__text { position: relative; font-size: var(--font-size-sm); color: var(--text-1); }
+
+/* ---------- 演示 3：列表 stagger（5 项，相邻 40ms 延迟） ---------- */
+.ml-stagger { display: flex; flex-direction: column; gap: 6px; width: 168px; }
+.ml-stagger__item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 7px var(--space-2); border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.ml-stagger__item::before { content: ''; width: 8px; height: 8px; border-radius: 3px; background: var(--accent); opacity: .85; }
+.ml-stagger__item span { flex: 1; height: 5px; border-radius: 3px; background: var(--neutral-200); }
+
+/* ---------- 演示 4：开关 thumb（spring 滑入开位） ---------- */
+.ml-switch { display: flex; align-items: center; gap: var(--space-2); }
+.ml-switch__track { position: relative; width: 44px; height: 24px; border-radius: var(--radius-full); background: var(--neutral-400); flex-shrink: 0; }
+.ml-switch__thumb {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: var(--radius-full); background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .28);
+  transform: translateX(min(var(--lift, 16px), 20px));
+}
+.ml-switch__label { font-size: var(--font-size-sm); color: var(--text-2); }
+
+/* ---------- 演示 5：徽标弹出（scale 0 → 1） ---------- */
+.ml-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: var(--space-1) var(--space-3); border-radius: var(--radius-full);
+  background: var(--accent); color: var(--accent-contrast);
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ---------- 动画（红线：keyframes 只动 transform/opacity） ---------- */
+/* .ml-anim--running 表示「动画已武装」：挂载即播，重播 = clone 替换重新插入 */
+.ml-anim--running.ml-pop {
+  animation: ml-pop var(--dur-base, 200ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+.ml-anim--running.ml-stagger__item {
+  animation: ml-stagger-in var(--dur-base, 200ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.ml-anim--running.ml-switch__thumb {
+  animation: ml-switch-in var(--dur-base, 200ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+.ml-anim--running.ml-badge {
+  animation: ml-badge-in var(--dur-base, 200ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+
+@keyframes ml-pop {
+  from { transform: scale(0.96) translateY(var(--lift, 8px)); opacity: 0; }
+}
+@keyframes ml-stagger-in {
+  from { transform: translateY(var(--lift, 8px)); opacity: 0; }
+}
+@keyframes ml-switch-in {
+  from { transform: translateX(0); }
+}
+@keyframes ml-badge-in {
+  from { transform: scale(0) translateY(var(--lift, 6px)); opacity: 0; }
+}
+
+/* ---------- 试玩器 ---------- */
+.ml-controls { display: flex; flex-direction: column; gap: var(--space-2); margin-top: auto; }
+.ml-control { display: flex; align-items: center; gap: var(--space-2); }
+.ml-control__label { flex: 0 0 3em; font-size: var(--font-size-xs); color: var(--text-2); }
+.ml-slider { flex: 1; min-width: 0; accent-color: var(--accent); }
+.ml-out {
+  min-width: 2.4em; text-align: right;
+  font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-1);
+}
+.ml-unit { font-size: var(--font-size-xs); color: var(--text-3); }
+
+.ml-durs { display: inline-flex; }
+.ml-dur {
+  padding: var(--space-1) var(--space-2); font-size: var(--font-size-xs);
+  border: 1px solid var(--glass-border); background: var(--surface-2); color: var(--text-2);
+  cursor: pointer; transition: background var(--dur-fast, 120ms) var(--ease-out), color var(--dur-fast, 120ms) var(--ease-out);
+}
+.ml-dur:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.ml-dur:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.ml-dur + .ml-dur { margin-left: -1px; }
+.ml-dur:hover { color: var(--accent); }
+.ml-dur.is-active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+.ml-replay {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: var(--space-1) var(--space-3); font-size: var(--font-size-xs);
+  color: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: transparent; cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out), color var(--dur-fast, 120ms) var(--ease-out);
+}
+.ml-replay:hover { background: var(--accent); color: var(--accent-contrast); }
+.ml-replay:active { transform: scale(0.96); }

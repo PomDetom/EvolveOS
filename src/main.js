@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/layout.css';
 import './demo/token-showcase.css';
 import './demo/component-showcase-full.css';
+import './styles/motion-lab.css';
 import './components/icon/icon.css';
 import './components/button/button.css';
 import './components/input/input.css';
@@ -45,6 +46,7 @@ import { mountNavWheel } from './components/navigation-wheel/nav-wheel.js';
 import { renderFloatingWindow, mountFloatingWindow } from './components/floating-window/floating-window.js';
 import { renderSearchBar, mountSearchBar } from './components/search-bar/search-bar.js';
 import { mountComponentsShowcase } from './demo/component-showcase-full.js';
+import { mountMotionLab } from './demo/motion-lab.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { mountTokenShowcase } from './demo/token-showcase.js';
 import { getConfig, subscribe } from './config/store.js';
@@ -157,6 +159,10 @@ mountSearchBar(fwinDemo);
 
 // 组件展示区完整矩阵（Task 15）：6 组 32 组件变体矩阵 + 悬浮窗交互实例
 mountComponentsShowcase(document.querySelector('#components'));
+
+// 动效实验室（Task 16）：5 个动效演示卡 + 参数试玩器 + 重播。
+// 定制器联动在模块内部 subscribe —— 只同步滑杆/局部变量，不重渲染 DOM。
+mountMotionLab(document.querySelector('#motion'));
 
 // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
 window.__toast = toast;
