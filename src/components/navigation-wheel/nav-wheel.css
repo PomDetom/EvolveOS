@@ -2,6 +2,7 @@
    几何约定：--navwheel-item-h(52px) + --navwheel-gap(12px)，与 nav-wheel-geometry.js 一致 */
 :root {
   --navwheel-item-h: 52px;
+  --navwheel-item-w: 64px; /* horizontal 项宽（Task A6，与 vertical 的 item-h 同语义） */
   --navwheel-gap: 12px;
 }
 
@@ -48,6 +49,28 @@
   clip-path: inset(0 100% 0 0); opacity: 0;
   transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
 .c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
+
+/* —— horizontal 渲染层（Task A6，闭环 A2 Minor ①）——
+   仅当 mountNavWheel 收到 direction:'horizontal' 时列表根加 .c-navwheel__list--horizontal。
+   vertical 既有规则逐字节不动（docs 84 e2e + 36 基线 + app-shell 14 零冲击）。
+   间距修正：竖向项的 margin 主轴半间距 = --navwheel-gap/2（6px），但横向需
+   margin 沿主轴（左右）为半间距 6px —— 否则基础规则的「12px 左右」会让横排项间距
+   变成 24px ≠ GAP 12，几何算法（itemW + gap）与渲染错位。padding 纵向归零：
+   % 相对宽度在横排会撑爆纵向空间（顶/底 padding ≈ 视口宽 × 38.2%）。 */
+.c-navwheel__list--horizontal {
+  flex-direction: row;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* 横向拖轮不应吞掉页面的纵向滚动：允许浏览器接管纵向 pan */
+  touch-action: pan-y;
+  padding: 0; /* 首尾精确 padding 由 JS 以 paddingLeft/Right 覆盖 */
+}
+.c-navwheel__list--horizontal .c-navwheel__item {
+  margin: 0 calc(var(--navwheel-gap) / 2);
+  width: var(--navwheel-item-w);
+  flex: none;
+}
 
 /* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
 .c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;

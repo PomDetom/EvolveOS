@@ -13,6 +13,7 @@
   overflow: hidden;
   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
   --dur-push: calc(var(--dur-base) * 1.2);
+  --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
 }
 .app-main--dual { --app-nav-r-w: 64px; }
 
@@ -115,3 +116,71 @@
 .app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
 .app-main__strip { position: fixed; inset: 0; pointer-events: none; }
 .app-main__strip .c-strip { pointer-events: auto; }
+
+/* —— 手机形态（Task A6，规格：≤900px 底部横滑 + 全屏页面栈）——
+   桌面形态默认隐藏手机元素（display:none，不占网格单元）；≤900px 媒体查询切换：
+   双窗/内容区隐藏，底部 dock + 页面栈接管。dock 为 NavigationWheel horizontal
+   （.c-navwheel__list--horizontal，nav-wheel.css 提供的独立横排规则），纯 icon 横排。
+   页面栈 slide 左进 240ms（--dur-push）+ --ease-spring，只动 transform/opacity（红线）。 */
+.app-main__stack,
+.app-main__dock { display: none; }
+
+@media (max-width: 900px) {
+  /* 单列网格：标题栏 40px + 页面栈 1fr + 底部 dock */
+  .app-main { grid-template-columns: 1fr; grid-template-rows: 40px 1fr var(--app-dock-h); }
+  .app-main__nav-l,
+  .app-main__nav-r,
+  .app-main__pages { display: none; }
+  .app-main__float-ball,
+  .app-main__strip { display: none; } /* 悬浮演示为桌面形态交互，手机隐藏避免遮挡 dock */
+
+  /* —— 全屏页面栈 —— */
+  .app-main__stack { display: block; grid-column: 1; grid-row: 2;
+    position: relative; min-height: 0; overflow: hidden;
+    background: var(--surface-1); }
+  .app-main__stack-page { position: absolute; inset: 0; display: flex;
+    flex-direction: column; overflow-y: auto; background: var(--surface-1); }
+  .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
+  @keyframes app-main-stack-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .app-main__stack-head { flex: none; display: flex; align-items: center;
+    height: 40px; padding: 0 var(--space-2); border-bottom: 1px solid var(--glass-border); }
+  .app-main__stack-back { display: grid; place-items: center; width: 40px; height: 32px;
+    color: var(--text-2); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+  .app-main__stack-back:hover { color: var(--text-1); background: var(--surface-hover); }
+  .app-main__stack-body { flex: 1; min-height: 0; padding: var(--space-5); }
+
+  /* —— 应用目录页：模块名 + 目录项列表 —— */
+  .app-main__stack-title { margin-bottom: var(--space-4); }
+  .app-main__dir-list { display: flex; flex-direction: column; }
+  .app-main__dir-item { display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-4); color: var(--text-2);
+    border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+  .app-main__dir-item:hover { color: var(--text-1); background: var(--surface-hover); }
+  .app-main__dir-name { flex: 1; color: var(--text-1); }
+  .app-main__dir-item > svg:last-child { color: var(--text-3); }
+
+  /* —— 设置页：分区 tab 横排 + 8 分区内容（复用共享 csettings__*，纵向滚动由栈页承担）—— */
+  .app-main__settings-tabs { display: flex; gap: var(--space-2); overflow-x: auto;
+    margin-bottom: var(--space-4); padding-bottom: var(--space-2); }
+  .app-main__settings-tab { flex: none; padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm); color: var(--text-2);
+    border: 1px solid var(--glass-border);
+    border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+  .app-main__settings-tab--active { color: var(--accent); border-color: var(--accent); }
+  /* csettings 页随栈滚动：桌面「壳内设置页溢出可见」规则已令各页 height:auto/overflow:visible，
+     纵向滚动由 .app-main__stack-page 的 overflow-y:auto 承担（同内容区行为） */
+
+  /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
+  .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
+    display: flex; align-items: center;
+    border-top: 1px solid var(--glass-border); background: var(--surface-1); }
+  .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
+  .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
+  .app-main__dock .c-navwheel__name { display: none; }
+}

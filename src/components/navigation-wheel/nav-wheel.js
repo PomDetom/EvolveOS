@@ -23,6 +23,9 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
         pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
 
   const list = root.querySelector('.c-navwheel__list') ?? root;
+  // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
+  // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
+  if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
   list.innerHTML = items.map((it, i) => `
     <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
       <div class="c-navwheel__glow"></div>
@@ -30,9 +33,10 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
       <span class="c-navwheel__name">${it.name}</span>
     </div>`).join('');
   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
-  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，horizontal 由 A6 接管）
+  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
+  // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
   const holder = root.closest('.navwheel') ?? root.parentElement;
-  if (holder && !holder.querySelector('.c-navwheel__mask')) {
+  if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
     holder.insertAdjacentHTML('beforeend',
       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
   }

@@ -95,6 +95,11 @@ export function mountAppMode(root) {
         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
       </section>
     </main>
+    <!-- 手机形态（Task A6）：底部横滑应用栏 + 全屏页面栈 —— 桌面视口 display:none，≤900px 媒体查询接管 -->
+    <div class="app-main__stack"></div>
+    <div class="app-main__dock">
+      <nav class="app-main__dock-wheel c-navwheel__list"></nav>
+    </div>
   </div>`;
 
   const appMain = root.querySelector('.app-main');
@@ -107,10 +112,20 @@ export function mountAppMode(root) {
   const navRBody = root.querySelector('.app-main__nav-r-body');
   const pagesEl = root.querySelector('.app-main__pages');
   const pages = [...pagesEl.children];
+  const stackEl = root.querySelector('.app-main__stack');
+  const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
 
   // —— 会话内纯 UI 态（不进配置存储）——
   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
   const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
+
+  // 手机形态（Task A6）：独立导航模型 —— 底部 dock（横向应用轮，点击驱动推入）+ 全屏页面栈。
+  // 栈 = 钻取路径（基底概览 → 应用目录页 → 详情页 / 设置页）；桌面/手机两套模型经媒体查询切换，
+  // 共享标题栏上下文；页面栈状态为纯 UI 态（会话内），不进配置存储。
+  const mobile = { stack: [{ type: 'overview' }], animateTop: false };
+  function isMobile() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
+  }
 
   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
   const leftWheel = mountNavWheel(navL, {
@@ -186,6 +201,7 @@ export function mountAppMode(root) {
 
   // —— 标题栏上下文「应用名 › 页面名」/「设置 › 分区」（单窗口态只应用名）——
   function updateCtx() {
+    if (isMobile()) { updateCtxMobile(); return; } // 手机形态：上下文由页面栈栈顶承担
     if (state.rightMode === 'settings') {
       const s = SECTIONS.find((x) => x.id === state.settingsId);
       ctx.textContent = `设置 › ${s.name}`;
@@ -251,6 +267,12 @@ export function mountAppMode(root) {
   }
 
   function toggleSettings() {
+    if (isMobile()) {
+      // 手机形态：⚙ 推入设置页到页面栈；已在设置页 → 弹回（toggle）
+      if (mobile.stack[mobile.stack.length - 1]?.type === 'settings') popStack();
+      else pushStack({ type: 'settings' });
+      return;
+    }
     if (state.rightMode === 'settings') exitSettingsMode();
     else setSettingsMode();
   }
@@ -280,6 +302,137 @@ export function mountAppMode(root) {
     const i = MODULES.findIndex((m) => m.id === id);
     if (i < 0) return;
     leftWheel.scrollToIndex(i);
+  }
+
+  // —— 手机形态（Task A6）：底部 dock + 全屏页面栈 ——
+  // 页面栈 slide 左进 240ms（--dur-push = --dur-base*1.2）+ --ease-spring，只动 transform/opacity（红线）。
+  function renderStackPage(entry, animate) {
+    const isRoot = entry.type === 'overview';
+    const back = isRoot ? '' : `<button class="app-main__stack-back" aria-label="返回" title="返回">${icon('chevron-left', 16)}</button>`;
+    const head = isRoot ? '' : `<header class="app-main__stack-head">${back}</header>`;
+    const cls = animate ? ' app-main__stack-page--push' : '';
+    let body = '';
+    if (entry.type === 'overview') {
+      body = renderOverview();
+    } else if (entry.type === 'dir') {
+      const mod = MODULES.find((m) => m.id === entry.moduleId);
+      body = `
+        <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
+        <div class="app-main__dir-list">
+          ${mod.dir.map((d) => `
+            <button class="app-main__dir-item" data-dir="${d.id}">
+              ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
+            </button>`).join('')}
+        </div>`;
+    } else if (entry.type === 'detail') {
+      const mod = MODULES.find((m) => m.id === entry.moduleId);
+      body = mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName });
+    } else if (entry.type === 'settings') {
+      body = `
+        <div class="app-main__settings-tabs">
+          ${SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
+        </div>
+        <div class="app-main__settings csettings__pages">${renderSettingsPages()}</div>`;
+    }
+    return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
+  }
+
+  function renderStack() {
+    stackEl.innerHTML = mobile.stack.map((entry, i) =>
+      renderStackPage(entry, i === mobile.stack.length - 1 && mobile.animateTop)).join('');
+    const settingsPage = stackEl.querySelector('[data-stack="settings"]');
+    if (settingsPage) mountSettingsInteractions(settingsPage.querySelector('.app-main__settings'));
+    mobile.animateTop = false;
+    activateMobileSettings();
+    updateCtx();
+  }
+
+  function pushStack(entry) {
+    mobile.stack.push(entry);
+    mobile.animateTop = true;
+    renderStack();
+    updateSettingsActive();
+  }
+  function popStack() {
+    if (mobile.stack.length <= 1) return;
+    mobile.stack.pop();
+    mobile.animateTop = false;
+    renderStack();
+    updateSettingsActive();
+  }
+  function resetStack() {
+    mobile.stack = [{ type: 'overview' }];
+    mobile.animateTop = false;
+    renderStack();
+    updateSettingsActive();
+  }
+  function updateSettingsActive() {
+    settingsBtn.classList.toggle('app-main__settings-toggle--active',
+      mobile.stack[mobile.stack.length - 1]?.type === 'settings');
+  }
+
+  // 设置分区激活（移动端复用共享 settings-pages；外观定制器首次激活惰性挂载 ——
+  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）
+  function activateMobileSettings() {
+    const sec = stackEl.querySelector('[data-stack="settings"]');
+    if (!sec) return;
+    sec.querySelectorAll('.csettings__page').forEach((p) =>
+      p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
+    sec.querySelectorAll('.app-main__settings-tab').forEach((t) =>
+      t.classList.toggle('app-main__settings-tab--active', t.dataset.tab === state.settingsId));
+    const cust = sec.querySelector('[data-page="appearance"] .csettings__cust');
+    if (state.settingsId === 'appearance' && cust && !cust.children.length) renderCustomizerGroups(cust);
+  }
+
+  function updateCtxMobile() {
+    const top = mobile.stack[mobile.stack.length - 1];
+    const mod = top?.moduleId ? MODULES.find((m) => m.id === top.moduleId) : null;
+    if (top?.type === 'detail' && mod) {
+      ctx.textContent = `${mod.name} › ${top.dirName}`;
+      ctx.dataset.module = mod.id; ctx.dataset.page = top.dirId;
+    } else if (top?.type === 'dir' && mod) {
+      ctx.textContent = mod.name;
+      ctx.dataset.module = mod.id; ctx.dataset.page = '';
+    } else if (top?.type === 'settings') {
+      const s = SECTIONS.find((x) => x.id === state.settingsId);
+      ctx.textContent = `设置 › ${s.name}`;
+      ctx.dataset.module = 'settings'; ctx.dataset.page = state.settingsId;
+    } else {
+      ctx.textContent = '概览';
+      ctx.dataset.module = 'home'; ctx.dataset.page = '';
+    }
+  }
+
+  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；其他应用 → 目录页。
+  // 滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
+  function handleDockTap(id) {
+    const mod = MODULES.find((m) => m.id === id);
+    const top = mobile.stack[mobile.stack.length - 1];
+    if (!mod.dir.length) { resetStack(); return; }
+    if (top?.type === 'dir' && top.moduleId === id) return; // 已在该应用目录
+    if (top && top.type !== 'overview') {
+      // 栈顶为目录/详情/设置页 → 替换为当前应用目录（底部栏恒为一级入口，不叠加目录页）
+      mobile.stack = [mobile.stack[0], { type: 'dir', moduleId: id }];
+      mobile.animateTop = false;
+      renderStack();
+      updateSettingsActive();
+      return;
+    }
+    pushStack({ type: 'dir', moduleId: id });
+  }
+
+  // dock 懒挂载：桌面视口下 dock 为 display:none（clientWidth=0 会让几何 pad 计算失真），
+  // 首次进入手机形态时才挂载（几何基于实测视口长度；手机视口近似恒定，挂载一次即可）
+  let dockMounted = false;
+  function mountDock() {
+    if (dockMounted) return;
+    dockMounted = true;
+    mountNavWheel(dockList, {
+      items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
+      onChange: () => {}, // 滚动/吸附仅更新轮内高亮，页面推入由点击驱动（钻取模型）
+      anchorRatio: 0.382,
+      direction: 'horizontal',
+    });
   }
 
   // —— 事件 ——
@@ -312,6 +465,49 @@ export function mountAppMode(root) {
     }
   });
 
+  // —— 手机形态事件（Task A6）：dock 点击 = 一级导航；页面栈点击委托（返回/目录项/设置分区/概览快捷入口）——
+  // nav-wheel 对列表 setPointerCapture → click 事件 target 被重定向到列表本身，不能据 click.target 找项；
+  // 与左窗同模式：pointerdown 记录「所点项下标」，click 阶段消费（拖拽不产生 click，不误触发推入）。
+  let dockDownIndex = -1;
+  dockList.addEventListener('pointerdown', (e) => {
+    const item = e.target.closest('.c-navwheel__item');
+    dockDownIndex = item ? Number(item.dataset.index) : -1;
+  });
+  dockList.addEventListener('click', () => {
+    const i = dockDownIndex;
+    dockDownIndex = -1;
+    if (i >= 0) handleDockTap(MODULES[i].id);
+  });
+  stackEl.addEventListener('click', (e) => {
+    const back = e.target.closest('.app-main__stack-back');
+    if (back) { popStack(); return; }
+    const dirItem = e.target.closest('.app-main__dir-item');
+    if (dirItem) {
+      const pageEl = e.target.closest('.app-main__stack-page');
+      const entry = mobile.stack[[...stackEl.children].indexOf(pageEl)];
+      const mod = MODULES.find((m) => m.id === entry.moduleId);
+      const dir = mod.dir.find((d) => d.id === dirItem.dataset.dir);
+      pushStack({ type: 'detail', moduleId: mod.id, dirId: dir.id, dirName: dir.name });
+      return;
+    }
+    const tab = e.target.closest('.app-main__settings-tab');
+    if (tab) {
+      state.settingsId = tab.dataset.tab;
+      activateMobileSettings();
+      updateCtx();
+      return;
+    }
+    const shortcut = e.target.closest('.app-main__shortcut');
+    if (shortcut) handleDockTap(shortcut.dataset.shortcut);
+  });
+  // 视口横纵切换（媒体查询 900px 断点）：进入手机形态懒挂载 dock；上下文切回对应导航模型
+  const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 900px)') : null;
+  mq?.addEventListener?.('change', (e) => {
+    if (e.matches) mountDock();
+    updateCtx();
+  });
+  if (isMobile()) mountDock();
+
   // 设置页交互接线（主题三态/动效/保存/快捷键/开源链接/开关，与场景模板共用 settings-pages）
   mountSettingsInteractions(pages.find((p) => p.dataset.page === 'settings'));
 
@@ -328,6 +524,7 @@ export function mountAppMode(root) {
   pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
   renderRight();
   applyRightOpen();
+  renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
 
   // —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall →
   //    点击展开一个 FloatStrip 实例（右下贴边可拖）。docs 互斥不并存，零冲击。 ——
