@@ -38,6 +38,7 @@ import './components/hotkey-hint/hotkey-hint.css';
 import './components/float-ball/float-ball.css';
 import './components/hotkey-recorder/hotkey-recorder.css';
 import './components/sidebar-item/sidebar-item.css';
+import './scenes/clipboard-float/clipboard-float.css';
 import './styles/customizer.css';
 import { icon } from './components/icon/icon.js';
 import { toast } from './components/toast/toast.js';
@@ -51,6 +52,7 @@ import { mountMotionLab } from './demo/motion-lab.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { mountTokenShowcase } from './demo/token-showcase.js';
 import { mountCustomizer, toggleCustomizer } from './demo/customizer-panel.js';
+import { mountClipboardFloat } from './scenes/clipboard-float/clipboard-float.js';
 import { getConfig, subscribe } from './config/store.js';
 import { applyConfig } from './config/apply.js';
 
@@ -170,6 +172,12 @@ mountComponentsShowcase(document.querySelector('#components'));
 // 动效实验室（Task 16）：5 个动效演示卡 + 参数试玩器 + 重播。
 // 定制器联动在模块内部 subscribe —— 只同步滑杆/局部变量，不重渲染 DOM。
 mountMotionLab(document.querySelector('#motion'));
+
+// 场景模板 1：剪贴板悬浮窗（Task 18）—— 第一个完整场景模板，验证悬浮窗场景组件组合。
+// #scenes 标题在此写入；场景自身（标题/说明/悬浮窗实例）由 mountClipboardFloat 追加。
+const scenesSection = document.querySelector('#scenes');
+scenesSection.innerHTML = '<h2>场景模板</h2>';
+mountClipboardFloat(scenesSection);
 
 // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
 window.__toast = toast;

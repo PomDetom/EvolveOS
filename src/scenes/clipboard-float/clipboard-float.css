@@ -1,0 +1,82 @@
+/* 场景模板 1：剪贴板悬浮窗（Task 18）
+   窗口是模板主体 —— .c-fwin 由组件默认 position:fixed 局部覆盖为 relative，
+   随 #scenes 文档流呈现（同 Task 15 的 .csg-fwin-static 方案）。
+   动画红线：stagger 进入只动 transform/opacity；悬停操作组只动 opacity。 */
+
+.cfloat { margin-bottom: var(--space-7); }
+
+.cfloat__header { display: flex; align-items: baseline; flex-wrap: wrap;
+  column-gap: var(--space-3); row-gap: var(--space-1); margin-bottom: var(--space-4); }
+.cfloat__header h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.cfloat__header p { font-size: var(--font-size-sm); color: var(--text-2); }
+.cfloat__header code { padding: 1px 5px; font-size: 11px; font-family: var(--font-mono, monospace);
+  color: var(--text-2); background: var(--surface-2);
+  border: 1px solid var(--glass-border); border-radius: var(--radius-xs); }
+
+/* 窗口：流式布局内的固定尺寸悬浮窗（360×480，模板主体） */
+.cfloat .c-fwin { position: relative; width: 360px; height: 480px;
+  display: flex; flex-direction: column; }
+.cfloat .c-fwin__body { flex: 1; min-height: 0; display: flex;
+  flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-4); }
+
+/* 列表：窗口内约 320px 高的滚动区（480 - 标题栏 - 搜索栏 - 底部栏 - 间距），内部滚动 */
+.cfloat__list { flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px; }
+.cfloat__list::-webkit-scrollbar { width: 6px; }
+.cfloat__list::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 3px; }
+
+/* 列表项：类型 icon + 首行 + 时间 meta + 悬停操作组；
+   stagger 进入：item-in 200ms ease-out + calc(var(--i) * 30ms)，只动 transform/opacity */
+.cfloat__item { display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  transition: background var(--dur-fast) var(--ease-out);
+  animation: item-in var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 30ms); }
+.cfloat__item:hover { background: var(--surface-hover); }
+/* 固定项：accent 浅底 + 图钉变色（cfloat__op--on），排列表头由 JS 稳定排序 */
+.cfloat__item--pinned { background: var(--accent-50); }
+.cfloat__item--pinned:hover { background: var(--accent-100); }
+
+.cfloat__type { flex: none; display: grid; place-items: center; width: 28px; height: 28px;
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  background: var(--surface-2); color: var(--text-2); }
+.cfloat__item--pinned .cfloat__type { color: var(--accent); }
+
+.cfloat__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cfloat__title { font-size: var(--font-size-sm); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfloat__item--pinned .cfloat__title { font-weight: var(--font-weight-medium); }
+.cfloat__meta { font-size: var(--font-size-xs); color: var(--text-3); }
+
+/* 悬停操作组：默认 opacity 0，行悬停/键盘聚焦时淡入（只动 opacity） */
+.cfloat__ops { flex: none; display: flex; gap: 2px; opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out); }
+.cfloat__item:hover .cfloat__ops,
+.cfloat__item:focus-within .cfloat__ops { opacity: 1; }
+.cfloat__op { width: 22px; height: 22px; display: grid; place-items: center;
+  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1));
+  color: var(--text-3);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.cfloat__op:hover { background: var(--surface-1); color: var(--text-1); }
+.cfloat__op--delete:hover { color: var(--danger-500); }
+.cfloat__op--pin.cfloat__op--on { color: var(--accent); }
+
+/* 空态：填满列表滚动区，居中展示 */
+.cfloat__empty { height: 100%; }
+
+/* 底部固定项分区：窗口底部固定（不随列表滚动），固定计数 + 清空全部 */
+.cfloat__pinned { flex: none; display: flex; align-items: center;
+  justify-content: space-between; gap: var(--space-2);
+  padding-top: var(--space-3); border-top: 1px solid var(--glass-border); }
+.cfloat__pinned-label { display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--font-size-xs); color: var(--text-3); }
+.cfloat__pinned-label .c-icon { color: var(--accent); }
+
+/* stagger 进入关键帧：只动 transform/opacity（红线合规，不触发 layout） */
+@keyframes item-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
