@@ -9,4 +9,6 @@ Base: 3ff852a (main)
 - 提交：`e235935`（feat）；docs 留痕随本账本同次提交
 - 单测 31/31 绿、e2e 75/75 绿（36 张视觉基线零变化、未重生成）、`npm run build` 通过
 - 简报外修复：token-showcase.js parseRGB 支持 hsl()（详见 task-1-report.md 顾虑 1）
-- 评审：待派发
+- 计划项 A: complete (commits 3ff852a..a925612, review clean — 规格 ✅ / Approved)
+- minor (deferred): token-showcase 亮度余量数值口误（~0.09 vs 实际 0.05-0.071，决策不受影响）
+- minor (deferred): toast e2e 既有 flake（全量偶发 1 次、单跑通过，与本次无关）— 收尾排查

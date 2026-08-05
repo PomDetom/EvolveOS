@@ -1,0 +1,446 @@
+# Review package: 3ff852a..a925612
+
+## Commits
+a925612 docs: 色温任务实施留痕（简报/报告/账本/计划状态）
+e235935 feat: 色温滑杆映射（中性色冷暖偏移）
+
+## Files changed
+ .../plans/2026-08-04-tauri-ui-design.md            |  2 +-
+ docs/superpowers/sdd/progress.md                   | 12 ++++
+ docs/superpowers/sdd/task-1-brief.md               | 45 +++++++++++++++
+ docs/superpowers/sdd/task-1-report.md              | 64 ++++++++++++++++++++++
+ src/config/apply.js                                |  8 +++
+ src/demo/customizer-css.js                         |  6 +-
+ src/demo/token-showcase.js                         | 19 ++++++-
+ src/styles/tokens.css                              | 15 +++--
+ tests/e2e/customizer.spec.js                       | 15 +++++
+ tests/unit/apply.test.js                           | 17 +++++-
+ 10 files changed, 194 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/plans/2026-08-04-tauri-ui-design.md b/docs/superpowers/plans/2026-08-04-tauri-ui-design.md
+index 438b9e3..131c99d 100644
+--- a/docs/superpowers/plans/2026-08-04-tauri-ui-design.md
++++ b/docs/superpowers/plans/2026-08-04-tauri-ui-design.md
+@@ -2920,21 +2920,21 @@ git commit -m "docs: Tauri 接入指南 + README + 视觉回归基线"
+ 
+ - **规格覆盖核对**：§4 架构 ✓（Task 1-3）；§5 令牌 ✓（Task 2，6 套主题色 ✓）；§6 定制器 ✓（Task 17 + Task 20 整页嵌入）；§7 组件清单 ✓（Task 6-13 建组件 + Task 15 矩阵，SidebarItem 在 Task 15 内建补齐 32 个）；§8 NavigationWheel ✓（Task 11-12：滚轮/触摸板滚动、拖拽惯性、实时跟手变形、居中吸附、点击滑动到中间、名称 clip 滑入、光晕、设置入口、键盘）；§9 TitleBar ✓（Task 10）；§10 展示页 ✓（Task 3/14/15/16/17 组装）；§11 三场景 ✓（Task 18/19/20）；§12 数据流 ✓（Task 4/5）；§13 错误处理 ✓（Task 4 store 兜底 + Task 17 导出）；§14 测试 ✓（Task 4/11 单测 + 各任务 e2e + Task 21 视觉回归）；§15 非目标 ✓（无框架无后端无真实窗口）。
+ - **动效红线**：所有动画仅 transform/opacity（stagger、scale、translate、clip-path 动画仅用于名称滑入 — clip-path 为合成器友好属性，符合「不触发布局」约束）；模糊永不动画（Toast/Dialog/面板进入动画均只动 transform/opacity）；6 项以上 stagger（剪贴板列表、stagger demo）。
+ - **类型一致性**：`springCurve(strength)` / `scaledDurations(scale, enabled)`（Task 4 定义，Task 16/17 复用）；`findNearestIndex` 等几何函数签名（Task 11 定义，Task 12 复用）；`renderXxx` 全组件统一契约；`showcase(title, items)`（Task 6 定义，Task 15 复用）；`toast`/`openDialog` 全局暴露（Task 9 定义，Task 18 清空流程复用）。
+ - **已知延迟项**：`cubicBezierY`（Task 11 Step 7 标注实现提示）；`window.__renderIcon` 测试桥（Task 15 移除）；accent 深色对比色（`--accent-contrast` 浅色主题深字/深色主题浅字 — themes.css 已按套定义）。
+ 
+ ## 后续计划项（用户确认，2026-08-05）
+ 
+ ### 计划项 A：色温滑杆映射（color.temperature 补视觉消费者）
+ 
+-- **状态**：已列入计划，未执行
++- **状态**：已执行（提交 `e235935`，2026-08-05）
+ - **背景**：定制器色彩组已有 `temperature` 滑杆（RANGES [-1, 1, 0.05]），但 apply.js/themes.css 无消费者 — 拖动无可见效果（Task 17 评审登记）
+ - **目标**：`color.temperature`（-1 冷 → 1 暖）映射到中性色阶的冷暖偏移。参考实现方向：apply.js 写入 `--neutral-temperature`（-1 冷蓝灰 / 0 中性 / 1 暖米灰），themes.css 的 `--neutral-*` 改为基于色相微调的合成（或两套中性色板经变量切换，如 `--neutral-base-hue`）。需保持 6 套主题色 + 深浅主题 × 温度三态组合可读性
+ - **验收**：拖动色温滑杆 → 色板卡/组件表面中性色明显变冷/变暖；单测覆盖映射函数；视觉基线默认态（0）不变
+ - **参考**：色相滑杆实现（applyColorTint + hexToHsl + tintHsl 模式，提交 b97c4b0）可作为映射结构范本
+ 
+ ### 已确认的设计决策（记录）
+ 
+ - 阴影默认强度：**接受半强度默认**（DEFAULTS.shadow=0.5 不变，合成公式 `calc(0.14 * var(--shadow-intensity, 0.5))`）
+ - 色相滑杆：**已实现**（b97c4b0，见 HANDOFF.md「设计点决策记录」）
+ 
+diff --git a/docs/superpowers/sdd/progress.md b/docs/superpowers/sdd/progress.md
+new file mode 100644
+index 0000000..bd54496
+--- /dev/null
++++ b/docs/superpowers/sdd/progress.md
+@@ -0,0 +1,12 @@
++# SDD ledger — 后续计划项（2026-08-05 起）
++
++Base: 3ff852a (main)
++
++计划书：docs/superpowers/plans/2026-08-04-tauri-ui-design.md（「后续计划项」节）
++
++## 计划项 A：色温滑杆映射 — 已执行（2026-08-05）
++
++- 提交：`e235935`（feat）；docs 留痕随本账本同次提交
++- 单测 31/31 绿、e2e 75/75 绿（36 张视觉基线零变化、未重生成）、`npm run build` 通过
++- 简报外修复：token-showcase.js parseRGB 支持 hsl()（详见 task-1-report.md 顾虑 1）
++- 评审：待派发
+diff --git a/docs/superpowers/sdd/task-1-brief.md b/docs/superpowers/sdd/task-1-brief.md
+new file mode 100644
+index 0000000..297d183
+--- /dev/null
++++ b/docs/superpowers/sdd/task-1-brief.md
+@@ -0,0 +1,45 @@
++# 任务简报 1：色温滑杆映射（color.temperature 补视觉消费者）
++
++**需求来源**：计划书「后续计划项 A」— 定制器色彩组已有 `temperature` 滑杆（RANGES [-1, 1, 0.05]），但 `color.temperature` 无视觉消费者，拖动无可见效果。
++
++**目标**：`color.temperature`（-1 冷 → 1 暖）映射到**中性色阶的冷暖偏移** — 拖动色温滑杆，全局中性色（面板背景/文字灰阶/边框）明显变冷或变暖，实时生效。
++
++## 实施规格
++
++### 1. tokens.css：中性色阶参数化
++
++- 当前 `--neutral-50..950` 是固定 hex 值（11 级）。改为 HSL 参数化：`hsl(var(--neutral-hue) <sat>% <light>%)`。
++- `:root` 新增 `--neutral-hue: 235;`（默认冷调 — 与当前视觉一致，基线不变）。
++- 每级的 sat/light 由原 hex 转换得出，**保持当前视觉等效**。逐级转换（示例）：
++  - `#f7f8fa` → `hsl(var(--neutral-hue) 14% 97%)`
++  - 其余各级同样转换（hue 统一走变量，低饱和下与原色相视觉无差；sat/light 取原值）。
++- 注意：全仓所有 `--neutral-*` 消费方（themes.css 的 --text-*、--surface-*、badge default、switch 轨道等）经变量自动跟随，**不需要改消费方**。
++
++### 2. apply.js：温度 → 色相映射
++
++- 导出纯函数 `temperatureToHue(t)`：
++  - `t <= 0`：`235 + 25 * t`（t=-1 → 210，更冷偏蓝）
++  - `t > 0`：`235 - 195 * t`（t=1 → 40，暖橙灰）
++  - `Math.round` 后返回整数
++- `applyConfig` 追加：`temperature === 0` → `root.style.removeProperty('--neutral-hue')`（默认态无覆盖，基线不变）；否则写 `--neutral-hue: <映射值>`。
++
++### 3. 测试
++
++**单测**（tests/unit/apply.test.js 追加）：
++- `temperatureToHue(-1) === 210`、`temperatureToHue(0) === 235`、`temperatureToHue(0.5) === 138`（235-97.5=137.5 → round 138）、`temperatureToHue(1) === 40`
++- `temperature: 0` 时不写 `--neutral-hue`（inline 为空）
++- `temperature: 0.5` 时写 `--neutral-hue: 138`
++
++**e2e**（tests/e2e/customizer.spec.js 追加）：
++- 打开定制器 → 色温滑杆 `fill('1')` → `getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim() === '40'`
++- 重置后 `--neutral-hue` 为空（恢复默认）
++
++### 4. 提交
++
++`feat: 色温滑杆映射（中性色冷暖偏移）`
++
++## 约束
++
++- 默认态（temperature=0）零覆盖 — **36 张视觉基线不得变化**；如运行全量 e2e 有基线失败，先确认是否由本任务引入（不应有），再决定重生成。
++- 动画红线、令牌引用规则不变；不改定制器 UI（滑杆已存在，自动生效）。
++- 文案中文。
+diff --git a/docs/superpowers/sdd/task-1-report.md b/docs/superpowers/sdd/task-1-report.md
+new file mode 100644
+index 0000000..8a0abfb
+--- /dev/null
++++ b/docs/superpowers/sdd/task-1-report.md
+@@ -0,0 +1,64 @@
++# 任务 1 实施报告：色温滑杆映射（color.temperature 补视觉消费者）
++
++**需求源**：`docs/superpowers/sdd/task-1-brief.md`（计划书「后续计划项 A」）
++
++**状态**：完成 — 单测 31/31 绿、e2e 75/75 绿（含 36 张视觉基线零变化）、`npm run build` 通过
++
++**提交**：`e235935`（feat 提交）；docs 留痕提交见 git log（本报告所在提交）
++
++## 一、文件修改清单
++
++| 文件 | 修改 |
++|---|---|
++| `src/styles/tokens.css` | `--neutral-50..950` 11 级固定 hex → `hsl(var(--neutral-hue) <sat>% <light>%)`；`:root` 新增 `--neutral-hue: 235` |
++| `src/config/apply.js` | 导出纯函数 `temperatureToHue(t)`；`applyConfig` 追加：`temperature === 0` → `removeProperty('--neutral-hue')`，否则写映射值 |
++| `src/demo/customizer-css.js` | 导出 CSS 变量在温度 ≠ 0 时追加 `--neutral-hue` 覆盖行（沿用色相滑杆的 `tintLine` 模式） |
++| `src/demo/token-showcase.js` | `parseRGB` 扩展支持 `hsl()/hsla()`（现代空格 + 逗号语法）— **简报外修复**，见顾虑 1 |
++| `tests/unit/apply.test.js` | +3 用例（temperatureToHue 4 断言；temperature 0 不写覆盖；0.5 写 138）|
++| `tests/e2e/customizer.spec.js` | +1 用例（色温 `fill('1')` → computed `--neutral-hue` 40；重置 → 恢复默认 235）|
++
++未改动：定制器面板 UI（滑杆与 CFG_PATH 映射已存在）、themes.css 及全部纯 CSS 消费方（经变量自动跟随）。
++
++## 二、hex → HSL 转换表（逐级）
++
++算法与 `apply.js` 的 `hexToHsl` 完全一致（h 取整、s/l 保留 1 位小数）；hue 统一走 `--neutral-hue`（原色相 216-220，低饱和下视觉无差）：
++
++| 级 | 原 hex | 原 HSL（含原色相） | 新令牌 |
++|---|---|---|---|
++| 50 | `#f7f8fa` | hsl(220 23.1% 97.5%) | `hsl(var(--neutral-hue) 23.1% 97.5%)` |
++| 100 | `#eef0f4` | hsl(220 21.4% 94.5%) | `hsl(var(--neutral-hue) 21.4% 94.5%)` |
++| 200 | `#e2e5eb` | hsl(220 18.4% 90.4%) | `hsl(var(--neutral-hue) 18.4% 90.4%)` |
++| 300 | `#cdd2db` | hsl(219 16.3% 83.1%) | `hsl(var(--neutral-hue) 16.3% 83.1%)` |
++| 400 | `#aab1bd` | hsl(218 12.6% 70.4%) | `hsl(var(--neutral-hue) 12.6% 70.4%)` |
++| 500 | `#8a92a1` | hsl(219 10.9% 58.6%) | `hsl(var(--neutral-hue) 10.9% 58.6%)` |
++| 600 | `#6b7280` | hsl(220 8.9% 46.1%) | `hsl(var(--neutral-hue) 8.9% 46.1%)` |
++| 700 | `#525a66` | hsl(216 10.9% 36.1%) | `hsl(var(--neutral-hue) 10.9% 36.1%)` |
++| 800 | `#3a4049` | hsl(216 11.5% 25.7%) | `hsl(var(--neutral-hue) 11.5% 25.7%)` |
++| 900 | `#262a31` | hsl(218 12.6% 17.1%) | `hsl(var(--neutral-hue) 12.6% 17.1%)` |
++| 950 | `#1a1d23` | hsl(220 14.8% 12%) | `hsl(var(--neutral-hue) 14.8% 12%)` |
++
++`temperatureToHue` 端点复核：t=-1 → 235-25=210；t=0 → 235；t=0.5 → 235-97.5=137.5 → round 138；t=1 → 235-195=40。
++
++## 三、测试输出
++
++**单测（TDD 红→绿）**：
++- 红（实现前）：`apply.test.js` 2 失败 — `temperatureToHue` 未定义（TypeError）+ `--neutral-hue` 未写入；其余 29 用例不受影响
++- 绿（实现后）：`npm test` → Test Files 4 passed, Tests 31 passed（apply.test.js 8 → 11 用例）
++
++**e2e**：`npm run test:e2e` → **75 passed**（customizer 4 → 5 用例；visual-regression 36 张全绿；其余 34 用例全绿）。期间 overlays.spec.js「Toast」曾 1 次失败、单独重跑通过 — 与本次改动无关（未触及 toast 代码），疑似既有时序 flake（见顾虑 4）。
++
++**构建**：`npm run build` → `vite build` 成功。
++
++## 四、视觉基线确认（36 张）
++
++- 全量 e2e 两次完整跑：36 张基线**全部通过，零变化，未重生成**（全程未使用 `--update-snapshots`；`git status` 确认 snapshot 目录无改动）。
++- 默认态（temperature=0）覆盖为零：`applyConfig` 走 `removeProperty('--neutral-hue')`，渲染回退 `:root` 的 235，与改动前渲染一致（hue 216-220 → 235 的单通道 ≤6/255 偏移在 Playwright 逐像素阈值内视为一致，已实测通过）。
++- 中间态排查：参数化后首批 tokens 6 张基线曾失败，根因见顾虑 1，修复后恢复全绿。
++
++## 五、顾虑与偏差记录
++
++1. **简报外修复（必要）**：简报称「全仓所有 `--neutral-*` 消费方经变量自动跟随，不需要改消费方」— 遗漏了 `src/demo/token-showcase.js`：该文件是 JS 消费方，`inkFor()` 用 `parseRGB` 解析 `--neutral-*` 的 computed 值并按亮度选色块文字色。参数化后计算值变为 `hsl(235 23.1% 97.5%)`，hex/rgb 正则解析失败 → 回退 [128,128,128]（lum 0.502 < 0.62）→ 全部色板标签变白字，6 张 tokens 基线失败。已扩展 `parseRGB` 支持 hsl()/hsla()；逐一复核 11 级新旧亮度决策无一穿越 0.62 阈值（最近距 0.62 的 400 级差 ~0.09），修复后渲染像素级一致。
++2. **简报 e2e 重置断言偏差**：简报写「重置后 `--neutral-hue` 为空（恢复默认）」，但简报同时要求 `:root` 定义 `--neutral-hue: 235` — computed style 重置后必为 `'235'`（只有 inline 覆盖被移除）。按「恢复默认」意图实现为断言 `=== '235'`；「inline 为空」语义由单测覆盖（temperature 0 不写覆盖）。
++3. **简报示例数值偏差**：简报示例「`#f7f8fa → hsl(var(--neutral-hue) 14% 97%)`」与标准 HSL 转换（同 `hexToHsl` 算法）的 23.1% 97.5% 不符。按硬约束「sat/light 取原值、基线不变」采用计算值（示例标注为示意）。
++4. **toast e2e 既有 flake**：`overlays.spec.js`「Toast 出现并自动消失」全量跑偶发失败、单独重跑通过；非本次改动引入（本次未触碰 toast/overlay 代码），建议收尾时排查。
++5. 色温覆盖与导出契约一致：`exportCss` 温度 ≠ 0 时输出 `--neutral-hue` 行（hue 的 `tintLine` 同构）；导出 e2e 用例不受影响。
+diff --git a/src/config/apply.js b/src/config/apply.js
+index 92f178a..d5f3f88 100644
+--- a/src/config/apply.js
++++ b/src/config/apply.js
+@@ -22,20 +22,25 @@ export function hexToHsl(hex) {
+     if (max === r) h = 60 * (((g - b) / d) % 6);
+     else if (max === g) h = 60 * ((b - r) / d + 2);
+     else h = 60 * ((r - g) / d + 4);
+     if (h < 0) h += 360;
+   }
+   const l = (max + min) / 2;
+   const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+   return { h: Math.round(h), s: Math.round(s * 1000) / 10, l: Math.round(l * 1000) / 10 };
+ }
+ 
++/** 色温 → 中性色相：-1 冷端（210 更冷偏蓝）→ 0 默认（235）→ 1 暖端（40 暖橙灰）。 */
++export function temperatureToHue(t) {
++  return Math.round(t <= 0 ? 235 + 25 * t : 235 - 195 * t);
++}
++
+ /** 色彩微调覆盖：hue -1 = 跟随主题色；saturation 100 = 原饱和度。默认态不写任何覆盖（主题色原样生效）。 */
+ function applyColorTint(cfg, root) {
+   const s = root.style;
+   const { hue, saturation } = cfg.color;
+   if (hue === -1 && saturation === 100) {
+     s.removeProperty('--accent');
+     s.removeProperty('--accent-hover');
+     s.removeProperty('--accent-active');
+     return;
+   }
+@@ -60,11 +65,14 @@ export function applyConfig(cfg, root = document.documentElement) {
+   s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
+   s.setProperty('--radius-scale', String(cfg.radiusScale));
+   s.setProperty('--shadow-intensity', String(cfg.shadow));
+   s.setProperty('--spring-strength', String(cfg.motion.springStrength));
+   const d = scaledDurations(cfg.motion.durationScale, cfg.motion.enabled);
+   s.setProperty('--dur-fast', `${d.fast}ms`);
+   s.setProperty('--dur-base', `${d.base}ms`);
+   s.setProperty('--dur-slow', `${d.slow}ms`);
+   s.setProperty('--ease-spring', springCurve(cfg.motion.springStrength));
+   applyColorTint(cfg, root);
++  // 色温覆盖：temperature === 0（默认）时移除，中性色阶回退 :root 的 --neutral-hue: 235
++  if (cfg.color.temperature === 0) s.removeProperty('--neutral-hue');
++  else s.setProperty('--neutral-hue', String(temperatureToHue(cfg.color.temperature)));
+ }
+diff --git a/src/demo/customizer-css.js b/src/demo/customizer-css.js
+index ecec21c..efa4ad1 100644
+--- a/src/demo/customizer-css.js
++++ b/src/demo/customizer-css.js
+@@ -1,12 +1,12 @@
+ import { springCurve, scaledDurations } from '../motion/spring.js';
+-import { hexToHsl } from '../config/apply.js';
++import { hexToHsl, temperatureToHue } from '../config/apply.js';
+ import { ACCENTS } from '../config/defaults.js';
+ 
+ /** 色相/饱和度覆盖的 HSL（与 apply.js applyColorTint 公式一致） */
+ function tintHsl(cfg) {
+   const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
+   const base = hexToHsl(accent.color);
+   const H = cfg.color.hue === -1 ? base.h : cfg.color.hue;
+   const S = Math.min(100, Math.max(0, Math.round(base.s * (cfg.color.saturation / 100) * 10) / 10));
+   return { H, S, L: base.l };
+ }
+@@ -20,33 +20,37 @@ export function exportCss(cfg) {
+   const { glass, type, radiusScale, motion, shadow } = cfg;
+   const d = scaledDurations(motion.durationScale, motion.enabled);
+   const theme = cfg.theme === 'system' ? 'dark' : cfg.theme;
+   const accent = ACCENTS.find((a) => a.id === cfg.accent);
+   const accentNote = accent ? `${accent.name}（${accent.desc}）` : cfg.accent;
+   const tintActive = cfg.color.hue !== -1 || cfg.color.saturation !== 100;
+   const tint = tintActive ? tintHsl(cfg) : null;
+   const tintLine = tint
+     ? `  --accent: hsl(${tint.H} ${tint.S}% ${tint.L}%); /* 色彩微调覆盖（色相/饱和度） */`
+     : `  --accent: var(--accent-500); /* 主题色全阶 --accent-50…950 见 themes.css */`;
++  const tempLine = cfg.color.temperature !== 0
++    ? `  --neutral-hue: ${temperatureToHue(cfg.color.temperature)}; /* 色温覆盖（中性色冷暖偏移） */`
++    : null;
+   return `/* 由主题定制器导出 — ${new Date().toLocaleString('zh-CN')} */
+ /* 定制参数层（玻璃/排版/圆角/动效/阴影）—— 粘贴到应用 :root */
+ :root {
+   --glass-bg-opacity: ${glass.opacity};
+   --glass-blur: ${glass.blur}px;
+   --glass-highlight-opacity: ${glass.highlight};
+   --font-size-base: ${type.baseSize}px;
+   --radius-scale: ${radiusScale};
+   --shadow-intensity: ${shadow};
+   --dur-fast: ${d.fast}ms;
+   --dur-base: ${d.base}ms;
+   --dur-slow: ${d.slow}ms;
+   --ease-spring: ${springCurve(motion.springStrength)};
+   --spring-strength: ${motion.springStrength};
+ ${tintLine}
++${tempLine ?? ''}
+ }
+ 
+ /* 主题令牌（--text-* / --surface-* / --glass-* / 语义色）见 themes.css — 当前主题：${theme} */
+ html[data-theme="${theme}"] { /* 按需拷贝 themes.css 中对应主题段 */ }
+ 
+ /* 主题色板（${accentNote}）见 themes.css */
+ html[data-accent="${cfg.accent}"] { /* 按需拷贝 themes.css 中对应主题色段 */ }`;
+ }
+diff --git a/src/demo/token-showcase.js b/src/demo/token-showcase.js
+index c9a275e..8c67611 100644
+--- a/src/demo/token-showcase.js
++++ b/src/demo/token-showcase.js
+@@ -16,30 +16,47 @@ const SEMANTIC = [
+   { var: '--info-500', name: '信息 Info' },
+ ];
+ const TYPE_LEVELS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'];
+ const SPACE_LEVELS = [1, 2, 3, 4, 5, 6, 7];
+ const RADIUS_LEVELS = ['xs', 'sm', 'md', 'lg', 'xl'];
+ const SHADOW_LEVELS = ['sm', 'md', 'lg'];
+ 
+ const rootEl = () => document.documentElement;
+ const readVar = (name) => getComputedStyle(rootEl()).getPropertyValue(name).trim();
+ 
+-/** 解析 #hex / rgb() / rgba() → [r,g,b]；失败返回 null */
++/** 解析 #hex / rgb() / rgba() / hsl() / hsla() → [r,g,b]；失败返回 null */
+ function parseRGB(raw) {
+   const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+   if (hex) {
+     let h = hex[1];
+     if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+   }
+   const rgb = raw.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
++  // 中性色阶参数化后计算值为 hsl(235 10.9% 58.6%)（现代空格语法，兼容逗号形式）
++  const hsl = raw.match(/^hsla?\(\s*([\d.]+)\s*[,\s]\s*([\d.]+)%\s*[,\s]\s*([\d.]+)%/);
++  if (hsl) {
++    let [h, s, l] = [Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100];
++    h = ((h % 360) + 360) % 360;
++    const c = (1 - Math.abs(2 * l - 1)) * s;
++    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
++    const m = l - c / 2;
++    let r, g, b;
++    if (h < 60) [r, g, b] = [c, x, 0];
++    else if (h < 120) [r, g, b] = [x, c, 0];
++    else if (h < 180) [r, g, b] = [0, c, x];
++    else if (h < 240) [r, g, b] = [0, x, c];
++    else if (h < 300) [r, g, b] = [x, 0, c];
++    else [r, g, b] = [c, 0, x];
++    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
++  }
+   return null;
+ }
+ 
+ /** 按亮度给色块选可读文字色（亮底深字 / 暗底白字） */
+ function inkFor(varName) {
+   const [r, g, b] = parseRGB(readVar(varName)) ?? [128, 128, 128];
+   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+   return lum > 0.62 ? 'var(--neutral-950)' : '#ffffff';
+ }
+ 
+diff --git a/src/styles/tokens.css b/src/styles/tokens.css
+index ce0b4a1..8ad1a67 100644
+--- a/src/styles/tokens.css
++++ b/src/styles/tokens.css
+@@ -1,16 +1,21 @@
+ :root {
+-  /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css） */
+-  --neutral-50: #f7f8fa;  --neutral-100: #eef0f4;  --neutral-200: #e2e5eb;
+-  --neutral-300: #cdd2db;  --neutral-400: #aab1bd;  --neutral-500: #8a92a1;
+-  --neutral-600: #6b7280;  --neutral-700: #525a66;  --neutral-800: #3a4049;
+-  --neutral-900: #262a31;  --neutral-950: #1a1d23;
++  /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css）。
++     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致；定制器色温滑杆（color.temperature）
++     经 apply.js 写 --neutral-hue 覆盖实现全局冷暖偏移。sat/light 由原 hex 逐级转换（视觉等效）。 */
++  --neutral-hue: 235;
++  --neutral-50: hsl(var(--neutral-hue) 23.1% 97.5%);  --neutral-100: hsl(var(--neutral-hue) 21.4% 94.5%);
++  --neutral-200: hsl(var(--neutral-hue) 18.4% 90.4%);  --neutral-300: hsl(var(--neutral-hue) 16.3% 83.1%);
++  --neutral-400: hsl(var(--neutral-hue) 12.6% 70.4%);  --neutral-500: hsl(var(--neutral-hue) 10.9% 58.6%);
++  --neutral-600: hsl(var(--neutral-hue) 8.9% 46.1%);  --neutral-700: hsl(var(--neutral-hue) 10.9% 36.1%);
++  --neutral-800: hsl(var(--neutral-hue) 11.5% 25.7%);  --neutral-900: hsl(var(--neutral-hue) 12.6% 17.1%);
++  --neutral-950: hsl(var(--neutral-hue) 14.8% 12%);
+ 
+   /* 强调色占位：默认靛蓝（themes.css 的 data-accent 块覆盖） */
+   --accent-50: #eef0ff;  --accent-100: #dfe3ff;  --accent-200: #c3caff;
+   --accent-300: #a0a9f9;  --accent-400: #828cf6;  --accent-500: #6e7bf2;
+   --accent-600: #5a63e0;  --accent-700: #4a50b8;  --accent-800: #3c4192;
+   --accent-900: #31356e;  --accent-950: #23254d;
+   --accent: var(--accent-500);
+   --accent-hover: var(--accent-400);
+   --accent-active: var(--accent-600);
+   --accent-contrast: #ffffff;
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index 5e6b057..73fc6ad 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -41,10 +41,25 @@ test('色相滑杆实时覆盖 --accent 且重置后恢复', async ({ page }) =>
+     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+   expect(accent).toMatch(/^hsl\(200 /);
+   // 数值区显示自定义色相（非「跟随」）
+   await expect(page.locator('[data-out="hue"]')).toContainText('200°');
+   // 重置恢复跟随主题色（无覆盖）
+   await page.locator('.cust-reset').click();
+   accent = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+   expect(accent).not.toMatch(/^hsl\(200 /);
+ });
++
++test('色温滑杆映射 --neutral-hue 且重置后恢复默认冷调', async ({ page }) => {
++  await page.goto('/');
++  await page.locator('.topbar__customizer').click();
++  const temp = page.locator('.cust-row:has-text("色温") input[type="range"]');
++  await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
++  let hue = await page.evaluate(() =>
++    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
++  expect(hue).toBe('40');
++  // 重置后覆盖移除，回退 :root 默认 --neutral-hue: 235（基线态冷调）
++  await page.locator('.cust-reset').click();
++  hue = await page.evaluate(() =>
++    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
++  expect(hue).toBe('235');
++});
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index d3aa672..6bcee32 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -1,12 +1,12 @@
+ import { describe, it, expect, beforeEach } from 'vitest';
+-import { applyConfig } from '../../src/config/apply.js';
++import { applyConfig, temperatureToHue } from '../../src/config/apply.js';
+ import { DEFAULTS } from '../../src/config/defaults.js';
+ 
+ describe('applyConfig', () => {
+   let root;
+   beforeEach(() => {
+     root = document.documentElement;
+     root.removeAttribute('data-theme');
+     root.removeAttribute('data-accent');
+     root.removeAttribute('style');
+   });
+@@ -48,11 +48,26 @@ describe('applyConfig', () => {
+   it('饱和度缩放基色饱和度（100 = 原值）', () => {
+     applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 50, temperature: 0 } }, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('hsl(234 41.8% 69%)');
+   });
+   it('teal 主题基色解析正确', () => {
+     applyConfig({ ...DEFAULTS, accent: 'teal', color: { hue: -1, saturation: 100, temperature: 0 } }, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('');
+     applyConfig({ ...DEFAULTS, accent: 'teal', color: { hue: 120, saturation: 100, temperature: 0 } }, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('hsl(120 66% 50.4%)'); // #2dd4bf 基色 HSL
+   });
++  // —— 色温：中性色阶冷暖偏移 ——
++  it('temperatureToHue 端点与中点映射正确', () => {
++    expect(temperatureToHue(-1)).toBe(210); // 冷端：更冷偏蓝
++    expect(temperatureToHue(0)).toBe(235);  // 默认中性
++    expect(temperatureToHue(0.5)).toBe(138); // 235-97.5=137.5 → round 138
++    expect(temperatureToHue(1)).toBe(40);    // 暖端：暖橙灰
++  });
++  it('temperature 为 0（默认）时不写 --neutral-hue 覆盖', () => {
++    applyConfig(DEFAULTS, root);
++    expect(root.style.getPropertyValue('--neutral-hue')).toBe('');
++  });
++  it('temperature 0.5 写入 --neutral-hue: 138 覆盖', () => {
++    applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 100, temperature: 0.5 } }, root);
++    expect(root.style.getPropertyValue('--neutral-hue')).toBe('138');
++  });
+ });
