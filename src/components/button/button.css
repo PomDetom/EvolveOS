@@ -1,0 +1,22 @@
+.c-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+  padding: 0 var(--space-4); height: 32px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  user-select: none; white-space: nowrap;
+}
+.c-btn:active { transform: scale(0.97); }
+.c-btn--primary { background: var(--accent); color: var(--accent-contrast); }
+.c-btn--primary:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+.c-btn--primary:active { background: var(--accent-active); }
+.c-btn--secondary { background: var(--surface-2); color: var(--text-1);
+  border: 1px solid var(--glass-border); }
+.c-btn--secondary:hover { background: var(--surface-hover); }
+.c-btn--ghost { color: var(--text-2); }
+.c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
+.c-btn--danger { background: var(--danger-500); color: #fff; }
+.c-btn--danger:hover { filter: brightness(1.08); }
+.c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
+.c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
+.c-btn:disabled { opacity: 0.45; pointer-events: none; }

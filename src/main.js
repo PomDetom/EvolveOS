@@ -3,6 +3,11 @@ import './styles/themes.css';
 import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
+import './components/icon/icon.css';
+import './components/button/button.css';
+import { icon } from './components/icon/icon.js';
+import { renderButton } from './components/button/button.js';
+import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
 import { applyConfig } from './config/apply.js';
@@ -43,3 +48,19 @@ app.innerHTML = `
 
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+
+// 组件展示区初始渲染（Task 15 起替换为完整矩阵）
+const componentsSection = document.querySelector('#components');
+componentsSection.innerHTML = '<h2>组件</h2>';
+componentsSection.appendChild(showcase('按钮 Button', [
+  { label: '主按钮', html: renderButton({ label: '确定', variant: 'primary' }) },
+  { label: '次按钮', html: renderButton({ label: '取消', variant: 'secondary' }) },
+  { label: '幽灵按钮', html: renderButton({ label: '更多', variant: 'ghost', iconName: 'chevron-down' }) },
+  { label: '危险按钮', html: renderButton({ label: '删除', variant: 'danger' }) },
+  { label: '小尺寸', html: renderButton({ label: '小按钮', size: 'sm' }) },
+  { label: '大尺寸', html: renderButton({ label: '大按钮', size: 'lg', iconName: 'plus' }) },
+  { label: '禁用', html: renderButton({ label: '禁用', disabled: true }) },
+]));
+
+// 测试桥：Task 15 组件展示区上线后移除（components-basic.spec.js 依赖）
+window.__renderIcon = icon;
