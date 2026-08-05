@@ -1,31 +1,22 @@
 # ui-design — Tauri 统一 UI 设计系统
 
-为多个 Rust Tauri 桌面应用（剪贴板、密码管理、记账等）建立统一设计语言的**设计系统展示页**项目。纯原生 Web（Vite + HTML/CSS/JS，**零框架零运行时依赖**），核心特征：克制的玻璃质感、深/浅双主题、6 套主题色预设、滑动选择导航（NavigationWheel）、可配置主题定制器、3 个场景模板（剪贴板悬浮窗/主窗口/设置页）。
+## 项目定位
 
-**实施状态：已完成并合并到 main**（2026-08-05，31 提交，HEAD 7a28d48）。后续工作为遗留设计点决策与迭代，见 `HANDOFF.md`。
+为多个 Rust Tauri 桌面应用（剪贴板、密码管理、记账等）建立统一设计语言的**设计系统展示页**。纯原生 Web（Vite + HTML/CSS/JS），**零框架、零运行时依赖**。设计语言：克制的玻璃质感、深/浅双主题、6 套主题色、滑动选择导航（NavigationWheel）、可配置主题定制器、3 个场景模板。
 
-## 文档索引
+## 核心铁律
 
-| 文档 | 路径 |
-|---|---|
-| 设计规格（已确认） | `docs/superpowers/specs/2026-08-04-tauri-ui-design.md` |
-| 实施计划（21 任务 + 修订记录） | `docs/superpowers/plans/2026-08-04-tauri-ui-design.md` |
-| 会话交接快照 | `HANDOFF.md` |
+- 零运行时依赖，组件无抽象封装，遵循现有代码风格。
+- 动画只用 transform/opacity，模糊永不动画；时长/曲线经 CSS 变量。
+- 界面参数修改必须经配置层完整链路（defaults → store → apply），不绕过直接写 CSS 变量。
+- 开发遵循子代理驱动流程（TDD、独立评审、修复循环），每步计划/工作内容/提交留痕入 `docs/`。
+- 禁止升级核心依赖、禁止删除用户已有改动。
 
-## 开发命令
+## 常用命令
 
-```bash
-npm run dev        # 开发服务器 (localhost:5173)
-npm test           # Vitest 单元测试
-npm run test:e2e   # Playwright 交互测试（自动拉起 dev server）
-npm run build      # 生产构建
-```
+`npm install` / `npm run dev` / `npm test` / `npm run test:e2e` / `npm run build`（不用 pnpm/yarn）。
 
-## 工作流约定（重要）
+## 细则位置
 
-- 本仓库实施遵循 **superpowers:subagent-driven-development**（SDD）：每个任务派发独立 implementer 子代理 → 任务评审 → 修复循环，进度记录在**账本** `.superpowers/sdd/2026-08-04-tauri-ui-design/progress.md`。
-- **会话开始时**：若实施计划未完成，先读 `HANDOFF.md` 与账本 `progress.md`（账本首行指向计划文件，含每任务提交哈希与完成状态），从账本中第一个没有 `Task <N>: complete` 行的任务恢复，**不要重新派发已完成任务**。
-- 任务简报与实施报告位于 `.superpowers/sdd/2026-08-04-tauri-ui-design/`（`task-N-brief.md` / `task-N-report.md`），派发实施子代理时用它。
-- 全局约束（所有任务必须遵守）：零运行时依赖；动画只动 transform/opacity，模糊永不动画，6 项以上动画必须 stagger；所有时长/曲线经 CSS 变量引用；组件 = 原生 HTML + CSS 类（BEM `c-` 前缀）+ 渐进增强 JS，统一 `render()`/`mount()` 接口；图标全部内联 SVG（24×24，stroke 1.8）；文案中文；`data-theme`/`data-accent` 挂 `<html>`。
-- 分支：实施已完成，代码全部在 `main`。
-- **任务间不要并行派发实施子代理**；任务完成后立即生成审查包（`scripts/review-package`）派发评审，发现按 Critical/Important/Minor 处理，Minor 记入账本留给收尾。
+- `src/CLAUDE.md` — 编码规范细则：组件契约、样式令牌、动画红线、验证要求、常见坑
+- `docs/CLAUDE.md` — 文档与任务执行规范细则：文档体系、执行留痕、SDD 流程
