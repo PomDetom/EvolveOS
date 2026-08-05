@@ -1,0 +1,95 @@
+/* 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
+   布局 .app-main grid：标题栏 40px 行 + 左窗 64px / 右窗 64px（--app-nav-r-w 收起时 0）/ 内容区 1fr。
+   右窗收起：网格列宽瞬时归 0（布局非动画）+ 面板 transform/opacity 过渡（只动 transform/opacity，红线）。
+   局部类名 .app-main__* 前缀：app/docs 互斥渲染，仍避免与展示页严格计数断言冲突。 */
+
+.app-main {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px var(--app-nav-r-w, 0px) 1fr;
+  grid-template-rows: 40px 1fr;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
+  --dur-push: calc(var(--dur-base) * 1.2);
+}
+.app-main--dual { --app-nav-r-w: 64px; }
+
+.app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+
+/* —— 左窗（恒为应用列表，纯 icon 64px）—— */
+.app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+  border-right: 1px solid var(--glass-border); }
+.app-main__nav-l .c-navwheel__list { inset: 0; }
+/* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
+.app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+  justify-content: center; }
+.app-main__nav-l .c-navwheel__name { display: none; }
+.app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
+
+/* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
+   面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
+   网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
+.app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
+  position: relative; z-index: var(--z-float);
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--glass-border);
+  transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform var(--dur-push) var(--ease-spring),
+              opacity var(--dur-push) var(--ease-spring); }
+.app-main--dual .app-main__nav-r { transform: translateX(0); opacity: 1;
+  visibility: visible; pointer-events: auto; }
+.app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
+  color: var(--text-2); border-bottom: 1px solid var(--glass-border);
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+.app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
+.app-main__nav-r-body { flex: 1; position: relative; min-height: 0; }
+.app-main__nav-r .c-navwheel__list { inset: 0; }
+.app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+  justify-content: center; }
+.app-main__nav-r .c-navwheel__name { display: none; }
+.app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
+.app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--space-2);
+  color: var(--text-3); font-size: var(--font-size-sm); }
+
+/* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
+.app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
+  padding: var(--space-6); }
+.app-main__page { display: none; max-width: 720px; }
+.app-main__page--active { display: block; }
+.app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
+  margin-bottom: var(--space-5); }
+.app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
+.app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
+/* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
+   body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
+.app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+@keyframes app-main-page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
+.app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
+.app-main__card { background: var(--surface-1); border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
+.app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-3); }
+.app-main__card-desc { font-size: var(--font-size-sm); color: var(--text-3); }
+.app-main__welcome { display: flex; flex-direction: column; gap: var(--space-2); }
+.app-main__welcome .app-main__card-title { margin-bottom: 0; }
+.app-main__shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-3); }
+.app-main__shortcut { display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-2); padding: var(--space-3);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+.app-main__shortcut:hover { color: var(--accent); background: var(--surface-hover); }
+.app-main__shortcut-name { font-size: var(--font-size-sm); }
+.app-main__theme-row { display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--font-size-sm); color: var(--text-2); }
+.app-main__theme-swatch { width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent-500); }
