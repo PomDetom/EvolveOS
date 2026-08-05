@@ -242,6 +242,7 @@ export function mountAppMode(root) {
     if (state.rightMode !== 'settings') return;
     state.rightMode = 'apps';
     state.rightOpen = false;
+    renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
     renderPages(); // 内容区回到左窗选中应用页
     applyRightOpen();
   }
@@ -265,6 +266,7 @@ export function mountAppMode(root) {
     state.rightOpen = false;
     if (wasSettings) {
       state.rightMode = 'apps';
+      renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
       renderPages();
     }
     applyRightOpen();

@@ -189,3 +189,28 @@ test('设置模式：标题栏上下文「设置 › 分区」联动', async ({ 
   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="about"]').click();
   await expect(ctx).toHaveText('设置 › 关于');
 });
+
+test('设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 应用模式：选中剪贴板（右窗 = 剪贴板目录 3 项）
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+  // 进入设置模式（右窗 = 设置目录 8 项）
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  // 退出设置模式（⚙ 再点 → 右窗收起）
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeHidden();
+  // 再次点击仍选中的剪贴板项 → 右窗重开：应显示剪贴板目录，而非残留的设置目录轮
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="general"]')).toHaveCount(0);
+  // 上下文为应用模式（剪贴板 › 历史）
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 历史');
+});

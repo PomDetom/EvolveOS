@@ -77,3 +77,32 @@
   2. `exitSettingsMode` 会重渲染左窗选中应用页（`renderPages`），滚动位置重置 —— 与 A3 收起行为一致，可接受。
   3. `renderSettingsPages()` 在挂载时读取 `getConfig()`（通用页主题态烘焙），配置变更后需重新进入设置模式
      才会重渲染 —— 与场景模板行为一致（A3 Minor ⑥ 留收尾，A4 未扩展）。
+
+---
+
+## 独立评审修复（2026-08-06）：退出设置模式后右窗目录轮残留
+
+### 评审发现（1 Important，原文摘录）
+**Stale settings directory wheel after exiting settings and re-opening via the same left-app click** ——
+`exitSettingsMode()` / `collapseRight()` 退出设置模式时未调用 `renderRight()`，左窗重开路径只 `applyRightOpen()`
+不重渲染；复现：选剪贴板（右窗=应用目录）→ ⚙（右窗=设置目录 8 项）→ ⚙ 退出 → 再点仍选中的剪贴板项 →
+右窗重开仍显示设置轮，而标题栏/内容区已是「剪贴板 › 历史」应用模式 —— 违反「apps 模式右窗=应用目录」不变量。
+
+### 修复内容（`src/app/app-main.js`）
+在**所有**设置模式退出路径补 `renderRight()`（退出即重渲染应用目录轮，重开后不残留设置轮）：
+- `exitSettingsMode()`：`rightMode→'apps'` 后加 `renderRight()`（覆盖 ⚙ toggle 退出、左窗已选中项退出）
+- `collapseRight()`：`wasSettings` 分支内加 `renderRight()`（覆盖返回按钮 / Esc 退出）
+
+根因修复：任一右Mode 回到 'apps' 的路径都同步重渲染右窗轮 → 右窗内容与 rightMode 恒一致。
+
+### 覆盖测试（`tests/e2e/app-shell.spec.js`，+1）
+`设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录`
+- **RED**：修复前运行 —— `toHaveCount(3)` 收到 8（残留设置轮）
+- **GREEN**：修复后运行 —— 右窗 3 项剪贴板目录、`[data-id="general"]` 0 项、上下文「剪贴板 › 历史」
+
+### 验证
+- `npx playwright test tests/e2e/app-shell.spec.js`：14/14（13 + 新 1）
+- `npm run test:e2e`：98/98（app-shell 14/14 + docs 84 零冲击 + 36 基线零变化）
+- `npm test`：45/45
+- `npm run build`：通过
+- 提交：`fix: 退出设置模式后右窗目录轮残留修复`（见下）
