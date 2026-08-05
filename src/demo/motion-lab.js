@@ -118,6 +118,9 @@ function applyParams(card, cfg, springSlider, liftSlider, durBtn) {
   const enabled = cfg.motion.enabled && !prefersReducedMotion();
   const dur = Math.round(BASE_DUR * cfg.motion.durationScale * scale);
   card.style.setProperty('--dur-base', enabled ? `${dur}ms` : '0ms');
+  // stagger 步进随动效开关归零（评审 Important 1：reduced-motion/motion off 下
+  // fill-mode both 会让延迟期间停留在 opacity 0，5 项仍逐项弹出 —— 必须同步归零）
+  card.style.setProperty('--stagger-step', enabled ? `${STAGGER_STEP}ms` : '0ms');
   card.style.setProperty('--ease-spring', springCurve(Number(springSlider.value)));
   card.style.setProperty('--lift', `${liftSlider.value}px`);
   const outDur = card.querySelector('[data-out="dur"]');
