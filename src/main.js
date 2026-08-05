@@ -4,6 +4,7 @@ import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
 import './demo/token-showcase.css';
+import './demo/component-showcase-full.css';
 import './components/icon/icon.css';
 import './components/button/button.css';
 import './components/input/input.css';
@@ -35,38 +36,15 @@ import './components/search-bar/search-bar.css';
 import './components/hotkey-hint/hotkey-hint.css';
 import './components/float-ball/float-ball.css';
 import './components/hotkey-recorder/hotkey-recorder.css';
+import './components/sidebar-item/sidebar-item.css';
 import { icon } from './components/icon/icon.js';
-import { renderButton } from './components/button/button.js';
-import { renderInput } from './components/input/input.js';
-import { renderTextarea } from './components/textarea/textarea.js';
-import { renderSelect } from './components/select/select.js';
-import { renderCheckbox } from './components/checkbox/checkbox.js';
-import { renderRadio } from './components/radio/radio.js';
-import { renderSwitch, mountSwitch } from './components/switch/switch.js';
-import { renderSlider } from './components/slider/slider.js';
-import { renderKbd } from './components/kbd/kbd.js';
-import { renderCard } from './components/card/card.js';
-import { renderList, mountList } from './components/list/list.js';
-import { renderBadge } from './components/badge/badge.js';
-import { renderTag, mountTag } from './components/tag/tag.js';
-import { renderProgress } from './components/progress/progress.js';
-import { renderAvatar } from './components/avatar/avatar.js';
-import { renderSkeleton } from './components/skeleton/skeleton.js';
-import { renderEmptyState } from './components/empty-state/empty-state.js';
 import { toast } from './components/toast/toast.js';
 import { openDialog } from './components/dialog/dialog.js';
-import { renderPopover, mountPopover } from './components/popover/popover.js';
-import { mountContextMenu } from './components/context-menu/context-menu.js';
-import { renderTabs, mountTabs } from './components/tab/tab.js';
-import { renderBreadcrumb } from './components/breadcrumb/breadcrumb.js';
 import { renderTitleBar, mountTitleBar } from './components/title-bar/title-bar.js';
 import { mountNavWheel } from './components/navigation-wheel/nav-wheel.js';
 import { renderFloatingWindow, mountFloatingWindow } from './components/floating-window/floating-window.js';
 import { renderSearchBar, mountSearchBar } from './components/search-bar/search-bar.js';
-import { renderHotkeyHint } from './components/hotkey-hint/hotkey-hint.js';
-import { renderFloatBall, mountFloatBall } from './components/float-ball/float-ball.js';
-import { renderHotkeyRecorder, mountHotkeyRecorder } from './components/hotkey-recorder/hotkey-recorder.js';
-import { showcase } from './demo/component-showcase.js';
+import { mountComponentsShowcase } from './demo/component-showcase-full.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { mountTokenShowcase } from './demo/token-showcase.js';
 import { getConfig, subscribe } from './config/store.js';
@@ -177,176 +155,9 @@ document.querySelector('.content').prepend(fwinDemo);
 mountFloatingWindow(fwinDemo);
 mountSearchBar(fwinDemo);
 
-// 组件展示区初始渲染（Task 15 起替换为完整矩阵）
-const componentsSection = document.querySelector('#components');
-componentsSection.innerHTML = '<h2>组件</h2>';
-componentsSection.appendChild(showcase('按钮 Button', [
-  { label: '主按钮', html: renderButton({ label: '确定', variant: 'primary' }) },
-  { label: '次按钮', html: renderButton({ label: '取消', variant: 'secondary' }) },
-  { label: '幽灵按钮', html: renderButton({ label: '更多', variant: 'ghost', iconName: 'chevron-down' }) },
-  { label: '危险按钮', html: renderButton({ label: '删除', variant: 'danger' }) },
-  { label: '小尺寸', html: renderButton({ label: '小按钮', size: 'sm' }) },
-  { label: '大尺寸', html: renderButton({ label: '大按钮', size: 'lg', iconName: 'plus' }) },
-  { label: '禁用', html: renderButton({ label: '禁用', disabled: true }) },
-]));
-componentsSection.appendChild(showcase('输入框 Input', [
-  { label: '默认', html: renderInput({ placeholder: '请输入内容', label: '输入框' }) },
-]));
-componentsSection.appendChild(showcase('文本域 Textarea', [
-  { label: '默认', html: renderTextarea({ placeholder: '请输入多行内容', label: '文本域' }) },
-]));
-componentsSection.appendChild(showcase('选择器 Select', [
-  { label: '默认', html: renderSelect({ placeholder: '请选择', options: [
-    { value: 'a', label: '选项 A' }, { value: 'b', label: '选项 B' }], value: 'a' }) },
-]));
-componentsSection.appendChild(showcase('复选框 Checkbox', [
-  { label: '已选中', html: renderCheckbox({ checked: true, label: '记住我' }) },
-]));
-componentsSection.appendChild(showcase('单选 Radio', [
-  { label: '已选中', html: renderRadio({ checked: true, label: '选项 A' }) },
-]));
-componentsSection.appendChild(showcase('滑杆 Slider', [
-  { label: '默认', html: renderSlider({ label: '音量' }) },
-  { label: '已调整', html: renderSlider({ value: 80, label: '透明度' }) },
-]));
-const switchBox = showcase('开关 Switch', [
-  { label: '关闭', html: renderSwitch({ label: '开关' }) },
-  { label: '开启', html: renderSwitch({ checked: true, label: '开关' }) },
-]);
-componentsSection.appendChild(switchBox);
-mountSwitch(switchBox);
-componentsSection.appendChild(showcase('快捷键键帽 Kbd', [
-  { label: '单键', html: renderKbd('Ctrl') },
-]));
-componentsSection.appendChild(showcase('卡片 Card', [
-  { label: '默认', html: renderCard({ title: '剪贴板历史', content: '最近 20 条复制记录会保存在这里，支持搜索与固定。', footer: renderButton({ label: '查看全部', variant: 'ghost', size: 'sm' }) }) },
-  { label: '玻璃材质', html: renderCard({ title: '密码条目', content: '为每个网站生成独立的强密码，自动填充登录表单。', glass: true }) },
-]));
-const listBox = showcase('列表 List', [
-  { label: '点击选中', html: renderList({ items: [
-    { title: '复制内容', desc: 'https://example.com', meta: '02:14', iconName: 'copy' },
-    { title: '剪贴板历史', desc: '共 12 条记录', meta: '12:05', iconName: 'clipboard', selected: true },
-    { title: '设置面板', desc: '应用偏好设置', meta: '昨天', iconName: 'settings' },
-  ] }) },
-]);
-componentsSection.appendChild(listBox);
-mountList(listBox);
-componentsSection.appendChild(showcase('徽标 Badge', [
-  { label: '默认', html: renderBadge({ label: '默认', variant: 'default' }) },
-  { label: '强调', html: renderBadge({ label: '强调', variant: 'accent' }) },
-  { label: '成功', html: renderBadge({ label: '成功', variant: 'success' }) },
-  { label: '警告', html: renderBadge({ label: '警告', variant: 'warning' }) },
-  { label: '危险', html: renderBadge({ label: '危险', variant: 'danger' }) },
-  { label: '信息', html: renderBadge({ label: '信息', variant: 'info' }) },
-]));
-const tagBox = showcase('标签 Tag', [
-  { label: '普通标签', html: renderTag({ label: '常用' }) },
-  { label: '可关闭标签', html: renderTag({ label: '可移除', closable: true }) },
-]);
-componentsSection.appendChild(tagBox);
-mountTag(tagBox);
-componentsSection.appendChild(showcase('进度条 Progress', [
-  { label: '60%', html: renderProgress({ value: 60 }) },
-  { label: '完成', html: renderProgress({ value: 100 }) },
-]));
-componentsSection.appendChild(showcase('头像 Avatar', [
-  { label: '小 24', html: renderAvatar({ name: '剪', size: 'sm' }) },
-  { label: '中 32', html: renderAvatar({ name: '贴', size: 'md' }) },
-  { label: '大 40', html: renderAvatar({ name: '板', size: 'lg' }) },
-]));
-componentsSection.appendChild(showcase('骨架屏 Skeleton', [
-  { label: '3 行', html: renderSkeleton({ lines: 3 }) },
-  { label: '5 行', html: renderSkeleton({ lines: 5 }) },
-]));
-componentsSection.appendChild(showcase('空状态 EmptyState', [
-  { label: '空剪贴板', html: renderEmptyState({ iconName: 'clipboard', title: '暂无内容', desc: '复制任意内容后将出现在这里', action: { label: '打开剪贴板', variant: 'primary' } }) },
-  { label: '无搜索结果', html: renderEmptyState({ iconName: 'search', title: '未找到结果', desc: '换个关键词试试' }) },
-]));
-const tabBox = showcase('标签页 Tabs', [
-  { label: '3 个标签', html: renderTabs({ tabs: [
-    { label: '概览', iconName: 'home', content: `<div class="demo-tab-content"><span>概览内容</span>${renderButton({ label: '新建', variant: 'primary', size: 'sm', iconName: 'plus' })}</div>` },
-    { label: '历史', iconName: 'clipboard', content: `<div class="demo-tab-content"><span>最近 12 条记录</span>${renderBadge({ label: '12 条', variant: 'info' })}</div>` },
-    { label: '设置', iconName: 'settings', content: `<div class="demo-tab-content"><span>主题偏好</span>${renderBadge({ label: '跟随系统', variant: 'warning' })}</div>` },
-  ] }) },
-]);
-componentsSection.appendChild(tabBox);
-mountTabs(tabBox);
-componentsSection.appendChild(showcase('面包屑 Breadcrumb', [
-  { label: '默认', html: renderBreadcrumb({ items: ['剪贴板', '历史记录', '2026-08-05'] }) },
-]));
-const popoverBox = showcase('气泡 Popover', [
-  { label: '底部弹出', html: renderPopover({ trigger: '操作选项', content: '<div>这里是气泡内容<br>点击外部自动关闭</div>' }) },
-  { label: '右侧弹出', html: renderPopover({ trigger: '更多信息', placement: 'right', content: '<div>右侧位置的气泡提示</div>' }) },
-]);
-componentsSection.appendChild(popoverBox);
-mountPopover(popoverBox);
-const dialogBox = showcase('对话框 Dialog', [
-  { label: '危险确认', html: '<button class="c-btn c-btn--danger" data-dialog="danger" type="button">删除条目</button>' },
-  { label: '普通确认', html: '<button class="c-btn c-btn--secondary" data-dialog="info" type="button">打开对话框</button>' },
-]);
-componentsSection.appendChild(dialogBox);
-dialogBox.querySelectorAll('[data-dialog]').forEach((btn) => {
-  const danger = btn.dataset.dialog === 'danger';
-  btn.addEventListener('click', () => {
-    openDialog(danger
-      ? { title: '确认删除', content: '删除后无法恢复，确定要继续吗？', confirmLabel: '删除', danger: true }
-      : { title: '关于', content: 'UI Design System v0.1 — 克制的玻璃质感设计语言。', confirmLabel: '知道了' })
-      .then((ok) => { if (ok) toast(danger ? '已删除' : '感谢阅读', { variant: danger ? 'danger' : 'success' }); });
-  });
-});
-const menuBox = showcase('右键菜单 ContextMenu', [
-  { label: '右键舞台区域', html: '<div class="demo-context-stage">在此区域右键<br>打开上下文菜单</div>' },
-]);
-componentsSection.appendChild(menuBox);
-mountContextMenu(menuBox.querySelector('.demo-context-stage'), [
-  { label: '复制', iconName: 'copy', action: () => toast('已复制', { variant: 'info' }) },
-  { label: '重命名', iconName: 'edit', action: () => toast('重命名功能演示') },
-  { label: '删除', iconName: 'trash', danger: true, action: () => toast('已删除', { variant: 'danger' }) },
-]);
-const toastBox = showcase('消息提示 Toast', [
-  { label: '成功', html: '<button class="c-btn c-btn--secondary" data-toast="success" type="button">成功提示</button>' },
-  { label: '警告', html: '<button class="c-btn c-btn--secondary" data-toast="warning" type="button">警告提示</button>' },
-  { label: '危险', html: '<button class="c-btn c-btn--secondary" data-toast="danger" type="button">错误提示</button>' },
-  { label: '信息', html: '<button class="c-btn c-btn--secondary" data-toast="info" type="button">信息提示</button>' },
-]);
-componentsSection.appendChild(toastBox);
-toastBox.querySelectorAll('[data-toast]').forEach((btn) => {
-  const variant = btn.dataset.toast;
-  btn.addEventListener('click', () => {
-    const msgs = { success: '操作成功', warning: '请注意', danger: '操作失败', info: '新消息提醒' };
-    toast(msgs[variant], { variant });
-  });
-});
+// 组件展示区完整矩阵（Task 15）：6 组 32 组件变体矩阵 + 悬浮窗交互实例
+mountComponentsShowcase(document.querySelector('#components'));
 
-const searchBox = showcase('搜索栏 SearchBar（Ctrl+K 聚焦）', [
-  { label: '搜索剪贴板', html: renderSearchBar({ placeholder: '搜索内容…', hotkey: ['Ctrl', 'K'] }) },
-  { label: '搜索设置', html: renderSearchBar({ placeholder: '搜索设置项…', hotkey: ['Ctrl', 'K'] }) },
-]);
-componentsSection.appendChild(searchBox);
-mountSearchBar(searchBox);
-componentsSection.appendChild(showcase('快捷键提示 HotkeyHint', [
-  { label: '双键组合', html: renderHotkeyHint(['Ctrl', 'K']) },
-  { label: '三键组合', html: renderHotkeyHint(['Ctrl', 'Shift', 'V']) },
-  { label: '单键', html: renderHotkeyHint(['F2']) },
-]));
-const ballBox = showcase('悬浮球 FloatBall', [
-  { label: '剪贴板', html: renderFloatBall({ iconName: 'clipboard', tooltip: '打开剪贴板' }) },
-  { label: '设置', html: renderFloatBall({ iconName: 'settings', tooltip: '打开设置' }) },
-]);
-componentsSection.appendChild(ballBox);
-ballBox.querySelectorAll('.c-float-ball').forEach((ball) => {
-  mountFloatBall(ball, { onExpand: () => toast('展开面板（场景模板演示）') });
-});
-const recBox = showcase('快捷键录制 HotkeyRecorder', [
-  { label: '点击录制', html: renderHotkeyRecorder({ placeholder: '点击设置快捷键' }) },
-  { label: '已有组合键', html: renderHotkeyRecorder({ value: ['Ctrl', 'Alt', 'C'] }) },
-]);
-componentsSection.appendChild(recBox);
-recBox.querySelectorAll('.c-hotkey-recorder').forEach((rec) => {
-  mountHotkeyRecorder(rec, { onChange: (keys) => toast(`已设置快捷键 ${keys.join(' + ')}`) });
-});
-
-// 测试桥：Task 15 组件展示区上线后移除（components-basic.spec.js 依赖）
-window.__renderIcon = icon;
+// 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
 window.__toast = toast;
 window.__openDialog = openDialog;

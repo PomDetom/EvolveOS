@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('鼠标拖拽滚动导航列表', async ({ page }) => {
   await page.goto('/');
-  const list = page.locator('.c-navwheel__list');
+  // 侧栏导航轮：限定 .navwheel__list（Task 15 矩阵内的演示实例仅用 .c-navwheel__list）
+  const list = page.locator('.navwheel__list');
   const start = await list.evaluate(el => el.scrollTop);
   const box = await list.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -25,7 +26,8 @@ test('设置入口在左下角且可点击', async ({ page }) => {
 
 test('点击模块滑动到中央并选中', async ({ page }) => {
   await page.goto('/');
-  const items = page.locator('.c-navwheel__item');
+  // 侧栏导航轮：限定 .navwheel__list（矩阵内演示实例另含 8 项，不参与计数）
+  const items = page.locator('.navwheel__list .c-navwheel__item');
   await expect(items).toHaveCount(12); // 4 真实模块 × 3 组演示重复
   await items.nth(3).click();
   await expect(items.nth(3)).toHaveClass(/c-navwheel__item--active/);

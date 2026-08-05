@@ -1,0 +1,26 @@
+/* 组件展示区完整矩阵（Task 15）：6 组分组容器 + 宽项 + 悬浮窗交互实例 */
+
+/* 组容器：分组标题 + 底部分隔线，组内为多个 showcase */
+.csg { margin-bottom: var(--space-7); }
+.csg__title { display: flex; align-items: center; gap: var(--space-2);
+  padding-bottom: var(--space-2); margin-bottom: var(--space-4);
+  font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); border-bottom: 1px solid var(--glass-border); }
+.csg__title .c-icon { color: var(--accent); }
+
+/* 宽项：跨满 showcase 网格整行（NavigationWheel 演示等） */
+.showcase__item--wide { grid-column: 1 / -1; }
+.showcase__item--wide .showcase__stage { min-height: 96px; }
+
+/* NavigationWheel 演示实例：固定尺寸（组件相对定位铺满），居中于舞台。
+   双类选择器压过 .c-navwheel { height: 100% }（nav-wheel.css 在导入顺序上更靠后，
+   等特异性后到者胜，需提高特异性）；宽度对齐侧栏导航（176px） */
+.c-navwheel--demo.c-navwheel { width: 176px; height: 280px; }
+
+/* 悬浮窗可交互实例：窗口 fixed 于视口右下角（组件本义浮层；静态位在滚动内容内不可见），
+   悬停于展示区之上即组件本义 —— 与 #titlebar-demo / 内容区顶部演示互不重叠 */
+.csg-fwin__desc { margin-bottom: var(--space-3); font-size: var(--font-size-sm);
+  color: var(--text-2); }
+.csg-fwin .c-fwin { right: 24px; bottom: 24px; }
+.csg-fwin__balls { display: flex; gap: var(--space-3); align-items: center;
+  margin-top: var(--space-3); }

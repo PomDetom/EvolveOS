@@ -1,0 +1,14 @@
+/* SidebarItem —— 静态框形态侧边导航项（Task 15 内建）
+   icon + 名称 + 选中态（accent 高亮）。纯静态展示组件，无 JS 交互；
+   hover 反馈仅瞬时换色/换底（无过渡动画，动画红线内） */
+.c-sidebar-item { display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; padding: var(--space-2) var(--space-3);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  color: var(--text-2); font-size: var(--font-size-sm); cursor: default; }
+.c-sidebar-item:hover { color: var(--text-1); background: var(--surface-hover); }
+
+.c-sidebar-item__icon { display: grid; place-items: center; color: var(--text-3); }
+
+.c-sidebar-item--active { color: var(--accent); background: var(--accent-50); }
+.c-sidebar-item--active:hover { color: var(--accent); background: var(--accent-50); }
+.c-sidebar-item--active .c-sidebar-item__icon { color: var(--accent); }

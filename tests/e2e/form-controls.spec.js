@@ -27,11 +27,12 @@ test('滑杆使用主题强调色', async ({ page }) => {
 
 test('表单组件结构完整', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#components .c-input')).toHaveCount(1);
-  await expect(page.locator('#components .c-textarea')).toHaveCount(1);
-  await expect(page.locator('#components .c-select')).toHaveCount(1);
-  await expect(page.locator('#components .c-checkbox')).toHaveCount(1);
-  await expect(page.locator('#components .c-radio')).toHaveCount(1);
+  // 变体矩阵（Task 15）：各表单组件在矩阵内多变体渲染，断言数量与矩阵一致
+  await expect(page.locator('#components .c-input')).toHaveCount(4);
+  await expect(page.locator('#components .c-textarea')).toHaveCount(2);
+  await expect(page.locator('#components .c-select')).toHaveCount(3);
+  await expect(page.locator('#components .c-checkbox')).toHaveCount(3);
+  await expect(page.locator('#components .c-radio')).toHaveCount(3);
   // Task 13 起 kbd 被 SearchBar/HotkeyHint/HotkeyRecorder 组合复用，断言存在即可
   expect(await page.locator('#components .c-kbd').count()).toBeGreaterThanOrEqual(1);
 });
