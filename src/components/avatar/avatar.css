@@ -1,0 +1,7 @@
+/* 头像 Avatar —— 24/32/40 三档，--radius-full 圆形，主题色背景 */
+.c-avatar { display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-full); background: var(--accent-200); color: var(--accent-800);
+  font-weight: var(--font-weight-semibold); user-select: none; flex-shrink: 0; }
+.c-avatar--sm { width: 24px; height: 24px; font-size: var(--font-size-xs); }
+.c-avatar--md { width: 32px; height: 32px; font-size: var(--font-size-sm); }
+.c-avatar--lg { width: 40px; height: 40px; font-size: var(--font-size-base); }

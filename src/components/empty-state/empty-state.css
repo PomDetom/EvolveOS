@@ -1,0 +1,7 @@
+/* 空状态 EmptyState —— 居中布局：icon --text-3 / 标题 --text-2 / 描述 --text-3 */
+.c-empty { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
+.c-empty__icon { color: var(--text-3); }
+.c-empty__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-2); }
+.c-empty__desc { font-size: var(--font-size-sm); color: var(--text-3); }
+.c-empty__action { margin-top: var(--space-2); }

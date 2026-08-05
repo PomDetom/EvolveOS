@@ -1,0 +1,8 @@
+.c-card { padding: var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border); }
+.c-card--glass { background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight); }
+.c-card__title { font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);
+  margin-bottom: var(--space-2); }
+.c-card__body { color: var(--text-2); font-size: var(--font-size-sm); }
+.c-card__footer { margin-top: var(--space-3); }

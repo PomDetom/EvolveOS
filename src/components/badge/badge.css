@@ -1,0 +1,8 @@
+.c-badge { display: inline-flex; align-items: center; padding: 1px 8px; font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium); border-radius: 999px; }
+.c-badge--accent { background: var(--accent-100); color: var(--accent-700); }
+.c-badge--success { background: var(--success-50); color: var(--success-600); }
+.c-badge--warning { background: var(--warning-50); color: var(--warning-600); }
+.c-badge--danger { background: var(--danger-50); color: var(--danger-600); }
+.c-badge--info { background: var(--info-50); color: var(--info-600); }
+.c-badge--default { background: var(--neutral-100); color: var(--neutral-600); }

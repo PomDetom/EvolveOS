@@ -1,0 +1,4 @@
+.c-progress { height: 6px; border-radius: 999px; background: var(--neutral-100); overflow: hidden; }
+.c-progress__fill { height: 100%; border-radius: 999px; background: var(--accent);
+  transform-origin: left center; transform: scaleX(var(--progress, 0));
+  transition: transform var(--dur-slow) var(--ease-out); }

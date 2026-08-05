@@ -12,11 +12,13 @@ test('图标渲染为内联 SVG', async ({ page }) => {
 
 test('按钮四变体渲染', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#components .showcase:has-text("按钮")').first().waitFor();
-  await expect(page.locator('#components .c-btn')).toHaveCount(7);
-  await expect(page.locator('#components .c-btn--primary')).toHaveCount(4);
-  await expect(page.locator('#components .c-btn--secondary')).toHaveCount(1);
-  await expect(page.locator('#components .c-btn--ghost')).toHaveCount(1);
-  await expect(page.locator('#components .c-btn--danger')).toHaveCount(1);
-  await expect(page.locator('#components .c-btn--disabled')).toBeDisabled();
+  const btnShowcase = page.locator('#components .showcase:has-text("按钮")').first();
+  await btnShowcase.waitFor();
+  // 计数限定在按钮展示区内：Card 页脚 / EmptyState action 等其它展示区也会渲染按钮
+  await expect(btnShowcase.locator('.c-btn')).toHaveCount(7);
+  await expect(btnShowcase.locator('.c-btn--primary')).toHaveCount(4);
+  await expect(btnShowcase.locator('.c-btn--secondary')).toHaveCount(1);
+  await expect(btnShowcase.locator('.c-btn--ghost')).toHaveCount(1);
+  await expect(btnShowcase.locator('.c-btn--danger')).toHaveCount(1);
+  await expect(btnShowcase.locator('.c-btn--disabled')).toBeDisabled();
 });
