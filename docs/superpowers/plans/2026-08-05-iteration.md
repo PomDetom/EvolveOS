@@ -72,11 +72,7 @@ Playwright 无法测 Tauri API — 测试改为**桥接可测**：`bindWindowCon
 
 按 Interfaces；`window.__TAURI__` 探测 + 注入参数双通道。
 
-- [ ] **Step 3: 真机验证**
-
-`npm run tauri dev` 下：三按钮分别最小化/最大化还原/关闭窗口；标题栏拖动窗口；透明与玻璃质感目检。
-
-- [ ] **Step 4: 提交**
+- [ ] **Step 3: 提交**（用户修正：不做真机验证 — Tauri 壳可启动已由 I1 确认，webview 内页面行为验证由用户日后自行进行；迭代任务只保证 Web 侧正确性）
 
 `feat: 窗口控制桥（Tauri API 接线 + 浏览器降级）`
 
@@ -118,9 +114,8 @@ Run: 全量测试；新样式/结构不改变默认渲染 → 基线不重生成
 
 ---
 
-### Task I5: 桌面真机验收与收尾
+### Task I5: 收尾（用户修正：不再做桌面真机验收 — Tauri 壳启动已验证，webview 页面行为由用户自行测试）
 
-- [ ] **Step 1: 桌面实测清单**：`npm run tauri dev` 下逐项验收 — 无边框透明窗口、标题栏拖动、三按钮窗口控制、深浅主题切换、6 套主题色、定制器实时生效、悬浮窗场景（剪贴板模拟窗拖拽）、NavigationWheel 滑动；记录发现的问题
-- [ ] **Step 2: 修复实测发现**（若有，按 SDD 修复循环处理）
-- [ ] **Step 3: 全量回归**：npm test + npm run test:e2e + npm run build；更新留痕
-- [ ] **Step 4: 提交与汇总**：实测报告写入留痕；向用户汇报迭代期成果与待决事项
+- [ ] **Step 1: 全量回归**：npm test + npm run test:e2e + npm run build
+- [ ] **Step 2: 留痕更新**：迭代期账本汇总（各任务提交/评审/遗留）
+- [ ] **Step 3: 提交与汇总**：向用户汇报迭代期成果、遗留待决事项与桌面使用指引（`npm run tauri:dev` 启动方式）

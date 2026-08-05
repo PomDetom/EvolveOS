@@ -21,4 +21,5 @@ Base: 7b9b71b (branch feature/iteration)
 - **实现**：`src/demo/window-controls.js` `bindWindowControls(api?)` 双通道（注入 / `window.__TAURI__` 探测），三按钮 → minimize/toggleMaximize(+图标按真实状态同步)/close，失败静默降级；浏览器无 API 不绑定保持演示；main.js 全部挂载后统一绑定全部 .c-titlebar 实例
 - **报告**：docs/superpowers/sdd/task-I2-report.md
 - **待决**：拖拽属性劫持修复（drag 属性只留 .c-titlebar__drag，指南 §2）待用户真机复核；fwin 标题栏同类风险（超出本任务范围）；`core:default` 不含 allow-unminimize（本桥不依赖，恢复走任务栏）
-- **评审**：待独立评审
+- **评审**：规格 ✅ / Approved（2 Minor 留收尾：min/close 同步抛错未覆盖 — 建议 `Promise.resolve().then(...)` 包装；Tauri 下 max 双击演示乐观翻转与桥竞争 — 可留收尾处理）
+- **待决**：fwin 标题栏拖拽劫持同类风险（报告已标注，超出 I2 范围 — 可并入 I3 小修批）
