@@ -11,7 +11,7 @@ export function mountThemeSwitcher(root) {
   root.innerHTML = `
     <div class="tsw">
       <div class="tsw__modes">
-        ${MODES.map(m => `<button class="tsw__mode" data-mode="${m.id}" title="${m.label}">${icon(m.id === 'light' ? 'sun' : m.id === 'dark' ? 'moon' : 'monitor')}<span class="c-sr">${m.label}</span></button>`).join('')}
+        ${MODES.map(m => `<button class="tsw__mode" data-mode="${m.id}" title="${m.label}" aria-pressed="false">${icon(m.id === 'light' ? 'sun' : m.id === 'dark' ? 'moon' : 'monitor')}<span class="c-sr">${m.label}</span></button>`).join('')}
       </div>
       <div class="tsw__accents">
         ${ACCENTS.map(a => `<button class="tsw__accent" data-accent="${a.id}" title="${a.name}（${a.desc}）" style="--swatch: ${a.color}"><span class="c-sr">${a.name}</span></button>`).join('')}
@@ -38,8 +38,11 @@ export function mountThemeSwitcher(root) {
     else mql.removeEventListener('change', onSystemChange);
   }
   function syncUI(c) {
-    root.querySelectorAll('.tsw__mode').forEach(b =>
-      b.classList.toggle('tsw__mode--active', b.dataset.mode === c.theme));
+    // aria-pressed 单选语义：当前主题为按下（true），其余弹起（false），与 active 类同步
+    root.querySelectorAll('.tsw__mode').forEach(b => {
+      b.classList.toggle('tsw__mode--active', b.dataset.mode === c.theme);
+      b.setAttribute('aria-pressed', String(b.dataset.mode === c.theme));
+    });
     root.querySelectorAll('.tsw__accent').forEach(b =>
       b.classList.toggle('tsw__accent--active', b.dataset.accent === c.accent));
   }

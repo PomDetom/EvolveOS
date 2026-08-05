@@ -30,11 +30,17 @@ export function mountTabs(root) {
     if (!activeTab) return;
     const barRect = bar.getBoundingClientRect();
     const tabRect = activeTab.getBoundingClientRect();
+    // 基准宽 = 首帧定宽（CSS width 固定，宽度只经 scaleX 过渡 —— 宽度不参与 transition）
     const curW = parseFloat(indicator.dataset.w || '0');
-    if (!curW) indicator.style.width = `${tabRect.width}px`; // 首帧定宽，宽度不参与过渡
+    if (!curW) {
+      indicator.style.width = `${tabRect.width}px`;
+      indicator.dataset.w = tabRect.width;
+    }
+    // scaleX 围绕指示条中心缩放会把左边缘额外推 (新宽-基准宽)/2px（Task I3 4c 根因：
+    // resize 布局重排使 tab 宽度变化时，translateX 须加回该漂移量，视觉左边缘才 = tab 左边缘）
+    const drift = (tabRect.width - curW) / 2;
     indicator.style.transform =
-      `translateX(${tabRect.left - barRect.left}px) scaleX(${curW ? tabRect.width / curW : 1})`;
-    indicator.dataset.w = tabRect.width;
+      `translateX(${tabRect.left - barRect.left + drift}px) scaleX(${curW ? tabRect.width / curW : 1})`;
   };
 
   bar.addEventListener('click', (e) => {
@@ -52,6 +58,10 @@ export function mountTabs(root) {
     });
     place();
   });
+
+  // Task I3 4c：窗口 resize 触发的布局重排（响应式字体/间距/换行）后重定位指示条
+  // （place 是纯同步重算，resize 低频 —— 页面内 tab 实例有限，多实例各挂一个无感）
+  window.addEventListener('resize', place);
 
   place();
 }

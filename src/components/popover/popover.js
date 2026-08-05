@@ -16,6 +16,9 @@ export function renderPopover({ trigger, content, placement = 'bottom' } = {}) {
 /**
  * 挂载交互：trigger 点击切换开/闭（stopPropagation 避免触发外层 document 关闭监听），
  * document 任意点击（外部）关闭。
+ * Task I3 4b：document 关闭监听不再常驻 —— 打开时一次性注册、关闭即移除
+ * （此前 N 个实例挂 N 个常驻 document 监听；监听随开合生命周期，行为不变：
+ * 仅打开态外部点击才需要关闭，关闭态监听本就是 no-op）。
  */
 export function mountPopover(root) {
   root.querySelectorAll('.c-popover').forEach((wrap) => {
@@ -25,13 +28,16 @@ export function mountPopover(root) {
       wrap.classList.toggle('c-popover--open', open);
       trigger.setAttribute('aria-expanded', String(open));
       panel.setAttribute('aria-hidden', String(!open));
+      if (open) document.addEventListener('click', onDocClick);
+      else document.removeEventListener('click', onDocClick);
+    };
+    // 命名引用：setOpen 开关共用同一处理器，保证 add/remove 成对
+    const onDocClick = (e) => {
+      if (!wrap.contains(e.target)) setOpen(false);
     };
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
       setOpen(!wrap.classList.contains('c-popover--open'));
-    });
-    document.addEventListener('click', (e) => {
-      if (!wrap.contains(e.target)) setOpen(false);
     });
   });
 }

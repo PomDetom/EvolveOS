@@ -130,6 +130,7 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
     cancelAnimationFrame(inertiaRaf);
     clearTimeout(snapTimer);
     pointerId = e.pointerId; lastY = e.clientY; lastT = performance.now(); moved = 0;
+    velocity = 0; // EMA 首样本直接采用（见 pointermove）
     downItem = e.target.closest('.c-navwheel__item'); // 点击回退目标（位移 < 5px 视为点击）
     list.setPointerCapture(e.pointerId); // 拖出列表仍持续接收 pointermove
   });
@@ -140,7 +141,10 @@ export function mountNavWheel(root, { items, onChange = () => {} } = {}) {
     const now = performance.now();
     // 速度取滚动增量方向（-dy）：向上拖（dy<0）→ scrollTop 增 → 惯性继续正向滚动；
     // 若沿用指针方向（dy），惯性会把刚拖出的位移打回原点（方向相反）
-    velocity = -dy / Math.max(1, now - lastT); lastT = now;
+    // Task I3 4g：单样本导数一甩到底/抖振 → EMA 平滑（首样本直接采用，之后 0.3 新样本权重），
+    // 慢速微抖不再产生虚假高初速惯性，快速甩动仍保留惯性（拖拽 e2e 回归确认）
+    const sample = -dy / Math.max(1, now - lastT);
+    velocity = velocity === 0 ? sample : velocity * 0.7 + sample * 0.3; lastT = now;
     list.scrollTop -= dy; moved += Math.abs(dy);
     setFocal(); // 实时跟手变形
   });

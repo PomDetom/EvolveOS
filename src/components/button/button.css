@@ -8,7 +8,7 @@
 }
 .c-btn:active { transform: scale(0.97); }
 .c-btn--primary { background: var(--accent); color: var(--accent-contrast); }
-.c-btn--primary:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+.c-btn--primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-md); }
 .c-btn--primary:active { background: var(--accent-active); }
 .c-btn--secondary { background: var(--surface-2); color: var(--text-1);
   border: 1px solid var(--glass-border); }
