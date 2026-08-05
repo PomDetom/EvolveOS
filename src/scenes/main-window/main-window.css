@@ -1,0 +1,106 @@
+/* 场景模板 2：主窗口（Task 19）—— 一体式 TitleBar + NavigationWheel + 8 模块内容区。
+   上下无割裂：窗口玻璃背景与标题栏共享，标题栏无下边框；
+   导航列复用 NavigationWheel 组件类（.c-navwheel__list 绝对定位 inset 依赖父容器高度），
+   场景内 .c-navwheel 固定 520px（560-40 标题栏），列表视口 464px < 8×64px 内容，真实可滑。
+   动画红线：页面切换 page-in 只动 transform/opacity；图片格悬停 scale 只动 transform。 */
+
+.cmain-scene { margin-bottom: var(--space-7); }
+
+.cmain-scene__head { display: flex; align-items: baseline; flex-wrap: wrap;
+  column-gap: var(--space-3); row-gap: var(--space-1); margin-bottom: var(--space-4); }
+.cmain-scene__head h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.cmain-scene__head p { font-size: var(--font-size-sm); color: var(--text-2); }
+.cmain-scene__head code { padding: 1px 5px; font-size: 11px; font-family: var(--font-mono, monospace);
+  color: var(--text-2); background: var(--surface-2);
+  border: 1px solid var(--glass-border); border-radius: var(--radius-xs); }
+
+/* 窗口：880×560 圆角玻璃，内部 grid（176px 1fr / 40px 1fr）—— 与展示页骨架同构 */
+.cmain { width: 880px; height: 560px; border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  display: grid; grid-template-columns: 176px 1fr; grid-template-rows: 40px 1fr;
+  overflow: hidden; }
+
+.cmain .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+/* 上下无割裂：标题栏无底部边框（title-bar.css 契约），与内容共享玻璃背景 */
+
+/* 导航列：grid cell 需 min-height:0（.c-navwheel__list 绝对定位 inset 依赖父容器高度）；
+   .c-navwheel 固定 520px —— 与 grid 行高一致，规避 1fr 高度解析不确定性（简报注明的兜底方案） */
+.cmain__nav { position: relative; grid-column: 1; grid-row: 2; min-height: 0;
+  border-right: 1px solid var(--glass-border); overflow: hidden; }
+.cmain__nav .c-navwheel { height: 520px; }
+
+/* 设置入口：场景局部类 .cmain__settings —— 不复用 .c-navwheel__settings（该全局类被
+   nav-wheel.spec.js 假设唯一，场景内再挂一个实例会触发 strict mode 冲突）。
+   视觉与侧栏设置入口一致：组件基础样式（高 56px 底部条 + 居中内容）在此补齐 */
+.cmain__settings { position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 0 var(--space-4); width: 100%; border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg); color: var(--text-2); font-size: var(--font-size-sm); }
+.cmain__settings:hover { color: var(--text-1); background: var(--surface-hover); }
+
+/* 内容区：grid 第 2 列，8 个模块页；非 active 页 display:none，切换时重播 page-in */
+.cmain__pages { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0;
+  position: relative; overflow: hidden; }
+.cmain__page { display: none; height: 100%; overflow-y: auto;
+  padding: var(--space-5) var(--space-6);
+  animation: cmain-page-in var(--dur-base) var(--ease-out); }
+.cmain__page--active { display: block; }
+
+@keyframes cmain-page-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+.cmain__page-head { margin-bottom: var(--space-4); }
+.cmain__page-head h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+  color: var(--text-1); }
+.cmain__page-head p { margin-top: 2px; font-size: var(--font-size-xs); color: var(--text-3); }
+
+/* 仪表盘：3 统计卡 + 进度条 */
+.cmain__stats { display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3); margin-bottom: var(--space-4); }
+.cmain__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
+.cmain__stat-value { margin: 4px 0 2px; font-size: 28px; line-height: 1.15;
+  font-weight: var(--font-weight-semibold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.cmain__stat-trend { display: flex; align-items: center; gap: 2px;
+  font-size: var(--font-size-xs); color: var(--accent); }
+.cmain__stat-trend--down { color: var(--danger-500); }
+.cmain__goal { max-width: 420px; }
+.cmain__progress-label { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: var(--space-2); font-size: var(--font-size-xs); color: var(--text-2); }
+
+/* 数据列表：c-list 8 行 + 分页 */
+.cmain__pager { display: flex; align-items: center; justify-content: center;
+  gap: var(--space-3); margin-top: var(--space-4); }
+.cmain__pager-label { min-width: 72px; text-align: center;
+  font-size: var(--font-size-xs); color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+/* 表单页 */
+.cmain__form { display: flex; flex-direction: column; gap: var(--space-4);
+  max-width: 380px; }
+.cmain__field { display: flex; flex-direction: column; gap: var(--space-2); }
+.cmain__field > span { font-size: var(--font-size-xs); color: var(--text-2); }
+.cmain__field--switch { flex-direction: row; align-items: center;
+  justify-content: space-between; }
+.cmain__form-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* 图片库：9 宫格渐变占位，悬停 scale(1.05) 只动 transform（红线合规） */
+.cmain__gallery { display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3); }
+.cmain__tile { aspect-ratio: 4 / 3; display: grid; place-items: center;
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); cursor: pointer;
+  color: rgba(255, 255, 255, 0.9); font-size: var(--font-size-xs);
+  background: linear-gradient(135deg, hsl(var(--hue) 70% 55%), hsl(calc(var(--hue) + 40) 65% 45%));
+  transition: transform var(--dur-base) var(--ease-spring); }
+.cmain__tile:hover { transform: scale(1.05); }
+
+/* 空态：填满页面高度，居中展示 */
+.cmain__empty { height: 100%; }
+
+/* 关于：信息行 */
+.cmain__about { max-width: 420px; }
+.cmain__about-row { display: flex; justify-content: space-between;
+  padding: var(--space-1) 0; font-size: var(--font-size-sm); color: var(--text-2); }
+.cmain__about-row + .cmain__about-row { border-top: 1px solid var(--glass-border); }
+.cmain__about-row span:last-child { color: var(--text-1); }
