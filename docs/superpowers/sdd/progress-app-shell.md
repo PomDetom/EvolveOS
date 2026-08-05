@@ -108,7 +108,7 @@ Base: 47a1d76（branch feature/iteration，自 main 检出）
 - Task A4 设置模式：✅ 完成（2026-08-06）
 - Task A5 FloatStrip：✅ 完成（2026-08-06）
 - Task A6 手机形态：✅ 完成（2026-08-06）
-- Task A7 基线收尾 + 合并 main：✅ 基线/README 完成（2026-08-06）；✅ 最终评审 + 修复波闭环；合并 main 待执行
+- Task A7 基线收尾 + 合并 main：✅ 完成（2026-08-06）—— 基线/README + 最终评审 + 修复波闭环 + **合并 main**（`git merge feature/iteration` fast-forward 至 ac0fa6d，分支已删；合并后全量回归：npm test 51/51、npm run test:e2e 118/118、npm run build 通过）
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
