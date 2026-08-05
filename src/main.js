@@ -21,6 +21,12 @@ import './components/progress/progress.css';
 import './components/avatar/avatar.css';
 import './components/skeleton/skeleton.css';
 import './components/empty-state/empty-state.css';
+import './components/toast/toast.css';
+import './components/dialog/dialog.css';
+import './components/popover/popover.css';
+import './components/context-menu/context-menu.css';
+import './components/tab/tab.css';
+import './components/breadcrumb/breadcrumb.css';
 import { icon } from './components/icon/icon.js';
 import { renderButton } from './components/button/button.js';
 import { renderInput } from './components/input/input.js';
@@ -39,6 +45,12 @@ import { renderProgress } from './components/progress/progress.js';
 import { renderAvatar } from './components/avatar/avatar.js';
 import { renderSkeleton } from './components/skeleton/skeleton.js';
 import { renderEmptyState } from './components/empty-state/empty-state.js';
+import { toast } from './components/toast/toast.js';
+import { openDialog } from './components/dialog/dialog.js';
+import { renderPopover, mountPopover } from './components/popover/popover.js';
+import { mountContextMenu } from './components/context-menu/context-menu.js';
+import { renderTabs, mountTabs } from './components/tab/tab.js';
+import { renderBreadcrumb } from './components/breadcrumb/breadcrumb.js';
 import { showcase } from './demo/component-showcase.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { getConfig } from './config/store.js';
@@ -166,6 +178,63 @@ componentsSection.appendChild(showcase('空状态 EmptyState', [
   { label: '空剪贴板', html: renderEmptyState({ iconName: 'clipboard', title: '暂无内容', desc: '复制任意内容后将出现在这里', action: { label: '打开剪贴板', variant: 'primary' } }) },
   { label: '无搜索结果', html: renderEmptyState({ iconName: 'search', title: '未找到结果', desc: '换个关键词试试' }) },
 ]));
+const tabBox = showcase('标签页 Tabs', [
+  { label: '3 个标签', html: renderTabs({ tabs: [
+    { label: '概览', iconName: 'home', content: `<div class="demo-tab-content"><span>概览内容</span>${renderButton({ label: '新建', variant: 'primary', size: 'sm', iconName: 'plus' })}</div>` },
+    { label: '历史', iconName: 'clipboard', content: `<div class="demo-tab-content"><span>最近 12 条记录</span>${renderBadge({ label: '12 条', variant: 'info' })}</div>` },
+    { label: '设置', iconName: 'settings', content: `<div class="demo-tab-content"><span>主题偏好</span>${renderBadge({ label: '跟随系统', variant: 'warning' })}</div>` },
+  ] }) },
+]);
+componentsSection.appendChild(tabBox);
+mountTabs(tabBox);
+componentsSection.appendChild(showcase('面包屑 Breadcrumb', [
+  { label: '默认', html: renderBreadcrumb({ items: ['剪贴板', '历史记录', '2026-08-05'] }) },
+]));
+const popoverBox = showcase('气泡 Popover', [
+  { label: '底部弹出', html: renderPopover({ trigger: '操作选项', content: '<div>这里是气泡内容<br>点击外部自动关闭</div>' }) },
+  { label: '右侧弹出', html: renderPopover({ trigger: '更多信息', placement: 'right', content: '<div>右侧位置的气泡提示</div>' }) },
+]);
+componentsSection.appendChild(popoverBox);
+mountPopover(popoverBox);
+const dialogBox = showcase('对话框 Dialog', [
+  { label: '危险确认', html: '<button class="c-btn c-btn--danger" data-dialog="danger" type="button">删除条目</button>' },
+  { label: '普通确认', html: '<button class="c-btn c-btn--secondary" data-dialog="info" type="button">打开对话框</button>' },
+]);
+componentsSection.appendChild(dialogBox);
+dialogBox.querySelectorAll('[data-dialog]').forEach((btn) => {
+  const danger = btn.dataset.dialog === 'danger';
+  btn.addEventListener('click', () => {
+    openDialog(danger
+      ? { title: '确认删除', content: '删除后无法恢复，确定要继续吗？', confirmLabel: '删除', danger: true }
+      : { title: '关于', content: 'UI Design System v0.1 — 克制的玻璃质感设计语言。', confirmLabel: '知道了' })
+      .then((ok) => { if (ok) toast(danger ? '已删除' : '感谢阅读', { variant: danger ? 'danger' : 'success' }); });
+  });
+});
+const menuBox = showcase('右键菜单 ContextMenu', [
+  { label: '右键舞台区域', html: '<div class="demo-context-stage">在此区域右键<br>打开上下文菜单</div>' },
+]);
+componentsSection.appendChild(menuBox);
+mountContextMenu(menuBox.querySelector('.demo-context-stage'), [
+  { label: '复制', iconName: 'copy', action: () => toast('已复制', { variant: 'info' }) },
+  { label: '重命名', iconName: 'edit', action: () => toast('重命名功能演示') },
+  { label: '删除', iconName: 'trash', danger: true, action: () => toast('已删除', { variant: 'danger' }) },
+]);
+const toastBox = showcase('消息提示 Toast', [
+  { label: '成功', html: '<button class="c-btn c-btn--secondary" data-toast="success" type="button">成功提示</button>' },
+  { label: '警告', html: '<button class="c-btn c-btn--secondary" data-toast="warning" type="button">警告提示</button>' },
+  { label: '危险', html: '<button class="c-btn c-btn--secondary" data-toast="danger" type="button">错误提示</button>' },
+  { label: '信息', html: '<button class="c-btn c-btn--secondary" data-toast="info" type="button">信息提示</button>' },
+]);
+componentsSection.appendChild(toastBox);
+toastBox.querySelectorAll('[data-toast]').forEach((btn) => {
+  const variant = btn.dataset.toast;
+  btn.addEventListener('click', () => {
+    const msgs = { success: '操作成功', warning: '请注意', danger: '操作失败', info: '新消息提醒' };
+    toast(msgs[variant], { variant });
+  });
+});
 
 // 测试桥：Task 15 组件展示区上线后移除（components-basic.spec.js 依赖）
 window.__renderIcon = icon;
+window.__toast = toast;
+window.__openDialog = openDialog;

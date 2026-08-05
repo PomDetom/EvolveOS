@@ -47,3 +47,12 @@
 .showcase__stage { display: flex; align-items: center; justify-content: center;
   gap: var(--space-2); min-height: 48px; }
 .showcase__label { font-size: var(--font-size-xs); color: var(--text-3); text-align: center; }
+
+/* Task 9 演示辅助：右键菜单舞台 + Tab 内容行（showcase 内） */
+.demo-context-stage { display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 96px; border: 1px dashed var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  font-size: var(--font-size-sm); color: var(--text-3);
+  text-align: center; line-height: 1.9; user-select: none; }
+.demo-tab-content { display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-3); }

@@ -1,0 +1,15 @@
+/* Popover 气泡：trigger + 绝对定位面板，scale/fade 切换，--z-overlay 层级 */
+.c-popover { position: relative; display: inline-block; }
+.c-popover__trigger { display: inline-flex; align-items: center; gap: var(--space-2); }
+.c-popover__panel { position: absolute; z-index: var(--z-overlay); min-width: 160px;
+  padding: var(--space-2); font-size: var(--font-size-sm);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  opacity: 0; visibility: hidden; transform: scale(0.95);
+  transform-origin: top left;
+  transition: transform var(--dur-fast) var(--ease-spring),
+    opacity var(--dur-fast) var(--ease-out), visibility 0s linear var(--dur-fast); }
+.c-popover--open .c-popover__panel { opacity: 1; visibility: visible; transform: scale(1);
+  transition: transform var(--dur-fast) var(--ease-spring),
+    opacity var(--dur-fast) var(--ease-out); }
+.c-popover__panel--bottom { top: calc(100% + var(--space-2)); left: 0; }
+.c-popover__panel--right { left: calc(100% + var(--space-2)); top: 0; }

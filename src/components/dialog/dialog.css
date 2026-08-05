@@ -1,0 +1,23 @@
+/* Dialog 对话框：全屏遮罩 + 居中玻璃面板，scale+fade 进入，--z-modal 层级 */
+.c-dialog__mask { position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(4px);
+  display: grid; place-items: center;
+  animation: mask-in var(--dur-base) var(--ease-out); }
+.c-dialog { width: 360px; max-width: 90vw; padding: var(--space-5);
+  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1));
+  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  animation: dialog-in var(--dur-base) var(--ease-spring); }
+@keyframes mask-in { from { opacity: 0; } }
+@keyframes dialog-in { from { transform: scale(0.96) translateY(8px); opacity: 0; } }
+.c-dialog__header { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: var(--space-3); }
+.c-dialog__header h3 { font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold); }
+.c-dialog__body { font-size: var(--font-size-sm); color: var(--text-2);
+  margin-bottom: var(--space-5); }
+.c-dialog__footer { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.c-dialog__close { display: grid; place-items: center; width: 28px; height: 28px;
+  color: var(--text-3); border-radius: var(--radius-sm); }
+.c-dialog__close:hover { color: var(--text-1); background: var(--surface-hover); }

@@ -1,0 +1,24 @@
+/* Toast 消息提示：右下角浮动容器，底部滑入 + 淡出，语义色变体 */
+.c-toast-wrap { position: fixed; bottom: var(--space-5); right: var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-2); z-index: var(--z-toast);
+  pointer-events: none; }
+.c-toast { display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); font-size: var(--font-size-sm);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
+  animation: toast-in var(--dur-base) var(--ease-spring);
+  pointer-events: auto;
+  transition: opacity var(--dur-base) var(--ease-out); }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } }
+.c-toast--default { background: var(--glass-bg); color: var(--text-1);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); }
+.c-toast--success { background: var(--success-50); color: var(--success-600); }
+.c-toast--warning { background: var(--warning-50); color: var(--warning-600); }
+.c-toast--danger { background: var(--danger-50); color: var(--danger-600); }
+.c-toast--info { background: var(--info-50); color: var(--info-600); }
+/* 深色主题：语义色 50 档过亮，改用同色相低透明度玻璃底 */
+:root[data-theme="dark"] .c-toast--success { background: rgba(16, 185, 129, 0.16); }
+:root[data-theme="dark"] .c-toast--warning { background: rgba(245, 158, 11, 0.16); }
+:root[data-theme="dark"] .c-toast--danger { background: rgba(239, 68, 68, 0.16); }
+:root[data-theme="dark"] .c-toast--info { background: rgba(59, 130, 246, 0.16); }

@@ -1,0 +1,13 @@
+/* Tabs 标签页：底部共享指示条（transform translateX + scaleX 平移动画） */
+.c-tabs { position: relative; display: flex; gap: var(--space-2);
+  border-bottom: 1px solid var(--glass-border); }
+.c-tab { position: relative; display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm);
+  color: var(--text-2); transition: color var(--dur-fast) var(--ease-out); }
+.c-tab:hover { color: var(--text-1); }
+.c-tab--active { color: var(--accent); }
+.c-tabs__indicator { position: absolute; bottom: -1px; left: 0; height: 2px;
+  border-radius: 2px; background: var(--accent); pointer-events: none;
+  transition: transform var(--dur-base) var(--ease-out); }
+.c-tabpanels { margin-top: var(--space-4); font-size: var(--font-size-sm);
+  color: var(--text-2); }
