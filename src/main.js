@@ -3,6 +3,9 @@ import './styles/themes.css';
 import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
+import { mountThemeSwitcher } from './demo/theme-switcher.js';
+import { getConfig } from './config/store.js';
+import { applyConfig } from './config/apply.js';
 
 const NAV_CORE = [
   { id: 'tokens',    name: '设计令牌', icon: 'palette' },
@@ -37,3 +40,6 @@ app.innerHTML = `
     </main>
   </div>
 `;
+
+applyConfig(getConfig());
+mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));

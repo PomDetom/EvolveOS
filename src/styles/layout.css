@@ -21,3 +21,16 @@
   padding-top: var(--space-2); }
 .content__section h2 { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-5); }
+.tsw { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.tsw__modes { display: flex; gap: 4px; }
+.tsw__mode { width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid;
+  place-items: center; color: var(--text-2); }
+.tsw__mode:hover { color: var(--text-1); background: var(--surface-hover); }
+.tsw__mode--active { color: var(--accent); background: var(--accent-50); }
+.tsw__accents { display: flex; gap: 6px; }
+.tsw__accent { width: 16px; height: 16px; border-radius: 50%;
+  background: var(--swatch); opacity: 0.5; }
+.tsw__accent:hover { opacity: 0.85; }
+.tsw__accent--active { opacity: 1; box-shadow: 0 0 0 2px var(--glass-bg), 0 0 0 3px var(--swatch); }
+.c-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
