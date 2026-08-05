@@ -38,6 +38,7 @@ import './components/hotkey-hint/hotkey-hint.css';
 import './components/float-ball/float-ball.css';
 import './components/hotkey-recorder/hotkey-recorder.css';
 import './components/sidebar-item/sidebar-item.css';
+import './styles/customizer.css';
 import { icon } from './components/icon/icon.js';
 import { toast } from './components/toast/toast.js';
 import { openDialog } from './components/dialog/dialog.js';
@@ -49,6 +50,7 @@ import { mountComponentsShowcase } from './demo/component-showcase-full.js';
 import { mountMotionLab } from './demo/motion-lab.js';
 import { mountThemeSwitcher } from './demo/theme-switcher.js';
 import { mountTokenShowcase } from './demo/token-showcase.js';
+import { mountCustomizer, toggleCustomizer } from './demo/customizer-panel.js';
 import { getConfig, subscribe } from './config/store.js';
 import { applyConfig } from './config/apply.js';
 
@@ -88,6 +90,11 @@ app.innerHTML = `
 
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+
+// 主题定制器（Task 17）：body 级抽屉常驻挂载；顶栏「定制」按钮打开。
+// 令牌展示区玻璃卡的「定制器」链接经 .topbar__customizer.click() 委托到这里（token-showcase.js）。
+mountCustomizer(document.body);
+document.querySelector('.topbar__customizer').addEventListener('click', () => toggleCustomizer(true));
 
 // 令牌展示区（Task 14）：订阅 store —— 主题/主题色/定制器变更时重渲染
 // （subscribe 回调内只 applyConfig + 重渲染，不再 saveConfig，避免循环）

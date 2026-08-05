@@ -1,6 +1,6 @@
 import { DEFAULTS } from './defaults.js';
 
-const KEY = 'ui-design-config';
+export const KEY = 'ui-design-config';
 const listeners = new Set();
 
 export function deepMerge(base, override) {
@@ -37,4 +37,9 @@ export function saveConfig(patch) {
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+/** 广播配置变更（不写入存储）—— 重置等绕过 saveConfig 的路径用，语义与 saveConfig 通知一致 */
+export function notify(cfg) {
+  listeners.forEach((fn) => fn(cfg));
 }
