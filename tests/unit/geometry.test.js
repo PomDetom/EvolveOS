@@ -17,8 +17,9 @@ describe('itemCenterY / scrollTopForCenter', () => {
 });
 
 describe('findNearestIndex', () => {
-  it('初始位置选中第 0 项', () => {
-    expect(findNearestIndex(0, 5, ITEM_H, GAP, VIEW_H)).toBe(0);
+  it('初始位置（第 0 项居中）选中第 0 项', () => {
+    // 补偿坐标：初始位置 = scrollTopForCenter(0)（负值），公式在此处精确得 0
+    expect(findNearestIndex(scrollTopForCenter(0, ITEM_H, GAP, VIEW_H), 5, ITEM_H, GAP, VIEW_H)).toBe(0);
   });
   it('中心在视口中间时选中对应项', () => {
     // scrollTop 使第 2 项中心正好在 200（视口中心）

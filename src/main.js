@@ -82,8 +82,8 @@ app.innerHTML = `
       </div>
     </header>
     <aside class="navwheel">
-      <nav class="navwheel__list" data-mount="nav-wheel"></nav>
-      <button class="navwheel__settings" data-mount="settings-entry">设置</button>
+      <nav class="navwheel__list c-navwheel__list" data-mount="nav-wheel"></nav>
+      <button class="navwheel__settings c-navwheel__settings" data-mount="settings-entry">设置</button>
     </aside>
     <main class="content">
       <section id="tokens" class="content__section"></section>
@@ -97,12 +97,19 @@ app.innerHTML = `
 applyConfig(getConfig());
 mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
 
-// NavigationWheel：滑动选择导航（Task 11）—— 选中项在侧栏居中，主内容滚动到对应区块
+// NavigationWheel：滑动选择导航（Task 11 + 12）—— 选中项在侧栏居中，主内容滚动到对应区块
 const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {
   items: NAV_ITEMS,
   onChange: (item) => {
     document.querySelector(`#${item.id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
+});
+
+// 设置入口（Task 12）：左下角按钮填图标 + 「设置」，点击滚动到设置页场景模板（#scenes）
+const settingsEntry = document.querySelector('.c-navwheel__settings');
+settingsEntry.innerHTML = `${icon('settings', 20)}<span>设置</span>`;
+settingsEntry.addEventListener('click', () => {
+  document.querySelector('#scenes').scrollIntoView({ behavior: 'smooth' });
 });
 
 // TitleBar 演示：独立展示区（body 顶部，尺寸与场景模板一致便于评审）

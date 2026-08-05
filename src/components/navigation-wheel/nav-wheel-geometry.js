@@ -8,8 +8,10 @@ export function scrollTopForCenter(index, itemHeight, gap, viewportHeight) {
   return itemCenterY(index, itemHeight, gap) - viewportHeight / 2;
 }
 export function findNearestIndex(scrollTop, count, itemHeight, gap, viewportHeight) {
-  // scrollTop 0 = 初始位置：容器顶部 padding 使首项居中（见 nav-wheel.js 动态 padding），故选中第 0 项
-  if (scrollTop === 0) return 0;
+  // 坐标系：内容坐标（不含容器 padding/margin；nav-wheel.js 调用处传 list.scrollTop - CONTENT_TOP）。
+  // 旧 scrollTop===0 守卫是「原始 scrollTop」语义：补偿坐标下 0 并非初始位置（初始 = scrollTopForCenter(0)，
+  // 负值），会把「视口中心在第 2~3 项处」误判为第 0 项 → 拖拽/惯性后吸附错误。公式在补偿坐标下
+  // 精确（单测：scrollTopForCenter(i) → i），初始位置处自然得 0，两端由 clamp 兜底，故无守卫。
   const viewCenter = scrollTop + viewportHeight / 2;
   const i = Math.round((viewCenter - itemHeight / 2) / (itemHeight + gap));
   return Math.max(0, Math.min(count - 1, i));

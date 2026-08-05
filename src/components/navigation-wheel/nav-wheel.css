@@ -16,6 +16,8 @@
   /* flex 列：flex 项外边距不折叠，项间间距严格 = --navwheel-gap（12px = 6+6），与几何算法一致 */
   display: flex; flex-direction: column;
   scrollbar-width: none;
+  /* 拖拽由 JS pointer 事件接管（Task 12），禁用原生触控滚动，避免双滚动竞争 */
+  touch-action: none;
   padding: calc(50% - 26px) 0 50% 0;
 }
 .navwheel__list::-webkit-scrollbar,
@@ -52,3 +54,10 @@
   background: linear-gradient(var(--glass-bg), transparent); }
 .c-navwheel__mask--bottom { top: auto; bottom: 56px;
   background: linear-gradient(transparent, var(--glass-bg)); }
+
+/* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
+   此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */
+.c-navwheel__settings { display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-4); height: 56px; width: 100%; color: var(--text-2);
+  font-size: var(--font-size-sm); }
+.c-navwheel__settings:hover { color: var(--text-1); background: var(--surface-hover); }
