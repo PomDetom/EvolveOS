@@ -22,7 +22,7 @@
   border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)); /* 静态材质，永不动画 */
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 静态材质，永不动画 */
   color: var(--text-1);
   cursor: grab;
   user-select: none;

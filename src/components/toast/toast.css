@@ -12,7 +12,7 @@
   transition: opacity var(--dur-base) var(--ease-out); }
 @keyframes toast-in { from { transform: translateY(12px); opacity: 0; } }
 .c-toast--default { background: var(--glass-bg); color: var(--text-1);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); }
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); }
 .c-toast--success { background: var(--success-50); color: var(--success-600); }
 .c-toast--warning { background: var(--warning-50); color: var(--warning-600); }
 .c-toast--danger { background: var(--danger-50); color: var(--danger-600); }

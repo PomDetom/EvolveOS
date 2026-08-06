@@ -19,7 +19,8 @@
 /* 窗口：820×520 圆角玻璃，内部 grid（220px 1fr / 40px 1fr）—— 设置导航比主页更宽 */
 .csettings { width: 820px; height: 520px; border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
   display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 40px 1fr;
   overflow: hidden; }
 
