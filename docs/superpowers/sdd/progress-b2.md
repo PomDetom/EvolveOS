@@ -25,9 +25,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **Important deferred → B2 最终评审**：I-1 暗色表面双层层叠半透明 `--glass-bg` 明显加深（brief 字面指令的必然结果，评审判定非本任务缺陷）；B2-2 装饰背景层落地后再确认暗色观感
 - **Minor 留收尾**：① M-1 `data-glass=off` 不覆盖标题栏（`.c-titlebar` backdrop-filter 与 nav-wheel 遮罩渐变仍半透明）——不在 brief 表面清单内，不构成规格违背，最终评审定边界；② M-2 玻璃开关行结构与动效开关不一致（省略 `.cust-switch-wrap` 包裹层，点整行触发）——功能正确，建议与 motion 行统一；③ M-3 `--glass-enabled` 当前无 CSS 消费者（brief 明示写入 + 测试锁定，spec §3.1 Tauri 窗口透明度可能消费）；④ M-4 手机形态降级无 e2e 覆盖——brief Step 7 未要求，最终评审补断言或豁免
 
+## Task B2-2: 浏览器装饰背景层（模糊对象）
+
+- **状态**：完成（2026-08-06，待评审）
+- **提交**：见 task-B2-2-report.md 文末
+- **验证**：npm test 56/56；npm run test:e2e 84/84（含「背景层」用例；首轮 smoke 冷启动超时偶发，非因果，复跑 84/84）；npm run test:visual 18/18（18 张重生成）；npm run build 通过
+- **实现**：app-main.css `.app-main__backdrop`（`position:fixed; inset:0; z-index:-1; pointer-events:none`，画在 canvas 之上、壳内容之下，玻璃表面模糊到它）+ 三预设 `data-backdrop="gradient|geo|grid"`（`--backdrop-bg`，brief 字面）+ `[data-tauri="1"]` 透明；app-main.js 模板设默认 gradient + 首个子元素 backdrop + Tauri 探测写 data-tauri + 外观分区挂载注入「背景装饰」3 预设按钮（会话内纯 UI 态，不进 store；`.cust-group` count 6 不受影响）；partitions.css 分段按钮样式（paint-only 过渡）。一处必要偏差：`background-size` 不继承，网格平铺尺寸补在 `.app-main__backdrop` 上（brief 原行保留）
+- **简报/报告**：docs/superpowers/sdd/task-B2-2-brief.md / task-B2-2-report.md
+- **评审**：待 B2 最终整体评审
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
-- Task B2-2 浏览器装饰背景层：待执行
+- Task B2-2 浏览器装饰背景层：✅ 完成（待评审）
 - Task B2-3 导航图标四项增强：待执行
 - 最终整体评审 + 合并 main：待执行
