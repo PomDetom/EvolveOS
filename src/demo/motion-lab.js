@@ -170,11 +170,13 @@ export function mountMotionLab(root) {
     apply(); // 初始值 → 局部变量（含定制器 durationScale/springStrength 联动）
   });
 
-  // 联动：定制器全局参数变化 → 同步滑杆位置与局部变量（不重渲染 DOM，动画不中断）
-  subscribe((next) => {
+  // 联动：定制器全局参数变化 → 同步滑杆位置与局部变量（不重渲染 DOM，动画不中断）。
+  // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 I1，镜像 renderCustomizerGroups 契约）。
+  const unsub = subscribe((next) => {
     cards.forEach((card) => {
       card.querySelector('.ml-slider').value = String(next.motion.springStrength);
       applyParams(card, next, card.querySelector('.ml-slider'), card.querySelector('[data-lift]'), card.querySelector('.ml-dur.is-active'));
     });
   });
+  return unsub;
 }

@@ -97,6 +97,31 @@ test('设置推入：标题栏 ⚙ → 设置页推入 + toggle 弹回', async (
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
 });
 
+// —— 收尾评审修复覆盖：I1 手机动效分区订阅退订（闭环 I1）——
+// 手机路径每次 renderStack 重建页面栈 DOM → activateMobileSettings 对空容器重挂
+// mountMotionLab（新增一次 store 订阅）。重建前 renderStack 释放 mobileMotionUnsub 旧订阅，
+// 防订阅数随进入设置→动效次数线性累积（回调引用已脱离容器的旧 .ml-card 节点）。
+// 本用例守护重建→重挂流程不破（isConnected 守卫不误杀合法挂载）；退订契约由
+// tests/unit/motion-lab.test.js 单测断言。
+test('设置→动效 两次进出：重建后分区重挂载仍渲染 5 卡', async ({ page }) => {
+  await page.goto(APP_URL);
+  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+  const motionCards = () => page.locator('.app-main__stack [data-page="motion"] .ml-card');
+  // 第一次进入设置 → 切到动效分区（activateMobileSettings 挂载 + mobileMotionUnsub 记录订阅）
+  await settingsBtn.click();
+  await page.waitForTimeout(350);
+  await page.locator('.app-main__settings-tab[data-tab="motion"]').click();
+  await expect(motionCards()).toHaveCount(5);
+  // 退出设置（⚙ toggle 弹回）→ popStack → renderStack 重建 DOM 前释放旧订阅
+  await settingsBtn.click();
+  await page.waitForTimeout(350);
+  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
+  // 第二次进入设置（settingsId 保持 motion）→ 空容器重挂载，仍渲染 5 卡
+  await settingsBtn.click();
+  await page.waitForTimeout(350);
+  await expect(motionCards()).toHaveCount(5);
+});
+
 test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向滚动 + focal 峰值在 38.2% 锚线', async ({ page }) => {
   await page.goto(APP_URL);
   const dockList = page.locator('.app-main__dock .c-navwheel__list');

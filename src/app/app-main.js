@@ -16,6 +16,7 @@ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-
 import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
 import { bindWindowControls } from '../demo/window-controls.js';
 import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
@@ -194,6 +195,9 @@ export function mountAppMode(root) {
   //   组件/动效分区：首次激活时动态 import 展示模块挂到 .app-partition（Vite 代码分包，
   //   展示模块 CSS 随 chunk 加载）；桌面 DOM 常驻，模块级标志防重复挂载。
   //   组件分区末尾追加「组合示例：剪贴板悬浮窗」（mountClipboardFloat 流式 in-flow，不遮挡分区）。
+  let custMounted = false; // 桌面惰性挂载标志（手机路径按容器空态重挂，不用此标志）
+  let componentsMounted = false;
+  let motionMounted = false;
   function mountComponentsPartition(part) {
     if (part.children.length) return; // 已挂载（移动端按空态重挂的防线）
     Promise.all([
@@ -203,18 +207,25 @@ export function mountAppMode(root) {
       if (part.children.length) return; // 并发 import 竞态防御：同时触发时只挂一次
       mountComponentsShowcase(part);
       mountClipboardFloat(part); // 组合示例：剪贴板悬浮窗（复用既有场景模块）
+    }).catch(() => {
+      // 闭环 I2：chunk 加载失败不静默（B1-4 后此为主内容加载路径）——
+      // toast 提示 + 重置桌面标志，后续再次激活可重试。
+      componentsMounted = false;
+      toast('分区内容加载失败', { variant: 'danger' });
     });
   }
-  function mountMotionPartition(part) {
+  function mountMotionPartition(part, onMounted) {
     if (part.children.length) return;
     import('../demo/motion-lab.js').then(({ mountMotionLab }) => {
-      if (part.children.length) return;
-      mountMotionLab(part);
+      if (part.children.length || !part.isConnected) return; // 并发 import 竞态 / 手机重建后已脱离 DOM → 不挂载
+      const unsub = mountMotionLab(part);
+      onMounted?.(unsub); // 退订函数上抛（手机路径记入 mobileMotionUnsub，闭环 I1）
+    }).catch(() => {
+      // 闭环 I2：chunk 加载失败不静默 —— toast 提示 + 重置桌面标志（失败可重试）。
+      motionMounted = false;
+      toast('分区内容加载失败', { variant: 'danger' });
     });
   }
-  let custMounted = false;
-  let componentsMounted = false;
-  let motionMounted = false;
   function setSettingsPageActive() {
     const sec = pages.find((p) => p.dataset.page === 'settings');
     sec.querySelectorAll('.csettings__page').forEach((p) =>
@@ -382,9 +393,16 @@ export function mountAppMode(root) {
   // renderCustomizerGroups 新增一次 store 订阅。重建前释放旧订阅（回调引用已脱离容器的旧 DOM），
   // 防订阅数随进入设置次数线性累积。renderCustomizerGroups 现返回 subscribe 的退订函数。
   let mobileCustUnsub = null;
+  // 动效分区 store 订阅退订句柄（闭环 I1）：手机路径每次 renderStack 重建页面栈 DOM 后
+  // activateMobileSettings 对空容器重挂 mountMotionLab（新增一次 store 订阅），重建前释放
+  // 旧订阅（回调引用已脱离容器的旧 .ml-card 节点），防订阅数随进入设置→动效次数线性累积。
+  // 挂载为异步（动态 import），退订函数经 mountMotionPartition 的 onMounted 回调上抛。
+  let mobileMotionUnsub = null;
   function renderStack() {
     mobileCustUnsub?.(); // 重建前释放上一订阅（可能未挂载 = noop）
     mobileCustUnsub = null;
+    mobileMotionUnsub?.(); // 闭环 I1：动效分区订阅同机制，重建前释放
+    mobileMotionUnsub = null;
     stackEl.innerHTML = mobile.stack.map((entry, i) =>
       renderStackPage(entry, i === mobile.stack.length - 1 && mobile.animateTop)).join('');
     const settingsPage = stackEl.querySelector('[data-stack="settings"]');
@@ -438,7 +456,12 @@ export function mountAppMode(root) {
     const comp = sec.querySelector('[data-page="components"] [data-partition="components"]');
     if (state.settingsId === 'components' && comp && !comp.children.length) mountComponentsPartition(comp);
     const motion = sec.querySelector('[data-page="motion"] [data-partition="motion"]');
-    if (state.settingsId === 'motion' && motion && !motion.children.length) mountMotionPartition(motion);
+    if (state.settingsId === 'motion' && motion && !motion.children.length) {
+      mountMotionPartition(motion, (unsub) => {
+        mobileMotionUnsub?.(); // 防御：异步导入期间可能已重挂（新容器），先释放旧订阅
+        mobileMotionUnsub = unsub;
+      });
+    }
   }
 
   function updateCtxMobile() {
