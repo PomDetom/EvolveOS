@@ -1,0 +1,49 @@
+# Review package: 613eaf1..HEAD
+
+## Commits
+c6cbaf7 fix: 恢复垂直导航轮滚轮吸附覆盖测试
+
+## Files changed
+ tests/e2e/app-shell.spec.js | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+## Diff
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 3d50bd4..c0fd902 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -288,10 +288,34 @@ test('设置分区包含组件/动效且挂载展示内容', async ({ page }) =>
+ test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({ page }) => {
+   await page.goto('/?mode=app');
+   // 拖拽区浏览器降级标记类已挂（CSS :active 轻量反馈通道开启）
+   await expect(page.locator('.app-main .c-titlebar__drag')).toHaveClass(/c-titlebar__drag--browser/);
+   // 三窗口控制按钮（min/max/close）均降级为 toast 提示；设置按钮（--settings）有真实功能不劫持
+   for (const modifier of ['min', 'max', 'close']) {
+     await page.locator(`.app-main .c-titlebar__control--${modifier}`).click();
+     await expect(page.locator('.c-toast').last()).toContainText('桌面端');
+   }
+ });
++
++// —— B1-3 评审修复：恢复垂直导航轮「滚轮 → 停止 → 吸附 → 38.2% 锚点」覆盖（规格 §8.3 不得悬置）——
++// 原用例随 nav-wheel.spec.js 删除（docs 侧栏 .navwheel__list 无宿主），行为是壳左窗的真实交互，
++// 重挂到 `.app-main__nav-l .c-navwheel__list`（应用壳左窗 7 模块垂直轮，anchorRatio 0.382）。
++// 与 mobile-nav.spec.js 的横向 dock 覆盖互补：本用例专测垂直主轴滚轮路径。
++test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% 锚点）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const list = page.locator('.app-main__nav-l .c-navwheel__list');
++  const box = await list.boundingBox();
++  // wheel 需要指针悬停在列表上（Chromium 将 wheel 派发到 hover 元素）
++  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
++  await page.mouse.wheel(0, 100);
++  // 吸附延迟 150ms；toHaveClass 自动重试，覆盖计时窗口
++  await expect(list.locator('.c-navwheel__item--active')).toHaveCount(1);
++  await page.waitForTimeout(400); // 吸附完成后测量位置
++  // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
++  const scrolled = await list.evaluate(el => el.scrollTop);
++  expect(scrolled).toBeGreaterThan(50);
++  // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
++  const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
++  const listBox = await list.boundingBox();
++  const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
++  expect(anchorDelta).toBeLessThan(4);
++});

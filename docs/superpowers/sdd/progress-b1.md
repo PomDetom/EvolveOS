@@ -33,11 +33,22 @@ Base: 86398d0（branch feature/b1-product，自 main 检出）
 - **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
 - **Minor 留收尾**：① 设置按钮不劫持无负向断言（代码正确，可加一行 `.c-toast` count 检查锁定）；② 幂等仅覆盖浏览器路径（不防「先浏览器降级再注入真实 API」的双监听——生产页面二态不共存，title-bar.spec 内发生但无测试破坏）；③ 视觉回归 scenes 组全量并行偶发 flake（干净树可复现，pre-existing 并行负载渲染 flake，与本次改动无关——改动静态渲染零 footprint）
 
+## Task B1-3: docs e2e 迁移（分区内验证 + 删除无宿主用例）
+
+- **状态**：评审 ❌ → 修复循环
+- **提交**：`613eaf1` `test: docs e2e 迁移至应用壳设置分区（组件/动效/外观）`
+- **验证**：npm run test:e2e 104/104（迁移后 net -16）；npm test 51/51；npm run build 通过；控制器独立复跑 e2e 104 绿
+- **实现**：`helpers.js` `openSettingsPartition`（桌面作用域 + 惰性挂载等待）；11 个 spec 迁移至分区（组件 index 8 / 动效 9 / 外观 1）；title-bar 保留 B1-2 `toBe('browser')`；smoke → `?mode=app`；删除 6 个 docs 专属 spec（theme-switcher/token-showcase/nav-wheel/layout/scene-main-window/scene-settings）
+- **简报/报告**：docs/superpowers/sdd/task-B1-3-brief.md / task-B1-3-report.md
+- **评审**：规格 ❌ → 修复循环（1 Important：**nav-wheel 滚轮→吸附→锚点行为失去唯一测试**——删除的「滚轮滚动停止后吸附最近项并选中」（spec §8.3 不得悬置）是唯一测垂直轮滚轮行为的用例；报告称被 app-shell/mobile-nav 覆盖但实测不成立（app-shell 只测 click→锚点，mobile-nav 只测横向），应在应用壳左栏 `.app-main__nav-l .c-navwheel__list` 重挂该断言而非删除）
+- **评审修复（2026-08-06，已闭环）**：`c6cbaf7` `fix: 恢复垂直导航轮滚轮吸附覆盖测试` —— 重挂到应用壳左栏 `.app-main__nav-l .c-navwheel__list`（`?mode=app`，7 模块垂直轮 anchorRatio 0.382），保留原断言（wheel 100 → 停止 150ms 吸附 → active count 1 → 38.2% 锚点 delta < 4px）；验证：app-shell 19/19、全量 e2e 105（104+1）、npm test 51、build 通过
+- **Minor 留收尾**：① customizer 重置/导出覆盖丢失（重置=清除存储+applyConfig(DEFAULTS)、导出=复制 CSS 变量，现仅测冷启动持久化）；② theme-switcher aria-pressed 单选语义断言丢失（app-shell 只断言 class 与 data-theme 持久化）；③ 报告表 components-basic 行 `#components` 表述与实际分区容器作用域不符（等值覆盖，表文案漂移）；④ tokens.spec 分区访问对全局 CSS 断言惰性（vestigial）
+
 ## 执行状态
 
 - Task B1-1 设置分区扩展（组件/动效 + 展示内化）：✅ 完成（2026-08-06）
 - Task B1-2 窗口控制双通道（浏览器降级）：✅ 完成（2026-08-06）
-- Task B1-3 docs e2e 迁移：待执行
+- Task B1-3 docs e2e 迁移：✅ 完成（2026-08-06，修复闭环）
 - Task B1-4 模式简化 + docs 删除：待执行
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
