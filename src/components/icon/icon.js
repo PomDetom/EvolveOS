@@ -1,5 +1,7 @@
-// Lucide 风格图标集（24×24 viewBox，stroke-width 1.8，round cap/join）
-// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）
+// Lucide 风格图标集（24×24 viewBox，stroke-width 默认 1.8，round cap/join）
+// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）。
+// icon(name, size = 18, stroke = 1.8)：stroke 为第三参可选（B2-3 导航图标 active 项用 2.2 加粗分级），
+// 默认 1.8 向后兼容，既有 icon(name, size) 调用点零改动。
 const PATHS = {
   // Task 5 已有
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -57,8 +59,8 @@ const PATHS = {
   list: '<path d="M3 6h.01M3 12h.01M3 18h.01"/><path d="M8 6h13M8 12h13M8 18h13"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
 };
-export function icon(name, size = 18) {
+export function icon(name, size = 18, stroke = 1.8) {
   return `<svg class="c-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+    stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true">${PATHS[name] ?? PATHS.monitor}</svg>`;
 }

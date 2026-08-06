@@ -27,9 +27,9 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
   // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
   list.innerHTML = items.map((it, i) => `
-    <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+    <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
       <div class="c-navwheel__glow"></div>
-      <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
+      <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
       <span class="c-navwheel__name">${it.name}</span>
     </div>`).join('');
   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
@@ -101,9 +101,27 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     if (pointerId !== null) return;
     scheduleSnap();
   }
+  // B2-3 图标分级：active 项 24px/2.2 加粗、非 active 20px/1.8（icon(name, size, stroke) 第三参）。
+  // 分级落地为「原地改 svg 宽高/粗细属性」而非替换 .c-navwheel__icon innerHTML —— 在 pointerup
+  // 内同步替换会移除 mousedown 目标，Chromium 将抑制后续 click 派发（实测），破坏依赖 click 的
+  // 宿主行为（应用壳 dock 推入/左窗 toggle 靠 click 收尾）。尺寸变化是静态重渲染，绝不动 item
+  // 上的 style.transform/opacity —— setFocal 逐字不变（动画红线）。
+  function renderItemIcons(...indexes) {
+    indexes.forEach((idx) => {
+      if (idx < 0 || idx >= itemEls.length) return;
+      const el = itemEls[idx];
+      const isActive = el.classList.contains('c-navwheel__item--active');
+      const svg = el.querySelector('.c-navwheel__icon svg');
+      svg.setAttribute('width', isActive ? 24 : 20);
+      svg.setAttribute('height', isActive ? 24 : 20);
+      svg.setAttribute('stroke-width', isActive ? 2.2 : 1.8);
+    });
+  }
   function select(i, animate = true) {
+    const prev = active; // 捕获旧 active，供切换后对前后两项重渲染图标分级
     active = i;
     itemEls.forEach((el, idx) => el.classList.toggle('c-navwheel__item--active', idx === i));
+    renderItemIcons(prev, i);
     onChange(items[i]);
     if (animate) animateScrollTo(scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP);
   }

@@ -365,3 +365,16 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
 });
+
+// —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
+// icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
+// select 切换时对前后两 item 重渲染 .c-navwheel__icon innerHTML；svg width 属性即尺寸分级。
+
+test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
+  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
+  const activeW = await activeIcon.getAttribute('width');
+  const inW = await inactiveIcon.getAttribute('width');
+  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
+});
