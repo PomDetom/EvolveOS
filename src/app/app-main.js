@@ -16,11 +16,12 @@ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-
 import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
 import { bindWindowControls } from '../demo/window-controls.js';
 import { renderCustomizerGroups } from '../demo/customizer-panel.js';
-import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
+import './partitions.css';
 
 // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
 // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
@@ -87,7 +88,7 @@ export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1，镜像 docs-mode.js）：重启/Tauri 重开后界面保持
   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
   applyConfig(getConfig());
-  const settingsPagesHtml = renderSettingsPages();
+  const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
   root.innerHTML = `
   <div class="app-main">
     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
@@ -154,7 +155,7 @@ export function mountAppMode(root) {
     if (state.rightMode === 'settings') {
       navRBody.innerHTML = `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`;
       const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
-        items: SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
+        items: APP_SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
         onChange: (item) => setSettingsSection(item.id),
         anchorRatio: 0.382,
       });
@@ -188,9 +189,32 @@ export function mountAppMode(root) {
     page.innerHTML = mod.render(modCtx(mod));
   }
 
-  // —— 设置页分区切换：唯一 active 页 + 外观分区定制器首次激活惰性挂载（与场景同构，
-  //   类名 .csettings__* 不变；.cust-group 只在 app 模式出现，docs 互斥不并存）——
+  // —— 设置页分区切换：唯一 active 页 + 惰性挂载（外观定制器 + 组件/动效展示内容，Task B1-1）。
+  //   类名 .csettings__* 不变；.cust-group/.csg/.ml-card/.cfloat 只在 app 模式出现，docs 互斥不并存。
+  //   组件/动效分区：首次激活时动态 import 展示模块挂到 .app-partition（Vite 代码分包，
+  //   展示模块 CSS 随 chunk 加载）；桌面 DOM 常驻，模块级标志防重复挂载。
+  //   组件分区末尾追加「组合示例：剪贴板悬浮窗」（mountClipboardFloat 流式 in-flow，不遮挡分区）。
+  function mountComponentsPartition(part) {
+    if (part.children.length) return; // 已挂载（移动端按空态重挂的防线）
+    Promise.all([
+      import('../demo/component-showcase-full.js'),
+      import('../scenes/clipboard-float/clipboard-float.js'),
+    ]).then(([{ mountComponentsShowcase }, { mountClipboardFloat }]) => {
+      if (part.children.length) return; // 并发 import 竞态防御：同时触发时只挂一次
+      mountComponentsShowcase(part);
+      mountClipboardFloat(part); // 组合示例：剪贴板悬浮窗（复用既有场景模块）
+    });
+  }
+  function mountMotionPartition(part) {
+    if (part.children.length) return;
+    import('../demo/motion-lab.js').then(({ mountMotionLab }) => {
+      if (part.children.length) return;
+      mountMotionLab(part);
+    });
+  }
   let custMounted = false;
+  let componentsMounted = false;
+  let motionMounted = false;
   function setSettingsPageActive() {
     const sec = pages.find((p) => p.dataset.page === 'settings');
     sec.querySelectorAll('.csettings__page').forEach((p) =>
@@ -198,6 +222,14 @@ export function mountAppMode(root) {
     if (state.settingsId === 'appearance' && !custMounted) {
       renderCustomizerGroups(sec.querySelector('[data-page="appearance"] .csettings__cust'));
       custMounted = true;
+    }
+    if (state.settingsId === 'components' && !componentsMounted) {
+      componentsMounted = true; // 先置位防并发 import 重复挂载（import 异步，挂载前切走再切回）
+      mountComponentsPartition(sec.querySelector('[data-page="components"] [data-partition="components"]'));
+    }
+    if (state.settingsId === 'motion' && !motionMounted) {
+      motionMounted = true;
+      mountMotionPartition(sec.querySelector('[data-page="motion"] [data-partition="motion"]'));
     }
   }
 
@@ -212,7 +244,7 @@ export function mountAppMode(root) {
   function updateCtx() {
     if (isMobile()) { updateCtxMobile(); return; } // 手机形态：上下文由页面栈栈顶承担
     if (state.rightMode === 'settings') {
-      const s = SECTIONS.find((x) => x.id === state.settingsId);
+      const s = APP_SECTIONS.find((x) => x.id === state.settingsId);
       ctx.textContent = `设置 › ${s.name}`;
       ctx.dataset.module = 'settings';
       ctx.dataset.page = state.settingsId;
@@ -339,9 +371,9 @@ export function mountAppMode(root) {
     } else if (entry.type === 'settings') {
       body = `
         <div class="app-main__settings-tabs">
-          ${SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
+          ${APP_SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
         </div>
-        <div class="app-main__settings csettings__pages">${renderSettingsPages()}</div>`;
+        <div class="app-main__settings csettings__pages">${renderSettingsPages(APP_SECTIONS)}</div>`;
     }
     return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
   }
@@ -387,7 +419,10 @@ export function mountAppMode(root) {
   }
 
   // 设置分区激活（移动端复用共享 settings-pages；外观定制器首次激活惰性挂载 ——
-  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）
+  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）。
+  // 组件/动效分区（Task B1-1）：同样按容器空态惰性挂载 —— 页面栈每次 renderStack 重建 DOM，
+  // 不能沿用桌面模块级标志（重建后容器已空，标志仍 true 会漏挂）；与桌面共用 mountComponentsPartition/
+  // mountMotionPartition（内部再按 children 空态防御，仅首次激活挂载一次）。
   function activateMobileSettings() {
     const sec = stackEl.querySelector('[data-stack="settings"]');
     if (!sec) return;
@@ -400,6 +435,10 @@ export function mountAppMode(root) {
       mobileCustUnsub?.(); // 防御：同容器重复挂载先释放旧订阅
       mobileCustUnsub = renderCustomizerGroups(cust);
     }
+    const comp = sec.querySelector('[data-page="components"] [data-partition="components"]');
+    if (state.settingsId === 'components' && comp && !comp.children.length) mountComponentsPartition(comp);
+    const motion = sec.querySelector('[data-page="motion"] [data-partition="motion"]');
+    if (state.settingsId === 'motion' && motion && !motion.children.length) mountMotionPartition(motion);
   }
 
   function updateCtxMobile() {
@@ -412,7 +451,7 @@ export function mountAppMode(root) {
       ctx.textContent = mod.name;
       ctx.dataset.module = mod.id; ctx.dataset.page = '';
     } else if (top?.type === 'settings') {
-      const s = SECTIONS.find((x) => x.id === state.settingsId);
+      const s = APP_SECTIONS.find((x) => x.id === state.settingsId);
       ctx.textContent = `设置 › ${s.name}`;
       ctx.dataset.module = 'settings'; ctx.dataset.page = state.settingsId;
     } else {

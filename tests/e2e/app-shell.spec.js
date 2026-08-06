@@ -127,11 +127,11 @@ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活�
   await expect(settingsBtn).toHaveCount(1);
   // 初始未激活
   await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
-  // 点击 ⚙ → 右窗展开 + 8 项设置目录 + 内容区显示通用设置页
+  // 点击 ⚙ → 右窗展开 + 10 项设置目录（APP_SECTIONS：共享 8 + 组件/动效）+ 内容区显示通用设置页
   await settingsBtn.click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'settings');
   await expect(active).toContainText('通用');
@@ -167,7 +167,7 @@ test('设置模式：左栏应用仍可选（点应用切回应用模式）', as
   await page.goto(APP_URL);
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
   // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
   await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
   await page.waitForTimeout(400);
@@ -243,10 +243,10 @@ test('设置模式退出后右窗目录轮回归：exit settings → same-app re
   await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  // 进入设置模式（右窗 = 设置目录 8 项）
+  // 进入设置模式（右窗 = 设置目录 10 项）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
   // 退出设置模式（⚙ 再点 → 右窗收起）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
@@ -260,4 +260,25 @@ test('设置模式退出后右窗目录轮回归：exit settings → same-app re
   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="general"]')).toHaveCount(0);
   // 上下文为应用模式（剪贴板 › 历史）
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 历史');
+});
+
+// —— 设置分区扩展（Task B1-1：APP_SECTIONS 10 分区 + 组件/动效分区惰性挂载展示内容）——
+
+test('设置分区包含组件/动效且挂载展示内容', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  // 10 分区（共享 8 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  // 组件分区：点击「组件」→ 内容区出现组件矩阵组 + 剪贴板悬浮窗组合示例
+  // APP_SECTIONS 实际序：通用0/外观1/界面2/快捷键3/通知4/数据5/高级6/关于7/组件8/动效9
+  // （[...SECTIONS, components, motion] 追加到尾部 —— 索引以实现核对为准）
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click();
+  // 7 个 .csg：6 组矩阵（核心导航/表单/数据/浮层/辅助/悬浮窗专属）+ 1 个交互悬浮窗实例块（csg csg-fwin）
+  await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
+  await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
+  // 动效分区
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
+  await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
+  await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
 });

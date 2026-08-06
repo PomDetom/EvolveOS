@@ -2,6 +2,8 @@
 // 只组装不新建组件（SidebarItem 为本任务内建的唯一新组件）；
 // 每组内部调用 showcase()，浮层组件附「点击演示」触发按钮，
 // 悬浮窗专属组底部渲染可交互 FloatingWindow + SearchBar + FloatBall 联动实例。
+// 自身 import 本组 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
+import './component-showcase-full.css';
 import { icon } from '../components/icon/icon.js';
 import { renderButton } from '../components/button/button.js';
 import { renderInput } from '../components/input/input.js';

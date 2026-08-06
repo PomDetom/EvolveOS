@@ -1,0 +1,24 @@
+/* 应用壳设置分区（Task B1-1）：组件/动效分区展示内容内化的容器样式。
+   局部类名 .app-partition 前缀 —— app/docs 互斥渲染，仍守「场景/展示区局部类名」约定
+   （src/CLAUDE.md：避免与 docs 全页严格计数断言冲突）。
+   分区容器承接组件矩阵 / 动效实验室 / 剪贴板悬浮窗组合示例，
+   由 app-main.js 首次激活时动态 import 展示模块挂载（Vite 代码分包）。 */
+
+.app-partition { padding-top: 2px; }
+
+/* 展示模块写入的分区标题 <h2>（mountComponentsShowcase 写「组件」、mountMotionLab 写
+   「动效实验室」）：base.css 已全局 reset，压掉默认边距并对齐壳内页面标题规格（B2 视觉归位）。 */
+.app-partition > h2 { margin-bottom: var(--space-5); font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold); color: var(--text-1); }
+
+/* 动效分区 lead 说明（motion-lab.js 的 .ml-lead，partition 根直接子级） */
+.app-partition > .ml-lead { margin-bottom: var(--space-5); font-size: var(--font-size-sm);
+  color: var(--text-2); }
+
+/* 组件分区可交互悬浮窗实例（.csg-fwin .c-fwin 默认 fixed 于视口右下）与应用壳右下
+   FloatBall 演示（Task A5，right/bottom 16px）错位：抬高到 FloatBall 之上避免遮挡。
+   仅视觉微调，不改组件默认位（docs 展示仍贴底）。 */
+.app-partition .csg-fwin .c-fwin { right: 24px; bottom: 96px; }
+
+/* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
+.app-partition .cfloat { margin-top: var(--space-6); }

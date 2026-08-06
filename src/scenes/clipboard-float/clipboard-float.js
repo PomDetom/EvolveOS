@@ -2,6 +2,8 @@
 // 纯原生组件组装：FloatingWindow（窗口壳）+ SearchBar（过滤）+ 自建 .cfloat 列表
 // （类型 icon + 首行 + 时间 meta + 悬停操作组）+ EmptyState。状态本地管理，不写 store。
 // 动画红线：列表项 stagger 进入只动 transform/opacity；悬停操作组只动 opacity。
+// 自身 import 本场景 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
+import './clipboard-float.css';
 import { icon } from '../../components/icon/icon.js';
 import { renderFloatingWindow, mountFloatingWindow } from '../../components/floating-window/floating-window.js';
 import { renderSearchBar, mountSearchBar } from '../../components/search-bar/search-bar.js';

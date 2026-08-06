@@ -16,6 +16,7 @@ import { renderHotkeyRecorder, mountHotkeyRecorder } from '../../components/hotk
 import { getConfig, saveConfig } from '../../config/store.js';
 import { applyConfig } from '../../config/apply.js';
 import { toast } from '../../components/toast/toast.js';
+import './settings-window.css';
 
 // 8 分区（pre-flight 修订）：8×64px = 512px > 列表视口 424px，滑动选择真实生效。
 // 界面类模块（原第 3 分区）统一收纳于「界面」分区，其余沿用原分区结构。
@@ -28,6 +29,15 @@ export const SECTIONS = [
   { id: 'data',       name: '数据',   icon: 'folder' },
   { id: 'advanced',   name: '高级',   icon: 'settings' },
   { id: 'about',      name: '关于',   icon: 'info' },
+];
+
+// 应用壳专用：共享 8 分区 + 组件/动效（Task B1-1）。
+// docs 设置场景仍用 SECTIONS（count 8 不变）；组件/动效分区为应用壳内化展示内容，
+// pageBody 分支返回含 .app-partition 容器（场景不渲染这两 id，仅应用壳触发惰性挂载）。
+export const APP_SECTIONS = [
+  ...SECTIONS,
+  { id: 'components', name: '组件', icon: 'box' },
+  { id: 'motion', name: '动效', icon: 'sparkles' },
 ];
 
 // —— 通用分区 ——
@@ -177,6 +187,9 @@ export function pageBody(id) {
     case 'data':       return emptyPage('folder', '数据管理', '导出备份与多端同步将在接入应用后开放');
     case 'advanced':   return emptyPage('shield', '高级设置', '实验性功能与调试选项将在接入应用后开放');
     case 'about':      return aboutPage();
+    // 应用壳专用分区（Task B1-1）：空 .app-partition 容器，展示内容由 app-main.js 首次激活时惰性挂载
+    case 'components': return `<div class="app-partition" data-partition="components"></div>`;
+    case 'motion':     return `<div class="app-partition" data-partition="motion"></div>`;
     default: return '';
   }
 }
@@ -184,10 +197,11 @@ export function pageBody(id) {
 /**
  * 页面栈 HTML：8 个 .csettings__page（首项 active，类名不变）。
  * 调用方负责包一层 .csettings__pages 容器（场景 820×520 网格 / 应用壳内容区各自接管尺寸）。
- * @returns {string} 8 个分区页的 HTML 拼接
+ * @param {Array} [sections=SECTIONS] 分区列表 —— docs 场景不传（8 分区）；应用壳传 APP_SECTIONS（10 分区）
+ * @returns {string} 分区页的 HTML 拼接
  */
-export function renderSettingsPages() {
-  return SECTIONS.map((s, i) => `
+export function renderSettingsPages(sections = SECTIONS) {
+  return sections.map((s, i) => `
     <div class="csettings__page${i === 0 ? ' csettings__page--active' : ''}" data-page="${s.id}">
       ${pageBody(s.id)}
     </div>`).join('');

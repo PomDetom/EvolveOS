@@ -1,3 +1,5 @@
+// 自身 import 本模块 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
+import '../styles/motion-lab.css';
 import { icon } from '../components/icon/icon.js';
 import { springCurve } from '../motion/spring.js';
 import { getConfig, subscribe } from '../config/store.js';
