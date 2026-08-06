@@ -14,9 +14,20 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - B2-1 计划 Step 4 写 `--glass-enabled` 变量 + Step 6 注记写 `root.dataset.glass`（CSS 选择器用后者）；两者都写，变量由单测锁定。
 - visual spec 硬编码 `toHaveCount(10)`（既有 deferred minor，本计划不触碰）。
 
+## Task B2-1: 玻璃材质两档（磨砂/纯色不透明）
+
+- **状态**：完成（2026-08-06，评审通过）
+- **提交**：`55d0bcc` `feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）` + `c3ad62c` `docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）`
+- **验证**：npm test 56/56；npm run test:e2e 83/83（含「玻璃两档」）；npm run test:visual 18/18（暗色 9 张重生成，亮色像素级不变）；npm run build 通过
+- **实现**：defaults.js `glass.blurEnabled: true`；apply.js 写 `--glass-enabled` + `root.dataset.glass`；themes.css `--surface-solid`（light `#f8f9fb` / dark `#14161c`）；app-main.css 表面（nav-l/nav-r/pages/card + 手机 stack/stack-page/dock）接玻璃 + `:root[data-glass="off"]` 降级纯色；定制器「玻璃材质」组 pre 加玻璃磨砂开关（`glassSwitchRow`，saveConfig→applyConfig 链路，syncUI 同步）；apply 单测 2 新用例（真实 root 风格）+ e2e 玻璃两档（真实开关 + reload 持久化）
+- **简报/报告**：docs/superpowers/sdd/task-B2-1-brief.md / task-B2-1-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
+- **Important deferred → B2 最终评审**：I-1 暗色表面双层层叠半透明 `--glass-bg` 明显加深（brief 字面指令的必然结果，评审判定非本任务缺陷）；B2-2 装饰背景层落地后再确认暗色观感
+- **Minor 留收尾**：① M-1 `data-glass=off` 不覆盖标题栏（`.c-titlebar` backdrop-filter 与 nav-wheel 遮罩渐变仍半透明）——不在 brief 表面清单内，不构成规格违背，最终评审定边界；② M-2 玻璃开关行结构与动效开关不一致（省略 `.cust-switch-wrap` 包裹层，点整行触发）——功能正确，建议与 motion 行统一；③ M-3 `--glass-enabled` 当前无 CSS 消费者（brief 明示写入 + 测试锁定，spec §3.1 Tauri 窗口透明度可能消费）；④ M-4 手机形态降级无 e2e 覆盖——brief Step 7 未要求，最终评审补断言或豁免
+
 ## 执行状态
 
-- Task B2-1 玻璃材质两档：已完成 55d0bcc（磨砂 backdrop-filter / 纯色不透明降级，测试全绿）
+- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
 - Task B2-2 浏览器装饰背景层：待执行
 - Task B2-3 导航图标四项增强：待执行
 - 最终整体评审 + 合并 main：待执行
