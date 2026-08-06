@@ -1,0 +1,476 @@
+# Review package: e07a305..HEAD
+
+## Commits
+8e83e7f docs: B2-3 导航图标四项增强执行留痕（报告 + 进度台账）
+670396c feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）
+
+## Files changed
+ docs/superpowers/sdd/progress-b2.md                |  14 ++-
+ docs/superpowers/sdd/task-B2-3-brief.md            |  99 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B2-3-report.md           |  68 ++++++++++++++
+ src/components/icon/icon.js                        |  10 ++-
+ src/components/navigation-wheel/nav-wheel.css      |  14 ++-
+ src/components/navigation-wheel/nav-wheel.js       |  22 ++++-
+ tests/e2e/app-shell.spec.js                        |  13 +++
+ .../app-main-dark-amber-chromium-win32.png         | Bin 126675 -> 129917 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 124184 -> 127755 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 131193 -> 134377 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 67804 -> 71011 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 69815 -> 72731 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 57021 -> 60081 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 137320 -> 157871 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 136107 -> 156098 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 140259 -> 160017 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 86541 -> 104920 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 87424 -> 106592 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 80454 -> 97479 bytes
+ tests/unit/icon.test.js                            |  12 +++
+ 20 files changed, 241 insertions(+), 11 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
+index 980147e..d4f12bd 100644
+--- a/docs/superpowers/sdd/progress-b2.md
++++ b/docs/superpowers/sdd/progress-b2.md
+@@ -30,16 +30,28 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
+ - **状态**：完成（2026-08-06，待评审）
+ - **提交**：见 task-B2-2-report.md 文末
+ - **验证**：npm test 56/56；npm run test:e2e 84/84（含「背景层」用例；首轮 smoke 冷启动超时偶发，非因果，复跑 84/84）；npm run test:visual 18/18（18 张重生成）；npm run build 通过
+ - **实现**：app-main.css `.app-main__backdrop`（`position:fixed; inset:0; z-index:-1; pointer-events:none`，画在 canvas 之上、壳内容之下，玻璃表面模糊到它）+ 三预设 `data-backdrop="gradient|geo|grid"`（`--backdrop-bg`，brief 字面）+ `[data-tauri="1"]` 透明；app-main.js 模板设默认 gradient + 首个子元素 backdrop + Tauri 探测写 data-tauri + 外观分区挂载注入「背景装饰」3 预设按钮（会话内纯 UI 态，不进 store；`.cust-group` count 6 不受影响）；partitions.css 分段按钮样式（paint-only 过渡）。一处必要偏差：`background-size` 不继承，网格平铺尺寸补在 `.app-main__backdrop` 上（brief 原行保留）
+ - **简报/报告**：docs/superpowers/sdd/task-B2-2-brief.md / task-B2-2-report.md
+ - **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
+ - **Important deferred → B2 最终评审**：I-1 暗色主题背景层光晕覆盖广（`--accent-200/300` 浅档 + `--surface-solid` 近黑，max 通道差 ≤52）——brief 字面 CSS 必然结果，与 B2-1 I-1 同题，最终评审确认观感
+ - **Minor 留收尾**：① M-1 手机形态无背景装饰选择 UI（桌面挂载注入，手机页面栈重建未注入；背景层默认 gradient 仍渲染）——brief 未要求，最终评审补断言或豁免；② M-2 Tauri 下背景层透明但「背景装饰」小节仍可见（功能无意义 UI，brief 未要求隐藏）；③ M-3 `background-size: 40px 40px` 在 `.app-main` 上为死 CSS（保留仅溯源，功能由 `.app-main__backdrop` 承担）；④ M-4 选择器样式落 partitions.css（brief 指定该文件，文件归属略偏）
+ - **评审独立验证**：paint 层级成立（html 无背景规则、body `--glass-bg` 传播为 canvas 背景、`.app-main` 不建 stacking context → backdrop z-index:-1 画 canvas 之上/壳内容之下，玻璃表面确会模糊到它）；`overflow:hidden` 不裁剪 fixed；两处声明偏差（grid background-size 补子元素、手机无切换 UI）均合理且已披露
+ 
++## Task B2-3: 导航图标四项增强
++
++- **状态**：完成（2026-08-06，待评审）
++- **提交**：见 task-B2-3-report.md 文末
++- **验证**：npm test 58/58；npm run test:e2e 85/85（含「图标分级」用例；首轮/中间轮若干冷启动与 data-display 超时偶发，隔离复跑与终跑全绿，非因果）；npm run test:visual 18/18；npm run build 通过
++- **实现**：icon.js `icon(name, size = 18, stroke = 1.8)` 第三参（默认 1.8 向后兼容）；nav-wheel.js 模板 item0 初始 active + 24px/2.2，其余 20px/1.8，select 捕获 prev 并对前后两项重渲染（`renderItemIcons` 原地改 svg width/height/stroke-width 属性）；nav-wheel.css brief Step 7 字面（40px 圆角衬底 hover/active 显、`--text-3`→`--text-2` 提亮、active accent + accent-100 衬底、glow scale(.8)→(1) 分层，过渡仅 color/background 与 transform/opacity）；setFocal 逐字不动
++- **简报/报告**：docs/superpowers/sdd/task-B2-3-brief.md / task-B2-3-report.md
++- **评审**：待评审
++- **一处必要偏差（已披露）**：brief Step 6 建议「重设 innerHTML」→ 改为「原地改 svg 属性」。原因：pointerup 内同步替换 innerHTML 移除 mousedown 目标 → Chromium 抑制后续 click 派发（实测 5 个 e2e 回归：mobile-nav 3 + app-shell 收起通道二/设置模式退出轮回归），破坏依赖 click 的 dock 推入/左窗 toggle。原地属性变更实现相同分级 + 相同 e2e 断言（svg width 24>20），零副作用
++- **视觉基线**：app-main（6）+ components-partition（6）重生成（解码比对确认差异为左窗图标栏与组件分区 nav-wheel 演示实例的图标/衬底/光晕局部变化）；motion-partition 6 张字节不变（无全局渲染回归）
++- **Minor 留收尾（初评候选）**：① nav-wheel 挂载起 item0 即 `--active`（组件分区演示实例初始即高亮，基线随之变化——brief 预期，观感交最终评审）；② hover 时 active 项衬底被 `:hover` 规则覆盖为 `--surface-hover`（brief 字面 CSS 的选择器优先级结果，active+hover 态观感交最终评审）
++
+ ## 执行状态
+ 
+ - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
+ - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
+-- Task B2-3 导航图标四项增强：待执行
++- Task B2-3 导航图标四项增强：✅ 完成（待评审）
+ - 最终整体评审 + 合并 main：待执行
+diff --git a/docs/superpowers/sdd/task-B2-3-brief.md b/docs/superpowers/sdd/task-B2-3-brief.md
+new file mode 100644
+index 0000000..8dc7a6a
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-3-brief.md
+@@ -0,0 +1,99 @@
++# Task B2-3: 导航图标四项增强
++
++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
++- **视觉基线会变**：导航图标变化改变 `app-main-*.png` 与 `components-partition-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
++
++## Files
++
++- Modify: `src/components/navigation-wheel/nav-wheel.css`（衬底/光晕/颜色/尺寸）
++- Modify: `src/components/navigation-wheel/nav-wheel.js`（active 项图标尺寸/粗细分级）
++- Modify: `src/components/icon/icon.js`（加 stroke-width 参数或 active 变体）
++- Modify: `src/app/app-main.css`（应用壳图标栏微调，如需）
++- Modify: `tests/unit/geometry.test.js`（如需）/ `tests/e2e/nav-wheel.spec.js` 迁移后所在 spec
++- Modify: `tests/e2e/visual-regression.spec.js`（app-main/components-partition 基线重生成）
++
++## Interfaces
++
++- Consumes: `icon(name, size)`（icon.js，现固定 stroke-width 1.8）；`.c-navwheel__item/.c-navwheel__icon/.c-navwheel__glow`（nav-wheel.css）
++- Produces: `icon(name, size, stroke?)` 第三参可选（默认 1.8 向后兼容）；`mountNavWheel` 渲染 active 项用 `icon(it.icon, 24, 2.2)`、非 active `icon(it.icon, 20)`；CSS 加 `.c-navwheel__icon-chips`（衬底）与增强 `.c-navwheel__glow`（选中光晕分层）；颜色 `--text-3`→`--text-2` 提亮 + active accent
++
++## Steps
++
++### Step 1: 写失败单测（icon 或新增 icon.test.js）
++
++```js
++import { icon } from '../../src/components/icon/icon.js';
++it('icon 支持 stroke-width 参数', () => {
++  const svg = icon('home', 20, 2.2);
++  expect(svg).toContain('stroke-width="2.2"');
++});
++it('默认 stroke-width 1.8（向后兼容）', () => {
++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npm test`
++Expected: FAIL（icon 无 stroke 参数）
++
++### Step 3: icon.js 加 stroke 参数
++
++`export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
++
++### Step 4: 写失败 e2e（应用壳导航图标分级）
++
++```js
++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
++  const activeW = await activeIcon.getAttribute('width');
++  const inW = await inactiveIcon.getAttribute('width');
++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
++});
++```
++
++### Step 5: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "图标分级"`
++Expected: FAIL（两图标等宽 22）
++
++### Step 6: nav-wheel.js 分级渲染 + 重挂载
++
++`mountNavWheel` 渲染 item 时按初始 active 决定尺寸；`select(i)` 更新后重渲染该项图标（或 CSS class 控制——若用 CSS 无法改 svg 宽高属性，需 JS 重渲染 icon HTML）。实现建议：`itemEls.forEach` 时据 `--active` 类重设 `.c-navwheel__icon` innerHTML = `icon(it.icon, isActive ? 24 : 20, isActive ? 2.2 : 1.8)`。在 `select()` 内对前后两个 item 重渲染图标。**保持 setFocal 的 transform/opacity 逻辑不受影响**（图标尺寸变化是静态重渲染，非动画）。
++
++### Step 7: nav-wheel.css 衬底/光晕/颜色
++
++```css
++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
++.c-navwheel__glow { opacity: 0; transform: scale(.8);
++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
++```
++
++衬底 = `.c-navwheel__icon` 40px 圆角底（选中/hover 显）；光晕增强 = glow scale 分层（只动 transform/opacity，红线合规）。应用壳左右窗纯图标栏（`.app-main__nav-l/.nav-r .c-navwheel__name { display: none }`）——衬底占 40px 栏宽 64px 内可容纳。
++
++### Step 8: 全量回归 + 基线重生成
++
++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线重生成（app-main/components-partition 图标变化）。
++Expected: 全绿
++
++### Step 9: 提交
++
++```bash
++git add src/components/navigation-wheel/nav-wheel.css src/components/navigation-wheel/nav-wheel.js src/components/icon/icon.js src/app/app-main.css tests/unit/icon.test.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）"
++```
+diff --git a/docs/superpowers/sdd/task-B2-3-report.md b/docs/superpowers/sdd/task-B2-3-report.md
+new file mode 100644
+index 0000000..16c1702
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-3-report.md
+@@ -0,0 +1,68 @@
++# Task B2-3 报告：导航图标四项增强
++
++- 分支：`feature/b2-visual`
++- 状态：DONE（1 处必要实现偏差已披露，见「与 brief 的偏差」）
++- 提交：见文末「提交」
++
++## 实现说明
++
++### icon.js：第三参 stroke-width
++
++- `export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
++- 默认 1.8 向后兼容，既有 `icon(name, size)` 调用点零改动（全量回归零冲击佐证）。
++- 头注释同步补充 stroke 参数契约。
++
++### nav-wheel.js：active 项 24px/2.2 分级 + select 重渲染
++
++- 模板按初始 active（索引 0）分级：item0 `icon(it.icon, 24, 2.2)` + `--active` 类；其余 `icon(it.icon, 20)`（默认 stroke 1.8）。初始渲染即带 `--active` 类（此前无任何 active 项，直到首次 select）—— brief Step 4 e2e 在初始加载即断言 active 项 svg 宽度，必须如此；且与宿主初始逻辑态一致（应用壳 `state.moduleId='home'` = MODULES[0]）。
++- `select(i)` 内**捕获旧 active**（`const prev = active`，赋值前），class toggle 后调 `renderItemIcons(prev, i)` 对前后两项重渲染。
++- `renderItemIcons(...indexes)`：据 `--active` 类将 `.c-navwheel__icon svg` 的 `width/height/stroke-width` 置为 24/24/2.2 或 20/20/1.8。
++- **setFocal 逐字不动**：图标尺寸变化为静态重渲染（svg 属性），绝不触碰 item 上的 `style.transform/opacity`——动画红线合规。
++
++### nav-wheel.css：衬底 / 提亮 / 光晕分层（brief Step 7 字面）
++
++- `.c-navwheel__icon`：40px 圆角衬底（`width/height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1))`）+ 颜色提亮 `--text-3`→`--text-2`；`transition` 仅 color/background（paint-only 豁免）。
++- `.c-navwheel__item:hover .c-navwheel__icon`：`background: var(--surface-hover); color: var(--text-1)`（hover 显衬底）。
++- `.c-navwheel__item--active .c-navwheel__icon`：`color: var(--accent); background: var(--accent-100)`（选中显衬底）。
++- `.c-navwheel__glow`：`transform: scale(.8)` + `transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out)`；active 时 `opacity: 1; transform: scale(1)`（光晕分层，只动 transform/opacity，红线合规）。原有 `position/inset/background/pointer-events` 保留。
++- `src/app/app-main.css` 无需改动（brief 列「如需」；衬底 40px 在 64px 栏宽内可容纳，既有纯图标栏规则直接生效）。
++
++## 测试证据
++
++| 步骤 | 命令 | 结果 |
++|---|---|---|
++| 红（单测） | `npx vitest run tests/unit/icon.test.js` | 1 FAIL（`stroke-width="2.2"` 缺失）+ 1 PASS |
++| 红（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | FAIL（无 active 项，locator 超时） |
++| 绿（单测） | `npx vitest run tests/unit/icon.test.js` | 2/2 PASS |
++| 绿（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | 1/1 PASS |
++| 单测全量 | `npm test` | 58/58 PASS（10 文件） |
++| e2e 全量（终跑） | `npm run test:e2e` | 85/85 PASS |
++| 视觉基线重生成 | `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS（app-main 6 + components-partition 6 重写；motion 6 字节不变） |
++| 视觉 | `npm run test:visual` | 18/18 PASS |
++| 构建 | `npm run build` | PASS |
++
++### 视觉基线差异解码比对（重生成前）
++
++用自写 PNG 解码脚本（Python stdlib zlib）对 expected/actual 差分，确认差异**确由图标增强引起**：
++
++- **app-main**：diff 为左侧窄竖带（列 3~7/100），自上而下贯穿 7 个导航项 —— 左窗纯图标栏 22px→20px 常规 / item0 24px active + accent 高亮 + 衬底/光晕。亮色 125~250 px（0.01%），暗色 ~3300 px（accent-100 衬底在暗色下对比更高）。
++- **components-partition**：diff 为顶部水平带 —— 组件分区「组 1 核心导航」的 NavigationWheel 8 项演示实例（item0 现为 active：24px 图标 + accent 衬底 + 光晕 + 名称 accent）。亮色 766~940 px，暗色 ~19k px（衬底/光晕暗色下高对比）。
++- **motion-partition：0 diff**（全 6 张字节不变）—— 证明无全局渲染回归。
++- 无结构性位移（无硬边/元素错位），全部为图标/衬底/光晕的局部颜色变化。
++
++## 遇到的问题与判断
++
++1. **（重要）brief 建议的 innerHTML 重渲染在 pointerup 中破坏宿主 click（必要偏差）**：brief Step 6 建议「重设 `.c-navwheel__icon` innerHTML」。初版照此实现后，全量 e2e 出现 5 个回归：mobile-nav「点击应用→目录页推入」「点击目录项→详情页」「返回回退」+ app-shell「收起通道二」「设置模式退出后右窗目录轮回归」。排查（临时 debug spec 捕获 document click）确认：**pointerup 内同步替换 innerHTML 会移除 mousedown 目标 svg → Chromium 抑制后续 click 派发**（`window.__clicks` 为空数组）。而应用壳 dock 推入 / 左窗 toggle 收起恰恰依赖 pointerup 后的 click 收尾。**修复**：`renderItemIcons` 改为**原地改 svg `width/height/stroke-width` 属性**（不替换 innerHTML）—— 分级结果与 e2e 断言（svg width 属性 24>20）完全一致，svg 保持 connected，click 正常派发。修复后 5 个回归全绿（debug spec 证实 click 事件 + stack-page 2 页均正常）。setFocal 逐字不受影响。
++2. **初始 `--active` 类**：nav-wheel 现于挂载时即对 item0 加 `--active`（此前挂载无 active 项）。此为实现 brief Step 4 e2e（初始加载断言 active 项）与 Step 6（「按初始 active 决定尺寸」）的必要行为，且与宿主初始逻辑态一致。副作用：组件分区演示实例 item0 初始即 active（components-partition 基线随之重生成，brief 预期）。
++3. **e2e 全量首轮偶发超时（非因果，既有）**：首轮全量曾出现 smoke/壳结构/data-display 等若干超时失败，均在同一运行内复跑通过；data-display「进度条达到目标值」隔离复跑 3/3 PASS、全量终跑 85/85 PASS。与 B2-2 留痕「首轮 smoke 冷启动超时偶发」同源（Vite 冷启动/全量负载下 5s 等待边界），本改动不新增动态 import 链，非因果。
++4. **视觉基线重生成流程**：`--update-snapshots` 只在差异超阈值时改写，本任务 12 张（app-main/components-partition）超出即重写，motion 6 张阈值内匹配不动。
++
++## 与 brief 的偏差
++
++- **唯一偏差**：Step 6 建议的「重设 innerHTML」改为「原地改 svg 属性」。理由见「问题 1」——innerHTML 替换在 pointerup 内会抑制 Chromium click 派发，破坏应用壳 dock 推入/左窗 toggle 等依赖 click 的宿主行为（实测 5 个 e2e 回归）。原地属性变更实现相同分级视觉与相同 e2e 断言（svg width 属性 24 vs 20），零副作用。功能规格（active 24/2.2、非 active 20/1.8、select 重渲染、setFocal 不动）逐条满足。
++- 其余（Step 1/3/4/5/7 测试代码与 CSS 片段）均按 brief 字面落地。
++
++## 提交
++
++- 改动文件：`src/components/icon/icon.js`、`src/components/navigation-wheel/nav-wheel.js`、`src/components/navigation-wheel/nav-wheel.css`、`tests/unit/icon.test.js`（新增）、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（12 张重生成：app-main 6 + components-partition 6）、`docs/superpowers/sdd/task-B2-3-brief.md`（纳入留痕）、`docs/superpowers/sdd/task-B2-3-report.md`（本报告）、`docs/superpowers/sdd/progress-b2.md`（台账）。
++- 未纳入：`src-tauri/Cargo.toml`（工作树既有行尾噪声，非本任务改动，见 ledger base 注记）；`src/app/app-main.css`（brief 列「如需」，实际无需改动）。
+diff --git a/src/components/icon/icon.js b/src/components/icon/icon.js
+index 27ed7f5..9e4e43a 100644
+--- a/src/components/icon/icon.js
++++ b/src/components/icon/icon.js
+@@ -1,12 +1,14 @@
+-// Lucide 风格图标集（24×24 viewBox，stroke-width 1.8，round cap/join）
+-// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）
++// Lucide 风格图标集（24×24 viewBox，stroke-width 默认 1.8，round cap/join）
++// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）。
++// icon(name, size = 18, stroke = 1.8)：stroke 为第三参可选（B2-3 导航图标 active 项用 2.2 加粗分级），
++// 默认 1.8 向后兼容，既有 icon(name, size) 调用点零改动。
+ const PATHS = {
+   // Task 5 已有
+   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+   monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+   // Task 6 新增（Interfaces 契约 47 个）
+   palette: '<circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h2c2.9 0 5.3-2.4 5.3-5.3C21.3 6.3 17.2 2 12 2z"/>',
+   box: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/>',
+   sparkles: '<path d="M9.94 15.5a2 2 0 0 0-1.1 1.1l-.6 1.8a1 1 0 0 1-1.87 0l-.6-1.8a2 2 0 0 0-1.1-1.1l-1.8-.6a1 1 0 0 1 0-1.87l1.8-.6a2 2 0 0 0 1.1-1.1l.6-1.8a1 1 0 0 1 1.87 0l.6 1.8a2 2 0 0 0 1.1 1.1l1.8.6a1 1 0 0 1 0 1.87z"/><path d="M20 3.5l.75 2.25L23 6.5l-2.25.75L20 9.5l-.75-2.25L17 6.5l2.25-.75z"/>',
+   layout: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
+@@ -50,15 +52,15 @@ const PATHS = {
+   'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+   'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+   command: '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
+   'mouse-pointer': '<path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/>',
+   drag: '<circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>',
+   // Task 19 场景模板 2 新增（主窗口 8 模块导航图标）
+   list: '<path d="M3 6h.01M3 12h.01M3 18h.01"/><path d="M8 6h13M8 12h13M8 18h13"/>',
+   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+ };
+-export function icon(name, size = 18) {
++export function icon(name, size = 18, stroke = 1.8) {
+   return `<svg class="c-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+-    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
++    stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"
+     aria-hidden="true">${PATHS[name] ?? PATHS.monitor}</svg>`;
+ }
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index bd017f5..38d6e57 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -31,25 +31,31 @@
+   flex-shrink: 0;
+   display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   cursor: pointer; will-change: transform, opacity;
+   transition: color var(--dur-fast) var(--ease-out); }
+ .c-navwheel__item:hover { color: var(--text-1); }
+ .c-navwheel__item--active { color: var(--accent); }
+ 
+ .c-navwheel__glow { position: absolute; inset: 0; border-radius: inherit;
+   background: radial-gradient(120% 120% at 50% 50%, var(--accent-100) 0%, transparent 70%);
+-  opacity: 0; pointer-events: none; }
+-.c-navwheel__item--active .c-navwheel__glow { opacity: 1; }
++  opacity: 0; transform: scale(.8); pointer-events: none;
++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
+ 
+-.c-navwheel__icon { display: grid; place-items: center; color: var(--text-3); }
+-.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); }
++/* B2-3 图标增强：40px 圆角衬底（hover/active 显）+ 提亮 --text-2 + active accent。
++   衬底/光晕过渡只走 color/background（paint-only 豁免）与 transform/opacity（红线合规）。 */
++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
+ 
+ /* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
+ .c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
+   clip-path: inset(0 100% 0 0); opacity: 0;
+   transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
+ .c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
+ 
+ /* —— horizontal 渲染层（Task A6，闭环 A2 Minor ①）——
+    仅当 mountNavWheel 收到 direction:'horizontal' 时列表根加 .c-navwheel__list--horizontal。
+    vertical 既有规则逐字节不动（docs 84 e2e + 36 基线 + app-shell 14 零冲击）。
+diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
+index f203980..f223508 100644
+--- a/src/components/navigation-wheel/nav-wheel.js
++++ b/src/components/navigation-wheel/nav-wheel.js
+@@ -20,23 +20,23 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+         pointer: 'clientX', prev: 'ArrowLeft', next: 'ArrowRight' }
+     : { size: 'height', margin: 'marginTop', len: 'clientHeight', scroll: 'scrollTop',
+         offset: 'offsetTop', translate: 'translateY', padBefore: 'paddingTop', padAfter: 'paddingBottom',
+         pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
+ 
+   const list = root.querySelector('.c-navwheel__list') ?? root;
+   // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
+   // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
+   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
+   list.innerHTML = items.map((it, i) => `
+-    <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
++    <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+       <div class="c-navwheel__glow"></div>
+-      <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
++      <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
+       <span class="c-navwheel__name">${it.name}</span>
+     </div>`).join('');
+   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
+   // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
+   // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
+   const holder = root.closest('.navwheel') ?? root.parentElement;
+   if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
+     holder.insertAdjacentHTML('beforeend',
+       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
+   }
+@@ -94,23 +94,41 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+   }
+   function onScroll() {
+     cancelAnimationFrame(raf);
+     raf = requestAnimationFrame(setFocal);
+     // 滚动停止 150ms → 吸附并选中最近项（规格 §8.3：滚轮停在两项之间时不得悬置）。
+     // 拖拽中（pointerId 非空）跳过：吸附由 pointerup/惯性/pointercancel 接管，
+     // 且慢拖拽停顿 >150ms 时不会中途吸附与手指打架；pointerdown 已清掉滚轮残留定时器。
+     if (pointerId !== null) return;
+     scheduleSnap();
+   }
++  // B2-3 图标分级：active 项 24px/2.2 加粗、非 active 20px/1.8（icon(name, size, stroke) 第三参）。
++  // 分级落地为「原地改 svg 宽高/粗细属性」而非替换 .c-navwheel__icon innerHTML —— 在 pointerup
++  // 内同步替换会移除 mousedown 目标，Chromium 将抑制后续 click 派发（实测），破坏依赖 click 的
++  // 宿主行为（应用壳 dock 推入/左窗 toggle 靠 click 收尾）。尺寸变化是静态重渲染，绝不动 item
++  // 上的 style.transform/opacity —— setFocal 逐字不变（动画红线）。
++  function renderItemIcons(...indexes) {
++    indexes.forEach((idx) => {
++      if (idx < 0 || idx >= itemEls.length) return;
++      const el = itemEls[idx];
++      const isActive = el.classList.contains('c-navwheel__item--active');
++      const svg = el.querySelector('.c-navwheel__icon svg');
++      svg.setAttribute('width', isActive ? 24 : 20);
++      svg.setAttribute('height', isActive ? 24 : 20);
++      svg.setAttribute('stroke-width', isActive ? 2.2 : 1.8);
++    });
++  }
+   function select(i, animate = true) {
++    const prev = active; // 捕获旧 active，供切换后对前后两项重渲染图标分级
+     active = i;
+     itemEls.forEach((el, idx) => el.classList.toggle('c-navwheel__item--active', idx === i));
++    renderItemIcons(prev, i);
+     onChange(items[i]);
+     if (animate) animateScrollTo(scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP);
+   }
+   function animateScrollTo(target) {
+     const start = list[AXIS.scroll], diff = target - start;
+     if (diff === 0) return; // 已在目标位，无需动画
+     const durRaw = parseFloat(getComputedStyle(root).getPropertyValue('--dur-base'));
+     // reduced-motion（--dur-base: 0ms）→ 直接跳转；|| 200 只兜底未定义，不能把 0 兜成 200ms
+     if (durRaw === 0) { list[AXIS.scroll] = target; setFocal(); return; }
+     const dur = durRaw || 200;
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index ca23d28..e17e77c 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -358,10 +358,23 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+   await page.goto('/?mode=app');
+   const backdrop = page.locator('.app-main__backdrop');
+   await expect(backdrop).toBeVisible();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+   // 外观分区切换背景预设
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+ });
++
++// —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
++// icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
++// select 切换时对前后两 item 重渲染 .c-navwheel__icon innerHTML；svg width 属性即尺寸分级。
++
++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
++  const activeW = await activeIcon.getAttribute('width');
++  const inW = await inactiveIcon.getAttribute('width');
++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 4836874..ba54f63 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index ee21397..0d3e4cb 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index 4adab3b..ea2c191 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index a282942..8bff8e6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index b0ab533..ca7ee8d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index a3605e3..f528a6f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+index 31b21f7..602db31 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+index 288eb60..b1771ec 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+index 1b4c299..72d356c 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+index 28bc233..6faf271 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+index f2abdb5..586e1d9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+index f396607..5e56a0d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/unit/icon.test.js b/tests/unit/icon.test.js
+new file mode 100644
+index 0000000..624818a
+--- /dev/null
++++ b/tests/unit/icon.test.js
+@@ -0,0 +1,12 @@
++import { it, expect } from 'vitest';
++import { icon } from '../../src/components/icon/icon.js';
++
++// B2-3：icon 支持第三参 stroke-width（导航图标四项增强——active 项 2.2 加粗分级）。
++// 默认 1.8 保持既有调用点向后兼容（现有 icon(name, size) 调用零改动）。
++it('icon 支持 stroke-width 参数', () => {
++  const svg = icon('home', 20, 2.2);
++  expect(svg).toContain('stroke-width="2.2"');
++});
++it('默认 stroke-width 1.8（向后兼容）', () => {
++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
++});
