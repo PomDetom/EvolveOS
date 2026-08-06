@@ -70,3 +70,25 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
 - Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）
 - 最终整体评审 + 合并 main：✅ 最终评审 Ready to merge（0 Critical/Important，唯一建议修复已闭环）→ 待合并 main
+
+## 返工：玻璃 → 亚克力（2026-08-06，用户验收不合格后重启）
+
+- **原因**：B2 效果用户验收不合格——① 材质语言要 Windows 11 亚克力（非玻璃质感，整个材质体系换）；② 图标选中态光晕与 icon 叠加看不清，去光晕只留衬底。
+- **规格**：docs/superpowers/specs/2026-08-06-app-shell-b2-acrylic-rework-design.md（用户确认）
+- **计划书**：docs/superpowers/plans/2026-08-06-app-shell-b2-acrylic-rework.md（提交 cd92afa）
+- **返工 BASE**：cd92afa（分支 feature/b2-visual，未合并 main；B2-1/2/3 原交付保留在分支历史中，返工叠加其上）
+- **任务**：R1 材质令牌+噪点链路 → R2 表面应用+去高光+闭环M-1 → R3 背景层柔和补色 → R4 图标去光晕 → R5 自定义器+措辞 → 用户视觉验收 → 最终评审 → merge main
+- **命名边界**：--glass-*/data-glass/--glass-enabled 保留原名（仅换材质值与 UI 措辞）
+
+## 执行状态
+
+- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
+- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）→ **返工 R3 重调预设**
+- Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ **返工 R4 去光晕**
+- 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
+- Task R1 亚克力材质令牌 + 噪点链路：待执行
+- Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：待执行
+- Task R3 背景层预设柔和补色：待执行
+- Task R4 图标选中态去光晕：待执行
+- Task R5 自定义器调整 + 措辞同步：待执行
+- R-验收 用户视觉验收 + 最终评审 + 合并：待执行
