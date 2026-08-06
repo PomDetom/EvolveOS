@@ -13,12 +13,13 @@ input, textarea, select { font: inherit; color: inherit; }
 ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
 
-/* 玻璃面板工具类：外壳级材质（rgba 由主题 RGB 基准色 + 可配置透明度合成） */
+/* 玻璃面板工具类：外壳级材质（rgba 由主题 RGB 基准色 + 可配置透明度合成；
+   B2-R2 亚克力：表面 backdrop-filter 增饱和 + 提亮，去除 inset 反光边缘） */
 .glass {
   background: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
   border: 1px solid rgba(255 255 255 / var(--glass-border-opacity, 0.08));
-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  box-shadow: var(--glass-shadow);
 }
 
 /* 焦点环（所有可聚焦元素）—— 用 --accent 而非固定档，切换 6 套主题色后焦点环跟随 */

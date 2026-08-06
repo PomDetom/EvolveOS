@@ -2,13 +2,12 @@
   border-radius: calc(var(--radius-xl) * var(--radius-scale, 1));
   overflow: hidden; border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+  box-shadow: var(--glass-shadow);
   transition: box-shadow var(--dur-base) var(--ease-out);
   will-change: transform; }
 /* 置顶：accent 高亮边框（0 0 0 1px 描边，不改布局） */
-.c-fwin--pinned { box-shadow: 0 0 0 1px var(--accent-300), var(--glass-shadow),
-  var(--shadow-inset-highlight); }
+.c-fwin--pinned { box-shadow: 0 0 0 1px var(--accent-300), var(--glass-shadow); }
 
 .c-fwin__titlebar { display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-2) var(--space-3); cursor: grab; user-select: none;

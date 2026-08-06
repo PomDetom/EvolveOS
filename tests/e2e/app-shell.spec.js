@@ -350,6 +350,19 @@ test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + �
   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
 });
 
+// —— B2-R2 亚克力材质（表面增饱和模糊 + 噪点层）——
+// 表面 backdrop-filter 消费亚克力配方：blur + saturate(--acrylic-saturate=1.8) + brightness；
+// .app-main::after 噪点覆盖层（SVG data-URI 平铺）——pointer-events:none 不挡交互。
+
+test('亚克力材质：表面增饱和模糊 + 噪点层存在', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const filter = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+  expect(filter).toContain('saturate(1.8)');
+  expect(filter).toContain('brightness(');
+  const noise = await page.locator('.app-main').evaluate((el) => getComputedStyle(el, '::after').backgroundImage);
+  expect(noise).toContain('data:image/svg+xml');
+});
+
 // —— B2-2 浏览器装饰背景层（模糊对象）——
 // 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
 // Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。

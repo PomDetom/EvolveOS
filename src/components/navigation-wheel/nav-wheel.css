@@ -84,6 +84,10 @@
   background: linear-gradient(var(--glass-bg), transparent); }
 .c-navwheel__mask--bottom { top: auto; bottom: 56px;
   background: linear-gradient(transparent, var(--glass-bg)); }
+/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：遮罩渐变底色换纯色实底，
+   避免半透明 --glass-bg 叠在纯色降级表面上的透叠发暗 */
+:root[data-glass="off"] .c-navwheel__mask { background: linear-gradient(var(--surface-solid), transparent); }
+:root[data-glass="off"] .c-navwheel__mask--bottom { background: linear-gradient(transparent, var(--surface-solid)); }
 
 /* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
    此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */

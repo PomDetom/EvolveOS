@@ -43,12 +43,24 @@
 /* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
 .app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
 
+/* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
+   .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳
+   （含右窗轮 —— 同为 --z-float、DOM 序靠后故在上）；pointer-events:none 不挡交互；
+   静态层（不参与动画，红线）；data-glass="off" 纯色降级时隐去噪点。 */
+.app-main::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--acrylic-noise); background-size: 120px 120px;
+  opacity: var(--noise-opacity, 0.04);
+  z-index: var(--z-float); /* 覆盖右窗轮（同为 --z-float，DOM 序靠后故在上）；pointer-events:none 不挡交互 */
+}
+:root[data-glass="off"] .app-main::after { opacity: 0; }
+
 .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
 
 /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
 .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
   border-right: 1px solid var(--glass-border); }
 .app-main__nav-l .c-navwheel__list { inset: 0; }
 /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
@@ -64,7 +76,7 @@
   position: relative; z-index: var(--z-float);
   display: flex; flex-direction: column;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
   border-right: 1px solid var(--glass-border);
   transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
   transition: transform var(--dur-push) var(--ease-spring),
@@ -89,7 +101,7 @@
 .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
   padding: var(--space-6);
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */ }
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
 .app-main__page { display: none; max-width: 720px; }
 .app-main__page--active { display: block; }
 .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
@@ -106,7 +118,9 @@
 
 /* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
 .app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
-.app-main__card { background: var(--glass-bg); border: 1px solid var(--glass-border);
+.app-main__card { background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+  border: 1px solid var(--glass-border);
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
 .app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-3); }
@@ -180,9 +194,11 @@
   /* —— 全屏页面栈 —— */
   .app-main__stack { display: block; grid-column: 1; grid-row: 2;
     position: relative; min-height: 0; overflow: hidden;
-    background: var(--glass-bg); }
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
   .app-main__stack-page { position: absolute; inset: 0; display: flex;
-    flex-direction: column; overflow-y: auto; background: var(--glass-bg); }
+    flex-direction: column; overflow-y: auto; background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
   .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
   @keyframes app-main-stack-in {
     from { transform: translateX(100%); opacity: 0; }
@@ -222,7 +238,8 @@
   /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
   .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
     display: flex; align-items: center;
-    border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
+    border-top: 1px solid var(--glass-border); background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
   .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
   .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
   .app-main__dock .c-navwheel__name { display: none; }

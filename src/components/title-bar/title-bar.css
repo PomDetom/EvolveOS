@@ -1,6 +1,9 @@
 .c-titlebar { height: 40px; display: flex; align-items: center;
-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
   user-select: none; }
+/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：标题栏回落纯色不透明，关闭磨砂 */
+:root[data-glass="off"] .c-titlebar { background: var(--surface-solid); backdrop-filter: none; }
 /* 无底部边框：与内容共享玻璃背景，上下无割裂 */
 .c-titlebar__drag { flex: 1; height: 100%; display: flex; align-items: center;
   gap: var(--space-2); padding: 0 var(--space-4); }

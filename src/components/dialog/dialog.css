@@ -5,9 +5,10 @@
   animation: mask-in var(--dur-base) var(--ease-out); }
 .c-dialog { width: 360px; max-width: 90vw; padding: var(--space-5);
   border-radius: calc(var(--radius-lg) * var(--radius-scale, 1));
-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  box-shadow: var(--glass-shadow);
   animation: dialog-in var(--dur-base) var(--ease-spring); }
 @keyframes mask-in { from { opacity: 0; } }
 @keyframes dialog-in { from { transform: scale(0.96) translateY(8px); opacity: 0; } }
