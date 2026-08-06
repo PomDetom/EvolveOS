@@ -69,8 +69,7 @@
 .csettings__field-desc { font-size: var(--font-size-xs); color: var(--text-3); }
 .csettings__field .c-select { margin-top: 2px; }
 
-/* 主题三态：分段按钮组（场景局部类，不与顶栏 .tsw__mode 冲突 —— theme-switcher.spec.js
-   全页定位 .tsw__mode 并 click，strict mode 下不能共存第二份） */
+/* 主题三态：分段按钮组（场景局部类 .csettings__mode；顶栏 theme-switcher 已随 docs 渲染删除） */
 .csettings__modes { display: inline-flex; gap: 2px; padding: 3px;
   border: 1px solid var(--glass-border); border-radius: var(--radius-full);
   background: var(--surface-1); align-self: flex-start; }

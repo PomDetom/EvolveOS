@@ -1,13 +1,13 @@
 // 设置页共享实现（Task A4 提取）：SECTIONS 数据 + 各分区页渲染 + 页面栈包装 + 交互接线。
-// 场景模板（settings-window.js，Task 20）与应用壳设置模式（app-main.js）共用同一实现，
-// 类名 .csettings__* 不变 —— scene-settings.spec 依赖（.csettings / .c-navwheel__item 8 /
+// 应用壳设置模式（app-main.js）使用（Task B1-4 起为唯一宿主；docs 设置场景已随 docs 渲染删除），
+// 类名 .csettings__* 不变 —— e2e 依赖（.csettings / .c-navwheel__item 8 /
 //   .csettings__page--active / .cust-group 6）。
 // 分工：
 // - 纯渲染：SECTIONS / pageBody / renderSettingsPages —— 调用方负责布局容器与导航轮；
-//   外观分区定制器惰性挂载（renderCustomizerGroups）由调用方在首次激活时执行（隔离原因见
-//   settings-window.js 文件头注释：面板与设置页同构类并存会触发 strict mode 冲突）。
+//   外观分区定制器惰性挂载（renderCustomizerGroups）由调用方在首次激活时执行（隔离原因：
+//   定制器面板与设置页同构类并存会触发 strict mode 冲突，故面板仅常驻抽屉、整页形态惰性挂载）。
 // - 交互接线：mountSettingsInteractions(root) —— 主题三态 click→store、动效开关、保存、
-//   快捷键录制、开源链接、开关视觉（场景与应用壳行为一致）。
+//   快捷键录制、开源链接、开关视觉（桌面设置页与手机页面栈行为一致）。
 import { icon } from '../../components/icon/icon.js';
 import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
 import { renderSelect } from '../../components/select/select.js';
@@ -32,7 +32,7 @@ export const SECTIONS = [
 ];
 
 // 应用壳专用：共享 8 分区 + 组件/动效（Task B1-1）。
-// docs 设置场景仍用 SECTIONS（count 8 不变）；组件/动效分区为应用壳内化展示内容，
+// 组件/动效分区为应用壳内化展示内容（B1-4 起 docs 渲染已删除），
 // pageBody 分支返回含 .app-partition 容器（场景不渲染这两 id，仅应用壳触发惰性挂载）。
 export const APP_SECTIONS = [
   ...SECTIONS,
@@ -88,7 +88,7 @@ function generalPage() {
 // —— 外观分区 ——
 
 // 定制器整页形态：占位容器由调用方首次激活时惰性渲染（renderCustomizerGroups），
-// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见 settings-window.js 文件头注释）
+// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见文件头注释）
 function appearancePage() {
   return `
     ${pageHead('外观', '主题定制器整页形态 —— 与右侧抽屉面板共用同一份配置')}

@@ -3,9 +3,6 @@ import './styles/themes.css';
 import './styles/motion.css';
 import './styles/base.css';
 import './styles/layout.css';
-import './demo/token-showcase.css';
-import './demo/component-showcase-full.css';
-import './styles/motion-lab.css';
 import './components/icon/icon.css';
 import './components/button/button.css';
 import './components/input/input.css';
@@ -38,18 +35,14 @@ import './components/hotkey-hint/hotkey-hint.css';
 import './components/float-ball/float-ball.css';
 import './components/hotkey-recorder/hotkey-recorder.css';
 import './components/sidebar-item/sidebar-item.css';
-import './scenes/clipboard-float/clipboard-float.css';
-import './scenes/main-window/main-window.css';
 import './scenes/settings-window/settings-window.css';
 import './styles/customizer.css';
 import { resolveMode } from './app/mode.js';
-import { mountDocsMode } from './docs/docs-mode.js';
 
-// 模式入口（Task A1，规格：模式入口）：resolveMode 纯函数决定当前形态 ——
-// ?mode=app|docs|strip 显式优先；无参数 + Tauri → 'app'；无参数浏览器 → 'docs'；非法值回落 'docs'。
+// 模式入口（Task B1-4，模式简化）：resolveMode 纯函数决定当前形态 ——
+// ?mode=app|strip 显式优先；无参数/非法值 → 'app'（浏览器与 Tauri 一致，docs 渲染已删除）。
 // hasTauri 由本处探测 window.__TAURI__（withGlobalTauri 全局通道，与 window-controls.js 同模式）。
-// docs 同步挂载（渲染逐字节等价，见 src/docs/docs-mode.js）；app/strip 动态 import 占位
-// （app-main.js / strip-main.js 由 Task A3 / Task A5 实现，本任务仅保证 build 可解析）。
+// app/strip 动态 import（docs 展示内容已内化为设置「组件」「动效」分区，见 app-main.js）。
 const mode = resolveMode(
   new URLSearchParams(window.location.search),
   typeof window !== 'undefined' && !!window.__TAURI__,
@@ -57,8 +50,6 @@ const mode = resolveMode(
 
 if (mode === 'app') {
   import('./app/app-main.js').then(({ mountAppMode }) => mountAppMode(document.querySelector('#app')));
-} else if (mode === 'strip') {
-  import('./app/strip-main.js').then(({ mountStripMode }) => mountStripMode());
 } else {
-  mountDocsMode();
+  import('./app/strip-main.js').then(({ mountStripMode }) => mountStripMode());
 }

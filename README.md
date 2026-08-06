@@ -3,13 +3,12 @@
 为多个 Rust Tauri 桌面小应用（剪贴板、密码管理、记账等）提供统一界面的**应用壳**，并沉淀完整设计系统（令牌 / 32 组件 / 主题定制器）作为基础设施。
 纯原生 Web（Vite + HTML/CSS/JS，**零框架零运行时依赖**），组件 = 原生 HTML + CSS 类（BEM `c-` 前缀）+ 渐进增强 JS。
 
-## 三种形态
+## 两种形态
 
 | 形态 | 入口 | 说明 |
 |---|---|---|
-| **应用壳**（主体） | Tauri 桌面自动进入；浏览器 `?mode=app` | 一体式标题栏 + 级联双滑动窗口（左=应用列表 / 右=应用目录或设置目录，纯图标栏）+ 黄金比例锚点（38.2%）+ 右下 FloatBall 悬浮条演示；手机（≤900px）底部横滑应用轮 + 全屏页面栈；模块占位，逐个填充真实小应用 |
-| **FloatStrip 悬浮条** | 浏览器 `?mode=strip` | 独立悬浮条形态：横竖双形态 + 四边磁吸 + 无边框内容优先（与 docs/app 互斥渲染），供独立透明窗口接入 |
-| **docs 文档模式** | 浏览器 `/`（默认） | 设计系统展示页：令牌区 / 32 组件矩阵 / 动效实验室 / 主题定制器 / 场景模板 |
+| **应用壳**（主体） | 浏览器 `/`（默认，与 Tauri 一致）；`?mode=app` 显式 | 一体式标题栏 + 级联双滑动窗口（左=应用列表 / 右=应用目录或设置目录，纯图标栏）+ 黄金比例锚点（38.2%）+ 右下 FloatBall 悬浮条演示；手机（≤900px）底部横滑应用轮 + 全屏页面栈；模块占位，逐个填充真实小应用；设计系统展示已内化为设置「组件」「动效」分区 |
+| **FloatStrip 悬浮条** | 浏览器 `?mode=strip` | 独立悬浮条形态：横竖双形态 + 四边磁吸 + 无边框内容优先（与 app 互斥渲染），供独立透明窗口接入 |
 
 ## 特性
 
@@ -25,7 +24,7 @@
 
 ```bash
 npm install        # 安装依赖（要求 Node ^20.19.0 || >=22.12.0）
-npm run dev        # 开发服务器 (localhost:5173) → 浏览器打开 docs 模式
+npm run dev        # 开发服务器 (localhost:5173) → 浏览器打开应用壳模式
 npm run tauri:dev  # 桌面窗口运行（应用壳模式）
 ```
 
@@ -45,19 +44,18 @@ npm run tauri:dev  # 桌面窗口运行（应用壳模式）
 
 ```
 src/
-├── main.js                 # 入口：模式分支（docs / app / strip）
+├── main.js                 # 入口：模式分支（app / strip）
 ├── styles/                 # 设计令牌（tokens/themes/motion/base/layout）
 ├── config/                 # 可配置层（defaults/store/apply）
 ├── motion/                 # spring 曲线 / 时长缩放
 ├── components/             # 32+ 组件（各自 css + js，render()/mount() 契约；含 float-strip 悬浮条）
-├── demo/                   # docs 模式展示区（令牌/组件矩阵/动效实验室/定制器）
-├── docs-mode/              # docs 模式渲染（搬移自 main.js）
+├── demo/                   # 应用壳复用的展示模块（组件矩阵/动效实验室/定制器）
 ├── app/                    # 应用壳（mode 解析 / app-main / strip-main 入口 / FloatBall 演示）
-└── scenes/                 # 场景模板（剪贴板悬浮窗/主窗口/设置页）
+└── scenes/                 # 场景模块（剪贴板悬浮窗；设置页共享 settings-pages）
 src-tauri/                  # Tauri 2 壳（无边框透明窗口 + 窗口控制）
 tests/
 ├── unit/                   # Vitest 单元测试
-└── e2e/                    # Playwright 交互测试 + 视觉回归（42 张基线）
+└── e2e/                    # Playwright 交互测试 + 视觉回归（18 张基线）
 docs/                       # 规格 / 计划 / 执行留痕（全部集中在此，随代码提交）
 ```
 

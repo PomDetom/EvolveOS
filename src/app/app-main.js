@@ -85,7 +85,7 @@ const MODULES = [
 ];
 
 export function mountAppMode(root) {
-  // 冷启动应用持久化配置（闭环 I1，镜像 docs-mode.js）：重启/Tauri 重开后界面保持
+  // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
   applyConfig(getConfig());
   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
