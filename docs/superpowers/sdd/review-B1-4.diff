@@ -1,0 +1,1961 @@
+# Review package: c9d8024..HEAD
+
+## Commits
+415b640 feat: 模式简化（浏览器直进应用壳）+ docs 渲染删除
+
+## Files changed
+ CLAUDE.md                                          |   4 +-
+ README.md                                          |  18 +-
+ docs/superpowers/sdd/task-B1-4-brief.md            |  87 ++++++++
+ docs/superpowers/sdd/task-B1-4-report.md           |  94 +++++++++
+ src/CLAUDE.md                                      |   2 +-
+ src/app/app-main.js                                |   2 +-
+ src/app/mode.js                                    |  10 +-
+ src/demo/theme-switcher.js                         |  56 -----
+ src/demo/token-showcase.css                        |  61 ------
+ src/demo/token-showcase.js                         | 233 --------------------
+ src/docs/docs-mode.js                              | 179 ----------------
+ src/main.js                                        |  17 +-
+ src/scenes/main-window/main-window.css             | 107 ----------
+ src/scenes/main-window/main-window.js              | 234 ---------------------
+ src/scenes/settings-window/settings-pages.js       |  14 +-
+ src/scenes/settings-window/settings-window.css     |   3 +-
+ src/scenes/settings-window/settings-window.js      |  80 -------
+ tests/e2e/visual-regression.spec.js                |  56 ++---
+ .../clipboard-dark-amber-chromium-win32.png        | Bin 57237 -> 0 bytes
+ .../clipboard-dark-emerald-chromium-win32.png      | Bin 57729 -> 0 bytes
+ .../clipboard-dark-indigo-chromium-win32.png       | Bin 58780 -> 0 bytes
+ .../clipboard-light-amber-chromium-win32.png       | Bin 51182 -> 0 bytes
+ .../clipboard-light-emerald-chromium-win32.png     | Bin 51408 -> 0 bytes
+ .../clipboard-light-indigo-chromium-win32.png      | Bin 51186 -> 0 bytes
+ .../components-dark-amber-chromium-win32.png       | Bin 104909 -> 0 bytes
+ .../components-dark-emerald-chromium-win32.png     | Bin 105047 -> 0 bytes
+ .../components-dark-indigo-chromium-win32.png      | Bin 104847 -> 0 bytes
+ .../components-light-amber-chromium-win32.png      | Bin 92365 -> 0 bytes
+ .../components-light-emerald-chromium-win32.png    | Bin 92564 -> 0 bytes
+ .../components-light-indigo-chromium-win32.png     | Bin 92306 -> 0 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 0 -> 63865 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 0 -> 63856 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 0 -> 63906 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 0 -> 64236 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 0 -> 64263 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 0 -> 64233 bytes
+ .../main-window-dark-amber-chromium-win32.png      | Bin 41042 -> 0 bytes
+ .../main-window-dark-emerald-chromium-win32.png    | Bin 40930 -> 0 bytes
+ .../main-window-dark-indigo-chromium-win32.png     | Bin 40895 -> 0 bytes
+ .../main-window-light-amber-chromium-win32.png     | Bin 39536 -> 0 bytes
+ .../main-window-light-emerald-chromium-win32.png   | Bin 39860 -> 0 bytes
+ .../main-window-light-indigo-chromium-win32.png    | Bin 39467 -> 0 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 0 -> 42665 bytes
+ ...otion-partition-dark-emerald-chromium-win32.png | Bin 0 -> 42549 bytes
+ ...motion-partition-dark-indigo-chromium-win32.png | Bin 0 -> 42565 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 0 -> 40145 bytes
+ ...tion-partition-light-emerald-chromium-win32.png | Bin 0 -> 40240 bytes
+ ...otion-partition-light-indigo-chromium-win32.png | Bin 0 -> 40178 bytes
+ .../scenes-dark-amber-chromium-win32.png           | Bin 81556 -> 0 bytes
+ .../scenes-dark-emerald-chromium-win32.png         | Bin 81622 -> 0 bytes
+ .../scenes-dark-indigo-chromium-win32.png          | Bin 81369 -> 0 bytes
+ .../scenes-light-amber-chromium-win32.png          | Bin 73246 -> 0 bytes
+ .../scenes-light-emerald-chromium-win32.png        | Bin 73437 -> 0 bytes
+ .../scenes-light-indigo-chromium-win32.png         | Bin 73047 -> 0 bytes
+ .../settings-window-dark-amber-chromium-win32.png  | Bin 43554 -> 0 bytes
+ ...settings-window-dark-emerald-chromium-win32.png | Bin 43528 -> 0 bytes
+ .../settings-window-dark-indigo-chromium-win32.png | Bin 43502 -> 0 bytes
+ .../settings-window-light-amber-chromium-win32.png | Bin 40548 -> 0 bytes
+ ...ettings-window-light-emerald-chromium-win32.png | Bin 40605 -> 0 bytes
+ ...settings-window-light-indigo-chromium-win32.png | Bin 40006 -> 0 bytes
+ .../tokens-dark-amber-chromium-win32.png           | Bin 112298 -> 0 bytes
+ .../tokens-dark-emerald-chromium-win32.png         | Bin 111963 -> 0 bytes
+ .../tokens-dark-indigo-chromium-win32.png          | Bin 111521 -> 0 bytes
+ .../tokens-light-amber-chromium-win32.png          | Bin 109237 -> 0 bytes
+ .../tokens-light-emerald-chromium-win32.png        | Bin 109683 -> 0 bytes
+ .../tokens-light-indigo-chromium-win32.png         | Bin 108691 -> 0 bytes
+ tests/unit/mode.test.js                            |  25 ++-
+ 67 files changed, 256 insertions(+), 1026 deletions(-)
+
+## Diff
+diff --git a/CLAUDE.md b/CLAUDE.md
+index c647f3b..df4d36c 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -1,21 +1,21 @@
+ # ui-design — 多应用壳 UI 设计系统
+ 
+ ## 项目定位
+ 
+ 为多个 Rust Tauri 桌面小应用（剪贴板、密码管理、记账等）提供统一界面的**应用壳**（真实应用界面为主体：一体式标题栏 + 级联双滑动窗口 + 黄金比例锚点 + 悬浮条），设计系统（令牌/32 组件/定制器）为基础设施；展示页降级为开发文档模式。纯原生 Web（Vite + HTML/CSS/JS），**零框架、零运行时依赖**。设计语言：克制的玻璃质感、深/浅双主题、6 套主题色、滑动选择导航（NavigationWheel）。
+ 
+ ## 模式与入口
+ 
+-- 浏览器 `/` → **docs 文档模式**（设计系统展示页，含「应用壳」链接）
++- 浏览器 `/` → **应用壳**（默认，与 Tauri 一致；docs 渲染已删除，设计系统展示收进设置「组件」「动效」分区）
+ - Tauri 桌面（无 query）→ **应用壳模式**（探测 `window.__TAURI__`）
+-- `?mode=app` / `?mode=docs` 显式覆盖；`?mode=strip` 悬浮条独立入口
++- `?mode=app` / `?mode=strip` 显式覆盖；非法/无参数一律回落应用壳
+ - 桌面：级联双滑动窗口（左=应用列表，右=应用目录/设置目录，纯图标栏）；手机（≤900px）：底部横滑 + 页面栈
+ 
+ ## 核心铁律
+ 
+ - 零运行时依赖，组件无抽象封装，遵循现有代码风格。
+ - 动画只用 transform/opacity，模糊永不动画；时长/曲线经 CSS 变量。
+ - 界面参数修改必须经配置层完整链路（defaults → store → apply），不绕过直接写 CSS 变量。
+ - 滑动导航选中锚点为**黄金比例点 0.382**（非居中）；滑动窗口**纯图标**，名称由标题栏上下文承担。
+ - 开发遵循子代理驱动流程（TDD、独立评审、修复循环），每步计划/工作内容/提交留痕入 `docs/`。
+ - **测试与验证仅在 Web 环境执行**（单测 + Playwright 浏览器测试），不在 webview 内做真机验证。
+diff --git a/README.md b/README.md
+index eb15b9a..85ceb8a 100644
+--- a/README.md
++++ b/README.md
+@@ -1,70 +1,68 @@
+ # ui-design — 多应用壳 UI 设计系统
+ 
+ 为多个 Rust Tauri 桌面小应用（剪贴板、密码管理、记账等）提供统一界面的**应用壳**，并沉淀完整设计系统（令牌 / 32 组件 / 主题定制器）作为基础设施。
+ 纯原生 Web（Vite + HTML/CSS/JS，**零框架零运行时依赖**），组件 = 原生 HTML + CSS 类（BEM `c-` 前缀）+ 渐进增强 JS。
+ 
+-## 三种形态
++## 两种形态
+ 
+ | 形态 | 入口 | 说明 |
+ |---|---|---|
+-| **应用壳**（主体） | Tauri 桌面自动进入；浏览器 `?mode=app` | 一体式标题栏 + 级联双滑动窗口（左=应用列表 / 右=应用目录或设置目录，纯图标栏）+ 黄金比例锚点（38.2%）+ 右下 FloatBall 悬浮条演示；手机（≤900px）底部横滑应用轮 + 全屏页面栈；模块占位，逐个填充真实小应用 |
+-| **FloatStrip 悬浮条** | 浏览器 `?mode=strip` | 独立悬浮条形态：横竖双形态 + 四边磁吸 + 无边框内容优先（与 docs/app 互斥渲染），供独立透明窗口接入 |
+-| **docs 文档模式** | 浏览器 `/`（默认） | 设计系统展示页：令牌区 / 32 组件矩阵 / 动效实验室 / 主题定制器 / 场景模板 |
++| **应用壳**（主体） | 浏览器 `/`（默认，与 Tauri 一致）；`?mode=app` 显式 | 一体式标题栏 + 级联双滑动窗口（左=应用列表 / 右=应用目录或设置目录，纯图标栏）+ 黄金比例锚点（38.2%）+ 右下 FloatBall 悬浮条演示；手机（≤900px）底部横滑应用轮 + 全屏页面栈；模块占位，逐个填充真实小应用；设计系统展示已内化为设置「组件」「动效」分区 |
++| **FloatStrip 悬浮条** | 浏览器 `?mode=strip` | 独立悬浮条形态：横竖双形态 + 四边磁吸 + 无边框内容优先（与 app 互斥渲染），供独立透明窗口接入 |
+ 
+ ## 特性
+ 
+ - **克制的玻璃质感**：rgba 层叠 + `backdrop-filter` 模糊 + 高光描边，深/浅双主题
+ - **6 套主题色**：靛蓝 / 青绿 / 天蓝 / 琥珀 / 紫罗兰 / 翡翠，`data-accent` 一键切换
+ - **滑动选择导航（NavigationWheel）**：黄金比例锚点（38.2%）、滚动 focal 变形、拖拽惯性、居中吸附、横竖方向参数化
+ - **主题定制器**：11 条滑杆实时预览（含色相/色温/饱和度微调）+ 导出 CSS 变量 + 设置页整页嵌入
+ - **Tauri 壳**：无边框透明窗口（960×560）、窗口控制桥、拖拽 region
+ - **FloatStrip 悬浮条**：横竖双形态 + 四边磁吸 + 无边框内容优先（`?mode=strip` 独立入口 + 应用壳右下 FloatBall 演示）
+ - **手机形态**：≤900px 底部横滑应用轮 + 全屏页面栈（与桌面级联双窗经媒体查询切换）
+ 
+ ## 快速开始
+ 
+ ```bash
+ npm install        # 安装依赖（要求 Node ^20.19.0 || >=22.12.0）
+-npm run dev        # 开发服务器 (localhost:5173) → 浏览器打开 docs 模式
++npm run dev        # 开发服务器 (localhost:5173) → 浏览器打开应用壳模式
+ npm run tauri:dev  # 桌面窗口运行（应用壳模式）
+ ```
+ 
+ ## 命令
+ 
+ | 命令 | 说明 |
+ |---|---|
+ | `npm run dev` | 开发服务器 (localhost:5173) |
+ | `npm test` | Vitest 单元测试（几何/spring/store/apply/mode） |
+ | `npm run test:e2e` | Playwright 交互测试（自动拉起 dev server） |
+ | `npm run test:visual` | 视觉回归（对比基线快照；界面变更后先 `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` 重新生成） |
+ | `npm run build` | 生产构建（dist/） |
+ | `npm run tauri:dev` | Tauri 桌面开发运行（应用壳） |
+ | `npm run tauri:build` | Tauri release 打包 |
+ 
+ ## 目录结构
+ 
+ ```
+ src/
+-├── main.js                 # 入口：模式分支（docs / app / strip）
++├── main.js                 # 入口：模式分支（app / strip）
+ ├── styles/                 # 设计令牌（tokens/themes/motion/base/layout）
+ ├── config/                 # 可配置层（defaults/store/apply）
+ ├── motion/                 # spring 曲线 / 时长缩放
+ ├── components/             # 32+ 组件（各自 css + js，render()/mount() 契约；含 float-strip 悬浮条）
+-├── demo/                   # docs 模式展示区（令牌/组件矩阵/动效实验室/定制器）
+-├── docs-mode/              # docs 模式渲染（搬移自 main.js）
++├── demo/                   # 应用壳复用的展示模块（组件矩阵/动效实验室/定制器）
+ ├── app/                    # 应用壳（mode 解析 / app-main / strip-main 入口 / FloatBall 演示）
+-└── scenes/                 # 场景模板（剪贴板悬浮窗/主窗口/设置页）
++└── scenes/                 # 场景模块（剪贴板悬浮窗；设置页共享 settings-pages）
+ src-tauri/                  # Tauri 2 壳（无边框透明窗口 + 窗口控制）
+ tests/
+ ├── unit/                   # Vitest 单元测试
+-└── e2e/                    # Playwright 交互测试 + 视觉回归（42 张基线）
++└── e2e/                    # Playwright 交互测试 + 视觉回归（18 张基线）
+ docs/                       # 规格 / 计划 / 执行留痕（全部集中在此，随代码提交）
+ ```
+ 
+ ## 文档
+ 
+ | 文档 | 说明 |
+ |---|---|
+ | [Tauri 接入指南](docs/tauri-integration.md) | 透明窗口/拖拽/窗口控制/macOS/主题跟随/定制器嵌入/悬浮窗 |
+ | [应用壳设计规格](docs/superpowers/specs/2026-08-05-app-shell-ui-design.md) | 应用壳 UI 设计（级联双窗/纯图标/黄金比例锚点/悬浮条/手机形态） |
+ | [设计系统规格](docs/superpowers/specs/2026-08-04-tauri-ui-design.md) | 设计系统基础规格 |
+diff --git a/docs/superpowers/sdd/task-B1-4-brief.md b/docs/superpowers/sdd/task-B1-4-brief.md
+new file mode 100644
+index 0000000..62bf2f0
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B1-4-brief.md
+@@ -0,0 +1,87 @@
++# Task B1-4: 模式简化 + docs 渲染删除
++
++**Files:**
++- Modify: `src/main.js`（删 docs 分支 + docs 专属 CSS import）
++- Modify: `src/app/mode.js`（resolveMode 简化为 app/strip 两态）
++- Modify: `tests/unit/mode.test.js`
++- Delete: `src/docs/docs-mode.js`
++- Delete（docs 专属孤儿，删除 docs-mode.js 后无引用，核对后删）：`src/demo/theme-switcher.js`、`src/demo/token-showcase.js`、`src/scenes/main-window/main-window.js`、`src/scenes/settings-window/settings-window.js`（注意：`settings-pages.js` 是共享模块，**必须保留**——app-main.js 用它）
++- 保留（应用壳/B1-1 复用）：`src/demo/component-showcase-full.js`、`src/demo/motion-lab.js`、`src/scenes/clipboard-float/clipboard-float.js`、`src/demo/customizer-panel.js`
++- Modify: `tests/e2e/visual-regression.spec.js`（docs 基线删除/改造 + 组件/动效分区基线）
++- Modify: `README.md`（模式说明：浏览器直进应用壳，无 docs）
++
++**Interfaces:**
++- Consumes: B1-3 迁移后的 e2e（已全部走 `?mode=app`）；B1-1 展示模块已自 import CSS
++- Produces: `resolveMode(params, hasTauri)` 只返回 `'app'|'strip'`：显式 `?mode=app|strip` 优先；非法/无参数 → `'app'`（浏览器与 Tauri 一致）；`main.js` 只留 app/strip 动态 import，无 docs 分支
++
++- [ ] **Step 1: 写失败单测**（mode.test.js）
++
++```js
++it('无参数浏览器 → app（不再回落 docs）', () => {
++  expect(resolveMode(new URLSearchParams(''), false)).toBe('app');
++});
++it('非法值 → 回落 app', () => {
++  expect(resolveMode(new URLSearchParams('?mode=bogus'), false)).toBe('app');
++});
++it('?mode=docs 不再特殊 → app', () => {
++  expect(resolveMode(new URLSearchParams('?mode=docs'), false)).toBe('app');
++});
++```
++
++- [ ] **Step 2: 运行确认红**
++
++Run: `npm test`
++Expected: FAIL（resolveMode 现返回 docs）
++
++- [ ] **Step 3: mode.js 简化**
++
++```js
++export function resolveMode(params, hasTauri) {
++  const sp = toSearchParams(params);
++  const mode = sp?.get('mode') ?? null;
++  if (mode === 'app' || mode === 'strip') return mode;
++  return 'app'; // 无参数 / 非法 / docs → 一律应用壳
++}
++```
++
++- [ ] **Step 4: main.js 删除 docs 分支与 docs CSS**
++
++删 `import { mountDocsMode } from './docs/docs-mode.js';`、`else { mountDocsMode(); }` 分支（`mode` 只可能是 app/strip）。**CSS import 分类处理**：
++  - **移除**（docs 专属，B1-1 已移入各展示模块或已无宿主）：`demo/token-showcase.css`（令牌展示不保留）、`demo/component-showcase-full.css`（已入 component-showcase-full.js）、`styles/motion-lab.css`（已入 motion-lab.js）、`scenes/main-window.css`（docs 场景删除）、`scenes/clipboard-float.css`（已入 clipboard-float.js）
++  - **保留**（应用壳启动即需，勿删）：`scenes/settings-window.css`（`.csettings__*` 在 mountAppMode 内 `renderSettingsPages()` 启动即渲染）、`styles/customizer.css`（外观分区定制器）
++  - 若某展示模块 CSS 未自 import，先补入该模块再删 main.js 静态 import。
++
++模式分支收敛为：
++
++```js
++if (mode === 'app') {
++  import('./app/app-main.js').then(({ mountAppMode }) => mountAppMode(document.querySelector('#app')));
++} else {
++  import('./app/strip-main.js').then(({ mountStripMode }) => mountStripMode());
++}
++```
++
++- [ ] **Step 5: 删除 docs 渲染**
++
++`git rm src/docs/docs-mode.js`。核对 build 无引用残留（`git grep docs-mode src/` 应只留注释性提及——app-main.js:88 注释可顺手更新为不再引用 docs-mode）。
++
++- [ ] **Step 6: 视觉基线重构**
++
++`visual-regression.spec.js`：删除 docs 专属 SHOTS（tokens/components/scenes/main-window/settings-window/clipboard 六组 —— 页面已无 docs 宿主）；保留 `['app-main', '.app-main', '/?mode=app']`；新增「组件」「动效」分区基线（进入设置对应分区截图，data-motion=off + animations disabled 稳定化）。删除 docs 专属基线 png（`tests/e2e/visual-regression.spec.js-snapshots/` 下非 app-main 的既有 png）。基线数量以实际 SHOTS 核定并记入报告。
++
++- [ ] **Step 7: 全量回归**
++
++Run: `npm test`（mode 单测绿）+ `npm run test:e2e`（全部迁移用例 + app-shell/floatstrip/mobile-nav 绿）+ `npm run test:visual`（新基线稳定）+ `npm run build`
++Expected: 全绿；`git grep -l "mountDocsMode" src/` 无残留（注释性 docs-mode 提及可保留）
++
++- [ ] **Step 8: README 更新**
++
++README 模式说明：浏览器 `/` 直进应用壳（不再 docs）；`?mode=strip` 悬浮条；docs 设计系统展示已收进设置「组件」「动效」分区。
++
++- [ ] **Step 9: 提交**
++
++```bash
++git add src/main.js src/app/mode.js tests/unit/mode.test.js tests/e2e/visual-regression.spec.js README.md
++git rm src/docs/docs-mode.js
++git commit -m "feat: 模式简化（浏览器直进应用壳）+ docs 渲染删除"
++```
+diff --git a/docs/superpowers/sdd/task-B1-4-report.md b/docs/superpowers/sdd/task-B1-4-report.md
+new file mode 100644
+index 0000000..f7286e2
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B1-4-report.md
+@@ -0,0 +1,94 @@
++# Task B1-4 执行报告：模式简化 + docs 渲染删除
++
++**状态**：DONE（全量回归绿）
++
++## 一、实现内容
++
++1. **resolveMode 简化**（`src/app/mode.js`）：只返回 `'app'|'strip'` —— `?mode=app|strip` 显式优先；无参数 / 非法值 / `?mode=docs` → 一律 `'app'`（浏览器与 Tauri 一致，docs 渲染已删除）。`hasTauri` 参数保留（调用方仍探测 `window.__TAURI__`，接口不变便于单测）。
++2. **main.js 收敛**（`src/main.js`）：删除 `import { mountDocsMode }` 与 `else { mountDocsMode() }` 分支；模式分支收敛为 `if (mode === 'app') … else …`（strip）。CSS import 分类处理：
++   - **移除**（docs 专属 / B1-1 已移入各展示模块）：`demo/token-showcase.css`、`demo/component-showcase-full.css`、`styles/motion-lab.css`、`scenes/main-window.css`、`scenes/clipboard-float.css` —— 其中 component-showcase-full / motion-lab / clipboard-float 三模块已自 import CSS（已核对），删除静态 import 后由动态 chunk 携带；token-showcase / main-window 无宿主，CSS 文件一并删除。
++   - **保留**：`scenes/settings-window.css`（`.csettings__*` 启动即渲染）、`styles/customizer.css`（外观分区定制器）。
++3. **删除 docs 渲染与孤儿模块**：`git rm` 删除 `src/docs/docs-mode.js` 及孤儿模块（见清单）。`git grep -l "mountDocsMode" src/` 无残留；`?mode=docs` 仅剩注释性/单测描述（均表述「docs → app」新语义）。
++4. **视觉基线重构**（`tests/e2e/visual-regression.spec.js`）：删除 docs 专属 SHOTS（6 组），保留 `app-main`，新增「组件」「动效」分区基线（⚙ 进入设置 → 右窗 nth(8)/nth(9) → 等惰性挂载，`data-motion=off` + `animations: disabled` 稳定化）。先删 docs 基线 png 再 `--update-snapshots` 重生成，复跑确认稳定。
++5. **README / CLAUDE.md**：模式说明改为「浏览器 `/` 直进应用壳」，docs 展示已收进设置「组件」「动效」分区；目录结构、基线计数（42 → 18）同步更新。`app-main.js:88` 注释去除「镜像 docs-mode.js」提及；`settings-pages.js` / `settings-window.css` 去除对已删场景/theme-switcher 的注释引用。
++
++## 二、孤儿模块删除清单 + 保留清单 + 理由
++
++**删除（删除 docs-mode.js 后无引用，核对后删）**：
++
++| 文件 | 理由 |
++|---|---|
++| `src/docs/docs-mode.js` | docs 渲染本体，唯一入口（main.js）已删 |
++| `src/demo/theme-switcher.js` | 仅 docs-mode.js 引用（顶栏主题切换），app 用 `.csettings__mode` 三态 |
++| `src/demo/token-showcase.js` + `token-showcase.css` | 仅 docs-mode.js 引用（令牌展示区），令牌展示不保留 |
++| `src/scenes/main-window/main-window.js` + `main-window.css` | 仅 docs-mode.js 引用（docs 场景模板），docs 场景删除 |
++| `src/scenes/settings-window/settings-window.js` | 仅 docs-mode.js 引用（docs 设置场景模板） |
++
++**保留（应用壳/B1-1 复用）**：
++
++| 文件 | 理由 |
++|---|---|
++| `src/demo/component-showcase-full.js` (+ css) | 应用壳「组件」分区惰性挂载（B1-1），自 import CSS |
++| `src/demo/motion-lab.js` (+ css) | 应用壳「动效」分区惰性挂载（B1-1），自 import CSS |
++| `src/scenes/clipboard-float/clipboard-float.js` (+ css) | 应用壳「组件」分区组合示例（B1-1），自 import CSS |
++| `src/demo/customizer-panel.js` | 外观分区定制器（`renderCustomizerGroups`），app-main.js 使用；`customizer.css` 保留在 main.js |
++| `src/scenes/settings-window/settings-pages.js` (+ css) | 共享设置页模块，app-main.js 使用（桌面 + 手机页面栈） |
++| `src/demo/component-showcase.js`、`customizer-css.js`、`window-controls.js` | 分别被 component-showcase-full / customizer-panel / app-main 复用 |
++
++## 三、视觉基线重构
++
++- **删除**：docs 专属 36 张（tokens / components / scenes / main-window / settings-window / clipboard 各 6 张，均 `/`）。
++- **保留**：app-main 6 张（`/?mode=app`）—— `git diff` 确认**逐字节零变化**（删除 docs CSS import 未影响应用壳渲染）。
++- **新增**：12 张分区基线（`data-motion=off` + `animations: disabled` 稳定化）：
++  - `components-partition-{light,dark}-{indigo,amber,emerald}-chromium-win32.png`（6）
++  - `motion-partition-{light,dark}-{indigo,amber,emerald}-chromium-win32.png`（6）
++- **总数**：18 张（原 42 → 18）。复跑 `npm run test:visual` 18/18 通过（基线稳定）。
++
++## 四、TDD Evidence
++
++**RED**（Step 2，命令 `npm test`）：
++```
++3 failed / 49 passed（mode.test.js）
++AssertionError: expected 'docs' to be 'app'
++  无参数浏览器 → app / 非法值 → 回落 app / ?mode=docs 不再特殊 → app
++```
++预期失败：旧 resolveMode 契约返回 docs（无参数浏览器、非法值、?mode=docs），新契约要求一律 `'app'`。
++
++**GREEN**（Step 3 实现后，命令 `npm test`）：
++```
++Test Files 8 passed (8) | Tests 52 passed (52)
++```
++mode.test.js 6 例全部通过（无参浏览器→app / 无参+Tauri→app / 非法→app / docs→app / app→app / strip→strip）。
++
++## 五、Test Results
++
++| 套件 | 结果 |
++|---|---|
++| `npm test` | 8 files / **52 passed** |
++| `npm run test:e2e` | **81 passed**（app-shell / floatstrip / mobile-nav / 各分区用例全绿，无残留 docs 依赖） |
++| `npm run test:visual` | **18 passed**（重生成后复跑对比通过） |
++| `npm run build` | ✓ 99 modules transformed，构建成功（docs CSS 移出主 bundle，展示 CSS 进入各动态 chunk） |
++
++## 六、Files Changed
++
++- `src/app/mode.js`（resolveMode 简化）
++- `src/main.js`（删 docs 分支 + docs CSS import）
++- `src/app/app-main.js`（:88 注释去 docs-mode 提及）
++- `src/scenes/settings-window/settings-pages.js`（去已删场景注释）
++- `src/scenes/settings-window/settings-window.css`（去 theme-switcher 注释）
++- `tests/unit/mode.test.js`（新契约 6 例）
++- `tests/e2e/visual-regression.spec.js`（docs SHOTS 删除 + 分区基线）
++- `tests/e2e/visual-regression.spec.js-snapshots/`（删 36 张 docs png；新增 12 张分区 png）
++- `README.md`、`CLAUDE.md`、`src/CLAUDE.md`（模式说明）
++- 删除：`src/docs/docs-mode.js`、`src/demo/theme-switcher.js`、`src/demo/token-showcase.js`、`src/demo/token-showcase.css`、`src/scenes/main-window/main-window.js`、`src/scenes/main-window/main-window.css`、`src/scenes/settings-window/settings-window.js`
++
++## 七、Self-Review Findings
++
++1. **完整性**：Step 1-9 全部执行；`git grep -l "mountDocsMode" src/` 无残留；孤儿模块核对后删除，保留清单与 brief 一致。
++2. **质量**：app-main 基线逐字节零变化，证明删除 docs CSS 不冲击应用壳渲染；动画红线零触碰（无新动效/时长/曲线改动）。
++3. **纪律**：测试先红后绿；删除 docs 后 e2e 全绿（81 通过），无停止调查情形；配置链路（localStorage → applyConfig → removeAttribute）沿用既有基线稳定化模式，未绕过。
++
++## 八、Issues / Concerns
++
++- **Minor（留痕，未处理）**：`src/styles/layout.css` 仍含 docs 时代死规则（`.app-shell`/`.topbar*`/`.navwheel*`/`.content*`/`.tsw__*`）及第 17 行引用已删 `token-showcase.css` 的过时注释。该文件不在本任务文件清单内，且 `.showcase__*` 基类为「组件」分区所依赖（保留），故整体未动，留待后续清理（风险：仅死 CSS，不影响任何渲染与基线）。
++- **Note**：`resolveMode` 的 `hasTauri` 参数现未被使用（保留以维持调用接口与 Tauri 探测语义），无害。
+diff --git a/src/CLAUDE.md b/src/CLAUDE.md
+index beb5bb4..0049bbc 100644
+--- a/src/CLAUDE.md
++++ b/src/CLAUDE.md
+@@ -13,21 +13,21 @@
+ - 圆角一律 `calc(var(--radius-*) * var(--radius-scale, 1))`。
+ - 主题约定：`data-theme`（深浅）、`data-accent`（6 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
+ - 配置链路：defaults（默认值 + RANGES）→ store（持久化）→ apply（写入 CSS 变量覆盖层）。**新增可配置参数必须三件套齐**，不绕过直接写 CSS 变量。
+ - 场景/展示区新增组件实例用**局部类名**，避免打破全页严格计数断言。
+ 
+ ## 应用壳规范
+ 
+ - **滑动导航选中锚点为黄金比例 0.382**（非居中）：几何参数 `anchorRatio`，垂直/水平方向经 `direction` 参数化；新导航实例禁止硬编码中心语义。
+ - **滑动窗口纯图标**：栏内不显示文字名称，上下文由标题栏「应用名 › 页面名」承担。
+ - 双窗口级联：左栏恒为全局目录（应用列表），右栏为当前域目录（应用内/设置）；右窗状态为纯 UI 态（会话内），不进配置存储。
+-- 模式入口：`resolveMode`（`?mode` 显式优先，无参数按 `window.__TAURI__` 探测）；应用壳/悬浮条代码在 `src/app/`，docs 渲染在 `src/docs-mode/`，互斥渲染（同页不并存）。
++- 模式入口：`resolveMode` 只返回 `'app'|'strip'`（`?mode=app|strip` 显式优先；无参数/非法值/`?mode=docs` → `'app'`）；应用壳/悬浮条代码在 `src/app/`，docs 渲染已删除（B1-4 起浏览器与 Tauri 一致直进应用壳）。
+ - FloatStrip 悬浮条：常态无边框内容优先，hover 浮现控制；横竖形态经 `--strip-orientation`；四边磁吸（transform 定位，不触发 layout 动画）。
+ 
+ ## 动画红线
+ 
+ - 布局/几何属性的动画只用 `transform` + `opacity`（GPU 合成）；禁止动画 layout 属性（left/top/width/height/margin/padding）。
+ - **模糊（backdrop-filter）永不动画**。
+ - 超过 6 项同时动画必须 stagger。
+ - 动效降级（reduced-motion / 动效关闭）时，时长与 animation-delay **一并归零**。
+ - **paint-only 过渡豁免**：`background`/`border-color`/`box-shadow`/`color` 允许用于 hover/focus/active 等短暂状态切换的过渡（不做入场/离场动效主体）；完整口径见 `docs/CLAUDE.md`「动画红线口径」。
+ 
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 3eaadb9..7549e40 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -78,21 +78,21 @@ const MODULES = [
+     id: 'info', name: '关于', icon: 'info',
+     dir: [
+       { id: 'version', name: '版本', icon: 'box' },
+       { id: 'license', name: '许可', icon: 'shield' },
+     ],
+     render: placeholderPage,
+   },
+ ];
+ 
+ export function mountAppMode(root) {
+-  // 冷启动应用持久化配置（闭环 I1，镜像 docs-mode.js）：重启/Tauri 重开后界面保持
++  // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
+   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+   applyConfig(getConfig());
+   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
+   root.innerHTML = `
+   <div class="app-main">
+     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+diff --git a/src/app/mode.js b/src/app/mode.js
+index d20555e..b3bbf5c 100644
+--- a/src/app/mode.js
++++ b/src/app/mode.js
+@@ -1,21 +1,19 @@
+-// 模式解析（Task A1，规格：模式入口）：决定浏览器进 docs / Tauri 进应用壳 / ?mode=strip 悬浮条。
++// 模式解析（Task B1-4，模式简化）：只返回 'app'|'strip' —— 显式 ?mode=app|strip 优先；
++// 无参数 / 非法值 / ?mode=docs → 一律 'app'（浏览器与 Tauri 一致；docs 渲染已删除）。
+ // 纯函数 —— 不读全局；hasTauri 由调用方（main.js 探测 window.__TAURI__）注入，便于单测。
+-// 规则：显式 ?mode=app|docs|strip 优先；无参数 + hasTauri → 'app'；无参数浏览器 → 'docs'；非法值回落 'docs'。
+ // params 为 URLSearchParams 或等价对象（含字符串 '?mode=...'）。
+ export function resolveMode(params, hasTauri) {
+   const sp = toSearchParams(params);
+   const mode = sp?.get('mode') ?? null;
+-  if (mode === 'app' || mode === 'docs' || mode === 'strip') return mode;
+-  // 显式参数存在但非法 → 回落 docs（不落入 Tauri 探测，避免 bogus 参数把桌面端切进 app）
+-  if (mode != null) return 'docs';
+-  return hasTauri ? 'app' : 'docs';
++  if (mode === 'app' || mode === 'strip') return mode;
++  return 'app'; // 无参数 / 非法 / docs → 一律应用壳
+ }
+ 
+ /** 归一化 params 为 URLSearchParams（null/undefined → null，等价对象/字符串兜底） */
+ function toSearchParams(params) {
+   if (params == null) return null;
+   if (params instanceof URLSearchParams) return params;
+   if (typeof params === 'string') return new URLSearchParams(params);
+   if (typeof params.get === 'function') return params;
+   return new URLSearchParams(params);
+ }
+diff --git a/src/demo/theme-switcher.js b/src/demo/theme-switcher.js
+deleted file mode 100644
+index cba5099..0000000
+--- a/src/demo/theme-switcher.js
++++ /dev/null
+@@ -1,56 +0,0 @@
+-import { getConfig, saveConfig, subscribe } from '../config/store.js';
+-import { applyConfig } from '../config/apply.js';
+-import { ACCENTS } from '../config/defaults.js';
+-import { icon } from '../components/icon/icon.js';
+-
+-const MODES = [
+-  { id: 'light', label: '浅' }, { id: 'dark', label: '深' }, { id: 'system', label: '跟随' },
+-];
+-
+-export function mountThemeSwitcher(root) {
+-  root.innerHTML = `
+-    <div class="tsw">
+-      <div class="tsw__modes">
+-        ${MODES.map(m => `<button class="tsw__mode" data-mode="${m.id}" title="${m.label}" aria-pressed="false">${icon(m.id === 'light' ? 'sun' : m.id === 'dark' ? 'moon' : 'monitor')}<span class="c-sr">${m.label}</span></button>`).join('')}
+-      </div>
+-      <div class="tsw__accents">
+-        ${ACCENTS.map(a => `<button class="tsw__accent" data-accent="${a.id}" title="${a.name}（${a.desc}）" style="--swatch: ${a.color}"><span class="c-sr">${a.name}</span></button>`).join('')}
+-      </div>
+-    </div>`;
+-  const cfg = getConfig();
+-  syncUI(cfg);
+-  root.querySelector('.tsw__modes').addEventListener('click', (e) => {
+-    const btn = e.target.closest('.tsw__mode'); if (!btn) return;
+-    const next = saveConfig({ theme: btn.dataset.mode });
+-    applyConfig(next); syncUI(next);
+-  });
+-  root.querySelector('.tsw__accents').addEventListener('click', (e) => {
+-    const btn = e.target.closest('.tsw__accent'); if (!btn) return;
+-    const next = saveConfig({ accent: btn.dataset.accent });
+-    applyConfig(next); syncUI(next);
+-  });
+-  // OS 主题监听：theme === 'system' 时挂载，离开时卸载（幂等：同函数引用反复 add/remove 无害）。
+-  // 修复（最终审查 C）：此前仅在挂载时按初始 theme 判断，中途切「跟随」后 OS 变化不传播
+-  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+-  const onSystemChange = () => applyConfig(getConfig());
+-  function watchSystemTheme(c) {
+-    if (c.theme === 'system') mql.addEventListener('change', onSystemChange);
+-    else mql.removeEventListener('change', onSystemChange);
+-  }
+-  function syncUI(c) {
+-    // aria-pressed 单选语义：当前主题为按下（true），其余弹起（false），与 active 类同步
+-    root.querySelectorAll('.tsw__mode').forEach(b => {
+-      b.classList.toggle('tsw__mode--active', b.dataset.mode === c.theme);
+-      b.setAttribute('aria-pressed', String(b.dataset.mode === c.theme));
+-    });
+-    root.querySelectorAll('.tsw__accent').forEach(b =>
+-      b.classList.toggle('tsw__accent--active', b.dataset.accent === c.accent));
+-  }
+-  watchSystemTheme(getConfig());
+-  // 订阅 store：定制器改主题/主题色、预设、重置等外部变更 → 同步顶栏高亮态 + 挂/卸监听
+-  // （saveConfig 与 notify 都会广播；同步回调不 applyConfig，避免与 main.js 订阅重复应用）
+-  subscribe((next) => {
+-    syncUI(next);
+-    watchSystemTheme(next);
+-  });
+-}
+diff --git a/src/demo/token-showcase.css b/src/demo/token-showcase.css
+deleted file mode 100644
+index 048e298..0000000
+--- a/src/demo/token-showcase.css
++++ /dev/null
+@@ -1,61 +0,0 @@
+-/* 令牌展示区（Task 14）：tk- 前缀 · 展示页专用 · 两列网格 */
+-
+-.tk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+-@media (max-width: 900px) { .tk-grid { grid-template-columns: 1fr; } }
+-
+-.tk-card { background: var(--surface-1); border: 1px solid var(--glass-border);
+-  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1)); padding: var(--space-5); }
+-.tk-card__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); }
+-.tk-card__desc { font-size: var(--font-size-xs); color: var(--text-3);
+-  margin-top: 2px; margin-bottom: var(--space-4); }
+-
+-/* 色板 */
+-.tk-palette { display: flex; flex-direction: column; gap: var(--space-4); }
+-.tk-group { display: flex; flex-direction: column; gap: var(--space-2); }
+-.tk-group__name { font-size: var(--font-size-xs); color: var(--text-2); }
+-.tk-group__swatches { display: grid;
+-  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px; }
+-
+-.tk-swatch { display: flex; align-items: flex-end; min-height: 64px; padding: 6px;
+-  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); text-align: left; cursor: pointer;
+-  transition: transform var(--dur-fast) var(--ease-out); }
+-.tk-swatch:hover { transform: translateY(-2px); }
+-.tk-swatch:active { transform: translateY(0); }
+-.tk-swatch__label { font-family: var(--font-mono); font-size: 9px; line-height: 1.35;
+-  word-break: break-all; opacity: 0.92; }
+-
+-/* 通用行（字体/间距/圆角/阴影共用） */
+-.tk-row { display: grid; grid-template-columns: 118px 44px 1fr; align-items: center;
+-  gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px dashed var(--glass-border);
+-  cursor: pointer; }
+-.tk-row:last-child { border-bottom: none; }
+-.tk-row:hover .tk-row__name { color: var(--accent); }
+-.tk-row__name { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-2); }
+-.tk-row__value { font-family: var(--font-mono); font-size: var(--font-size-xs);
+-  color: var(--text-3); text-align: right; }
+-.tk-row__sample { overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+-  color: var(--text-1); }
+-
+-.tk-block { height: 16px; justify-self: start; background: var(--accent);
+-  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1)); opacity: 0.85; }
+-.tk-block--square { width: 56px; height: 56px; }
+-.tk-block--shadow { width: 96px; height: 56px; background: var(--surface-2);
+-  opacity: 1; border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
+-
+-/* 玻璃卡 */
+-.tk-glass { display: flex; flex-direction: column; gap: var(--space-4); }
+-.tk-glass__panel { display: flex; flex-direction: column; justify-content: center; gap: 2px;
+-  min-height: 104px; padding: var(--space-5);
+-  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1)); }
+-.tk-glass__title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); }
+-.tk-glass__hint { font-size: var(--font-size-xs); color: var(--text-2); }
+-.tk-glass__meta { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+-.tk-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 8px; cursor: pointer;
+-  font-size: var(--font-size-xs); color: var(--text-2); background: var(--surface-hover);
+-  border: 1px solid var(--glass-border);
+-  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
+-.tk-chip b { font-family: var(--font-mono); font-weight: var(--font-weight-regular);
+-  color: var(--text-1); }
+-.tk-card__note { margin-top: var(--space-4); font-size: var(--font-size-xs);
+-  color: var(--text-3); }
+-.tk-link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+diff --git a/src/demo/token-showcase.js b/src/demo/token-showcase.js
+deleted file mode 100644
+index 8c67611..0000000
+--- a/src/demo/token-showcase.js
++++ /dev/null
+@@ -1,233 +0,0 @@
+-import { toast } from '../components/toast/toast.js';
+-
+-/**
+- * 令牌展示区（Task 14）：设计令牌可视化。
+- * 所有数值从 getComputedStyle(document.documentElement) 实时读取，
+- * 随主题 / 主题色 / 定制器配置变化自动刷新（main.js 订阅 store 重渲染）。
+- * DOM 契约：.tk-card / .tk-swatch / .tk-swatch__label / .tk-row / .tk-block
+- */
+-
+-const NEUTRAL_LEVELS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+-const ACCENT_LEVELS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+-const SEMANTIC = [
+-  { var: '--success-500', name: '成功 Success' },
+-  { var: '--warning-500', name: '警告 Warning' },
+-  { var: '--danger-500', name: '危险 Danger' },
+-  { var: '--info-500', name: '信息 Info' },
+-];
+-const TYPE_LEVELS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'];
+-const SPACE_LEVELS = [1, 2, 3, 4, 5, 6, 7];
+-const RADIUS_LEVELS = ['xs', 'sm', 'md', 'lg', 'xl'];
+-const SHADOW_LEVELS = ['sm', 'md', 'lg'];
+-
+-const rootEl = () => document.documentElement;
+-const readVar = (name) => getComputedStyle(rootEl()).getPropertyValue(name).trim();
+-
+-/** 解析 #hex / rgb() / rgba() / hsl() / hsla() → [r,g,b]；失败返回 null */
+-function parseRGB(raw) {
+-  const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+-  if (hex) {
+-    let h = hex[1];
+-    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+-    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+-  }
+-  const rgb = raw.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+-  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+-  // 中性色阶参数化后计算值为 hsl(235 10.9% 58.6%)（现代空格语法，兼容逗号形式）
+-  const hsl = raw.match(/^hsla?\(\s*([\d.]+)\s*[,\s]\s*([\d.]+)%\s*[,\s]\s*([\d.]+)%/);
+-  if (hsl) {
+-    let [h, s, l] = [Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100];
+-    h = ((h % 360) + 360) % 360;
+-    const c = (1 - Math.abs(2 * l - 1)) * s;
+-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+-    const m = l - c / 2;
+-    let r, g, b;
+-    if (h < 60) [r, g, b] = [c, x, 0];
+-    else if (h < 120) [r, g, b] = [x, c, 0];
+-    else if (h < 180) [r, g, b] = [0, c, x];
+-    else if (h < 240) [r, g, b] = [0, x, c];
+-    else if (h < 300) [r, g, b] = [x, 0, c];
+-    else [r, g, b] = [c, 0, x];
+-    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+-  }
+-  return null;
+-}
+-
+-/** 按亮度给色块选可读文字色（亮底深字 / 暗底白字） */
+-function inkFor(varName) {
+-  const [r, g, b] = parseRGB(readVar(varName)) ?? [128, 128, 128];
+-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+-  return lum > 0.62 ? 'var(--neutral-950)' : '#ffffff';
+-}
+-
+-function swatch(varName) {
+-  return `<button type="button" class="tk-swatch" data-copy="var(${varName})"
+-    style="background: var(${varName}); color: ${inkFor(varName)}" title="点击复制 var(${varName})">
+-    <span class="tk-swatch__label">${varName}</span></button>`;
+-}
+-
+-function paletteCard() {
+-  const neutral = NEUTRAL_LEVELS.map((l) => swatch(`--neutral-${l}`)).join('');
+-  const accent = ACCENT_LEVELS.map((l) => swatch(`--accent-${l}`)).join('');
+-  const semantic = SEMANTIC.map((s) => swatch(s.var)).join('');
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">色板 Palette</h3>
+-    <p class="tk-card__desc">点击任意色块复制变量名 · 强调色跟随当前主题色</p>
+-    <div class="tk-palette">
+-      <div class="tk-group">
+-        <span class="tk-group__name">中性色 Neutral（${NEUTRAL_LEVELS.length} 级）</span>
+-        <div class="tk-group__swatches">${neutral}</div>
+-      </div>
+-      <div class="tk-group">
+-        <span class="tk-group__name">强调色 Accent（${ACCENT_LEVELS.length} 级）</span>
+-        <div class="tk-group__swatches">${accent}</div>
+-      </div>
+-      <div class="tk-group">
+-        <span class="tk-group__name">语义色 Semantic（${SEMANTIC.length} 组）</span>
+-        <div class="tk-group__swatches">${semantic}</div>
+-      </div>
+-    </div>
+-  </div>`;
+-}
+-
+-function typeRow(level) {
+-  const v = `--font-size-${level}`;
+-  return `<div class="tk-row" data-copy="var(${v})" title="点击复制 var(${v})">
+-    <span class="tk-row__name">${v}</span>
+-    <span class="tk-row__value">${readVar(v)}</span>
+-    <span class="tk-row__sample" style="font-size: var(${v})">设计令牌 Design Tokens</span>
+-  </div>`;
+-}
+-
+-function typeCard() {
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">字体阶梯 Type</h3>
+-    <p class="tk-card__desc">${TYPE_LEVELS.length} 级字号 · 基础字号跟随定制器</p>
+-    ${TYPE_LEVELS.map(typeRow).join('')}
+-  </div>`;
+-}
+-
+-function spaceRow(n) {
+-  const v = `--space-${n}`;
+-  return `<div class="tk-row" data-copy="var(${v})" title="点击复制 var(${v})">
+-    <span class="tk-row__name">${v}</span>
+-    <span class="tk-row__value">${readVar(v)}</span>
+-    <div class="tk-block" style="width: var(${v})"></div>
+-  </div>`;
+-}
+-
+-function spaceCard() {
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">间距标尺 Spacing</h3>
+-    <p class="tk-card__desc">${SPACE_LEVELS.length} 级间距 · 4px 基准</p>
+-    ${SPACE_LEVELS.map(spaceRow).join('')}
+-  </div>`;
+-}
+-
+-function radiusRow(level) {
+-  const v = `--radius-${level}`;
+-  return `<div class="tk-row" data-copy="var(${v})" title="点击复制 var(${v})">
+-    <span class="tk-row__name">${v}</span>
+-    <span class="tk-row__value">${readVar(v)}</span>
+-    <div class="tk-block tk-block--square" style="border-radius: calc(var(${v}) * var(--radius-scale, 1))"></div>
+-  </div>`;
+-}
+-
+-function radiusCard() {
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">圆角 Radius</h3>
+-    <p class="tk-card__desc">${RADIUS_LEVELS.length} 档圆角 · 随定制器圆角比例缩放</p>
+-    ${RADIUS_LEVELS.map(radiusRow).join('')}
+-  </div>`;
+-}
+-
+-function shadowRow(level) {
+-  const v = `--shadow-${level}`;
+-  return `<div class="tk-row" data-copy="var(${v})" title="点击复制 var(${v})">
+-    <span class="tk-row__name">${v}</span>
+-    <span class="tk-row__value">${level.toUpperCase()}</span>
+-    <div class="tk-block tk-block--shadow" style="box-shadow: var(${v})"></div>
+-  </div>`;
+-}
+-
+-function shadowCard() {
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">阴影 Shadow</h3>
+-    <p class="tk-card__desc">${SHADOW_LEVELS.length} 级阴影 · 强度随定制器变化</p>
+-    ${SHADOW_LEVELS.map(shadowRow).join('')}
+-  </div>`;
+-}
+-
+-function glassCard() {
+-  const opacity = readVar('--glass-bg-opacity') || '0.62';
+-  const blur = readVar('--glass-blur') || '24px';
+-  const highlight = readVar('--glass-highlight-opacity') || '0.5';
+-  return `<div class="tk-card">
+-    <h3 class="tk-card__title">玻璃材质 Glass</h3>
+-    <p class="tk-card__desc">点击数值复制变量名</p>
+-    <div class="tk-glass">
+-      <div class="tk-glass__panel glass">
+-        <span class="tk-glass__title">玻璃面板</span>
+-        <span class="tk-glass__hint">backdrop-filter 背景模糊 · 内高光</span>
+-      </div>
+-      <div class="tk-glass__meta">
+-        <span class="tk-chip" data-copy="var(--glass-bg-opacity)" title="点击复制">透明度 <b>${opacity}</b></span>
+-        <span class="tk-chip" data-copy="var(--glass-blur)" title="点击复制">模糊 <b>${blur}</b></span>
+-        <span class="tk-chip" data-copy="var(--glass-highlight-opacity)" title="点击复制">高光 <b>${highlight}</b></span>
+-      </div>
+-    </div>
+-    <p class="tk-card__note">透明度 / 模糊 / 高光由 <a class="tk-link" data-customizer-link>定制器</a>控制</p>
+-  </div>`;
+-}
+-
+-/**
+- * 点击复制变量名：navigator.clipboard 优先，无权限时降级 execCommand；
+- * 仍失败则 toast 失败提示（全局约束：静默降级或失败提示）。
+- */
+-async function copyVar(varName) {
+-  let ok = false;
+-  try {
+-    if (navigator.clipboard?.writeText) {
+-      await navigator.clipboard.writeText(varName);
+-      ok = true;
+-    } else {
+-      const ta = document.createElement('textarea');
+-      ta.value = varName;
+-      ta.setAttribute('readonly', '');
+-      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+-      document.body.appendChild(ta);
+-      ta.select();
+-      ok = document.execCommand('copy');
+-      ta.remove();
+-    }
+-  } catch { ok = false; }
+-  toast(ok ? `已复制 ${varName}` : `复制失败：${varName}`, ok ? {} : { variant: 'danger' });
+-}
+-
+-function onRootClick(e) {
+-  const copyEl = e.target.closest('[data-copy]');
+-  if (copyEl) { copyVar(copyEl.dataset.copy); return; }
+-  // 玻璃卡「定制器」链接 → 触发顶栏定制按钮（Task 17 挂载后生效）
+-  if (e.target.closest('[data-customizer-link]')) {
+-    document.querySelector('.topbar__customizer')?.click();
+-  }
+-}
+-
+-/**
+- * 渲染令牌展示区到 #tokens。
+- * @param {HTMLElement} root #tokens section
+- * @param {boolean} rerender true 时先 replaceChildren 再重建（订阅 store 回调使用）
+- */
+-export function mountTokenShowcase(root, rerender = false) {
+-  if (rerender) root.replaceChildren();
+-  root.insertAdjacentHTML('beforeend', `
+-    <h2>设计令牌</h2>
+-    <div class="tk-grid">
+-      ${paletteCard()}${typeCard()}${spaceCard()}
+-      ${radiusCard()}${shadowCard()}${glassCard()}
+-    </div>`);
+-  if (!root.dataset.tkReady) {
+-    root.dataset.tkReady = '1';
+-    root.addEventListener('click', onRootClick);
+-  }
+-}
+diff --git a/src/docs/docs-mode.js b/src/docs/docs-mode.js
+deleted file mode 100644
+index 88604d1..0000000
+--- a/src/docs/docs-mode.js
++++ /dev/null
+@@ -1,179 +0,0 @@
+-// docs 展示页渲染（Task A1 自 src/main.js 纯搬移）：骨架渲染/主题切换/存储降级提示/
+-// 定制器/令牌区/导航轮/热键/设置入口/titlebar-demo/fwinDemo/组件矩阵/动效实验室/
+-// 3 场景模板/测试桥/窗口控制桥。main.js 只保留模式分支，本模块在 docs 模式同步挂载 ——
+-// 渲染结果与搬移前逐字节等价（DOM 结构/类名/文本不变）。
+-// CSS 全部留在 main.js（全局样式所有模式都加载），本模块只 import JS 逻辑。
+-import { icon } from '../components/icon/icon.js';
+-import { toast } from '../components/toast/toast.js';
+-import { openDialog } from '../components/dialog/dialog.js';
+-import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+-import { bindWindowControls } from '../demo/window-controls.js';
+-import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+-import { renderFloatingWindow, mountFloatingWindow } from '../components/floating-window/floating-window.js';
+-import { renderSearchBar, mountSearchBar } from '../components/search-bar/search-bar.js';
+-import { mountComponentsShowcase } from '../demo/component-showcase-full.js';
+-import { mountMotionLab } from '../demo/motion-lab.js';
+-import { mountThemeSwitcher } from '../demo/theme-switcher.js';
+-import { mountTokenShowcase } from '../demo/token-showcase.js';
+-import { mountCustomizer, toggleCustomizer } from '../demo/customizer-panel.js';
+-import { mountClipboardFloat } from '../scenes/clipboard-float/clipboard-float.js';
+-import { mountMainWindow } from '../scenes/main-window/main-window.js';
+-import { mountSettingsWindow } from '../scenes/settings-window/settings-window.js';
+-import { getConfig, subscribe, onStorageError } from '../config/store.js';
+-import { applyConfig } from '../config/apply.js';
+-
+-const NAV_CORE = [
+-  { id: 'tokens',    name: '设计令牌', icon: 'palette' },
+-  { id: 'components', name: '组件',    icon: 'box' },
+-  { id: 'motion',    name: '动效',    icon: 'sparkles' },
+-  { id: 'scenes',    name: '场景模板', icon: 'layout' },
+-];
+-// 导航项 ×3 重复 —— 4 个真实模块 + 演示重复项，保证列表高度超过导航容器，
+-// 「上下滑动选择 + 居中吸附」真实生效（用户确认的演示方案）
+-const NAV_ITEMS = [...NAV_CORE, ...NAV_CORE, ...NAV_CORE];
+-
+-export function mountDocsMode() {
+-  const app = document.querySelector('#app');
+-  app.innerHTML = `
+-  <div class="app-shell">
+-    <header class="topbar">
+-      <div class="topbar__brand">UI Design System</div>
+-      <!-- 窄屏折叠导航（Task I4，规格 §10）：≤900px 侧栏隐藏，顶部下拉接管模块跳转；
+-           仅取去重后的 NAV_CORE（真实模块），CSS 控制 display，≥900px 不可见 -->
+-      <select class="topbar__nav-mobile" aria-label="模块导航">
+-        ${NAV_CORE.map(i => `<option value="${i.id}">${i.name}</option>`).join('')}
+-      </select>
+-      <nav class="topbar__nav">${NAV_ITEMS.map(i => `<a href="#${i.id}">${i.name}</a>`).join('')}</nav>
+-      <div class="topbar__actions">
+-        <div class="topbar__theme" data-mount="theme-switcher"></div>
+-        <button class="topbar__customizer" data-mount="customizer-open">定制</button>
+-      </div>
+-    </header>
+-    <aside class="navwheel">
+-      <nav class="navwheel__list c-navwheel__list" data-mount="nav-wheel"></nav>
+-      <button class="navwheel__settings c-navwheel__settings" data-mount="settings-entry">设置</button>
+-    </aside>
+-    <main class="content">
+-      <section id="tokens" class="content__section"></section>
+-      <section id="components" class="content__section"></section>
+-      <section id="motion" class="content__section"></section>
+-      <section id="scenes" class="content__section"></section>
+-    </main>
+-  </div>
+-`;
+-
+-  applyConfig(getConfig());
+-  mountThemeSwitcher(document.querySelector('[data-mount="theme-switcher"]'));
+-
+-  // 存储降级提示（Task I4，规格 §13）：隐私模式下 localStorage 写失败 → 一次性 toast。
+-  // store 是纯配置层（只发事件），UI 接线在此 —— toast 不侵入配置层依赖。
+-  // 模块级防重复由 store 内 flag 保证（多次 saveConfig 只触发一次回调）。
+-  onStorageError(() => toast('隐私模式下配置仅在本次会话内生效，刷新后恢复默认', { variant: 'warning' }));
+-
+-  // 主题定制器（Task 17）：body 级抽屉常驻挂载；顶栏「定制」按钮打开。
+-  // 令牌展示区玻璃卡的「定制器」链接经 .topbar__customizer.click() 委托到这里（token-showcase.js）。
+-  mountCustomizer(document.body);
+-  document.querySelector('.topbar__customizer').addEventListener('click', () => toggleCustomizer(true));
+-
+-  // 令牌展示区（Task 14）：订阅 store —— 主题/主题色/定制器变更时重渲染
+-  // （subscribe 回调内只 applyConfig + 重渲染，不再 saveConfig，避免循环）
+-  const tokensSection = document.querySelector('#tokens');
+-  mountTokenShowcase(tokensSection);
+-  subscribe((cfg) => {
+-    applyConfig(cfg);
+-    mountTokenShowcase(tokensSection, true);
+-  });
+-
+-  // NavigationWheel：滑动选择导航（Task 11 + 12）—— 选中项在侧栏居中，主内容滚动到对应区块
+-  const navMobile = document.querySelector('.topbar__nav-mobile'); // 窄屏折叠下拉（Task I4）
+-  const wheel = mountNavWheel(document.querySelector('.navwheel__list'), {
+-    items: NAV_ITEMS,
+-    onChange: (item) => {
+-      if (navMobile) navMobile.value = item.id; // 宽屏操作后缩窗：下拉选中态跟随
+-      document.querySelector(`#${item.id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+-    },
+-  });
+-  // 窄屏下拉选择 → wheel.setActive(id) 同步侧栏实例选中态（切回宽屏状态一致），
+-  // onChange 复用同一 scrollIntoView 跳转路径（setActive 触发 onChange）
+-  navMobile?.addEventListener('change', () => wheel.setActive(navMobile.value));
+-
+-  // 全局热键（Task 13）：最小实现 —— document keydown 匹配已注册组合键
+-  // （如 Ctrl+K → 聚焦第一个 .c-search-bar input，由 search-bar mount 时注册）
+-  const __hotkeyHandlers = new Map();
+-  window.__bindHotkey = (keys, cb) => { __hotkeyHandlers.set(keys.join('+'), cb); };
+-  const matchHotkey = (e, sig) => {
+-    const parts = sig.split('+');
+-    const main = parts.find((p) => !['Ctrl', 'Alt', 'Shift', 'Meta'].includes(p));
+-    return parts.includes('Ctrl') === e.ctrlKey
+-      && parts.includes('Alt') === e.altKey
+-      && parts.includes('Shift') === e.shiftKey
+-      && parts.includes('Meta') === e.metaKey
+-      && !!main && e.key.toLowerCase() === main.toLowerCase();
+-  };
+-  document.addEventListener('keydown', (e) => {
+-    if (e.repeat) return;
+-    for (const [sig, cb] of __hotkeyHandlers) {
+-      if (matchHotkey(e, sig)) { e.preventDefault(); cb(); return; }
+-    }
+-  });
+-
+-  // 设置入口（Task 12）：左下角按钮填图标 + 「设置」，点击滚动到设置页场景模板（#scenes）
+-  const settingsEntry = document.querySelector('.c-navwheel__settings');
+-  settingsEntry.innerHTML = `${icon('settings', 20)}<span>设置</span>`;
+-  settingsEntry.addEventListener('click', () => {
+-    document.querySelector('#scenes').scrollIntoView({ behavior: 'smooth' });
+-  });
+-
+-  // TitleBar 演示：独立展示区（body 顶部，尺寸与场景模板一致便于评审）
+-  const titlebarDemo = document.createElement('div');
+-  titlebarDemo.id = 'titlebar-demo';
+-  titlebarDemo.style.width = '360px'; titlebarDemo.style.borderRadius = 'var(--radius-xl)'; titlebarDemo.style.overflow = 'hidden';
+-  titlebarDemo.style.border = '1px solid var(--glass-border)'; titlebarDemo.style.boxShadow = 'var(--glass-shadow)';
+-  titlebarDemo.style.margin = '0 auto'; titlebarDemo.style.marginTop = 'var(--space-5)';
+-  titlebarDemo.innerHTML = renderTitleBar({ title: '剪贴板', iconName: 'clipboard' }) + '<div style="height:120px" class="glass"></div>';
+-  document.body.prepend(titlebarDemo);
+-  mountTitleBar(titlebarDemo);
+-
+-  // FloatingWindow 演示：position:fixed 组件不进 showcase 网格，置于 content 内容区顶部。
+-  // 修复（评审 Important 1）：窗口按 flow 落到 topbar 之下 —— 加载态不与 #titlebar-demo
+-  // 重叠（控件可点），滚动时也永不复盖 topbar 导航链接（链接拖拽会劫持 pointercancel）；
+-  // 悬浮于内容区之上即组件本义。body 内组合 SearchBar —— 拖动/置顶/折叠/搜索全部可交互。
+-  const fwinDemo = document.createElement('div');
+-  fwinDemo.style.width = '360px'; fwinDemo.style.margin = 'var(--space-5) auto 0';
+-  fwinDemo.innerHTML = renderFloatingWindow({
+-    title: '剪贴板悬浮窗',
+-    body: renderSearchBar({ placeholder: '搜索剪贴板内容…', hotkey: ['Ctrl', 'K'] }),
+-  });
+-  document.querySelector('.content').prepend(fwinDemo);
+-  mountFloatingWindow(fwinDemo);
+-  mountSearchBar(fwinDemo);
+-
+-  // 组件展示区完整矩阵（Task 15）：6 组 32 组件变体矩阵 + 悬浮窗交互实例
+-  mountComponentsShowcase(document.querySelector('#components'));
+-
+-  // 动效实验室（Task 16）：5 个动效演示卡 + 参数试玩器 + 重播。
+-  // 定制器联动在模块内部 subscribe —— 只同步滑杆/局部变量，不重渲染 DOM。
+-  mountMotionLab(document.querySelector('#motion'));
+-
+-  // 场景模板 1：剪贴板悬浮窗（Task 18）—— 第一个完整场景模板，验证悬浮窗场景组件组合。
+-  // 场景模板 2：主窗口（Task 19）—— 一体式标题栏 + 滑动导航 + 8 模块内容区，追加在其后。
+-  // 场景模板 3：设置页（Task 20）—— 滑动选择分区 + 定制器整页嵌入 + 快捷键录制。
+-  // #scenes 标题在此写入；场景自身（标题/说明/实例）由各 mount 函数追加。
+-  const scenesSection = document.querySelector('#scenes');
+-  scenesSection.innerHTML = '<h2>场景模板</h2>';
+-  mountClipboardFloat(scenesSection);
+-  mountMainWindow(scenesSection);
+-  mountSettingsWindow(scenesSection);
+-
+-  // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
+-  window.__toast = toast;
+-  window.__openDialog = openDialog;
+-
+-  // 窗口控制桥（Task I2 + Task B1-2 浏览器降级）：放在全部挂载之后 —— 场景模板/组件矩阵
+-  // 的 .c-titlebar 实例此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，
+-  // 无副作用）。Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
+-  // 图标按真实状态同步、close → close，失败静默降级）；浏览器环境降级为提示通道（三按钮
+-  // click → toast「桌面端生效」+ 拖拽区轻量反馈，返回 'browser'），mountTitleBar 演示行为保持。
+-  // 测试经 /src/demo/window-controls.js 动态 import 注入 mock windowApi 验证绑定逻辑。
+-  bindWindowControls();
+-}
+diff --git a/src/main.js b/src/main.js
+index 6a1d829..02a9acd 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -1,18 +1,15 @@
+ import './styles/tokens.css';
+ import './styles/themes.css';
+ import './styles/motion.css';
+ import './styles/base.css';
+ import './styles/layout.css';
+-import './demo/token-showcase.css';
+-import './demo/component-showcase-full.css';
+-import './styles/motion-lab.css';
+ import './components/icon/icon.css';
+ import './components/button/button.css';
+ import './components/input/input.css';
+ import './components/textarea/textarea.css';
+ import './components/select/select.css';
+ import './components/checkbox/checkbox.css';
+ import './components/radio/radio.css';
+ import './components/switch/switch.css';
+ import './components/slider/slider.css';
+ import './components/kbd/kbd.css';
+@@ -31,34 +28,28 @@ import './components/context-menu/context-menu.css';
+ import './components/tab/tab.css';
+ import './components/breadcrumb/breadcrumb.css';
+ import './components/title-bar/title-bar.css';
+ import './components/navigation-wheel/nav-wheel.css';
+ import './components/floating-window/floating-window.css';
+ import './components/search-bar/search-bar.css';
+ import './components/hotkey-hint/hotkey-hint.css';
+ import './components/float-ball/float-ball.css';
+ import './components/hotkey-recorder/hotkey-recorder.css';
+ import './components/sidebar-item/sidebar-item.css';
+-import './scenes/clipboard-float/clipboard-float.css';
+-import './scenes/main-window/main-window.css';
+ import './scenes/settings-window/settings-window.css';
+ import './styles/customizer.css';
+ import { resolveMode } from './app/mode.js';
+-import { mountDocsMode } from './docs/docs-mode.js';
+ 
+-// 模式入口（Task A1，规格：模式入口）：resolveMode 纯函数决定当前形态 ——
+-// ?mode=app|docs|strip 显式优先；无参数 + Tauri → 'app'；无参数浏览器 → 'docs'；非法值回落 'docs'。
++// 模式入口（Task B1-4，模式简化）：resolveMode 纯函数决定当前形态 ——
++// ?mode=app|strip 显式优先；无参数/非法值 → 'app'（浏览器与 Tauri 一致，docs 渲染已删除）。
+ // hasTauri 由本处探测 window.__TAURI__（withGlobalTauri 全局通道，与 window-controls.js 同模式）。
+-// docs 同步挂载（渲染逐字节等价，见 src/docs/docs-mode.js）；app/strip 动态 import 占位
+-// （app-main.js / strip-main.js 由 Task A3 / Task A5 实现，本任务仅保证 build 可解析）。
++// app/strip 动态 import（docs 展示内容已内化为设置「组件」「动效」分区，见 app-main.js）。
+ const mode = resolveMode(
+   new URLSearchParams(window.location.search),
+   typeof window !== 'undefined' && !!window.__TAURI__,
+ );
+ 
+ if (mode === 'app') {
+   import('./app/app-main.js').then(({ mountAppMode }) => mountAppMode(document.querySelector('#app')));
+-} else if (mode === 'strip') {
+-  import('./app/strip-main.js').then(({ mountStripMode }) => mountStripMode());
+ } else {
+-  mountDocsMode();
++  import('./app/strip-main.js').then(({ mountStripMode }) => mountStripMode());
+ }
+diff --git a/src/scenes/main-window/main-window.css b/src/scenes/main-window/main-window.css
+deleted file mode 100644
+index 55d3a17..0000000
+--- a/src/scenes/main-window/main-window.css
++++ /dev/null
+@@ -1,107 +0,0 @@
+-/* 场景模板 2：主窗口（Task 19）—— 一体式 TitleBar + NavigationWheel + 8 模块内容区。
+-   上下无割裂：窗口玻璃背景与标题栏共享，标题栏无下边框；
+-   导航列复用 NavigationWheel 组件类（.c-navwheel__list 绝对定位 inset 依赖父容器高度），
+-   场景内 .c-navwheel 固定 520px（560-40 标题栏），列表视口 464px < 8×64px 内容，真实可滑。
+-   动画红线：页面切换 page-in 只动 transform/opacity；图片格悬停 scale 只动 transform。 */
+-
+-.cmain-scene { margin-bottom: var(--space-7); }
+-
+-.cmain-scene__head { display: flex; align-items: baseline; flex-wrap: wrap;
+-  column-gap: var(--space-3); row-gap: var(--space-1); margin-bottom: var(--space-4); }
+-.cmain-scene__head h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+-  color: var(--text-1); }
+-.cmain-scene__head p { font-size: var(--font-size-sm); color: var(--text-2); }
+-.cmain-scene__head code { padding: 1px 5px; font-size: 11px; font-family: var(--font-mono, monospace);
+-  color: var(--text-2); background: var(--surface-2);
+-  border: 1px solid var(--glass-border); border-radius: var(--radius-xs); }
+-
+-/* 窗口：880×560 圆角玻璃，内部 grid（176px 1fr / 40px 1fr）—— 与展示页骨架同构 */
+-.cmain { width: 880px; height: 560px; border-radius: var(--radius-lg);
+-  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+-  display: grid; grid-template-columns: 176px 1fr; grid-template-rows: 40px 1fr;
+-  overflow: hidden; }
+-
+-.cmain .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+-/* 上下无割裂：标题栏无底部边框（title-bar.css 契约），与内容共享玻璃背景 */
+-
+-/* 导航列：grid cell 需 min-height:0（.c-navwheel__list 绝对定位 inset 依赖父容器高度）；
+-   .c-navwheel 用 height:100% 跟随 grid cell 实际高度（560 - 2 边框 - 40 标题栏 = 518px，
+-   组件类默认同此值）—— 固定 520px 会溢出 2px、裁切列表底缘（Task 19 收尾修复） */
+-.cmain__nav { position: relative; grid-column: 1; grid-row: 2; min-height: 0;
+-  border-right: 1px solid var(--glass-border); overflow: hidden; }
+-.cmain__nav .c-navwheel { height: 100%; }
+-
+-/* 设置入口：场景局部类 .cmain__settings —— 不复用 .c-navwheel__settings（该全局类被
+-   nav-wheel.spec.js 假设唯一，场景内再挂一个实例会触发 strict mode 冲突）。
+-   视觉与侧栏设置入口一致：组件基础样式（高 56px 底部条 + 居中内容）在此补齐 */
+-.cmain__settings { position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+-  padding: 0 var(--space-4); width: 100%; border-top: 1px solid var(--glass-border);
+-  background: var(--glass-bg); color: var(--text-2); font-size: var(--font-size-sm); }
+-.cmain__settings:hover { color: var(--text-1); background: var(--surface-hover); }
+-
+-/* 内容区：grid 第 2 列，8 个模块页；非 active 页 display:none，切换时重播 page-in */
+-.cmain__pages { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0;
+-  position: relative; overflow: hidden; }
+-.cmain__page { display: none; height: 100%; overflow-y: auto;
+-  padding: var(--space-5) var(--space-6);
+-  animation: cmain-page-in var(--dur-base) var(--ease-out); }
+-.cmain__page--active { display: block; }
+-
+-@keyframes cmain-page-in {
+-  from { opacity: 0; transform: translateY(4px); }
+-}
+-
+-.cmain__page-head { margin-bottom: var(--space-4); }
+-.cmain__page-head h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+-  color: var(--text-1); }
+-.cmain__page-head p { margin-top: 2px; font-size: var(--font-size-xs); color: var(--text-3); }
+-
+-/* 仪表盘：3 统计卡 + 进度条 */
+-.cmain__stats { display: grid; grid-template-columns: repeat(3, 1fr);
+-  gap: var(--space-3); margin-bottom: var(--space-4); }
+-.cmain__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
+-.cmain__stat-value { margin: 4px 0 2px; font-size: 28px; line-height: 1.15;
+-  font-weight: var(--font-weight-semibold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+-.cmain__stat-trend { display: flex; align-items: center; gap: 2px;
+-  font-size: var(--font-size-xs); color: var(--accent); }
+-.cmain__stat-trend--down { color: var(--danger-500); }
+-.cmain__goal { max-width: 420px; }
+-.cmain__progress-label { display: flex; justify-content: space-between; align-items: center;
+-  margin-bottom: var(--space-2); font-size: var(--font-size-xs); color: var(--text-2); }
+-
+-/* 数据列表：c-list 8 行 + 分页 */
+-.cmain__pager { display: flex; align-items: center; justify-content: center;
+-  gap: var(--space-3); margin-top: var(--space-4); }
+-.cmain__pager-label { min-width: 72px; text-align: center;
+-  font-size: var(--font-size-xs); color: var(--text-2); font-variant-numeric: tabular-nums; }
+-
+-/* 表单页 */
+-.cmain__form { display: flex; flex-direction: column; gap: var(--space-4);
+-  max-width: 380px; }
+-.cmain__field { display: flex; flex-direction: column; gap: var(--space-2); }
+-.cmain__field > span { font-size: var(--font-size-xs); color: var(--text-2); }
+-.cmain__field--switch { flex-direction: row; align-items: center;
+-  justify-content: space-between; }
+-.cmain__form-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+-
+-/* 图片库：9 宫格渐变占位，悬停 scale(1.05) 只动 transform（红线合规） */
+-.cmain__gallery { display: grid; grid-template-columns: repeat(3, 1fr);
+-  gap: var(--space-3); }
+-.cmain__tile { aspect-ratio: 4 / 3; display: grid; place-items: center;
+-  border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); cursor: pointer;
+-  color: rgba(255, 255, 255, 0.9); font-size: var(--font-size-xs);
+-  background: linear-gradient(135deg, hsl(var(--hue) 70% 55%), hsl(calc(var(--hue) + 40) 65% 45%));
+-  transition: transform var(--dur-base) var(--ease-spring); }
+-.cmain__tile:hover { transform: scale(1.05); }
+-
+-/* 空态：填满页面高度，居中展示 */
+-.cmain__empty { height: 100%; }
+-
+-/* 关于：信息行 */
+-.cmain__about { max-width: 420px; }
+-.cmain__about-row { display: flex; justify-content: space-between;
+-  padding: var(--space-1) 0; font-size: var(--font-size-sm); color: var(--text-2); }
+-.cmain__about-row + .cmain__about-row { border-top: 1px solid var(--glass-border); }
+-.cmain__about-row span:last-child { color: var(--text-1); }
+diff --git a/src/scenes/main-window/main-window.js b/src/scenes/main-window/main-window.js
+deleted file mode 100644
+index 7a9dfee..0000000
+--- a/src/scenes/main-window/main-window.js
++++ /dev/null
+@@ -1,234 +0,0 @@
+-// 场景模板 2：主窗口（Task 19）—— 一体式 TitleBar + NavigationWheel 滑动导航 + 8 模块内容区。
+-// 验证「上下无割裂」+ 滑动导航设计语言的完整窗口场景：.cmain 880×560 玻璃窗口，
+-// 内部 grid（176px 1fr / 40px 1fr）：顶部一体式标题栏 + 左侧独立 mountNavWheel（8 项，
+-// 8×64px > 列表视口，真实可滑）+ 右侧 8 个模块页。
+-// 动画红线：页面切换只动 transform/opacity（page-in）；图片格悬停只动 transform。
+-// 隔离：导航实例用场景局部容器 .cmain__nav（不用侧栏 .navwheel 类），mountNavWheel
+-// 按 root 作用域查询，不干扰全局侧栏实例；设置入口用场景局部类 .cmain__settings
+-// （不复用全局 .c-navwheel__settings —— nav-wheel.spec.js 假设该选择器唯一，见 CSS 注释），
+-// 点击切到表单页 + toast。
+-import { icon } from '../../components/icon/icon.js';
+-import { renderTitleBar, mountTitleBar } from '../../components/title-bar/title-bar.js';
+-import { mountNavWheel } from '../../components/navigation-wheel/nav-wheel.js';
+-import { renderCard } from '../../components/card/card.js';
+-import { renderList, mountList } from '../../components/list/list.js';
+-import { renderProgress } from '../../components/progress/progress.js';
+-import { renderEmptyState } from '../../components/empty-state/empty-state.js';
+-import { renderInput } from '../../components/input/input.js';
+-import { renderSelect } from '../../components/select/select.js';
+-import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
+-import { toast } from '../../components/toast/toast.js';
+-
+-// 8 个模块（pre-flight 修订）：8×64px = 512px > 列表视口 464px，滑动选择真实生效；
+-// 用户后续新增模块即沿用此扩展方式（往 MODULES 追加即可，导航与内容区同步生成）
+-const MODULES = [
+-  { id: 'dashboard', name: '仪表盘', icon: 'home' },
+-  { id: 'list',     name: '数据列表', icon: 'list' },
+-  { id: 'settings', name: '表单',    icon: 'settings' },
+-  { id: 'image',    name: '图片库',  icon: 'image' },
+-  { id: 'star',     name: '空状态',  icon: 'star' },
+-  { id: 'help',     name: '帮助',    icon: 'help' },
+-  { id: 'info',     name: '关于',    icon: 'info' },
+-  { id: 'folder',   name: '更多',    icon: 'folder' },
+-];
+-
+-// —— 各模块内容 ——
+-
+-const DASH_STATS = [
+-  { label: '复制统计', value: '1,284', trend: '+12.5%', up: true },
+-  { label: '收藏统计', value: '36',    trend: '+5.0%',  up: true },
+-  { label: '同步统计', value: '8',     trend: '-2.1%',  up: false },
+-];
+-
+-function statCard(s) {
+-  return `<div class="c-card cmain__stat">
+-    <div class="cmain__stat-label">${s.label}</div>
+-    <div class="cmain__stat-value">${s.value}</div>
+-    <div class="cmain__stat-trend${s.up ? '' : ' cmain__stat-trend--down'}">${s.up ? '↑' : '↓'} ${s.trend}</div>
+-  </div>`;
+-}
+-
+-function pageHead(title, desc = '') {
+-  return `<div class="cmain__page-head"><h4>${title}</h4>${desc ? `<p>${desc}</p>` : ''}</div>`;
+-}
+-
+-// 各模块页主体：占位页（帮助/关于/更多）复用列表/卡片形态，保持内容区骨架一致
+-function pageBody(id) {
+-  switch (id) {
+-    case 'dashboard': return `
+-      ${pageHead('仪表盘', '欢迎回来，这是今日概览')}
+-      <div class="cmain__stats">${DASH_STATS.map(statCard).join('')}</div>
+-      <div class="cmain__goal">
+-        ${renderCard({
+-          title: '本周目标进度',
+-          content: `<div class="cmain__progress-label"><span>已完成 68%</span><span>目标 1,000 条</span></div>
+-            ${renderProgress({ value: 68 })}`,
+-        })}
+-      </div>`;
+-    case 'list': return `
+-      ${pageHead('数据列表', '共 8 条最近记录')}
+-      <div data-mount="list">${renderList({
+-        items: [
+-          { iconName: 'clipboard', title: '设计规范 v2.3', desc: '复制于 08-04 09:12', meta: '文本' },
+-          { iconName: 'image', title: '产品截图一组', desc: '复制于 08-04 08:47', meta: '图片' },
+-          { iconName: 'globe', title: 'Tauri 2 文档链接', desc: '复制于 08-03 21:30', meta: '链接' },
+-          { iconName: 'clipboard', title: '周报模板', desc: '复制于 08-03 17:05', meta: '文本' },
+-          { iconName: 'key', title: 'SSH 配置片段', desc: '复制于 08-03 15:41', meta: '文本' },
+-          { iconName: 'image', title: '暗色主题截图', desc: '复制于 08-02 19:22', meta: '图片' },
+-          { iconName: 'globe', title: '图标库参考', desc: '复制于 08-02 10:08', meta: '链接' },
+-          { iconName: 'clipboard', title: '发布检查清单', desc: '复制于 08-01 16:53', meta: '文本' },
+-        ],
+-      })}</div>
+-      <div class="cmain__pager">
+-        <button class="c-btn c-btn--ghost c-btn--sm cmain__pager-prev" type="button">${icon('chevron-left', 16)}上一页</button>
+-        <span class="cmain__pager-label">第 1 / 3 页</span>
+-        <button class="c-btn c-btn--ghost c-btn--sm cmain__pager-next" type="button">下一页${icon('chevron-right', 16)}</button>
+-      </div>`;
+-    case 'settings': return `
+-      ${pageHead('表单', '配置应用偏好，保存后即时生效')}
+-      <form class="cmain__form" novalidate>
+-        <label class="cmain__field">
+-          <span>应用名称</span>
+-          ${renderInput({ value: '我的应用', placeholder: '输入应用名称', label: '应用名称' })}
+-        </label>
+-        <label class="cmain__field">
+-          <span>默认语言</span>
+-          ${renderSelect({ options: ['简体中文', 'English', '日本語'], value: '简体中文' })}
+-        </label>
+-        <div class="cmain__field cmain__field--switch">
+-          <span>自动保存</span>
+-          ${renderSwitch({ checked: true, label: '自动保存' })}
+-        </div>
+-        <div class="cmain__form-actions">
+-          <button class="c-btn c-btn--primary" type="submit">${icon('check', 18)}保存设置</button>
+-        </div>
+-      </form>`;
+-    case 'image': return `
+-      ${pageHead('图片库', '最近 9 张图片，悬停放大预览')}
+-      <div class="cmain__gallery">${[15, 45, 75, 105, 135, 165, 195, 225, 255]
+-        .map((h, i) => `<div class="cmain__tile" style="--hue: ${h}"><span>图片 ${i + 1}</span></div>`).join('')}</div>`;
+-    case 'star': return `
+-      ${pageHead('空状态', '无数据时的引导与操作入口')}
+-      <div class="c-empty-state cmain__empty">${renderEmptyState({
+-        iconName: 'star',
+-        title: '暂无收藏',
+-        desc: '点击星标的内容将收藏在这里',
+-        action: { label: '去收藏', variant: 'primary', iconName: 'star' },
+-      })}</div>`;
+-    case 'help': return `
+-      ${pageHead('帮助中心', '常见问题与使用指南')}
+-      <div data-mount="help-list">${renderList({
+-        items: [
+-          { iconName: 'refresh', title: '如何同步多端数据', desc: '登录后自动同步，无需手动操作' },
+-          { iconName: 'palette', title: '如何更换主题与主题色', desc: '顶栏「定制」入口可实时预览' },
+-          { iconName: 'shield', title: '数据存储在哪里', desc: '本地加密存储，仅存于你的设备' },
+-        ],
+-      })}</div>`;
+-    case 'info': return `
+-      ${pageHead('关于', '应用信息与版本')}
+-      <div class="cmain__about">${renderCard({
+-        title: '我的应用',
+-        content: `<div class="cmain__about-row"><span>版本</span><span>1.0.0</span></div>
+-          <div class="cmain__about-row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
+-          <div class="cmain__about-row"><span>设计语言</span><span>UI Design System</span></div>`,
+-      })}</div>`;
+-    case 'folder': return `
+-      ${pageHead('更多', '其他功能入口')}
+-      <div data-mount="more-list">${renderList({
+-        items: [
+-          { iconName: 'download', title: '导出数据', desc: '备份为 JSON 文件' },
+-          { iconName: 'command', title: '键盘快捷键', desc: '查看全部快捷键' },
+-          { iconName: 'refresh', title: '检查更新', desc: '当前已是最新版本' },
+-          { iconName: 'lock', title: '用户协议', desc: '隐私政策与使用条款' },
+-        ],
+-      })}</div>`;
+-    default: return '';
+-  }
+-}
+-
+-/**
+- * 挂载主窗口场景（追加到 #scenes 内，剪贴板场景之后）。
+- * @param {HTMLElement} root #scenes section（外层 h2 由 main.js 写入）
+- */
+-export function mountMainWindow(root) {
+-  const pagesHtml = MODULES.map((m, i) => `
+-    <div class="cmain__page${i === 0 ? ' cmain__page--active' : ''}" data-page="${m.id}">
+-      ${pageBody(m.id)}
+-    </div>`).join('');
+-
+-  root.insertAdjacentHTML('beforeend', `
+-    <section class="cmain-scene">
+-      <header class="cmain-scene__head">
+-        <h3>主窗口</h3>
+-        <p>一体式标题栏 + 滑动导航 + 8 模块内容区；Tauri 接入见 <code>docs/tauri-integration.md</code>。</p>
+-      </header>
+-      <div class="cmain">
+-        ${renderTitleBar({ title: '我的应用', iconName: 'layout' })}
+-        <div class="cmain__nav">
+-          <div class="c-navwheel">
+-            <div class="c-navwheel__list" data-mount="nav"></div>
+-            <button class="cmain__settings" type="button">设置</button>
+-          </div>
+-        </div>
+-        <div class="cmain__pages">${pagesHtml}</div>
+-      </div>
+-    </section>
+-  `);
+-
+-  const scene = root.querySelector('.cmain');
+-
+-  // 模块切换：唯一 active 页（动画在 .cmain__page 由 display 翻转重新触发）
+-  const switchPage = (id) => {
+-    scene.querySelectorAll('.cmain__page')
+-      .forEach((p) => p.classList.toggle('cmain__page--active', p.dataset.page === id));
+-  };
+-
+-  // 独立 NavigationWheel 实例（root = .c-navwheel，遮罩挂到 .cmain__nav —— 场景局部容器，
+-  // 不与侧栏 .navwheel 冲突）；onChange 驱动内容区切页
+-  const wheel = mountNavWheel(scene.querySelector('.c-navwheel'), {
+-    items: MODULES,
+-    onChange: (item) => switchPage(item.id),
+-  });
+-
+-  // 设置入口：切到表单页（索引 2，经 scrollToIndex 选中模块）并 toast 提示
+-  const settingsBtn = scene.querySelector('.cmain__settings');
+-  settingsBtn.innerHTML = `${icon('settings', 16)}<span>设置</span>`;
+-  settingsBtn.addEventListener('click', () => {
+-    wheel.scrollToIndex(2);
+-    toast('已打开表单设置');
+-  });
+-
+-  // 表单页：提交 → toast（演示用，不真实提交）
+-  scene.querySelector('.cmain__form').addEventListener('submit', (e) => {
+-    e.preventDefault();
+-    toast('设置已保存', { variant: 'success' });
+-  });
+-
+-  // 分页演示：上一页/下一页 1..3 循环
+-  let pageNo = 1;
+-  const pagerLabel = scene.querySelector('.cmain__pager-label');
+-  const prevBtn = scene.querySelector('.cmain__pager-prev');
+-  const nextBtn = scene.querySelector('.cmain__pager-next');
+-  const renderPager = () => {
+-    pagerLabel.textContent = `第 ${pageNo} / 3 页`;
+-    // 禁用态由 disabled 属性承担（.c-btn:disabled 规则）—— c-btn--disabled 类无样式，不再 toggle
+-    prevBtn.disabled = pageNo === 1;
+-    nextBtn.disabled = pageNo === 3;
+-  };
+-  prevBtn.addEventListener('click', () => { pageNo = Math.max(1, pageNo - 1); renderPager(); });
+-  nextBtn.addEventListener('click', () => { pageNo = Math.min(3, pageNo + 1); renderPager(); });
+-
+-  // 空态按钮：演示入口 toast
+-  scene.querySelector('.cmain__empty').addEventListener('click', (e) => {
+-    if (e.target.closest('.c-btn')) toast('收藏功能演示');
+-  });
+-
+-  // 挂载交互：标题栏（最大化切换）/ 列表选中 / 开关
+-  mountTitleBar(scene);
+-  mountList(scene.querySelector('[data-mount="list"]'));
+-  mountList(scene.querySelector('[data-mount="help-list"]'));
+-  mountList(scene.querySelector('[data-mount="more-list"]'));
+-  mountSwitch(scene);
+-
+-  renderPager();
+-}
+diff --git a/src/scenes/settings-window/settings-pages.js b/src/scenes/settings-window/settings-pages.js
+index a636a20..910d961 100644
+--- a/src/scenes/settings-window/settings-pages.js
++++ b/src/scenes/settings-window/settings-pages.js
+@@ -1,20 +1,20 @@
+ // 设置页共享实现（Task A4 提取）：SECTIONS 数据 + 各分区页渲染 + 页面栈包装 + 交互接线。
+-// 场景模板（settings-window.js，Task 20）与应用壳设置模式（app-main.js）共用同一实现，
+-// 类名 .csettings__* 不变 —— scene-settings.spec 依赖（.csettings / .c-navwheel__item 8 /
++// 应用壳设置模式（app-main.js）使用（Task B1-4 起为唯一宿主；docs 设置场景已随 docs 渲染删除），
++// 类名 .csettings__* 不变 —— e2e 依赖（.csettings / .c-navwheel__item 8 /
+ //   .csettings__page--active / .cust-group 6）。
+ // 分工：
+ // - 纯渲染：SECTIONS / pageBody / renderSettingsPages —— 调用方负责布局容器与导航轮；
+-//   外观分区定制器惰性挂载（renderCustomizerGroups）由调用方在首次激活时执行（隔离原因见
+-//   settings-window.js 文件头注释：面板与设置页同构类并存会触发 strict mode 冲突）。
++//   外观分区定制器惰性挂载（renderCustomizerGroups）由调用方在首次激活时执行（隔离原因：
++//   定制器面板与设置页同构类并存会触发 strict mode 冲突，故面板仅常驻抽屉、整页形态惰性挂载）。
+ // - 交互接线：mountSettingsInteractions(root) —— 主题三态 click→store、动效开关、保存、
+-//   快捷键录制、开源链接、开关视觉（场景与应用壳行为一致）。
++//   快捷键录制、开源链接、开关视觉（桌面设置页与手机页面栈行为一致）。
+ import { icon } from '../../components/icon/icon.js';
+ import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
+ import { renderSelect } from '../../components/select/select.js';
+ import { renderEmptyState } from '../../components/empty-state/empty-state.js';
+ import { renderHotkeyRecorder, mountHotkeyRecorder } from '../../components/hotkey-recorder/hotkey-recorder.js';
+ import { getConfig, saveConfig } from '../../config/store.js';
+ import { applyConfig } from '../../config/apply.js';
+ import { toast } from '../../components/toast/toast.js';
+ import './settings-window.css';
+ 
+@@ -25,21 +25,21 @@ export const SECTIONS = [
+   { id: 'appearance', name: '外观',   icon: 'palette' },
+   { id: 'interface',  name: '界面',   icon: 'layout' },
+   { id: 'shortcuts',  name: '快捷键', icon: 'key' },
+   { id: 'notify',     name: '通知',   icon: 'bell' },
+   { id: 'data',       name: '数据',   icon: 'folder' },
+   { id: 'advanced',   name: '高级',   icon: 'settings' },
+   { id: 'about',      name: '关于',   icon: 'info' },
+ ];
+ 
+ // 应用壳专用：共享 8 分区 + 组件/动效（Task B1-1）。
+-// docs 设置场景仍用 SECTIONS（count 8 不变）；组件/动效分区为应用壳内化展示内容，
++// 组件/动效分区为应用壳内化展示内容（B1-4 起 docs 渲染已删除），
+ // pageBody 分支返回含 .app-partition 容器（场景不渲染这两 id，仅应用壳触发惰性挂载）。
+ export const APP_SECTIONS = [
+   ...SECTIONS,
+   { id: 'components', name: '组件', icon: 'box' },
+   { id: 'motion', name: '动效', icon: 'sparkles' },
+ ];
+ 
+ // —— 通用分区 ——
+ 
+ // 主题三态：与顶栏 tsw 同语义（浅/深/跟随系统），类名场景局部（.csettings__mode）
+@@ -81,21 +81,21 @@ function generalPage() {
+       ${renderSelect({ options: ['上次关闭时的状态', '默认窗口', '最小化到托盘'], value: '上次关闭时的状态' })}
+     </div>
+     <div class="csettings__actions">
+       <button type="button" class="c-btn c-btn--primary c-btn--sm" data-save-general>${icon('check', 16)}保存设置</button>
+     </div>`;
+ }
+ 
+ // —— 外观分区 ——
+ 
+ // 定制器整页形态：占位容器由调用方首次激活时惰性渲染（renderCustomizerGroups），
+-// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见 settings-window.js 文件头注释）
++// 与定制器面板共用同一实现 + 同一份 store，双向实时（隔离原因见文件头注释）
+ function appearancePage() {
+   return `
+     ${pageHead('外观', '主题定制器整页形态 —— 与右侧抽屉面板共用同一份配置')}
+     <div class="csettings__cust"></div>`;
+ }
+ 
+ // —— 界面分区：模块显隐开关列表（演示级，不写 store）——
+ 
+ const MODULE_TOGGLES = [
+   { id: 'float',    label: '剪贴板悬浮窗', desc: '全局呼出的小窗，复制记录即时可查' },
+diff --git a/src/scenes/settings-window/settings-window.css b/src/scenes/settings-window/settings-window.css
+index d991304..d1bd2cb 100644
+--- a/src/scenes/settings-window/settings-window.css
++++ b/src/scenes/settings-window/settings-window.css
+@@ -62,22 +62,21 @@
+ /* 表单字段（通用分区） */
+ .csettings__field { display: flex; flex-direction: column; gap: var(--space-2);
+   max-width: 420px; margin-bottom: var(--space-5); }
+ .csettings__field--row { flex-direction: row; align-items: center;
+   justify-content: space-between; }
+ .csettings__field-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+   color: var(--text-1); }
+ .csettings__field-desc { font-size: var(--font-size-xs); color: var(--text-3); }
+ .csettings__field .c-select { margin-top: 2px; }
+ 
+-/* 主题三态：分段按钮组（场景局部类，不与顶栏 .tsw__mode 冲突 —— theme-switcher.spec.js
+-   全页定位 .tsw__mode 并 click，strict mode 下不能共存第二份） */
++/* 主题三态：分段按钮组（场景局部类 .csettings__mode；顶栏 theme-switcher 已随 docs 渲染删除） */
+ .csettings__modes { display: inline-flex; gap: 2px; padding: 3px;
+   border: 1px solid var(--glass-border); border-radius: var(--radius-full);
+   background: var(--surface-1); align-self: flex-start; }
+ .csettings__mode { display: flex; align-items: center; gap: var(--space-1);
+   padding: 5px 14px; border-radius: var(--radius-full);
+   font-size: var(--font-size-xs); color: var(--text-2);
+   transition: transform var(--dur-fast) var(--ease-spring), color var(--dur-fast) var(--ease-out),
+     background var(--dur-fast) var(--ease-out); }
+ .csettings__mode:hover { color: var(--text-1); }
+ .csettings__mode:active { transform: scale(0.96); }
+diff --git a/src/scenes/settings-window/settings-window.js b/src/scenes/settings-window/settings-window.js
+deleted file mode 100644
+index 243d866..0000000
+--- a/src/scenes/settings-window/settings-window.js
++++ /dev/null
+@@ -1,80 +0,0 @@
+-// 场景模板 3：设置页（Task 20）—— 滑动选择分区 + 定制器整页嵌入 + 快捷键录制。
+-// Task A4 重构：纯渲染（SECTIONS / pageBody / 页面栈）与交互接线抽到 settings-pages.js 共享，
+-// 场景模板与应用壳设置模式共用同一实现（类名 .csettings__* 不变）。
+-// 820×520 玻璃窗口，grid（220px 1fr / 40px 1fr）—— 设置导航比主页（176px）更宽（用户确认变体）。
+-// 左侧纵向 NavigationWheel 变体：8 分区（8×64px = 512px > 列表视口 424px，真实可滑）；
+-// 右侧 8 分区页：通用/外观/快捷键/关于为完整页，界面为模块开关列表，通知/数据/高级为占位页。
+-// 隔离（Task 19 教训：场景局部类）：
+-// - 底部返回入口用 .csettings__back —— 不复用 .c-navwheel__settings（nav-wheel.spec.js
+-//   假设该选择器唯一）；主题三态用 .csettings__mode —— 不复用 .tsw__mode
+-//   （theme-switcher.spec.js 全页定位 .tsw__mode 并 click，strict mode 不能并存第二份）
+-// - 外观分区惰性挂载 renderCustomizerGroups：定制器面板与设置页同构类（.cust-row/
+-//   .cust-glass-preview）会被 customizer.spec.js 的全页 fill/hover 选择器命中，两实例
+-//   并存即触发 strict mode 冲突 —— 首次激活分区时才渲染，此后常驻并与面板双向实时同步
+-// 动画红线：分区切换只动 transform/opacity（page-in），无模糊动画。
+-import { icon } from '../../components/icon/icon.js';
+-import { renderTitleBar, mountTitleBar } from '../../components/title-bar/title-bar.js';
+-import { mountNavWheel } from '../../components/navigation-wheel/nav-wheel.js';
+-import { renderCustomizerGroups } from '../../demo/customizer-panel.js';
+-import { toast } from '../../components/toast/toast.js';
+-import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from './settings-pages.js';
+-
+-/**
+- * 挂载设置页场景（追加到 #scenes 内，主窗口场景之后）。
+- * @param {HTMLElement} root #scenes section（外层 h2 由 main.js 写入）
+- */
+-export function mountSettingsWindow(root) {
+-  const pagesHtml = renderSettingsPages();
+-
+-  root.insertAdjacentHTML('beforeend', `
+-    <section class="csettings-scene">
+-      <header class="csettings-scene__head">
+-        <h3>设置页</h3>
+-        <p>滑动选择分区 + 定制器整页嵌入 + 快捷键录制；Tauri 接入见 <code>docs/tauri-integration.md</code>。</p>
+-      </header>
+-      <div class="csettings">
+-        ${renderTitleBar({ title: '设置', iconName: 'settings' })}
+-        <div class="csettings__nav">
+-          <div class="c-navwheel">
+-            <div class="c-navwheel__list" data-mount="nav"></div>
+-            <button class="csettings__back" type="button">返回</button>
+-          </div>
+-        </div>
+-        <div class="csettings__pages">${pagesHtml}</div>
+-      </div>
+-    </section>
+-  `);
+-
+-  const scene = root.querySelector('.csettings');
+-
+-  // 分区切换：唯一 active 页（动画在 .csettings__page 由 display 翻转重新触发）
+-  let custMounted = false;
+-  const switchPage = (id) => {
+-    scene.querySelectorAll('.csettings__page')
+-      .forEach((p) => p.classList.toggle('csettings__page--active', p.dataset.page === id));
+-    // 外观分区首次激活才渲染定制器分组（隔离原因见文件头注释），此后常驻 + 订阅同步
+-    if (id === 'appearance' && !custMounted) {
+-      renderCustomizerGroups(scene.querySelector('[data-page="appearance"] .csettings__cust'));
+-      custMounted = true;
+-    }
+-  };
+-
+-  // 独立 NavigationWheel 实例（root = .c-navwheel，遮罩挂到 .csettings__nav ——
+-  // 场景局部容器，不与侧栏 .navwheel 冲突）；onChange 驱动内容区切页
+-  const wheel = mountNavWheel(scene.querySelector('.c-navwheel'), {
+-    items: SECTIONS,
+-    onChange: (item) => switchPage(item.id),
+-  });
+-
+-  // 返回入口：滚动回展示页顶部（设置页自身无「设置」入口，改为返回主页语义）
+-  const backBtn = scene.querySelector('.csettings__back');
+-  backBtn.innerHTML = `${icon('arrow-left', 16)}<span>返回</span>`;
+-  backBtn.addEventListener('click', () => {
+-    document.querySelector('.content').scrollIntoView({ behavior: 'smooth' });
+-    toast('已返回主页');
+-  });
+-
+-  // 共享交互接线（主题三态/动效/保存/快捷键/开源链接/开关）+ 标题栏（最大化切换）
+-  mountSettingsInteractions(scene);
+-  mountTitleBar(scene);
+-}
+diff --git a/tests/e2e/visual-regression.spec.js b/tests/e2e/visual-regression.spec.js
+index d13cd19..7c2fef2 100644
+--- a/tests/e2e/visual-regression.spec.js
++++ b/tests/e2e/visual-regression.spec.js
+@@ -1,63 +1,71 @@
+ import { test, expect } from '@playwright/test';
+ 
+-// 视觉回归（Task 21 + Task A7）：深/浅 × 3 accent 对 3 个内容区 + 3 个场景模板 + 应用壳截图。
++// 视觉回归（Task 21 + Task A7 + Task B1-4 重构）：应用壳 + 设置「组件/动效」分区截图。
++// docs 渲染已删除（B1-4），基线不再含 docs 展示页 —— 全部走 '?mode=app'（浏览器与 Tauri 一致）。
+ // 稳定性：Windows GPU 文字抗锯齿跨实例抖动会让 toHaveScreenshot 偶发失败，
+ // 已在 playwright.config.js 强制 --use-angle=swiftshader 软件栅格化（像素级确定性）。
+ // 基线须在相同参数下生成（--update-snapshots）。
+ // 首次运行生成基线：npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots
+ // 之后 npm run test:visual 对比基线；界面有意变更（含新组件/令牌）后需重新生成。
+ // accent 抽样取 3 套（默认靛蓝 + 暖色琥珀 + 冷色翡翠）覆盖色相两端，基线不膨胀。
+-// SHOTS 第三字段 mode = 页面入口：docs 6 组固定 '/'；app-main 走 '?mode=app'（应用壳，
+-// 右窗默认收起单窗口态，无入场相位 —— 截图稳定性与 docs 组一致，沿用 data-motion=off + animations disabled）。
++// SHOTS：name / selector / settingsPartitionIndex（⚙ 进入设置右窗分区项序号；null = 单窗口态不进设置）。
++//   应用壳右窗默认收起单窗口态，无入场相位；设置分区惰性挂载展示内容（组件/动效），
++//   截图稳定化沿用 data-motion=off + animations disabled（入场 stagger 相位无关）。
+ 
+ const SHOTS = [
+-  ['tokens', '#tokens', '/'],
+-  ['components', '#components', '/'],
+-  ['scenes', '#scenes', '/'],
+-  ['main-window', '.cmain', '/'],
+-  ['settings-window', '.csettings', '/'],
+-  ['clipboard', '.cfloat', '/'],
+-  ['app-main', '.app-main', '/?mode=app'],
++  ['app-main', '.app-main', null],
++  ['components-partition', '.app-main__settings [data-page="components"]', 8],
++  ['motion-partition', '.app-main__settings [data-page="motion"]', 9],
+ ];
+ 
+ const THEMES = ['light', 'dark'];
+ const ACCENTS = ['indigo', 'amber', 'emerald'];
+ // 最长入场动效：剪贴板列表 stagger（30ms × 8 + 200ms = 440ms），留余量
+ const SETTLE_MS = 600;
+ 
+-for (const [name, selector, mode = '/'] of SHOTS) {
++for (const [name, selector, partition] of SHOTS) {
+   for (const theme of THEMES) {
+     for (const accent of ACCENTS) {
+       test(`视觉回归 — ${name} · ${theme} / ${accent}`, async ({ page }) => {
+-        await page.goto(mode);
+-        // app 壳：闭环 I1 修复后 mount 首行即 applyConfig —— 直接 evaluate 覆盖 data-theme 会在
++        await page.goto('/?mode=app');
++        // 应用壳：闭环 I1 修复后 mount 首行即 applyConfig —— 直接 evaluate 覆盖 data-theme 会在
+         // 挂载期 applyConfig 之前/之后产生歧义（overview 卡片在挂载时按 data-theme 渲染，需与页面
+         // 主题一致）。改经配置链路注入测试主题/强调色并 reload，令挂载期 applyConfig 应用该配置，
+         // 卡片与页面主题一致；随后清除配置内联变量，令截图回落纯主题 CSS（与既有基线一致）。
+-        if (mode === '/?mode=app') {
+-          await page.evaluate(([t, a]) => {
+-            localStorage.setItem('ui-design-config', JSON.stringify({ theme: t, accent: a }));
+-          }, [theme, accent]);
+-          await page.reload();
+-          await page.locator('.app-main').first().waitFor();
++        await page.evaluate(([t, a]) => {
++          localStorage.setItem('ui-design-config', JSON.stringify({ theme: t, accent: a }));
++        }, [theme, accent]);
++        await page.reload();
++        await page.locator('.app-main').first().waitFor();
++        if (partition != null) {
++          // 设置分区基线：⚙ 进入设置 → 点右窗分区项 → 等惰性挂载（动态 import 完成后内容非空）
++          await page.locator('.c-titlebar__control--settings').click();
++          await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
++          await page.locator('.app-main__nav-r .c-navwheel__item').nth(partition).click();
++          if (partition === 8) {
++            // 组件分区：6 组矩阵 + 1 个交互悬浮窗实例块（csg count 7）+ 剪贴板悬浮窗组合示例
++            await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
++            await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
++          } else {
++            await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
++          }
+         }
+-        await page.evaluate(([t, a, m]) => {
++        await page.evaluate(([t, a]) => {
+           document.documentElement.dataset.theme = t;
+           document.documentElement.dataset.accent = a;
+           // motion=off：所有动效时长归零（motion.css）—— 入场 stagger 立即完成，
+           // 截图不依赖动画相位（否则列表淡入中途相位随运行抖动，基线偶发不一致）
+           document.documentElement.dataset.motion = 'off';
+-          // 清除 applyConfig 写入的配置内联变量（--glass-*/--dur-* 等），app-main 渲染回落纯主题 CSS
+-          // —— 保持既有基线零变化（docs 组基线在 applyConfig 生效态生成，不受影响，不清除）
+-          if (m === '/?mode=app') document.documentElement.removeAttribute('style');
+-        }, [theme, accent, mode]);
++          // 清除 applyConfig 写入的配置内联变量（--glass-*/--dur-* 等），渲染回落纯主题 CSS
++          document.documentElement.removeAttribute('style');
++        }, [theme, accent]);
+         const locator = page.locator(selector).first();
+         await locator.scrollIntoViewIfNeeded();
+         await page.waitForTimeout(SETTLE_MS); // 字体/布局稳定
+         // animations: 'disabled' —— 入场 stagger 处于不同相位会导致截图抖动
+         // （基线曾捕获到列表淡入中途），禁用动画后各元素渲染为自然终态，相位无关
+         await expect(locator).toHaveScreenshot(`${name}-${theme}-${accent}.png`, {
+           animations: 'disabled',
+         });
+       });
+     }
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-amber-chromium-win32.png
+deleted file mode 100644
+index da7df99..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index 571d38e..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index 47b2630..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-amber-chromium-win32.png
+deleted file mode 100644
+index 687b212..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 8a004d4..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-indigo-chromium-win32.png
+deleted file mode 100644
+index 8f77f6b..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/clipboard-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-dark-amber-chromium-win32.png
+deleted file mode 100644
+index bb236ce..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index dcd0895..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index 445cb37..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-light-amber-chromium-win32.png
+deleted file mode 100644
+index 91754f0..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 5df401a..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-light-indigo-chromium-win32.png
+deleted file mode 100644
+index fe557bc..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+new file mode 100644
+index 0000000..c3b651f
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..524d7d6
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..c262d1f
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+new file mode 100644
+index 0000000..ee030b5
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..7d0c280
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..045aab5
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png
+deleted file mode 100644
+index f9078ae..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index d8b7c55..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index 294c0a0..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png
+deleted file mode 100644
+index 90451c7..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 6cb9057..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png
+deleted file mode 100644
+index 3c76efe..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/main-window-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+new file mode 100644
+index 0000000..38d55f0
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..133464a
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..b717d4c
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+new file mode 100644
+index 0000000..7993b35
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..f257bfd
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..9c6fd2f
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png
+deleted file mode 100644
+index 55ebeb6..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index c34ed56..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index fc90117..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png
+deleted file mode 100644
+index 169b3f0..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 8e13e0e..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png
+deleted file mode 100644
+index d54e9ba..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/scenes-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png
+deleted file mode 100644
+index e1cf553..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index b2761e7..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index a7e6316..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png
+deleted file mode 100644
+index 669dfab..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 94036bc..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png
+deleted file mode 100644
+index 87f0092..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/settings-window-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-amber-chromium-win32.png
+deleted file mode 100644
+index 8b5da07..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-emerald-chromium-win32.png
+deleted file mode 100644
+index 0ef0955..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-indigo-chromium-win32.png
+deleted file mode 100644
+index 0941b96..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-dark-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-amber-chromium-win32.png
+deleted file mode 100644
+index 9327ffd..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-amber-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-emerald-chromium-win32.png
+deleted file mode 100644
+index 2bc90df..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-emerald-chromium-win32.png and /dev/null differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-indigo-chromium-win32.png
+deleted file mode 100644
+index 5621faa..0000000
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/tokens-light-indigo-chromium-win32.png and /dev/null differ
+diff --git a/tests/unit/mode.test.js b/tests/unit/mode.test.js
+index 183a061..d068680 100644
+--- a/tests/unit/mode.test.js
++++ b/tests/unit/mode.test.js
+@@ -1,27 +1,32 @@
+ import { describe, it, expect } from 'vitest';
+ import { resolveMode } from '../../src/app/mode.js';
+ 
+-// Task A1（规格：模式入口）：resolveMode 纯函数 —— ?mode=app|docs|strip 显式优先；
+-// 无参数 + hasTauri → 'app'；无参数浏览器 → 'docs'；非法值回落 'docs'。
++// Task B1-4（模式简化）：resolveMode 只返回 'app'|'strip' —— 显式 ?mode=app|strip 优先；
++// 无参数 / 非法值 / ?mode=docs → 一律 'app'（浏览器与 Tauri 一致，docs 渲染已删除）。
+ // params 为 URLSearchParams 或等价对象（含字符串 '?mode=...'）；hasTauri 由调用方
+ // （main.js 探测 window.__TAURI__）注入，mode.js 不读全局、便于单测。
+ describe('resolveMode', () => {
+-  it('默认浏览器（无参，非 Tauri）→ docs', () => {
+-    expect(resolveMode(new URLSearchParams(''), false)).toBe('docs');
++  it('无参数浏览器 → app（不再回落 docs）', () => {
++    expect(resolveMode(new URLSearchParams(''), false)).toBe('app');
+   });
+   it('无参数 + hasTauri → app', () => {
+     expect(resolveMode(new URLSearchParams(''), true)).toBe('app');
+   });
++  it('非法值 → 回落 app', () => {
++    expect(resolveMode(new URLSearchParams('?mode=bogus'), false)).toBe('app');
++    expect(resolveMode(new URLSearchParams('?mode=bogus'), true)).toBe('app');
++  });
++  it('?mode=docs 不再特殊 → app', () => {
++    expect(resolveMode(new URLSearchParams('?mode=docs'), false)).toBe('app');
++    expect(resolveMode(new URLSearchParams('?mode=docs'), true)).toBe('app');
++  });
+   it('显式 ?mode=app → app（优先于 Tauri 探测）', () => {
+     expect(resolveMode(new URLSearchParams('?mode=app'), false)).toBe('app');
+     expect(resolveMode(new URLSearchParams('?mode=app'), true)).toBe('app');
+     expect(resolveMode('?mode=app', false)).toBe('app'); // 字符串等价对象
+   });
+-  it('显式 ?mode=docs → docs（Tauri 也回落 docs）', () => {
+-    expect(resolveMode(new URLSearchParams('?mode=docs'), true)).toBe('docs');
+-  });
+-  it('非法 ?mode=bogus → 回落 docs', () => {
+-    expect(resolveMode(new URLSearchParams('?mode=bogus'), false)).toBe('docs');
+-    expect(resolveMode(new URLSearchParams('?mode=bogus'), true)).toBe('docs');
++  it('显式 ?mode=strip → strip', () => {
++    expect(resolveMode(new URLSearchParams('?mode=strip'), false)).toBe('strip');
++    expect(resolveMode(new URLSearchParams('?mode=strip'), true)).toBe('strip');
+   });
+ });

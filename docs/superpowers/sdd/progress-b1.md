@@ -44,12 +44,22 @@ Base: 86398d0（branch feature/b1-product，自 main 检出）
 - **评审修复（2026-08-06，已闭环）**：`c6cbaf7` `fix: 恢复垂直导航轮滚轮吸附覆盖测试` —— 重挂到应用壳左栏 `.app-main__nav-l .c-navwheel__list`（`?mode=app`，7 模块垂直轮 anchorRatio 0.382），保留原断言（wheel 100 → 停止 150ms 吸附 → active count 1 → 38.2% 锚点 delta < 4px）；验证：app-shell 19/19、全量 e2e 105（104+1）、npm test 51、build 通过
 - **Minor 留收尾**：① customizer 重置/导出覆盖丢失（重置=清除存储+applyConfig(DEFAULTS)、导出=复制 CSS 变量，现仅测冷启动持久化）；② theme-switcher aria-pressed 单选语义断言丢失（app-shell 只断言 class 与 data-theme 持久化）；③ 报告表 components-basic 行 `#components` 表述与实际分区容器作用域不符（等值覆盖，表文案漂移）；④ tokens.spec 分区访问对全局 CSS 断言惰性（vestigial）
 
+## Task B1-4: 模式简化 + docs 渲染删除
+
+- **状态**：完成（2026-08-06）
+- **提交**：`415b640` `feat: 模式简化（浏览器直进应用壳）+ docs 渲染删除`
+- **验证**：npm test 52/52（mode 单测 6 例）；npm run test:e2e 81/81（非视觉 63 + 视觉 18）；npm run test:visual 18/18（42→18：删 36 docs 张 + 保留 app-main 6 + 新增组件/动效分区 12 张）；npm run build 通过；app-main 基线逐字节零变化
+- **实现**：`mode.js` `resolveMode` 只返回 app|strip（无参/非法/?mode=docs → app，?mode=strip 保留）；`main.js` 删 docs 分支 + 5 个 docs CSS import（保留 settings-window.css/customizer.css）；删 `docs-mode.js` + 4 个孤儿模块（theme-switcher/token-showcase/main-window 场景/settings-window 场景）；保留 5 个应用壳复用模块（component-showcase-full/motion-lab/clipboard-float/customizer-panel/settings-pages，均已自 import CSS）；视觉基线重构（SHOTS 3 组 × 2 主题 × 3 accent = 18，分区基线等惰性挂载内容出现再截图）；README/根 CLAUDE/src CLAUDE 模式说明同步
+- **简报/报告**：docs/superpowers/sdd/task-B1-4-brief.md / task-B1-4-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
+- **Minor 留收尾**：① `src/styles/layout.css` 含 docs 时代死规则（.app-shell/.topbar/.navwheel/.tsw__*）+ 第 17 行引用已删 token-showcase.css 的过时注释（.showcase__* 仍被组件分区用故文件保留，留后续清理）；② `resolveMode` hasTauri 参数现为死参数（保留接口签名，随 layout.css 清理一并移除）；③ visual spec 硬编码 `toHaveCount(10)`（未来共享分区增减需同步更新）
+
 ## 执行状态
 
 - Task B1-1 设置分区扩展（组件/动效 + 展示内化）：✅ 完成（2026-08-06）
 - Task B1-2 窗口控制双通道（浏览器降级）：✅ 完成（2026-08-06）
 - Task B1-3 docs e2e 迁移：✅ 完成（2026-08-06，修复闭环）
-- Task B1-4 模式简化 + docs 删除：待执行
+- Task B1-4 模式简化 + docs 删除：✅ 完成（2026-08-06）
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
