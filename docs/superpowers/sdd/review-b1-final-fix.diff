@@ -1,0 +1,333 @@
+# Review package: 153db42..HEAD
+
+## Commits
+ec12424 fix: 动效分区订阅退订 + 分区加载失败重试
+
+## Files changed
+ docs/superpowers/sdd/b1-final-fix-report.md | 55 +++++++++++++++++++++++++++++
+ src/app/app-main.js                         | 37 +++++++++++++++----
+ src/demo/motion-lab.js                      |  6 ++--
+ tests/e2e/mobile-nav.spec.js                | 25 +++++++++++++
+ tests/unit/motion-lab.test.js               | 32 +++++++++++++++++
+ 5 files changed, 146 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/b1-final-fix-report.md b/docs/superpowers/sdd/b1-final-fix-report.md
+new file mode 100644
+index 0000000..af45bfd
+--- /dev/null
++++ b/docs/superpowers/sdd/b1-final-fix-report.md
+@@ -0,0 +1,55 @@
++# B1 最终评审修复报告（b1-final fix wave）— 应用壳分支合并前
++
++日期：2026-08-06 ｜ 分支：`feature/b1-product` ｜ 基：`153db42`（docs: B1 最终整体审查包）
++裁决：**Ready to merge: With fixes（2 Important）** —— 本波修复闭环，四项回归全绿。
++
++## 修复项
++
++### I1（Important）— 动效分区 store 订阅在手机路径无界泄漏
++- **改动**：
++  - `src/demo/motion-lab.js`：`mountMotionLab` 末段 `subscribe(...)` 捕获退订函数并 `return unsub`（镜像 `renderCustomizerGroups` 契约 —— 调用方重建 container 前释放）。
++  - `src/app/app-main.js`：`mountMotionPartition(part, onMounted)` 增可选回调，挂载后把退订函数上抛；`activateMobileSettings` 手机路径经回调记入新句柄 `mobileMotionUnsub`（含异步导入期间防御性 `mobileMotionUnsub?.()` 先释放旧订阅）；`renderStack()` 重建 DOM 前释放 `mobileMotionUnsub`（与 `mobileCustUnsub` 同机制）。另加 `!part.isConnected` 守卫 —— 手机重建后旧容器已脱离 DOM，异步导入 resolve 时不挂载，从源头杜绝「closure 持有已脱离 DOM 的 cards」的跨容器竞态泄漏。
++- **覆盖测试**：
++  - 单测 `tests/unit/motion-lab.test.js`（新增，镜像 `customizer.test.js` 模式）：① 返回值为函数；② 释放旧订阅后旧容器不再随 store 同步（弹性滑杆停留 0.6）、新容器正常跟随（0.8）。
++  - e2e `tests/e2e/mobile-nav.spec.js`（新增）：手机视口设置→动效 两次进出，重建后分区重挂载仍渲染 5 卡（守护重建→重挂流程 + isConnected 守卫不误杀合法挂载）。
++- **RED**：临时 stash `motion-lab.js` 修复后跑单测 → `2 failed`（`TypeError: unsubOld is not a function` + `typeof unsub` 非 function）。
++- **GREEN**：恢复修复 → `2 passed`；e2e 新增用例随全量通过。
++
++### I2（Important）— 动态分区 import 无 .catch，chunk 失败永久空分区
++- **改动**：`src/app/app-main.js` `mountComponentsPartition` / `mountMotionPartition` 均追加 `.catch(() => { 标志 = false; toast('分区内容加载失败', { variant: 'danger' }); })`。失败重置桌面惰性挂载标志（`componentsMounted`/`motionMounted`），后续再次激活设置分区可重试；`import { toast }` 接入既有全局 toast。三个桌面标志声明上移至分区函数前（消除 `let` TDZ 引用隐患，纯排版调整）。
++- **覆盖测试**：`.catch` 路径在本地 e2e 不可触达（chunk 恒本地加载成功），按任务允许做代码审查级断言 —— 标志复位逻辑在 catch 内可见（`componentsMounted = false` / `motionMounted = false`）；手机路径本就按容器空态重挂（无标志），失败后下次 activateMobileSettings 自动重试。构建产物确认两个展示 chunk 正常生成（见回归表）。
++
++## 全量回归（四项全绿）
++
++| 套件 | 结果 |
++|---|---|
++| `npm test`（单测） | **54 passed**（52 基线 + 2 新增 motion-lab） |
++| `npm run test:e2e`（浏览器交互） | **82 passed**（81 基线 + 1 新增 mobile-nav 重入） |
++| `npm run test:visual`（视觉基线） | **18 passed，基线文件零变化**（`git status` snapshots 无 PNG 变更） |
++| `npm run build` | 通过（639ms；motion-lab / component-showcase-full / clipboard-float / float-strip chunk 正常分包） |
++
++## 变更文件
++
++- `src/demo/motion-lab.js` — I1：`mountMotionLab` 返回退订函数
++- `src/app/app-main.js` — I1：`mobileMotionUnsub` 句柄 + `onMounted` 上抛 + `isConnected` 守卫；I2：分区 import `.catch` + 标志复位 + toast
++- `tests/unit/motion-lab.test.js` — I1 单测（新增）
++- `tests/e2e/mobile-nav.spec.js` — I1 手机重入 e2e（新增）
++- `docs/superpowers/sdd/b1-final-fix-report.md` — 本报告
++
++## 自查发现
++
++1. **`onMounted?.(mountMotionLab(part))` 会短路参数求值**：首次实现把 `mountMotionLab(part)` 写在可选调用的参数位 —— 桌面路径 `onMounted` 为 undefined，可选调用短路导致 `mountMotionLab` 根本没执行，桌面动效分区空挂。改为先 `const unsub = mountMotionLab(part)` 再 `onMounted?.(unsub)`。被 app-shell「设置分区包含组件/动效」+ motion-lab 三用例 RED 捕获（`[data-partition="motion"]` 空容器超时）。
++2. **`isConnected` 守卫的挂载时机关联**：守卫只在「import resolve 后容器已脱离 DOM」（手机重建竞态）时拦截，合法挂载（桌面常驻分区 / 手机当前栈页分区均为 connected）不受影响 —— 由 app-shell 桌面分区用例 + mobile-nav 重入用例双路径覆盖确认。
++3. **手机路径失败自动重试**：I2 catch 在手机路径无标志可复位（`motionMounted` 复位为 no-op），但容器空态检查天然使下次激活重试 —— 与桌面标志复位殊途同归。
++4. **退订契约无破坏**：`mountMotionLab` 返回类型由 `undefined` → `function`，调用点 `mountMotionPartition`（桌面丢弃 + 手机 sink）均不依赖原返回值；`renderCustomizerGroups` 先例已确立同契约。
++5. **TOCTOU 竞态收敛**：renderStack 重建（释放旧订阅）→ 异步 import resolve（isConnected 守卫拦截旧容器）→ 新容器 sink 记录 —— 任意时序下活跃订阅至多 1 个，无界增长被根除。
++
++## 问题与关注点
++
++1. **（观察）** I2 的 `.catch` 在手机路径失败时会重复弹 toast：容器空态使每次 renderStack 重触发 import，若 chunk 持续失败则每次进入设置→动效再弹一次。鉴于 chunk 加载失败是异常低频路径且桌面路径有标志复位节流，未额外做「同会话只提示一次」节流；如需可仿 store `storageErrorReported` 模式（session 级 flag）。
++2. **（观察）** `isConnected` 在桌面动态 import 慢网络下的竞态：用户切走再切回同一桌面分区，`motionMounted` 已 true 故不重挂；原容器仍 connected，import resolve 后正常挂载 —— 无回归。
++
++## 未做事项（按任务约束）
++
++- 未修改 `docs/superpowers/sdd/progress-b1.md`（控制器维护，工作区既有修改未提交）。
++- 未 merge。
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 7549e40..6cca10c 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -9,20 +9,21 @@
+ //   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
+ // 右窗状态为纯 UI 态（会话内），不进配置存储。
+ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
++import { toast } from '../components/toast/toast.js';
+ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import { getConfig } from '../config/store.js';
+ import { applyConfig } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+@@ -187,41 +188,51 @@ export function mountAppMode(root) {
+     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
+     const page = pages.find((p) => p.dataset.page === state.moduleId);
+     page.innerHTML = mod.render(modCtx(mod));
+   }
+ 
+   // —— 设置页分区切换：唯一 active 页 + 惰性挂载（外观定制器 + 组件/动效展示内容，Task B1-1）。
+   //   类名 .csettings__* 不变；.cust-group/.csg/.ml-card/.cfloat 只在 app 模式出现，docs 互斥不并存。
+   //   组件/动效分区：首次激活时动态 import 展示模块挂到 .app-partition（Vite 代码分包，
+   //   展示模块 CSS 随 chunk 加载）；桌面 DOM 常驻，模块级标志防重复挂载。
+   //   组件分区末尾追加「组合示例：剪贴板悬浮窗」（mountClipboardFloat 流式 in-flow，不遮挡分区）。
++  let custMounted = false; // 桌面惰性挂载标志（手机路径按容器空态重挂，不用此标志）
++  let componentsMounted = false;
++  let motionMounted = false;
+   function mountComponentsPartition(part) {
+     if (part.children.length) return; // 已挂载（移动端按空态重挂的防线）
+     Promise.all([
+       import('../demo/component-showcase-full.js'),
+       import('../scenes/clipboard-float/clipboard-float.js'),
+     ]).then(([{ mountComponentsShowcase }, { mountClipboardFloat }]) => {
+       if (part.children.length) return; // 并发 import 竞态防御：同时触发时只挂一次
+       mountComponentsShowcase(part);
+       mountClipboardFloat(part); // 组合示例：剪贴板悬浮窗（复用既有场景模块）
++    }).catch(() => {
++      // 闭环 I2：chunk 加载失败不静默（B1-4 后此为主内容加载路径）——
++      // toast 提示 + 重置桌面标志，后续再次激活可重试。
++      componentsMounted = false;
++      toast('分区内容加载失败', { variant: 'danger' });
+     });
+   }
+-  function mountMotionPartition(part) {
++  function mountMotionPartition(part, onMounted) {
+     if (part.children.length) return;
+     import('../demo/motion-lab.js').then(({ mountMotionLab }) => {
+-      if (part.children.length) return;
+-      mountMotionLab(part);
++      if (part.children.length || !part.isConnected) return; // 并发 import 竞态 / 手机重建后已脱离 DOM → 不挂载
++      const unsub = mountMotionLab(part);
++      onMounted?.(unsub); // 退订函数上抛（手机路径记入 mobileMotionUnsub，闭环 I1）
++    }).catch(() => {
++      // 闭环 I2：chunk 加载失败不静默 —— toast 提示 + 重置桌面标志（失败可重试）。
++      motionMounted = false;
++      toast('分区内容加载失败', { variant: 'danger' });
+     });
+   }
+-  let custMounted = false;
+-  let componentsMounted = false;
+-  let motionMounted = false;
+   function setSettingsPageActive() {
+     const sec = pages.find((p) => p.dataset.page === 'settings');
+     sec.querySelectorAll('.csettings__page').forEach((p) =>
+       p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
+     if (state.settingsId === 'appearance' && !custMounted) {
+       renderCustomizerGroups(sec.querySelector('[data-page="appearance"] .csettings__cust'));
+       custMounted = true;
+     }
+     if (state.settingsId === 'components' && !componentsMounted) {
+       componentsMounted = true; // 先置位防并发 import 重复挂载（import 异步，挂载前切走再切回）
+@@ -375,23 +386,30 @@ export function mountAppMode(root) {
+         </div>
+         <div class="app-main__settings csettings__pages">${renderSettingsPages(APP_SECTIONS)}</div>`;
+     }
+     return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
+   }
+ 
+   // 外观分区定制器退订句柄（闭环 M1）：手机路径每次 renderStack 重建 DOM → 重挂
+   // renderCustomizerGroups 新增一次 store 订阅。重建前释放旧订阅（回调引用已脱离容器的旧 DOM），
+   // 防订阅数随进入设置次数线性累积。renderCustomizerGroups 现返回 subscribe 的退订函数。
+   let mobileCustUnsub = null;
++  // 动效分区 store 订阅退订句柄（闭环 I1）：手机路径每次 renderStack 重建页面栈 DOM 后
++  // activateMobileSettings 对空容器重挂 mountMotionLab（新增一次 store 订阅），重建前释放
++  // 旧订阅（回调引用已脱离容器的旧 .ml-card 节点），防订阅数随进入设置→动效次数线性累积。
++  // 挂载为异步（动态 import），退订函数经 mountMotionPartition 的 onMounted 回调上抛。
++  let mobileMotionUnsub = null;
+   function renderStack() {
+     mobileCustUnsub?.(); // 重建前释放上一订阅（可能未挂载 = noop）
+     mobileCustUnsub = null;
++    mobileMotionUnsub?.(); // 闭环 I1：动效分区订阅同机制，重建前释放
++    mobileMotionUnsub = null;
+     stackEl.innerHTML = mobile.stack.map((entry, i) =>
+       renderStackPage(entry, i === mobile.stack.length - 1 && mobile.animateTop)).join('');
+     const settingsPage = stackEl.querySelector('[data-stack="settings"]');
+     if (settingsPage) mountSettingsInteractions(settingsPage.querySelector('.app-main__settings'));
+     mobile.animateTop = false;
+     activateMobileSettings();
+     updateCtx();
+   }
+ 
+   function pushStack(entry) {
+@@ -431,21 +449,26 @@ export function mountAppMode(root) {
+     sec.querySelectorAll('.app-main__settings-tab').forEach((t) =>
+       t.classList.toggle('app-main__settings-tab--active', t.dataset.tab === state.settingsId));
+     const cust = sec.querySelector('[data-page="appearance"] .csettings__cust');
+     if (state.settingsId === 'appearance' && cust && !cust.children.length) {
+       mobileCustUnsub?.(); // 防御：同容器重复挂载先释放旧订阅
+       mobileCustUnsub = renderCustomizerGroups(cust);
+     }
+     const comp = sec.querySelector('[data-page="components"] [data-partition="components"]');
+     if (state.settingsId === 'components' && comp && !comp.children.length) mountComponentsPartition(comp);
+     const motion = sec.querySelector('[data-page="motion"] [data-partition="motion"]');
+-    if (state.settingsId === 'motion' && motion && !motion.children.length) mountMotionPartition(motion);
++    if (state.settingsId === 'motion' && motion && !motion.children.length) {
++      mountMotionPartition(motion, (unsub) => {
++        mobileMotionUnsub?.(); // 防御：异步导入期间可能已重挂（新容器），先释放旧订阅
++        mobileMotionUnsub = unsub;
++      });
++    }
+   }
+ 
+   function updateCtxMobile() {
+     const top = mobile.stack[mobile.stack.length - 1];
+     const mod = top?.moduleId ? MODULES.find((m) => m.id === top.moduleId) : null;
+     if (top?.type === 'detail' && mod) {
+       ctx.textContent = `${mod.name} › ${top.dirName}`;
+       ctx.dataset.module = mod.id; ctx.dataset.page = top.dirId;
+     } else if (top?.type === 'dir' && mod) {
+       ctx.textContent = mod.name;
+diff --git a/src/demo/motion-lab.js b/src/demo/motion-lab.js
+index c2aadad..b57d7ed 100644
+--- a/src/demo/motion-lab.js
++++ b/src/demo/motion-lab.js
+@@ -163,18 +163,20 @@ export function mountMotionLab(root) {
+     durs.forEach((btn) => btn.addEventListener('click', () => {
+       durs.forEach((b) => b.classList.toggle('is-active', b === btn));
+       apply();
+     }));
+     springSlider.addEventListener('input', apply);
+     liftSlider.addEventListener('input', apply);
+     card.querySelector('.ml-replay').addEventListener('click', () => replay(stage));
+     apply(); // 初始值 → 局部变量（含定制器 durationScale/springStrength 联动）
+   });
+ 
+-  // 联动：定制器全局参数变化 → 同步滑杆位置与局部变量（不重渲染 DOM，动画不中断）
+-  subscribe((next) => {
++  // 联动：定制器全局参数变化 → 同步滑杆位置与局部变量（不重渲染 DOM，动画不中断）。
++  // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 I1，镜像 renderCustomizerGroups 契约）。
++  const unsub = subscribe((next) => {
+     cards.forEach((card) => {
+       card.querySelector('.ml-slider').value = String(next.motion.springStrength);
+       applyParams(card, next, card.querySelector('.ml-slider'), card.querySelector('[data-lift]'), card.querySelector('.ml-dur.is-active'));
+     });
+   });
++  return unsub;
+ }
+diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
+index 946226c..b7cb46a 100644
+--- a/tests/e2e/mobile-nav.spec.js
++++ b/tests/e2e/mobile-nav.spec.js
+@@ -90,20 +90,45 @@ test('设置推入：标题栏 ⚙ → 设置页推入 + toggle 弹回', async (
+   await expect(top).toContainText('通用');
+   await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
+   await expect(page.locator('.app-main [data-ctx]')).toHaveText('设置 › 通用');
+   // 再次点击 ⚙ → 弹回概览（toggle）
+   await settingsBtn.click();
+   await page.waitForTimeout(350);
+   await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
+   await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
+ });
+ 
++// —— 收尾评审修复覆盖：I1 手机动效分区订阅退订（闭环 I1）——
++// 手机路径每次 renderStack 重建页面栈 DOM → activateMobileSettings 对空容器重挂
++// mountMotionLab（新增一次 store 订阅）。重建前 renderStack 释放 mobileMotionUnsub 旧订阅，
++// 防订阅数随进入设置→动效次数线性累积（回调引用已脱离容器的旧 .ml-card 节点）。
++// 本用例守护重建→重挂流程不破（isConnected 守卫不误杀合法挂载）；退订契约由
++// tests/unit/motion-lab.test.js 单测断言。
++test('设置→动效 两次进出：重建后分区重挂载仍渲染 5 卡', async ({ page }) => {
++  await page.goto(APP_URL);
++  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
++  const motionCards = () => page.locator('.app-main__stack [data-page="motion"] .ml-card');
++  // 第一次进入设置 → 切到动效分区（activateMobileSettings 挂载 + mobileMotionUnsub 记录订阅）
++  await settingsBtn.click();
++  await page.waitForTimeout(350);
++  await page.locator('.app-main__settings-tab[data-tab="motion"]').click();
++  await expect(motionCards()).toHaveCount(5);
++  // 退出设置（⚙ toggle 弹回）→ popStack → renderStack 重建 DOM 前释放旧订阅
++  await settingsBtn.click();
++  await page.waitForTimeout(350);
++  await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
++  // 第二次进入设置（settingsId 保持 motion）→ 空容器重挂载，仍渲染 5 卡
++  await settingsBtn.click();
++  await page.waitForTimeout(350);
++  await expect(motionCards()).toHaveCount(5);
++});
++
+ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向滚动 + focal 峰值在 38.2% 锚线', async ({ page }) => {
+   await page.goto(APP_URL);
+   const dockList = page.locator('.app-main__dock .c-navwheel__list');
+   // items 沿 x 轴排列（横向布局，非纵向）
+   const xs = await dockList.locator('.c-navwheel__item')
+     .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
+   for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
+   // 横向拖拽 → scrollLeft 增加（主轴为 x：滚动方向正确）
+   const box = await dockList.boundingBox();
+   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+diff --git a/tests/unit/motion-lab.test.js b/tests/unit/motion-lab.test.js
+new file mode 100644
+index 0000000..946da7b
+--- /dev/null
++++ b/tests/unit/motion-lab.test.js
+@@ -0,0 +1,32 @@
++import { describe, it, expect, beforeEach } from 'vitest';
++import { mountMotionLab } from '../../src/demo/motion-lab.js';
++import { saveConfig } from '../../src/config/store.js';
++
++// 动效分区 store 订阅退订（闭环 I1）：手机形态每次重建设置页 DOM 会重挂 mountMotionLab
++// （新增一次 store 订阅），重建前必须释放旧订阅（subscribe 返回退订函数）—— 防订阅数
++// 随进入设置→动效次数线性增长、回调引用已脱离容器的旧 .ml-card 节点。
++// 契约与 customizer.test.js（renderCustomizerGroups 退订）一致：挂载返回退订函数。
++describe('mountMotionLab 退订（防订阅累积）', () => {
++  beforeEach(() => localStorage.clear());
++
++  it('返回退订函数（供重建前释放旧订阅）', () => {
++    const root = document.createElement('div');
++    const unsub = mountMotionLab(root);
++    expect(typeof unsub).toBe('function');
++    unsub(); // 清理本测试订阅，避免跨用例污染 store 监听器
++  });
++
++  it('释放旧订阅后：新容器随 store 同步、旧容器不再跟随（重建前释放防累积）', () => {
++    const old = document.createElement('div');
++    const unsubOld = mountMotionLab(old);
++    const current = document.createElement('div');
++    unsubOld(); // app-main 手机路径重建前释放旧订阅
++    mountMotionLab(current);
++
++    saveConfig({ motion: { springStrength: 0.8 } }); // store 变更 → 订阅回调同步弹性滑杆
++    // 新容器（当前挂载）跟随 store：弹性滑杆同步为 0.8
++    expect(current.querySelector('.ml-slider').value).toBe('0.8');
++    // 旧容器已退订：仍停留在挂载时的默认值 0.6（不再被同步）
++    expect(old.querySelector('.ml-slider').value).toBe('0.6');
++  });
++});

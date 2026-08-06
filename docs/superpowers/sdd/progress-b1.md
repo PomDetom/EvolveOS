@@ -54,12 +54,22 @@ Base: 86398d0（branch feature/b1-product，自 main 检出）
 - **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
 - **Minor 留收尾**：① `src/styles/layout.css` 含 docs 时代死规则（.app-shell/.topbar/.navwheel/.tsw__*）+ 第 17 行引用已删 token-showcase.css 的过时注释（.showcase__* 仍被组件分区用故文件保留，留后续清理）；② `resolveMode` hasTauri 参数现为死参数（保留接口签名，随 layout.css 清理一并移除）；③ visual spec 硬编码 `toHaveCount(10)`（未来共享分区增减需同步更新）
 
+## 最终整体评审（2026-08-06，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-b1-final.diff（86398d0..HEAD，10 commit）
+- **裁决**：Ready to merge: With fixes —— 0 Critical；**2 Important**（I1 手机动效分区 store 订阅泄漏；I2 动态分区 import 无 .catch，B1-4 后为主内容加载路径）+ Minors（新增：settings-window.css 死场景规则、分区标题栏变体不再收窗口控制绑定）；评审独立复跑 npm test 52/52
+- **I1**：`motion-lab.js:174` `subscribe` 丢弃退订函数，手机路径每次进设置→动效重挂载累积监听（closure 持有已脱离 DOM 的 cards）；修复=捕获 unsub + 镜像 mobileCustUnsub 模式
+- **I2**：`app-main.js:197-213` 分区动态 import 仅 .then 无 .catch，桌面标志在 import 前置位 → chunk 失败永久空分区 + 未处理 rejection；修复=.catch toast + 失败重置标志可重试
+- **修复波（2026-08-06，已闭环）**：`ec12424` `fix: 动效分区订阅退订 + 分区加载失败重试` —— I1 `mountMotionLab` 返回 unsub，app-main 加 `mobileMotionUnsub`（renderStack 重建前释放）+ `isConnected` 守卫防脱离容器挂载（单测 motion-lab.test.js RED→GREEN + mobile-nav 重进 e2e）；I2 两分区 import 补 `.catch` → toast('分区内容加载失败', danger) + 标志重置可重试（代码审查断言）；验证：unit 54、e2e 82、visual 18 基线零变化、build 通过
+- **最终裁决**：Ready to merge ✅（2 Important 已闭环，Minors 随合并带入收尾）
+
 ## 执行状态
 
 - Task B1-1 设置分区扩展（组件/动效 + 展示内化）：✅ 完成（2026-08-06）
 - Task B1-2 窗口控制双通道（浏览器降级）：✅ 完成（2026-08-06）
 - Task B1-3 docs e2e 迁移：✅ 完成（2026-08-06，修复闭环）
 - Task B1-4 模式简化 + docs 删除：✅ 完成（2026-08-06）
+- 最终评审：With fixes（2 Important 已闭环，Ready to merge ✅）
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
