@@ -169,11 +169,11 @@ export function mountDocsMode() {
   window.__toast = toast;
   window.__openDialog = openDialog;
 
-  // 窗口控制桥（Task I2）：放在全部挂载之后 —— 场景模板/组件矩阵的 .c-titlebar 实例
-  // 此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，无副作用）。
-  // Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
-  // 图标按真实状态同步、close → close，失败静默降级）；浏览器环境探测不到 API 不绑定，
-  // 保留 mountTitleBar 演示行为（含 max 图标切换）。
+  // 窗口控制桥（Task I2 + Task B1-2 浏览器降级）：放在全部挂载之后 —— 场景模板/组件矩阵
+  // 的 .c-titlebar 实例此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，
+  // 无副作用）。Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
+  // 图标按真实状态同步、close → close，失败静默降级）；浏览器环境降级为提示通道（三按钮
+  // click → toast「桌面端生效」+ 拖拽区轻量反馈，返回 'browser'），mountTitleBar 演示行为保持。
   // 测试经 /src/demo/window-controls.js 动态 import 注入 mock windowApi 验证绑定逻辑。
   bindWindowControls();
 }

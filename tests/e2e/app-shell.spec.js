@@ -282,3 +282,16 @@ test('设置分区包含组件/动效且挂载展示内容', async ({ page }) =>
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
 });
+
+// —— 窗口控制双通道（Task B1-2：浏览器降级）——
+
+test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({ page }) => {
+  await page.goto('/?mode=app');
+  // 拖拽区浏览器降级标记类已挂（CSS :active 轻量反馈通道开启）
+  await expect(page.locator('.app-main .c-titlebar__drag')).toHaveClass(/c-titlebar__drag--browser/);
+  // 三窗口控制按钮（min/max/close）均降级为 toast 提示；设置按钮（--settings）有真实功能不劫持
+  for (const modifier of ['min', 'max', 'close']) {
+    await page.locator(`.app-main .c-titlebar__control--${modifier}`).click();
+    await expect(page.locator('.c-toast').last()).toContainText('桌面端');
+  }
+});

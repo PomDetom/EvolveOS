@@ -39,13 +39,14 @@ test('窗口控制桥：注入 mock windowApi 时三按钮调用对应窗口方�
     .toEqual(['minimize', 'toggleMaximize', 'close']);
 });
 
-test('窗口控制桥：无 windowApi（浏览器）不绑定、演示行为保持', async ({ page }) => {
+test('窗口控制桥：无 windowApi（浏览器）返回降级态、演示行为保持', async ({ page }) => {
   await page.goto('/');
   const bound = await page.evaluate(async () => {
     const { bindWindowControls } = await import('/src/demo/window-controls.js');
     return bindWindowControls();
   });
-  expect(bound).toBe(false);
+  // 浏览器降级（Task B1-2）：返回 'browser' 标记降级态（原 false 契约随双通道变更）
+  expect(bound).toBe('browser');
   // 演示行为保持：max 图标切换仍在、不抛错
   const btn = page.locator('#titlebar-demo .c-titlebar__control--max');
   await btn.click();

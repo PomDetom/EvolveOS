@@ -12,3 +12,9 @@
     color var(--dur-fast) var(--ease-out); }
 .c-titlebar__control:hover { background: var(--surface-hover); color: var(--text-1); }
 .c-titlebar__control--close:hover { background: var(--danger-500); color: #fff; }
+/* 浏览器降级（Task B1-2）：拖拽区在浏览器无系统效果，按压给轻量视觉反馈 ——
+   标记类仅由 window-controls 浏览器分支添加，Tauri 环境不产生（零冲击）；
+   只动 transform/opacity（红线），时长经 CSS 变量。 */
+.c-titlebar__drag--browser { transition: transform var(--dur-fast) var(--ease-out),
+  opacity var(--dur-fast) var(--ease-out); }
+.c-titlebar__drag--browser:active { transform: scale(0.99); opacity: 0.75; }
