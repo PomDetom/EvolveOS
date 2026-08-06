@@ -1,7 +1,7 @@
 export const DEFAULTS = {
   theme: 'system',
   accent: 'indigo',
-  glass: { opacity: 0.62, blur: 24, highlight: 0.5 },
+  glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
   type: { baseSize: 14, scale: 1, weight: 400 },
   radiusScale: 1,
   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },

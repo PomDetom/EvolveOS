@@ -48,7 +48,7 @@ const GROUPS = [
   },
   {
     title: '玻璃材质',
-    pre: () => glassPreview(),
+    pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
     sliders: [
       { key: 'opacity', label: '透明度' },
       { key: 'blur', label: '模糊', unit: 'px' },
@@ -187,6 +187,18 @@ function motionSwitchRow(cfg) {
     </div>`;
 }
 
+/** 玻璃材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
+ *  写 saveConfig + applyConfig，订阅同步 aria-checked；抽屉与设置外观分区共用。 */
+function glassSwitchRow(cfg) {
+  return `
+    <div class="cust-row cust-row--switch" data-glass-switch>
+      <div class="cust-row__head">
+        <span class="cust-row__label">玻璃磨砂</span>
+      </div>
+      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '玻璃磨砂' })}
+    </div>`;
+}
+
 function panelTemplate() {
   return `
     <header class="cust-header">
@@ -238,6 +250,8 @@ function syncUI(container, cfg) {
   });
   const swWrap = container.querySelector('[data-motion-switch]');
   if (swWrap) swWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.motion.enabled));
+  const glassWrap = container.querySelector('[data-glass-switch]');
+  if (glassWrap) glassWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.glass.blurEnabled));
 }
 
 function resetAll(panel) {
@@ -314,6 +328,14 @@ export function renderCustomizerGroups(container) {
     const sw = swWrap.querySelector('.c-switch');
     const next = sw.getAttribute('aria-checked') !== 'true';
     applyConfig(saveConfig({ motion: { enabled: next } }));
+  });
+
+  // 玻璃磨砂开关（B2-1）：blurEnabled → data-glass 降级
+  const glassWrap = container.querySelector('[data-glass-switch]');
+  glassWrap?.addEventListener('click', () => {
+    const sw = glassWrap.querySelector('.c-switch');
+    const next = sw.getAttribute('aria-checked') !== 'true';
+    applyConfig(saveConfig({ glass: { blurEnabled: next } }));
   });
 
   // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。

@@ -21,6 +21,8 @@
 
 /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
 .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
   border-right: 1px solid var(--glass-border); }
 .app-main__nav-l .c-navwheel__list { inset: 0; }
 /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
@@ -35,6 +37,8 @@
 .app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
   position: relative; z-index: var(--z-float);
   display: flex; flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
   border-right: 1px solid var(--glass-border);
   transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
   transition: transform var(--dur-push) var(--ease-spring),
@@ -57,7 +61,9 @@
 
 /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
 .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
-  padding: var(--space-6); }
+  padding: var(--space-6);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */ }
 .app-main__page { display: none; max-width: 720px; }
 .app-main__page--active { display: block; }
 .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
@@ -74,7 +80,7 @@
 
 /* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
 .app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
-.app-main__card { background: var(--surface-1); border: 1px solid var(--glass-border);
+.app-main__card { background: var(--glass-bg); border: 1px solid var(--glass-border);
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
 .app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-3); }
@@ -117,6 +123,17 @@
 .app-main__strip { position: fixed; inset: 0; pointer-events: none; }
 .app-main__strip .c-strip { pointer-events: auto; }
 
+/* —— 玻璃降级（data-glass="off"，applyConfig 由 blurEnabled=false 写入）——
+   纯色不透明实背景 + 关闭 backdrop-filter。属性为静态切换（backdrop-filter 永不动画），
+   无 transition；选择器特异性高于表面默认规则，不依赖规则顺序。 */
+:root[data-glass="off"] .app-main__nav-l,
+:root[data-glass="off"] .app-main__nav-r,
+:root[data-glass="off"] .app-main__pages,
+:root[data-glass="off"] .app-main__card {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+}
+
 /* —— 手机形态（Task A6，规格：≤900px 底部横滑 + 全屏页面栈）——
    桌面形态默认隐藏手机元素（display:none，不占网格单元）；≤900px 媒体查询切换：
    双窗/内容区隐藏，底部 dock + 页面栈接管。dock 为 NavigationWheel horizontal
@@ -137,9 +154,9 @@
   /* —— 全屏页面栈 —— */
   .app-main__stack { display: block; grid-column: 1; grid-row: 2;
     position: relative; min-height: 0; overflow: hidden;
-    background: var(--surface-1); }
+    background: var(--glass-bg); }
   .app-main__stack-page { position: absolute; inset: 0; display: flex;
-    flex-direction: column; overflow-y: auto; background: var(--surface-1); }
+    flex-direction: column; overflow-y: auto; background: var(--glass-bg); }
   .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
   @keyframes app-main-stack-in {
     from { transform: translateX(100%); opacity: 0; }
@@ -179,8 +196,16 @@
   /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
   .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
     display: flex; align-items: center;
-    border-top: 1px solid var(--glass-border); background: var(--surface-1); }
+    border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
   .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
   .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
   .app-main__dock .c-navwheel__name { display: none; }
+
+  /* 手机形态玻璃降级（data-glass="off"）：页面栈/底部 dock 回落纯色不透明 */
+  :root[data-glass="off"] .app-main__stack,
+  :root[data-glass="off"] .app-main__stack-page,
+  :root[data-glass="off"] .app-main__dock {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+  }
 }

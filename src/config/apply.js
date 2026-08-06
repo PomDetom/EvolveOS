@@ -57,8 +57,12 @@ export function applyConfig(cfg, root = document.documentElement) {
   root.dataset.theme = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
   root.dataset.accent = cfg.accent;
   root.dataset.motion = cfg.motion.enabled ? 'on' : 'off';
+  // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
+  // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
+  root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
 
   const s = root.style;
+  s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
   s.setProperty('--glass-highlight-opacity', String(cfg.glass.highlight));

@@ -2,6 +2,7 @@
 :root[data-theme="light"] {
   --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
   --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
+  --surface-solid: #f8f9fb; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
   --surface-hover: rgba(0,0,0,0.045);
   --glass-bg-rgb: 248 249 251;  --glass-highlight-rgb: 255 255 255;
   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));  --glass-blur: 20px;
@@ -20,6 +21,7 @@
 :root[data-theme="dark"] {
   --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
   --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
+  --surface-solid: #14161c; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
   --surface-hover: rgba(255,255,255,0.06);
   --glass-bg-rgb: 24 26 32;  --glass-highlight-rgb: 255 255 255;
   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.62));  --glass-blur: 28px;
