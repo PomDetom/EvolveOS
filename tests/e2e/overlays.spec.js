@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { openSettingsPartition } from './helpers.js';
+
+// B1-3 迁移：docs `#components` 展示区 → 应用壳「组件」设置分区（APP_SECTIONS index 8）。
+// 原用例经 window.__toast/__openDialog 测试桥（docs 专属）触发浮层 —— 分区矩阵内浮层组件
+// 自带「点击演示」触发按钮（[data-toast] / [data-dialog]），改点按钮驱动，语义不变。
 
 // Task I3 Step 2：toast flake 修复。根因：toast 生命周期 2500ms（自动消失）+ 220ms
 // （淡出后移除）≈ 2720ms 由页面内 setTimeout 驱动；旧消失断言预算 4000ms，在全量并行
@@ -7,25 +12,23 @@ import { test, expect } from '@playwright/test';
 // 修复：两个断言都用自动重试 + 足够超时（不依赖精确计时预算），慢环境不再失败，
 // 测试语义（出现 → 自动消失）不变。
 test('Toast 出现并自动消失', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => window.__toast('测试消息', { variant: 'success' }));
-  await expect(page.locator('.c-toast')).toContainText('测试消息', { timeout: 10000 });
+  const comp = await openSettingsPartition(page, 8);
+  await comp.locator('[data-toast="success"]').click();
+  await expect(page.locator('.c-toast').last()).toContainText('操作成功', { timeout: 10000 });
   await expect(page.locator('.c-toast')).toHaveCount(0, { timeout: 15000 });
 });
 
 test('Dialog 打开与确认', async ({ page }) => {
-  await page.goto('/');
-  // 注意：不能把 openDialog 的 Promise 返回给 page.evaluate（会死等用户交互）——
-  // 用块语句只执行不返回，交互由后续断言驱动
-  await page.evaluate(() => { window.__openDialog({ title: '确认删除', content: '确定吗？', confirmLabel: '删除', danger: true }); });
+  const comp = await openSettingsPartition(page, 8);
+  await comp.locator('[data-dialog="danger"]').click();
   await expect(page.locator('.c-dialog')).toContainText('确认删除');
   await page.locator('.c-dialog .c-btn--danger').click();
   await expect(page.locator('.c-dialog')).toHaveCount(0);
 });
 
 test('Tab 切换指示条跟随', async ({ page }) => {
-  await page.goto('/');
-  const tab = page.locator('.c-tab').nth(1);
+  const comp = await openSettingsPartition(page, 8);
+  const tab = comp.locator('.c-tabs').first().locator('.c-tab').nth(1);
   await tab.click();
   await expect(tab).toHaveClass(/c-tab--active/);
 });
@@ -35,8 +38,8 @@ test('Tab 切换指示条跟随', async ({ page }) => {
 // tab 宽度变化（响应式字体/间距场景）+ 真实窗口 resize；无 resize 重算时指示条
 // 保持旧宽/旧位（中心偏 12px），有重算则精确对齐。
 test('Tab 指示条在布局重排（resize）后重新定位', async ({ page }) => {
-  await page.goto('/');
-  const tabs = page.locator('.c-tabs').first();
+  const comp = await openSettingsPartition(page, 8);
+  const tabs = comp.locator('.c-tabs').first();
   const tab = tabs.locator('.c-tab').nth(1);
   const bar = tabs.locator('.c-tabs__indicator');
   await tab.click();

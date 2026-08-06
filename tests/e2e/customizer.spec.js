@@ -1,65 +1,37 @@
 import { test, expect } from '@playwright/test';
+import { openSettingsPartition } from './helpers.js';
 
-test('定制器打开并调整玻璃透明度实时生效', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.topbar__customizer').click();
-  await expect(page.locator('.cust-panel')).toBeVisible();
-  const slider = page.locator('.cust-row:has-text("透明度") input[type="range"]');
+// B1-3 迁移：docs 定制器抽屉（.topbar__customizer → .cust-panel）→ 应用壳「外观」设置分区
+// （APP_SECTIONS index 1）。外观分区为定制器整页形态（renderCustomizerGroups 惰性挂载，
+// 6 组 .cust-group 与抽屉面板共用同一实现 + 同一份 store），滑杆实时链路不变。
+// 取舍：导出（.cust-export）与重置（.cust-reset）在分区整页形态无对应（footer 为抽屉面板
+// 专属），相应用例删除，保留滑杆 → CSS 变量实时生效的核心行为验证。
+
+test('调整玻璃透明度实时生效', async ({ page }) => {
+  const appr = await openSettingsPartition(page, 1);
+  const slider = appr.locator('.cust-row:has-text("透明度") input[type="range"]');
   await slider.fill('0.8');
   const bgOpacity = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--glass-bg-opacity').trim());
   expect(bgOpacity).toBe('0.8');
 });
 
-test('导出按钮复制 CSS 变量', async ({ page }) => {
-  await page.goto('/');
-  let copied = '';
-  await page.evaluate(() => { navigator.clipboard.writeText = async (t) => { window.__copied = t; }; });
-  await page.locator('.topbar__customizer').click();
-  await page.locator('.cust-export').click();
-  copied = await page.evaluate(() => window.__copied);
-  expect(copied).toContain('--accent');
-  expect(copied).toContain(':root');
-});
-
-test('重置恢复默认配置', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.topbar__customizer').click();
-  await page.locator('.cust-glass-preview').hover();
-  await page.locator('.cust-reset').click();
-  const cfg = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('ui-design-config') ?? 'null'));
-  expect(cfg).toBeNull(); // 重置 = 清除存储 + applyConfig(DEFAULTS)
-});
-
-test('色相滑杆实时覆盖 --accent 且重置后恢复', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.topbar__customizer').click();
-  const hue = page.locator('.cust-row:has-text("色相") input[type="range"]');
+test('色相滑杆实时覆盖 --accent 且数值区显示', async ({ page }) => {
+  const appr = await openSettingsPartition(page, 1);
+  const hue = appr.locator('.cust-row:has-text("色相") input[type="range"]');
   await hue.fill('200');
   let accent = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
   expect(accent).toMatch(/^hsl\(200 /);
   // 数值区显示自定义色相（非「跟随」）
-  await expect(page.locator('[data-out="hue"]')).toContainText('200°');
-  // 重置恢复跟随主题色（无覆盖）
-  await page.locator('.cust-reset').click();
-  accent = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
-  expect(accent).not.toMatch(/^hsl\(200 /);
+  await expect(appr.locator('[data-out="hue"]')).toContainText('200°');
 });
 
-test('色温滑杆映射 --neutral-hue 且重置后恢复默认冷调', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.topbar__customizer').click();
-  const temp = page.locator('.cust-row:has-text("色温") input[type="range"]');
+test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
+  const appr = await openSettingsPartition(page, 1);
+  const temp = appr.locator('.cust-row:has-text("色温") input[type="range"]');
   await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
   let hue = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
   expect(hue).toBe('40');
-  // 重置后覆盖移除，回退 :root 默认 --neutral-hue: 235（基线态冷调）
-  await page.locator('.cust-reset').click();
-  hue = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
-  expect(hue).toBe('235');
 });
