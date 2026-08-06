@@ -80,13 +80,24 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **任务**：R1 材质令牌+噪点链路 → R2 表面应用+去高光+闭环M-1 → R3 背景层柔和补色 → R4 图标去光晕 → R5 自定义器+措辞 → 用户视觉验收 → 最终评审 → merge main
 - **命名边界**：--glass-*/data-glass/--glass-enabled 保留原名（仅换材质值与 UI 措辞）
 
+## Task B2-R1: 亚克力材质令牌 + 噪点配置链路
+
+- **状态**：完成（2026-08-06，评审通过）
+- **提交**：`e5b1ed9` `feat: 亚克力材质令牌与噪点配置链路（--acrylic-* 配方 + glass.noise → --noise-opacity）`
+- **验证**：npm test 60/60（apply 15 含 2 新用例，store/customizer 不破）；npm run test:e2e 85/85（R1 无基线漂移）；npm run build 通过
+- **实现**：themes.css `--acrylic-saturate: 1.8` / `--acrylic-brightness`（1.1/0.92）/ `--acrylic-noise`（SVG feTurbulence data-URI）/ `--noise-opacity: 0.04` 兜底 + `--glass-border-opacity` 0.45/0.07 + dark `--surface-solid: #16181f`；defaults `glass.highlight`→`glass.noise: 0.04`（RANGES `[0,0.12,0.01]`）；apply.js 写 `--noise-opacity` 替代 `--glass-highlight-opacity`（`--glass-enabled`/`data-glass` 逐字不动）；customizer-css.js 导出同步；apply.test.js 2 新用例 + 第 24 行 fixture `highlight`→`noise`
+- **简报/报告**：docs/superpowers/sdd/task-B2-R1-brief.md / task-B2-R1-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，4 Minor）
+- **必要偏差（已披露，评审独立验证必要且原子完整）**：RANGES 删 `highlight` 令定制器 `renderSlider`（解构 `RANGES[spec.key]`）抛 TypeError，故 CFG_PATH 与 GROUPS 第三滑杆键/标签同步换 `noise`（「噪点强度」）——本属 R5 的该项提前完成；R5 仍需组名「表面质感」/开关「亚克力材质」/预览去高光/措辞
+- **Minor 留收尾**：① M1 customizer-panel.js:166/174 注释「高光」过时（预览重做属 R5，一并更新）；② M2 存量 localStorage 死键 `glass.highlight`（deepMerge 拷贝残留，apply 不读，无功能影响）；③ M3 apply.js 无条件写 `--noise-opacity`（R2 噪点层落地时决策 data-glass=off 是否抑制噪点）；④ M4 border 0.45 视觉基线未漂移（R2 重生成 18 张时复核）
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
 - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）→ **返工 R3 重调预设**
 - Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ **返工 R4 去光晕**
 - 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
-- Task R1 亚克力材质令牌 + 噪点链路：待执行
+- Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
 - Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：待执行
 - Task R3 背景层预设柔和补色：待执行
 - Task R4 图标选中态去光晕：待执行

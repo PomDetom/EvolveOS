@@ -1,0 +1,271 @@
+# Review package: d4d4309..HEAD
+
+## Commits
+e5b1ed9 feat: 亚克力材质令牌与噪点配置链路（--acrylic-* 配方 + glass.noise → --noise-opacity）
+
+## Files changed
+ src/config/apply.js          |  2 +-
+ src/config/defaults.js       |  4 ++--
+ src/demo/customizer-css.js   |  2 +-
+ src/demo/customizer-panel.js |  4 ++--
+ src/styles/themes.css        | 16 +++++++++++++---
+ tests/unit/apply.test.js     | 10 +++++++++-
+ 6 files changed, 28 insertions(+), 10 deletions(-)
+
+## Diff
+diff --git a/src/config/apply.js b/src/config/apply.js
+index 3f987c9..915bdf0 100644
+--- a/src/config/apply.js
++++ b/src/config/apply.js
+@@ -58,21 +58,21 @@ export function applyConfig(cfg, root = document.documentElement) {
+   root.dataset.accent = cfg.accent;
+   root.dataset.motion = cfg.motion.enabled ? 'on' : 'off';
+   // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
+   // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
+   root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
+ 
+   const s = root.style;
+   s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
+   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
+   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
+-  s.setProperty('--glass-highlight-opacity', String(cfg.glass.highlight));
++  s.setProperty('--noise-opacity', String(cfg.glass.noise));
+   s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
+   s.setProperty('--radius-scale', String(cfg.radiusScale));
+   s.setProperty('--shadow-intensity', String(cfg.shadow));
+   s.setProperty('--spring-strength', String(cfg.motion.springStrength));
+   const d = scaledDurations(cfg.motion.durationScale, cfg.motion.enabled);
+   s.setProperty('--dur-fast', `${d.fast}ms`);
+   s.setProperty('--dur-base', `${d.base}ms`);
+   s.setProperty('--dur-slow', `${d.slow}ms`);
+   s.setProperty('--ease-spring', springCurve(cfg.motion.springStrength));
+   applyColorTint(cfg, root);
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index dbc6d73..e063b2d 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -1,25 +1,25 @@
+ export const DEFAULTS = {
+   theme: 'system',
+   accent: 'indigo',
+-  glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
++  glass: { opacity: 0.62, blur: 24, noise: 0.04, blurEnabled: true },
+   type: { baseSize: 14, scale: 1, weight: 400 },
+   radiusScale: 1,
+   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
+   shadow: 0.5,
+   color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
+ };
+ 
+ export const RANGES = {
+   opacity: [0.4, 0.95, 0.01],
+   blur: [8, 48, 1],
+-  highlight: [0, 1, 0.05],
++  noise: [0, 0.12, 0.01],
+   baseSize: [12, 16, 0.5],
+   scale: [0.9, 1.15, 0.01],
+   radiusScale: [0.7, 1.6, 0.05],
+   durationScale: [0.5, 2, 0.05],
+   springStrength: [0, 1, 0.05],
+   shadowIntensity: [0, 1, 0.05],
+   hue: [0, 360, 1],
+   saturation: [60, 120, 1],
+   temperature: [-1, 1, 0.05],
+ };
+diff --git a/src/demo/customizer-css.js b/src/demo/customizer-css.js
+index efa4ad1..1d55e60 100644
+--- a/src/demo/customizer-css.js
++++ b/src/demo/customizer-css.js
+@@ -28,21 +28,21 @@ export function exportCss(cfg) {
+     ? `  --accent: hsl(${tint.H} ${tint.S}% ${tint.L}%); /* 色彩微调覆盖（色相/饱和度） */`
+     : `  --accent: var(--accent-500); /* 主题色全阶 --accent-50…950 见 themes.css */`;
+   const tempLine = cfg.color.temperature !== 0
+     ? `  --neutral-hue: ${temperatureToHue(cfg.color.temperature)}; /* 色温覆盖（中性色冷暖偏移） */`
+     : null;
+   return `/* 由主题定制器导出 — ${new Date().toLocaleString('zh-CN')} */
+ /* 定制参数层（玻璃/排版/圆角/动效/阴影）—— 粘贴到应用 :root */
+ :root {
+   --glass-bg-opacity: ${glass.opacity};
+   --glass-blur: ${glass.blur}px;
+-  --glass-highlight-opacity: ${glass.highlight};
++  --noise-opacity: ${glass.noise};
+   --font-size-base: ${type.baseSize}px;
+   --radius-scale: ${radiusScale};
+   --shadow-intensity: ${shadow};
+   --dur-fast: ${d.fast}ms;
+   --dur-base: ${d.base}ms;
+   --dur-slow: ${d.slow}ms;
+   --ease-spring: ${springCurve(motion.springStrength)};
+   --spring-strength: ${motion.springStrength};
+ ${tintLine}
+ ${tempLine ?? ''}
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index 8310528..3e255f1 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -17,21 +17,21 @@ import { exportCss } from './customizer-css.js';
+  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
+  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
+  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
+  * - 动画红线：抽屉只动 transform + visibility（透明度走 backdrop 的 opacity），模糊不动画
+  */
+ 
+ // 滑杆 data-key → 配置路径（映射关系与 apply.js 写入的变量一一对应）
+ const CFG_PATH = {
+   opacity: ['glass', 'opacity'],
+   blur: ['glass', 'blur'],
+-  highlight: ['glass', 'highlight'],
++  noise: ['glass', 'noise'],
+   baseSize: ['type', 'baseSize'],
+   scale: ['type', 'scale'],
+   radiusScale: ['radiusScale'],
+   durationScale: ['motion', 'durationScale'],
+   springStrength: ['motion', 'springStrength'],
+   shadowIntensity: ['shadow'],
+   hue: ['color', 'hue'],
+   saturation: ['color', 'saturation'],
+   temperature: ['color', 'temperature'],
+ };
+@@ -45,21 +45,21 @@ const GROUPS = [
+       { key: 'saturation', label: '饱和度', unit: '%' },
+       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+     ],
+   },
+   {
+     title: '玻璃材质',
+     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+-      { key: 'highlight', label: '高光' },
++      { key: 'noise', label: '噪点强度' },
+     ],
+   },
+   {
+     title: '排版',
+     sliders: [
+       { key: 'baseSize', label: '基准字号', unit: 'px' },
+       { key: 'scale', label: '缩放', unit: '×' },
+     ],
+   },
+   {
+diff --git a/src/styles/themes.css b/src/styles/themes.css
+index 1420747..aa717bb 100644
+--- a/src/styles/themes.css
++++ b/src/styles/themes.css
+@@ -1,39 +1,39 @@
+ /* 亮色主题 */
+ :root[data-theme="light"] {
+   --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
+   --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
+   --surface-solid: #f8f9fb; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
+   --surface-hover: rgba(0,0,0,0.045);
+   --glass-bg-rgb: 248 249 251;  --glass-highlight-rgb: 255 255 255;
+   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));  --glass-blur: 20px;
+   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.5));
+-  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.6));  --glass-border-opacity: 0.6;
++  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.45));  --glass-border-opacity: 0.45;
+   --glass-shadow: 0 8px 32px rgba(20,24,40,calc(0.14 * var(--shadow-intensity, 0.5))),
+                   0 2px 8px rgba(20,24,40,calc(0.08 * var(--shadow-intensity, 0.5)));
+   --shadow-sm: 0 1px 3px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5)));
+   --shadow-md: 0 4px 16px rgba(20,24,40,calc(0.12 * var(--shadow-intensity, 0.5)));
+   --shadow-lg: 0 12px 40px rgba(20,24,40,calc(0.18 * var(--shadow-intensity, 0.5)));
+   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
+   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
+ }
+ 
+ /* 暗色主题 */
+ :root[data-theme="dark"] {
+   --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
+   --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
+-  --surface-solid: #14161c; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
++  --surface-solid: #16181f; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
+   --surface-hover: rgba(255,255,255,0.06);
+   --glass-bg-rgb: 24 26 32;  --glass-highlight-rgb: 255 255 255;
+   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.62));  --glass-blur: 28px;
+   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.08));
+-  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.08));  --glass-border-opacity: 0.08;
++  --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.07));  --glass-border-opacity: 0.07;
+   --glass-shadow: 0 8px 32px rgba(0,0,0,calc(0.5 * var(--shadow-intensity, 0.5))),
+                   0 2px 8px rgba(0,0,0,calc(0.3 * var(--shadow-intensity, 0.5)));
+   --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
+   --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
+   --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
+   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.06);
+   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(255,255,255,0.16);
+ }
+ 
+ /* 6 套主题色：仅覆盖强调色系（靛蓝已在 tokens.css 中，其余 5 套在这里定义） */
+@@ -84,10 +84,20 @@
+   --warning-50: #fffbeb;  --warning-500: #f59e0b;  --warning-600: #d97706;
+   --danger-50: #fef2f2;  --danger-500: #ef4444;  --danger-600: #dc2626;
+   --info-50: #eff6ff;  --info-500: #3b82f6;  --info-600: #2563eb;
+ }
+ :root[data-theme="dark"] {
+   --success-500: #34d399;  --success-600: #10b981;
+   --warning-500: #fbbf24;  --warning-600: #f59e0b;
+   --danger-500: #f87171;  --danger-600: #ef4444;
+   --info-500: #60a5fa;  --info-600: #3b82f6;
+ }
++
++/* 亚克力配方（B2 返工：Windows 11 亚克力材质；表面 backdrop-filter 与噪点层消费，
++   命名保留 --glass-* 体系不动；--acrylic-brightness 深色档 0.92 提亮避免发闷） */
++:root {
++  --acrylic-saturate: 1.8;
++  --acrylic-brightness: 1.1; /* light 基准 */
++  --acrylic-noise: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
++  --noise-opacity: 0.04; /* 兜底；apply.js 从 glass.noise 覆盖 */
++}
++:root[data-theme="dark"] { --acrylic-brightness: 0.92; }
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index 4c17ad6..024b799 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -14,38 +14,46 @@ describe('applyConfig', () => {
+   it('写入 data-theme 与 data-accent', () => {
+     applyConfig({ ...DEFAULTS, theme: 'light', accent: 'teal' }, root);
+     expect(root.dataset.theme).toBe('light');
+     expect(root.dataset.accent).toBe('teal');
+   });
+   it('system 主题解析为系统偏好', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.dataset.theme).toMatch(/^(light|dark)$/);
+   });
+   it('玻璃与动效参数写入 CSS 变量覆盖层', () => {
+-    applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, highlight: 0.2 },
++    applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, noise: 0.06 },
+       motion: { enabled: true, durationScale: 1, springStrength: 0.6 } }, root);
+     const s = root.style;
+     expect(s.getPropertyValue('--glass-bg-opacity')).toBe('0.8');
+     expect(s.getPropertyValue('--glass-blur')).toBe('30px');
+     expect(s.getPropertyValue('--dur-fast')).toBe('120ms');
+     expect(s.getPropertyValue('--ease-spring')).toBe('cubic-bezier(0.34, 1.336, 0.64, 1)');
+   });
+   it('玻璃磨砂开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, root);
+     expect(root.style.getPropertyValue('--glass-enabled')).toBe('1');
+     expect(root.dataset.glass).toBe('on');
+   });
+   it('玻璃磨砂关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
+     expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
+     expect(root.dataset.glass).toBe('off');
+   });
++  it('噪点强度写入 --noise-opacity 覆盖', () => {
++    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
++    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
++  });
++  it('默认噪点强度 0.04 写入', () => {
++    applyConfig(DEFAULTS, root);
++    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.04');
++  });
+   it('动效关闭时时长全部为 0', () => {
+     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
+     expect(root.style.getPropertyValue('--dur-fast')).toBe('0ms');
+   });
+   // —— 色彩微调：色相/饱和度覆盖（默认跟随主题色时不写覆盖）——
+   it('hue 跟随（-1）且饱和度 100 时不写 --accent 覆盖', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('');
+   });
+   it('自定义色相写入 --accent/--accent-hover/--accent-active 覆盖（保持基色明度）', () => {
