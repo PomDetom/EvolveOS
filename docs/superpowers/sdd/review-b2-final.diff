@@ -1,0 +1,3077 @@
+# Review package: 0839414..HEAD
+
+## Commits
+6788bf0 docs: B2-3 评审留痕（规格✅/Approved，0 Critical/Important + 5 Minor）
+8e83e7f docs: B2-3 导航图标四项增强执行留痕（报告 + 进度台账）
+670396c feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）
+e07a305 docs: B2-2 评审留痕（规格✅/Approved，1 Important deferred→最终评审 + 4 Minor）
+4217b37 docs: B2-2 浏览器装饰背景层执行留痕（报告 + 进度台账）
+20ab435 feat: 浏览器装饰背景层（渐变/几何/网格三预设 + Tauri 透明）
+e1fbbf0 docs: B2-1 评审留痕（规格✅/Approved，1 Important deferred→最终评审 + 4 Minor）
+c3ad62c docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）
+55d0bcc feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）
+
+## Files changed
+ docs/superpowers/sdd/progress-b2.md                |  57 ++
+ docs/superpowers/sdd/review-B2-1.diff              | 605 +++++++++++++++++++++
+ docs/superpowers/sdd/review-B2-2.diff              | 472 ++++++++++++++++
+ docs/superpowers/sdd/review-B2-3.diff              | 476 ++++++++++++++++
+ docs/superpowers/sdd/task-B2-1-brief.md            | 126 +++++
+ docs/superpowers/sdd/task-B2-1-report.md           |  66 +++
+ docs/superpowers/sdd/task-B2-2-brief.md            |  87 +++
+ docs/superpowers/sdd/task-B2-2-report.md           |  59 ++
+ docs/superpowers/sdd/task-B2-3-brief.md            |  99 ++++
+ docs/superpowers/sdd/task-B2-3-report.md           |  68 +++
+ src/app/app-main.css                               |  61 ++-
+ src/app/app-main.js                                |  35 +-
+ src/app/partitions.css                             |  16 +
+ src/components/icon/icon.js                        |  10 +-
+ src/components/navigation-wheel/nav-wheel.css      |  14 +-
+ src/components/navigation-wheel/nav-wheel.js       |  22 +-
+ src/config/apply.js                                |   4 +
+ src/config/defaults.js                             |   2 +-
+ src/demo/customizer-panel.js                       |  24 +-
+ src/styles/themes.css                              |   2 +
+ tests/e2e/app-shell.spec.js                        |  59 ++
+ .../app-main-dark-amber-chromium-win32.png         | Bin 31775 -> 129917 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 31793 -> 127755 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 31668 -> 134377 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 33068 -> 71011 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 33195 -> 72731 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 32990 -> 60081 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 63865 -> 157871 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 63856 -> 156098 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 63906 -> 160017 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 64236 -> 104920 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 64263 -> 106592 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 64233 -> 97479 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 42665 -> 86718 bytes
+ ...otion-partition-dark-emerald-chromium-win32.png | Bin 42549 -> 84736 bytes
+ ...motion-partition-dark-indigo-chromium-win32.png | Bin 42565 -> 87606 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 40145 -> 55789 bytes
+ ...tion-partition-light-emerald-chromium-win32.png | Bin 40240 -> 56114 bytes
+ ...otion-partition-light-indigo-chromium-win32.png | Bin 40178 -> 51883 bytes
+ tests/unit/apply.test.js                           |  10 +
+ tests/unit/icon.test.js                            |  12 +
+ 41 files changed, 2368 insertions(+), 18 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
+new file mode 100644
+index 0000000..97ba888
+--- /dev/null
++++ b/docs/superpowers/sdd/progress-b2.md
+@@ -0,0 +1,57 @@
++# SDD ledger — plan: docs/superpowers/plans/2026-08-06-app-shell-b2.md
++
++Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.toml 行尾噪声未动）
++
++规格：docs/superpowers/specs/2026-08-06-app-shell-product-design.md（§3 B2 部分）
++计划书：docs/superpowers/plans/2026-08-06-app-shell-b2.md
++交接：docs/HANDOFF-B2-B3.md
++
++## Pre-flight 扫描（2026-08-06，干净，无阻塞冲突）
++
++- 无测试断言图标宽度 22 / 分组标题文案 / backdrop —— B2-3 尺寸分级、B3-1 重命名不打破既有断言。
++- `.cust-group` count 6（app-shell.spec.js:148）不受影响（B2/B3 不新增分组）。
++- apply.test.js 用真实 `document.documentElement` 作 root（非 mock）—— 计划 Step 1 测试代码需按既有结构适配（计划已注明）。
++- B2-1 计划 Step 4 写 `--glass-enabled` 变量 + Step 6 注记写 `root.dataset.glass`（CSS 选择器用后者）；两者都写，变量由单测锁定。
++- visual spec 硬编码 `toHaveCount(10)`（既有 deferred minor，本计划不触碰）。
++
++## Task B2-1: 玻璃材质两档（磨砂/纯色不透明）
++
++- **状态**：完成（2026-08-06，评审通过）
++- **提交**：`55d0bcc` `feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）` + `c3ad62c` `docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）`
++- **验证**：npm test 56/56；npm run test:e2e 83/83（含「玻璃两档」）；npm run test:visual 18/18（暗色 9 张重生成，亮色像素级不变）；npm run build 通过
++- **实现**：defaults.js `glass.blurEnabled: true`；apply.js 写 `--glass-enabled` + `root.dataset.glass`；themes.css `--surface-solid`（light `#f8f9fb` / dark `#14161c`）；app-main.css 表面（nav-l/nav-r/pages/card + 手机 stack/stack-page/dock）接玻璃 + `:root[data-glass="off"]` 降级纯色；定制器「玻璃材质」组 pre 加玻璃磨砂开关（`glassSwitchRow`，saveConfig→applyConfig 链路，syncUI 同步）；apply 单测 2 新用例（真实 root 风格）+ e2e 玻璃两档（真实开关 + reload 持久化）
++- **简报/报告**：docs/superpowers/sdd/task-B2-1-brief.md / task-B2-1-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
++- **Important deferred → B2 最终评审**：I-1 暗色表面双层层叠半透明 `--glass-bg` 明显加深（brief 字面指令的必然结果，评审判定非本任务缺陷）；B2-2 装饰背景层落地后再确认暗色观感
++- **Minor 留收尾**：① M-1 `data-glass=off` 不覆盖标题栏（`.c-titlebar` backdrop-filter 与 nav-wheel 遮罩渐变仍半透明）——不在 brief 表面清单内，不构成规格违背，最终评审定边界；② M-2 玻璃开关行结构与动效开关不一致（省略 `.cust-switch-wrap` 包裹层，点整行触发）——功能正确，建议与 motion 行统一；③ M-3 `--glass-enabled` 当前无 CSS 消费者（brief 明示写入 + 测试锁定，spec §3.1 Tauri 窗口透明度可能消费）；④ M-4 手机形态降级无 e2e 覆盖——brief Step 7 未要求，最终评审补断言或豁免
++
++## Task B2-2: 浏览器装饰背景层（模糊对象）
++
++- **状态**：完成（2026-08-06，待评审）
++- **提交**：见 task-B2-2-report.md 文末
++- **验证**：npm test 56/56；npm run test:e2e 84/84（含「背景层」用例；首轮 smoke 冷启动超时偶发，非因果，复跑 84/84）；npm run test:visual 18/18（18 张重生成）；npm run build 通过
++- **实现**：app-main.css `.app-main__backdrop`（`position:fixed; inset:0; z-index:-1; pointer-events:none`，画在 canvas 之上、壳内容之下，玻璃表面模糊到它）+ 三预设 `data-backdrop="gradient|geo|grid"`（`--backdrop-bg`，brief 字面）+ `[data-tauri="1"]` 透明；app-main.js 模板设默认 gradient + 首个子元素 backdrop + Tauri 探测写 data-tauri + 外观分区挂载注入「背景装饰」3 预设按钮（会话内纯 UI 态，不进 store；`.cust-group` count 6 不受影响）；partitions.css 分段按钮样式（paint-only 过渡）。一处必要偏差：`background-size` 不继承，网格平铺尺寸补在 `.app-main__backdrop` 上（brief 原行保留）
++- **简报/报告**：docs/superpowers/sdd/task-B2-2-brief.md / task-B2-2-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
++- **Important deferred → B2 最终评审**：I-1 暗色主题背景层光晕覆盖广（`--accent-200/300` 浅档 + `--surface-solid` 近黑，max 通道差 ≤52）——brief 字面 CSS 必然结果，与 B2-1 I-1 同题，最终评审确认观感
++- **Minor 留收尾**：① M-1 手机形态无背景装饰选择 UI（桌面挂载注入，手机页面栈重建未注入；背景层默认 gradient 仍渲染）——brief 未要求，最终评审补断言或豁免；② M-2 Tauri 下背景层透明但「背景装饰」小节仍可见（功能无意义 UI，brief 未要求隐藏）；③ M-3 `background-size: 40px 40px` 在 `.app-main` 上为死 CSS（保留仅溯源，功能由 `.app-main__backdrop` 承担）；④ M-4 选择器样式落 partitions.css（brief 指定该文件，文件归属略偏）
++- **评审独立验证**：paint 层级成立（html 无背景规则、body `--glass-bg` 传播为 canvas 背景、`.app-main` 不建 stacking context → backdrop z-index:-1 画 canvas 之上/壳内容之下，玻璃表面确会模糊到它）；`overflow:hidden` 不裁剪 fixed；两处声明偏差（grid background-size 补子元素、手机无切换 UI）均合理且已披露
++
++## Task B2-3: 导航图标四项增强
++
++- **状态**：完成（2026-08-06，待评审）
++- **提交**：见 task-B2-3-report.md 文末
++- **验证**：npm test 58/58；npm run test:e2e 85/85（含「图标分级」用例；首轮/中间轮若干冷启动与 data-display 超时偶发，隔离复跑与终跑全绿，非因果）；npm run test:visual 18/18；npm run build 通过
++- **实现**：icon.js `icon(name, size = 18, stroke = 1.8)` 第三参（默认 1.8 向后兼容）；nav-wheel.js 模板 item0 初始 active + 24px/2.2，其余 20px/1.8，select 捕获 prev 并对前后两项重渲染（`renderItemIcons` 原地改 svg width/height/stroke-width 属性）；nav-wheel.css brief Step 7 字面（40px 圆角衬底 hover/active 显、`--text-3`→`--text-2` 提亮、active accent + accent-100 衬底、glow scale(.8)→(1) 分层，过渡仅 color/background 与 transform/opacity）；setFocal 逐字不动
++- **简报/报告**：docs/superpowers/sdd/task-B2-3-brief.md / task-B2-3-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，0 Important，5 Minor）
++- **一处必要偏差（已披露，评审独立验证正确且必要）**：brief Step 6 建议「重设 innerHTML」→ 改为「原地改 svg 属性」。原因：pointerup 内同步替换 innerHTML 移除 mousedown 目标 → Chromium 抑制后续 click 派发（实测 5 个 e2e 回归：mobile-nav 3 + app-shell 收起通道二/设置模式退出轮回归），破坏依赖 click 的 dock 推入/左窗 toggle。原地属性变更实现相同分级 + 相同 e2e 断言（svg width 24>20），零副作用
++- **视觉基线**：app-main（6）+ components-partition（6）重生成（解码比对确认差异为左窗图标栏与组件分区 nav-wheel 演示实例的图标/衬底/光晕局部变化）；motion-partition 6 张字节不变（无全局渲染回归）
++- **Minor 留收尾**：① M-1 app-shell.spec.js:371 注释称「重渲染 innerHTML」与实际「原地改 svg 属性」不符（建议改注释，避免误导）；② M-2 e2e 仅断言初始渲染分级、未断言 select 切换后尺寸互换（可补：点击非 active 项后断言原 active 变 20、新 active 变 24，brief 未要求）；③ M-3 hover 时 active 项衬底被 `:hover` 规则覆盖为 `--surface-hover`（brief 字面 CSS 的选择器优先级结果，active+hover 态观感交最终评审）；④ M-4 chip 40px 为 brief 字面硬编码、纯图标栏 item 左对齐（64px 栏宽可容纳，非新回归）；⑤ M-5 信息性：brief Interfaces 写 `.c-navwheel__icon-chips` 而 Step 7 用 `.c-navwheel__icon`，实现遵循 Step 7 正确
++
++## 执行状态
++
++- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
++- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
++- Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）
++- 最终整体评审 + 合并 main：待执行
+diff --git a/docs/superpowers/sdd/review-B2-1.diff b/docs/superpowers/sdd/review-B2-1.diff
+new file mode 100644
+index 0000000..b9eb808
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B2-1.diff
+@@ -0,0 +1,605 @@
++# Review package: 0839414..HEAD
++
++## Commits
++c3ad62c docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）
++55d0bcc feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）
++
++## Files changed
++ docs/superpowers/sdd/progress-b2.md                |  22 +++++++
++ docs/superpowers/sdd/task-B2-1-report.md           |  66 +++++++++++++++++++++
++ src/app/app-main.css                               |  35 +++++++++--
++ src/config/apply.js                                |   4 ++
++ src/config/defaults.js                             |   2 +-
++ src/demo/customizer-panel.js                       |  24 +++++++-
++ src/styles/themes.css                              |   2 +
++ tests/e2e/app-shell.spec.js                        |  30 ++++++++++
++ .../app-main-dark-amber-chromium-win32.png         | Bin 31775 -> 33581 bytes
++ .../app-main-dark-emerald-chromium-win32.png       | Bin 31793 -> 33657 bytes
++ .../app-main-dark-indigo-chromium-win32.png        | Bin 31668 -> 33545 bytes
++ ...ponents-partition-dark-amber-chromium-win32.png | Bin 63865 -> 65100 bytes
++ ...nents-partition-dark-emerald-chromium-win32.png | Bin 63856 -> 65076 bytes
++ ...onents-partition-dark-indigo-chromium-win32.png | Bin 63906 -> 65098 bytes
++ .../motion-partition-dark-amber-chromium-win32.png | Bin 42665 -> 42851 bytes
++ ...otion-partition-dark-emerald-chromium-win32.png | Bin 42549 -> 42867 bytes
++ ...motion-partition-dark-indigo-chromium-win32.png | Bin 42565 -> 42828 bytes
++ tests/unit/apply.test.js                           |  10 ++++
++ 18 files changed, 188 insertions(+), 7 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
++new file mode 100644
++index 0000000..69d42ab
++--- /dev/null
+++++ b/docs/superpowers/sdd/progress-b2.md
++@@ -0,0 +1,22 @@
+++# SDD ledger — plan: docs/superpowers/plans/2026-08-06-app-shell-b2.md
+++
+++Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.toml 行尾噪声未动）
+++
+++规格：docs/superpowers/specs/2026-08-06-app-shell-product-design.md（§3 B2 部分）
+++计划书：docs/superpowers/plans/2026-08-06-app-shell-b2.md
+++交接：docs/HANDOFF-B2-B3.md
+++
+++## Pre-flight 扫描（2026-08-06，干净，无阻塞冲突）
+++
+++- 无测试断言图标宽度 22 / 分组标题文案 / backdrop —— B2-3 尺寸分级、B3-1 重命名不打破既有断言。
+++- `.cust-group` count 6（app-shell.spec.js:148）不受影响（B2/B3 不新增分组）。
+++- apply.test.js 用真实 `document.documentElement` 作 root（非 mock）—— 计划 Step 1 测试代码需按既有结构适配（计划已注明）。
+++- B2-1 计划 Step 4 写 `--glass-enabled` 变量 + Step 6 注记写 `root.dataset.glass`（CSS 选择器用后者）；两者都写，变量由单测锁定。
+++- visual spec 硬编码 `toHaveCount(10)`（既有 deferred minor，本计划不触碰）。
+++
+++## 执行状态
+++
+++- Task B2-1 玻璃材质两档：已完成 55d0bcc（磨砂 backdrop-filter / 纯色不透明降级，测试全绿）
+++- Task B2-2 浏览器装饰背景层：待执行
+++- Task B2-3 导航图标四项增强：待执行
+++- 最终整体评审 + 合并 main：待执行
++diff --git a/docs/superpowers/sdd/task-B2-1-report.md b/docs/superpowers/sdd/task-B2-1-report.md
++new file mode 100644
++index 0000000..7f2d57d
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B2-1-report.md
++@@ -0,0 +1,66 @@
+++# Task B2-1 报告：玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）
+++
+++- 分支：`feature/b2-visual`（自 main 检出）
+++- 状态：DONE
+++- 提交：见文末「提交」
+++
+++## 实现说明
+++
+++### 配置链路三件套（defaults → store → apply）
+++
+++- `src/config/defaults.js`：`glass` 追加 `blurEnabled: true`。既有持久化配置（无该键）经 `deepMerge` 自动补全默认值，向后兼容（store.test.js 覆盖）。
+++- `src/config/apply.js`：`applyConfig` 玻璃变量区写 `--glass-enabled`（`1|0`，机器可读）+ `root.dataset.glass = blurEnabled ? 'on' : 'off'`（CSS 降级选择器用后者）。两处都由单测锁定。
+++- `src/styles/themes.css`：`--surface-solid` 深浅两套（light `#f8f9fb` / dark `#14161c`，按 brief 字面值）。
+++
+++### 表面接玻璃 + 降级（app-main.css）
+++
+++- `.app-main__nav-l` / `.app-main__nav-r` / `.app-main__pages`：新增 `background: var(--glass-bg)` + `backdrop-filter: blur(var(--glass-blur)) saturate(1.4)`（原为透出 body 的 `--glass-bg`）。
+++- `.app-main__card`：`var(--surface-1)` → `var(--glass-bg)`。
+++- 手机形态 `.app-main__stack` / `.app-main__stack-page` / `.app-main__dock`：`var(--surface-1)` → `var(--glass-bg)`。
+++- 降级：`:root[data-glass="off"] .app-main__{nav-l,nav-r,pages,card}` → `background: var(--surface-solid); backdrop-filter: none;`（手机形态在 `@media (max-width:900px)` 内同规则）。属性为静态切换、无 transition，backdrop-filter 永不动画（红线合规）；切页/推入动画仍只动 transform/opacity。
+++
+++### 玻璃开关 UI（共享定制器实现）
+++
+++- `src/demo/customizer-panel.js`：GROUPS「玻璃材质」组 `pre` 改为 `glassSwitchRow(cfg) + glassPreview()`；`glassSwitchRow` 仿 `motionSwitchRow`（`.cust-row.cust-row--switch` + `data-glass-switch` 容器 + `renderSwitch`），点击写 `saveConfig({ glass: { blurEnabled } })` + `applyConfig`；`syncUI` 同步玻璃开关 aria-checked；`renderCustomizerGroups` 加 `[data-glass-switch]` 点击委托。抽屉面板与设置「外观」分区共用同一实现（B1-3 迁移后的契约）。未新增分组，`.cust-group` count 6 保持。
+++
+++### 测试
+++
+++- 单测（apply.test.js，既有真实 `document.documentElement` 风格）：`blurEnabled=true` → `--glass-enabled:1` + `data-glass="on"`；`false` → `0` + `"off"`。
+++- e2e（app-shell.spec.js「玻璃两档」）：默认 `html data-glass="on"` + 导航栏 backdrop-filter 含 blur → 设置→外观玻璃开关点击关闭 → `data-glass="off"` + backdrop-filter `none` + 开关 aria-checked 翻转 → reload 持久化保持 off（完整配置链路验证）。
+++- 视觉基线：暗色 9 张重生成（亮色 9 张像素级不变）。
+++
+++## 测试证据
+++
+++| 步骤 | 命令 | 结果 |
+++|---|---|---|
+++| 红 | `npx vitest run tests/unit/apply.test.js` | 新 2 用例 FAIL（`--glass-enabled` 未写） |
+++| 绿 | `npx vitest run tests/unit/apply.test.js` | 13/13 PASS |
+++| 红 | `npx playwright test tests/e2e/app-shell.spec.js -g "玻璃两档"` | FAIL（`[data-glass-switch]` 未挂载） |
+++| 绿 | `npx playwright test tests/e2e/app-shell.spec.js -g "玻璃两档"` | 1/1 PASS |
+++| 单测全量 | `npm test` | 56/56 PASS（9 文件） |
+++| e2e 全量 | `npm run test:e2e` | 74/83 PASS（余 9 为视觉暗色，基线重生成前预期失败） |
+++| 视觉重生成 | `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS |
+++| e2e 全量（重生成后） | `npm run test:e2e` | 83/83 PASS |
+++| 构建 | `npm run build` | PASS |
+++
+++### 基线差异确认（先解码比对）
+++
+++对 `app-main-dark-indigo` 期望/实际 PNG 做逐像素差分（System.Drawing）：
+++- 尺寸 1280×720，平均绝对差 38.98/通道，最大差 53，94.1% 像素变化；
+++- 分列区域（左窗 47 / 右窗区 40 / 内容区 38）一致，无局部结构性位移。
+++
+++判定：暗色表面由玻璃层叠加 body 半透明底色而整体加深（约 -54/通道，与合成计算 `rgba(24 26 32 / 0.62)` 双层叠加预测吻合），为玻璃材质变化，非布局破坏。亮色下双层叠加近白，渲染与旧基线像素一致，无需重生成。
+++
+++## 遇到的问题与判断
+++
+++1. **暗色表面明显加深（mean abs diff ~39）**：`--glass-bg`（暗色 alpha 0.62）现直接绘在表面，叠加 body 同样半透明的 `--glass-bg` 底 → 暗色下表面显著变暗。这是 brief 字面指令（表面接 `var(--glass-bg)`）的必然结果，视觉基线按预期重生成；B2-2「浏览器装饰背景层」将提供模糊对象，届时观感由该任务统一。判断：按规格字面落地，留待整体评审确认暗色观感。
+++2. **`--surface-solid` 暗色值**：brief 给定 `#14161c`（rgb 20 22 28），与 `--glass-bg-rgb`（24 26 32 = #181a20）略有出入，按 brief 字面使用。
+++3. **apply.js 编辑事故**：Step 4 首次 Edit 意外删掉 `--glass-bg-opacity` 行 → 既有单测变红，立即恢复，最终全绿（无残留）。
+++4. **e2e 路径选择**：brief Step 7 草稿用 localStorage 直写验证降级，Step 9 允许改为驱动真实开关；本实现走「外观分区玻璃开关 → data-glass 翻转 + reload 持久化」，覆盖配置链路 + 真实交互，比草稿更强。
+++5. **手机形态降级**：`.app-main__stack`/`__stack-page`/`__dock` 的降级规则置于 `@media (max-width:900px)` 内（与玻璃规则同媒体上下文），选择器特异性（`:root[data-glass="off"]` + 类）恒高于默认类规则，不依赖顺序。
+++
+++## 提交
+++
+++- `55d0bcc`：`feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）`
+++
+++改动文件：`src/config/defaults.js`、`src/config/apply.js`、`src/styles/themes.css`、`src/app/app-main.css`、`src/demo/customizer-panel.js`、`tests/unit/apply.test.js`、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（暗色 9 张重生成）、`docs/superpowers/sdd/task-B2-1-report.md`、`docs/superpowers/sdd/progress-b2.md`。
++diff --git a/src/app/app-main.css b/src/app/app-main.css
++index 7b82e32..42e97b4 100644
++--- a/src/app/app-main.css
+++++ b/src/app/app-main.css
++@@ -14,34 +14,38 @@
++   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
++   --dur-push: calc(var(--dur-base) * 1.2);
++   --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
++ }
++ .app-main--dual { --app-nav-r-w: 64px; }
++ 
++ .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
++ 
++ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
++ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+++  background: var(--glass-bg);
+++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
++   border-right: 1px solid var(--glass-border); }
++ .app-main__nav-l .c-navwheel__list { inset: 0; }
++ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
++ .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
++   justify-content: center; }
++ .app-main__nav-l .c-navwheel__name { display: none; }
++ .app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
++ 
++ /* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
++    面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
++    网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
++ .app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
++   position: relative; z-index: var(--z-float);
++   display: flex; flex-direction: column;
+++  background: var(--glass-bg);
+++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
++   border-right: 1px solid var(--glass-border);
++   transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
++   transition: transform var(--dur-push) var(--ease-spring),
++               opacity var(--dur-push) var(--ease-spring); }
++ .app-main--dual .app-main__nav-r { transform: translateX(0); opacity: 1;
++   visibility: visible; pointer-events: auto; }
++ .app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
++   color: var(--text-2); border-bottom: 1px solid var(--glass-border);
++   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++ .app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
++@@ -50,38 +54,40 @@
++ .app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
++   justify-content: center; }
++ .app-main__nav-r .c-navwheel__name { display: none; }
++ .app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
++ .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
++   align-items: center; justify-content: center; gap: var(--space-2);
++   color: var(--text-3); font-size: var(--font-size-sm); }
++ 
++ /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
++ .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
++-  padding: var(--space-6); }
+++  padding: var(--space-6);
+++  background: var(--glass-bg);
+++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */ }
++ .app-main__page { display: none; max-width: 720px; }
++ .app-main__page--active { display: block; }
++ .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
++   margin-bottom: var(--space-5); }
++ .app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
++ .app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
++ /* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
++    body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
++ .app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
++ @keyframes app-main-page-in {
++   from { opacity: 0; transform: translateY(4px); }
++   to { opacity: 1; transform: translateY(0); }
++ }
++ 
++ /* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
++ .app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
++-.app-main__card { background: var(--surface-1); border: 1px solid var(--glass-border);
+++.app-main__card { background: var(--glass-bg); border: 1px solid var(--glass-border);
++   border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
++ .app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
++   margin-bottom: var(--space-3); }
++ .app-main__card-desc { font-size: var(--font-size-sm); color: var(--text-3); }
++ .app-main__welcome { display: flex; flex-direction: column; gap: var(--space-2); }
++ .app-main__welcome .app-main__card-title { margin-bottom: 0; }
++ .app-main__shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
++   gap: var(--space-3); }
++ .app-main__shortcut { display: flex; flex-direction: column; align-items: center;
++   gap: var(--space-2); padding: var(--space-3);
++@@ -110,43 +116,54 @@
++ .app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
++ .app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
++ 
++ /* —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall → 点击展开悬浮条 ——
++    body 级覆盖层（app/docs 互斥，docs 不加载本文件）。.c-strip 自身 position:fixed 定位，
++    宿主仅作容器（pointer-events:none 不拦截应用交互，strip 自身再启用）。 */
++ .app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
++ .app-main__strip { position: fixed; inset: 0; pointer-events: none; }
++ .app-main__strip .c-strip { pointer-events: auto; }
++ 
+++/* —— 玻璃降级（data-glass="off"，applyConfig 由 blurEnabled=false 写入）——
+++   纯色不透明实背景 + 关闭 backdrop-filter。属性为静态切换（backdrop-filter 永不动画），
+++   无 transition；选择器特异性高于表面默认规则，不依赖规则顺序。 */
+++:root[data-glass="off"] .app-main__nav-l,
+++:root[data-glass="off"] .app-main__nav-r,
+++:root[data-glass="off"] .app-main__pages,
+++:root[data-glass="off"] .app-main__card {
+++  background: var(--surface-solid);
+++  backdrop-filter: none;
+++}
+++
++ /* —— 手机形态（Task A6，规格：≤900px 底部横滑 + 全屏页面栈）——
++    桌面形态默认隐藏手机元素（display:none，不占网格单元）；≤900px 媒体查询切换：
++    双窗/内容区隐藏，底部 dock + 页面栈接管。dock 为 NavigationWheel horizontal
++    （.c-navwheel__list--horizontal，nav-wheel.css 提供的独立横排规则），纯 icon 横排。
++    页面栈 slide 左进 240ms（--dur-push）+ --ease-spring，只动 transform/opacity（红线）。 */
++ .app-main__stack,
++ .app-main__dock { display: none; }
++ 
++ @media (max-width: 900px) {
++   /* 单列网格：标题栏 40px + 页面栈 1fr + 底部 dock */
++   .app-main { grid-template-columns: 1fr; grid-template-rows: 40px 1fr var(--app-dock-h); }
++   .app-main__nav-l,
++   .app-main__nav-r,
++   .app-main__pages { display: none; }
++   .app-main__float-ball,
++   .app-main__strip { display: none; } /* 悬浮演示为桌面形态交互，手机隐藏避免遮挡 dock */
++ 
++   /* —— 全屏页面栈 —— */
++   .app-main__stack { display: block; grid-column: 1; grid-row: 2;
++     position: relative; min-height: 0; overflow: hidden;
++-    background: var(--surface-1); }
+++    background: var(--glass-bg); }
++   .app-main__stack-page { position: absolute; inset: 0; display: flex;
++-    flex-direction: column; overflow-y: auto; background: var(--surface-1); }
+++    flex-direction: column; overflow-y: auto; background: var(--glass-bg); }
++   .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
++   @keyframes app-main-stack-in {
++     from { transform: translateX(100%); opacity: 0; }
++     to { transform: translateX(0); opacity: 1; }
++   }
++   .app-main__stack-head { flex: none; display: flex; align-items: center;
++     height: 40px; padding: 0 var(--space-2); border-bottom: 1px solid var(--glass-border); }
++   .app-main__stack-back { display: grid; place-items: center; width: 40px; height: 32px;
++     color: var(--text-2); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++     transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++@@ -172,15 +189,23 @@
++     border: 1px solid var(--glass-border);
++     border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++     transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
++   .app-main__settings-tab--active { color: var(--accent); border-color: var(--accent); }
++   /* csettings 页随栈滚动：桌面「壳内设置页溢出可见」规则已令各页 height:auto/overflow:visible，
++      纵向滚动由 .app-main__stack-page 的 overflow-y:auto 承担（同内容区行为） */
++ 
++   /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
++   .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
++     display: flex; align-items: center;
++-    border-top: 1px solid var(--glass-border); background: var(--surface-1); }
+++    border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
++   .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
++   .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
++   .app-main__dock .c-navwheel__name { display: none; }
+++
+++  /* 手机形态玻璃降级（data-glass="off"）：页面栈/底部 dock 回落纯色不透明 */
+++  :root[data-glass="off"] .app-main__stack,
+++  :root[data-glass="off"] .app-main__stack-page,
+++  :root[data-glass="off"] .app-main__dock {
+++    background: var(--surface-solid);
+++    backdrop-filter: none;
+++  }
++ }
++diff --git a/src/config/apply.js b/src/config/apply.js
++index d5f3f88..3f987c9 100644
++--- a/src/config/apply.js
+++++ b/src/config/apply.js
++@@ -50,22 +50,26 @@ function applyColorTint(cfg, root) {
++   const S = Math.min(100, Math.max(0, Math.round(bs * (saturation / 100) * 10) / 10));
++   s.setProperty('--accent', `hsl(${H} ${S}% ${l}%)`);
++   s.setProperty('--accent-hover', `hsl(${H} ${S}% ${Math.min(95, l + 6)}%)`);
++   s.setProperty('--accent-active', `hsl(${H} ${S}% ${Math.max(5, l - 6)}%)`);
++ }
++ 
++ export function applyConfig(cfg, root = document.documentElement) {
++   root.dataset.theme = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++   root.dataset.accent = cfg.accent;
++   root.dataset.motion = cfg.motion.enabled ? 'on' : 'off';
+++  // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
+++  // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
+++  root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
++ 
++   const s = root.style;
+++  s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
++   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
++   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
++   s.setProperty('--glass-highlight-opacity', String(cfg.glass.highlight));
++   s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
++   s.setProperty('--radius-scale', String(cfg.radiusScale));
++   s.setProperty('--shadow-intensity', String(cfg.shadow));
++   s.setProperty('--spring-strength', String(cfg.motion.springStrength));
++   const d = scaledDurations(cfg.motion.durationScale, cfg.motion.enabled);
++   s.setProperty('--dur-fast', `${d.fast}ms`);
++   s.setProperty('--dur-base', `${d.base}ms`);
++diff --git a/src/config/defaults.js b/src/config/defaults.js
++index 3835a33..dbc6d73 100644
++--- a/src/config/defaults.js
+++++ b/src/config/defaults.js
++@@ -1,14 +1,14 @@
++ export const DEFAULTS = {
++   theme: 'system',
++   accent: 'indigo',
++-  glass: { opacity: 0.62, blur: 24, highlight: 0.5 },
+++  glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
++   type: { baseSize: 14, scale: 1, weight: 400 },
++   radiusScale: 1,
++   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
++   shadow: 0.5,
++   color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
++ };
++ 
++ export const RANGES = {
++   opacity: [0.4, 0.95, 0.01],
++   blur: [8, 48, 1],
++diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
++index bb41237..8310528 100644
++--- a/src/demo/customizer-panel.js
+++++ b/src/demo/customizer-panel.js
++@@ -41,21 +41,21 @@ const GROUPS = [
++     title: '色彩',
++     pre: (cfg) => accentCards(cfg) + semanticBar(),
++     sliders: [
++       { key: 'hue', label: '色相', unit: '°' },
++       { key: 'saturation', label: '饱和度', unit: '%' },
++       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
++     ],
++   },
++   {
++     title: '玻璃材质',
++-    pre: () => glassPreview(),
+++    pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
++     sliders: [
++       { key: 'opacity', label: '透明度' },
++       { key: 'blur', label: '模糊', unit: 'px' },
++       { key: 'highlight', label: '高光' },
++     ],
++   },
++   {
++     title: '排版',
++     sliders: [
++       { key: 'baseSize', label: '基准字号', unit: 'px' },
++@@ -180,20 +180,32 @@ function glassPreview() {
++ function motionSwitchRow(cfg) {
++   return `
++     <div class="cust-row cust-row--switch">
++       <div class="cust-row__head">
++         <span class="cust-row__label">动效总开关</span>
++       </div>
++       <div class="cust-switch-wrap" data-motion-switch>${renderSwitch({ checked: cfg.motion.enabled, label: '动效总开关' })}</div>
++     </div>`;
++ }
++ 
+++/** 玻璃材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
+++ *  写 saveConfig + applyConfig，订阅同步 aria-checked；抽屉与设置外观分区共用。 */
+++function glassSwitchRow(cfg) {
+++  return `
+++    <div class="cust-row cust-row--switch" data-glass-switch>
+++      <div class="cust-row__head">
+++        <span class="cust-row__label">玻璃磨砂</span>
+++      </div>
+++      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '玻璃磨砂' })}
+++    </div>`;
+++}
+++
++ function panelTemplate() {
++   return `
++     <header class="cust-header">
++       <div class="cust-header__text">
++         <h3 class="cust-header__title">主题定制器</h3>
++         <p class="cust-header__sub">所有界面效果 · 即时生效</p>
++       </div>
++       <button type="button" class="cust-close" data-cust-close aria-label="关闭定制器">${icon('close', 18)}</button>
++     </header>
++     <div class="cust-body"></div>
++@@ -231,20 +243,22 @@ function syncUI(container, cfg) {
++       input.disabled = !cfg.motion.enabled;
++     }
++   });
++   container.querySelectorAll('.cust-accent-card').forEach((card) => {
++     const active = card.dataset.accent === cfg.accent;
++     card.classList.toggle('cust-accent-card--active', active);
++     card.setAttribute('aria-pressed', String(active));
++   });
++   const swWrap = container.querySelector('[data-motion-switch]');
++   if (swWrap) swWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.motion.enabled));
+++  const glassWrap = container.querySelector('[data-glass-switch]');
+++  if (glassWrap) glassWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.glass.blurEnabled));
++ }
++ 
++ function resetAll(panel) {
++   localStorage.removeItem(KEY);
++   const defaults = structuredClone(DEFAULTS);
++   notify(defaults); // 广播：main.js 重渲染展示区 / 各组容器 syncUI
++   applyConfig(defaults);
++   syncUI(panel.querySelector('.cust-body'), defaults); // 双保险（订阅回调之外立即同步）
++   toast('已恢复默认配置');
++ }
++@@ -309,20 +323,28 @@ export function renderCustomizerGroups(container) {
++   });
++ 
++   // 动效总开关
++   const swWrap = container.querySelector('[data-motion-switch]');
++   swWrap?.addEventListener('click', () => {
++     const sw = swWrap.querySelector('.c-switch');
++     const next = sw.getAttribute('aria-checked') !== 'true';
++     applyConfig(saveConfig({ motion: { enabled: next } }));
++   });
++ 
+++  // 玻璃磨砂开关（B2-1）：blurEnabled → data-glass 降级
+++  const glassWrap = container.querySelector('[data-glass-switch]');
+++  glassWrap?.addEventListener('click', () => {
+++    const sw = glassWrap.querySelector('.c-switch');
+++    const next = sw.getAttribute('aria-checked') !== 'true';
+++    applyConfig(saveConfig({ glass: { blurEnabled: next } }));
+++  });
+++
++   // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
++   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
++   const unsub = subscribe((next) => syncUI(container, next));
++   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
++   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
++   syncUI(container, cfg);
++   return unsub;
++ }
++ 
++ /**
++diff --git a/src/styles/themes.css b/src/styles/themes.css
++index 72b3f5c..1420747 100644
++--- a/src/styles/themes.css
+++++ b/src/styles/themes.css
++@@ -1,32 +1,34 @@
++ /* 亮色主题 */
++ :root[data-theme="light"] {
++   --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
++   --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
+++  --surface-solid: #f8f9fb; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
++   --surface-hover: rgba(0,0,0,0.045);
++   --glass-bg-rgb: 248 249 251;  --glass-highlight-rgb: 255 255 255;
++   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));  --glass-blur: 20px;
++   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.5));
++   --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.6));  --glass-border-opacity: 0.6;
++   --glass-shadow: 0 8px 32px rgba(20,24,40,calc(0.14 * var(--shadow-intensity, 0.5))),
++                   0 2px 8px rgba(20,24,40,calc(0.08 * var(--shadow-intensity, 0.5)));
++   --shadow-sm: 0 1px 3px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5)));
++   --shadow-md: 0 4px 16px rgba(20,24,40,calc(0.12 * var(--shadow-intensity, 0.5)));
++   --shadow-lg: 0 12px 40px rgba(20,24,40,calc(0.18 * var(--shadow-intensity, 0.5)));
++   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
++   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
++ }
++ 
++ /* 暗色主题 */
++ :root[data-theme="dark"] {
++   --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
++   --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
+++  --surface-solid: #14161c; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
++   --surface-hover: rgba(255,255,255,0.06);
++   --glass-bg-rgb: 24 26 32;  --glass-highlight-rgb: 255 255 255;
++   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.62));  --glass-blur: 28px;
++   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.08));
++   --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.08));  --glass-border-opacity: 0.08;
++   --glass-shadow: 0 8px 32px rgba(0,0,0,calc(0.5 * var(--shadow-intensity, 0.5))),
++                   0 2px 8px rgba(0,0,0,calc(0.3 * var(--shadow-intensity, 0.5)));
++   --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
++   --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
++   --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
++diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
++index c0fd902..933821d 100644
++--- a/tests/e2e/app-shell.spec.js
+++++ b/tests/e2e/app-shell.spec.js
++@@ -312,10 +312,40 @@ test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% 
++   await page.waitForTimeout(400); // 吸附完成后测量位置
++   // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
++   const scrolled = await list.evaluate(el => el.scrollTop);
++   expect(scrolled).toBeGreaterThan(50);
++   // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
++   const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
++   const listBox = await list.boundingBox();
++   const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
++   expect(anchorDelta).toBeLessThan(4);
++ });
+++
+++// —— B2-1 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
+++// 默认 blurEnabled=true → html data-glass="on" + 表面 backdrop-filter 生效；
+++// 外观分区「玻璃磨砂」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
+++// 开关写 store（saveConfig），reload 冷启动保持关闭 —— 完整配置链路（defaults→store→apply）。
+++
+++test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  // 默认磨砂：html data-glass=on + 导航栏 backdrop-filter 生效
+++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
+++  const blur = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+++  expect(blur).toContain('blur');
+++  // 设置→外观：玻璃磨砂开关初始为开
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.waitForTimeout(400);
+++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+++  const glassSwitch = page.locator('.app-main__settings [data-glass-switch] .c-switch');
+++  await expect(glassSwitch).toBeVisible();
+++  await expect(glassSwitch).toHaveAttribute('aria-checked', 'true');
+++  // 关闭 → data-glass 翻转为 off + backdrop-filter none（纯色不透明降级）
+++  await glassSwitch.click();
+++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
+++  await expect(glassSwitch).toHaveAttribute('aria-checked', 'false');
+++  const blurOff = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+++  expect(blurOff).toBe('none');
+++  // reload 持久化：开关经 saveConfig 写 store → 冷启动 data-glass=off 保持
+++  await page.reload();
+++  await expect(page.locator('.app-main')).toBeVisible();
+++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
+++});
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
++index 11a5b1b..f503bc9 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
++index f36e7f1..42e2077 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
++index f93ef69..0db45cb 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
++index c3b651f..d914302 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
++index 524d7d6..543b824 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
++index c262d1f..caeae88 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
++index 38d55f0..6bd3fef 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
++index 133464a..a3c86db 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
++index b717d4c..9d9e44c 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
++index 6bcee32..4c17ad6 100644
++--- a/tests/unit/apply.test.js
+++++ b/tests/unit/apply.test.js
++@@ -22,20 +22,30 @@ describe('applyConfig', () => {
++   });
++   it('玻璃与动效参数写入 CSS 变量覆盖层', () => {
++     applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, highlight: 0.2 },
++       motion: { enabled: true, durationScale: 1, springStrength: 0.6 } }, root);
++     const s = root.style;
++     expect(s.getPropertyValue('--glass-bg-opacity')).toBe('0.8');
++     expect(s.getPropertyValue('--glass-blur')).toBe('30px');
++     expect(s.getPropertyValue('--dur-fast')).toBe('120ms');
++     expect(s.getPropertyValue('--ease-spring')).toBe('cubic-bezier(0.34, 1.336, 0.64, 1)');
++   });
+++  it('玻璃磨砂开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
+++    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, root);
+++    expect(root.style.getPropertyValue('--glass-enabled')).toBe('1');
+++    expect(root.dataset.glass).toBe('on');
+++  });
+++  it('玻璃磨砂关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
+++    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
+++    expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
+++    expect(root.dataset.glass).toBe('off');
+++  });
++   it('动效关闭时时长全部为 0', () => {
++     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
++     expect(root.style.getPropertyValue('--dur-fast')).toBe('0ms');
++   });
++   // —— 色彩微调：色相/饱和度覆盖（默认跟随主题色时不写覆盖）——
++   it('hue 跟随（-1）且饱和度 100 时不写 --accent 覆盖', () => {
++     applyConfig(DEFAULTS, root);
++     expect(root.style.getPropertyValue('--accent')).toBe('');
++   });
++   it('自定义色相写入 --accent/--accent-hover/--accent-active 覆盖（保持基色明度）', () => {
+diff --git a/docs/superpowers/sdd/review-B2-2.diff b/docs/superpowers/sdd/review-B2-2.diff
+new file mode 100644
+index 0000000..7782503
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B2-2.diff
+@@ -0,0 +1,472 @@
++# Review package: e1fbbf0..HEAD
++
++## Commits
++4217b37 docs: B2-2 浏览器装饰背景层执行留痕（报告 + 进度台账）
++20ab435 feat: 浏览器装饰背景层（渐变/几何/网格三预设 + Tauri 透明）
++
++## Files changed
++ docs/superpowers/sdd/progress-b2.md                |  11 ++-
++ docs/superpowers/sdd/task-B2-2-brief.md            |  87 +++++++++++++++++++++
++ docs/superpowers/sdd/task-B2-2-report.md           |  59 ++++++++++++++
++ src/app/app-main.css                               |  26 ++++++
++ src/app/app-main.js                                |  35 ++++++++-
++ src/app/partitions.css                             |  16 ++++
++ tests/e2e/app-shell.spec.js                        |  16 ++++
++ .../app-main-dark-amber-chromium-win32.png         | Bin 33581 -> 126675 bytes
++ .../app-main-dark-emerald-chromium-win32.png       | Bin 33657 -> 124184 bytes
++ .../app-main-dark-indigo-chromium-win32.png        | Bin 33545 -> 131193 bytes
++ .../app-main-light-amber-chromium-win32.png        | Bin 33068 -> 67804 bytes
++ .../app-main-light-emerald-chromium-win32.png      | Bin 33195 -> 69815 bytes
++ .../app-main-light-indigo-chromium-win32.png       | Bin 32990 -> 57021 bytes
++ ...ponents-partition-dark-amber-chromium-win32.png | Bin 65100 -> 137320 bytes
++ ...nents-partition-dark-emerald-chromium-win32.png | Bin 65076 -> 136107 bytes
++ ...onents-partition-dark-indigo-chromium-win32.png | Bin 65098 -> 140259 bytes
++ ...onents-partition-light-amber-chromium-win32.png | Bin 64236 -> 86541 bytes
++ ...ents-partition-light-emerald-chromium-win32.png | Bin 64263 -> 87424 bytes
++ ...nents-partition-light-indigo-chromium-win32.png | Bin 64233 -> 80454 bytes
++ .../motion-partition-dark-amber-chromium-win32.png | Bin 42851 -> 86718 bytes
++ ...otion-partition-dark-emerald-chromium-win32.png | Bin 42867 -> 84736 bytes
++ ...motion-partition-dark-indigo-chromium-win32.png | Bin 42828 -> 87606 bytes
++ ...motion-partition-light-amber-chromium-win32.png | Bin 40145 -> 55789 bytes
++ ...tion-partition-light-emerald-chromium-win32.png | Bin 40240 -> 56114 bytes
++ ...otion-partition-light-indigo-chromium-win32.png | Bin 40178 -> 51883 bytes
++ 25 files changed, 248 insertions(+), 2 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
++index 819d266..e5d0984 100644
++--- a/docs/superpowers/sdd/progress-b2.md
+++++ b/docs/superpowers/sdd/progress-b2.md
++@@ -18,16 +18,25 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
++ 
++ - **状态**：完成（2026-08-06，评审通过）
++ - **提交**：`55d0bcc` `feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）` + `c3ad62c` `docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）`
++ - **验证**：npm test 56/56；npm run test:e2e 83/83（含「玻璃两档」）；npm run test:visual 18/18（暗色 9 张重生成，亮色像素级不变）；npm run build 通过
++ - **实现**：defaults.js `glass.blurEnabled: true`；apply.js 写 `--glass-enabled` + `root.dataset.glass`；themes.css `--surface-solid`（light `#f8f9fb` / dark `#14161c`）；app-main.css 表面（nav-l/nav-r/pages/card + 手机 stack/stack-page/dock）接玻璃 + `:root[data-glass="off"]` 降级纯色；定制器「玻璃材质」组 pre 加玻璃磨砂开关（`glassSwitchRow`，saveConfig→applyConfig 链路，syncUI 同步）；apply 单测 2 新用例（真实 root 风格）+ e2e 玻璃两档（真实开关 + reload 持久化）
++ - **简报/报告**：docs/superpowers/sdd/task-B2-1-brief.md / task-B2-1-report.md
++ - **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
++ - **Important deferred → B2 最终评审**：I-1 暗色表面双层层叠半透明 `--glass-bg` 明显加深（brief 字面指令的必然结果，评审判定非本任务缺陷）；B2-2 装饰背景层落地后再确认暗色观感
++ - **Minor 留收尾**：① M-1 `data-glass=off` 不覆盖标题栏（`.c-titlebar` backdrop-filter 与 nav-wheel 遮罩渐变仍半透明）——不在 brief 表面清单内，不构成规格违背，最终评审定边界；② M-2 玻璃开关行结构与动效开关不一致（省略 `.cust-switch-wrap` 包裹层，点整行触发）——功能正确，建议与 motion 行统一；③ M-3 `--glass-enabled` 当前无 CSS 消费者（brief 明示写入 + 测试锁定，spec §3.1 Tauri 窗口透明度可能消费）；④ M-4 手机形态降级无 e2e 覆盖——brief Step 7 未要求，最终评审补断言或豁免
++ 
+++## Task B2-2: 浏览器装饰背景层（模糊对象）
+++
+++- **状态**：完成（2026-08-06，待评审）
+++- **提交**：见 task-B2-2-report.md 文末
+++- **验证**：npm test 56/56；npm run test:e2e 84/84（含「背景层」用例；首轮 smoke 冷启动超时偶发，非因果，复跑 84/84）；npm run test:visual 18/18（18 张重生成）；npm run build 通过
+++- **实现**：app-main.css `.app-main__backdrop`（`position:fixed; inset:0; z-index:-1; pointer-events:none`，画在 canvas 之上、壳内容之下，玻璃表面模糊到它）+ 三预设 `data-backdrop="gradient|geo|grid"`（`--backdrop-bg`，brief 字面）+ `[data-tauri="1"]` 透明；app-main.js 模板设默认 gradient + 首个子元素 backdrop + Tauri 探测写 data-tauri + 外观分区挂载注入「背景装饰」3 预设按钮（会话内纯 UI 态，不进 store；`.cust-group` count 6 不受影响）；partitions.css 分段按钮样式（paint-only 过渡）。一处必要偏差：`background-size` 不继承，网格平铺尺寸补在 `.app-main__backdrop` 上（brief 原行保留）
+++- **简报/报告**：docs/superpowers/sdd/task-B2-2-brief.md / task-B2-2-report.md
+++- **评审**：待 B2 最终整体评审
+++
++ ## 执行状态
++ 
++ - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
++-- Task B2-2 浏览器装饰背景层：待执行
+++- Task B2-2 浏览器装饰背景层：✅ 完成（待评审）
++ - Task B2-3 导航图标四项增强：待执行
++ - 最终整体评审 + 合并 main：待执行
++diff --git a/docs/superpowers/sdd/task-B2-2-brief.md b/docs/superpowers/sdd/task-B2-2-brief.md
++new file mode 100644
++index 0000000..e42c1ca
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B2-2-brief.md
++@@ -0,0 +1,87 @@
+++# Task B2-2: 浏览器装饰背景层（模糊对象）
+++
+++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
+++
+++## Global Constraints（约束本任务）
+++
+++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
+++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
+++- **视觉基线会变**：应用壳加背景层改变 `app-main-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
+++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
+++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
+++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
+++
+++## Files
+++
+++- Modify: `src/app/app-main.css`（`.app-main__backdrop` 装饰层 + 3 预设）
+++- Modify: `src/app/app-main.js`（渲染背景层 + 会话内预设切换）
+++- Modify: `src/app/partitions.css`（外观分区背景装饰选择 UI）
+++- Modify: `tests/e2e/app-shell.spec.js`（新用例）
+++- Modify: `tests/e2e/visual-regression.spec.js`（app-main 基线重生成）
+++
+++## Interfaces
+++
+++- Consumes: `mountAppMode(root)`（app-main.js）；应用壳 `.app-main` grid 布局
+++- Produces: `.app-main__backdrop`（`position: fixed; inset: 0; z-index: -1`）承载 3 预设背景；`data-backdrop="gradient|geo|grid"` 切换（默认 gradient）；Tauri 环境背景层透明（模糊真实壁纸）；浏览器默认可见
+++
+++## Steps
+++
+++### Step 1: 写失败 e2e（app-shell.spec.js）
+++
+++```js
+++test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  const backdrop = page.locator('.app-main__backdrop');
+++  await expect(backdrop).toBeVisible();
+++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+++  // 外观分区切换背景预设
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+++});
+++```
+++
+++### Step 2: 运行确认红
+++
+++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "背景层"`
+++Expected: FAIL（`.app-main__backdrop` 不存在）
+++
+++### Step 3: app-main.css 装饰背景层
+++
+++```css
+++.app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+++  background: var(--backdrop-bg); }
+++.app-main[data-backdrop="gradient"] { --backdrop-bg:
+++  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
+++  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
+++  var(--surface-solid); }
+++.app-main[data-backdrop="geo"] { --backdrop-bg:
+++  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
+++  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
+++  var(--surface-solid); }
+++.app-main[data-backdrop="grid"] { --backdrop-bg:
+++  linear-gradient(var(--accent-100) 1px, transparent 1px),
+++  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
+++  var(--surface-solid); background-size: 40px 40px; }
+++/* Tauri：背景层透明，模糊真实壁纸（apply.js 或 JS 探测写 data-tauri） */
+++.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+++```
+++
+++动画红线：背景预设切换是静态背景（`--backdrop-bg` 变化，非动画属性）；不参与 transform/opacity 动画。
+++
+++### Step 4: app-main.js 渲染背景层 + 会话内切换
+++
+++mountAppMode 内 `.app-main` 首个子元素前插 `.app-main__backdrop`；Tauri 探测（`window.__TAURI__`）写 `data-tauri="1"`；外观分区（settings-pages.js appearancePage 或 app-main 惰性定制器区）加「背景装饰」3 个预设按钮（`.app-main__backdrop-opt[data-bd]`），点击更新 `.app-main` 的 `data-backdrop`（纯会话内状态，不进 store）。
+++
+++### Step 5: 运行回归 + 基线重生成
+++
+++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线重生成（app-main 含背景层）。
+++Expected: 全绿
+++
+++### Step 6: 提交
+++
+++```bash
+++git add src/app/app-main.css src/app/app-main.js src/app/partitions.css src/scenes/settings-window/settings-pages.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
+++git commit -m "feat: 浏览器装饰背景层（渐变/几何/网格三预设 + Tauri 透明）"
+++```
++diff --git a/docs/superpowers/sdd/task-B2-2-report.md b/docs/superpowers/sdd/task-B2-2-report.md
++new file mode 100644
++index 0000000..18ab1d3
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B2-2-report.md
++@@ -0,0 +1,59 @@
+++# Task B2-2 报告：浏览器装饰背景层（模糊对象）
+++
+++- 分支：`feature/b2-visual`
+++- 状态：DONE
+++- 提交：见文末「提交」
+++
+++## 实现说明
+++
+++### 背景层（app-main.css）
+++
+++- `.app-main__backdrop`：`position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--backdrop-bg)`。
+++  `.app-main` 无 transform（不建立 fixed 子元素 containing block），`overflow: hidden` 不裁剪背景层；`z-index: -1` 使背景层画在 canvas（body 半透明 `--glass-bg`）之上、壳内容之下——玻璃表面（backdrop-filter 磨砂）模糊到它，即浏览器侧模糊对象。
+++- 三预设按 brief 字面：`.app-main[data-backdrop="gradient|geo|grid"] { --backdrop-bg: ... }`（`--accent-200/300/100` + `--surface-solid`）。
+++- Tauri：`.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0 }`（模糊真实壁纸）。
+++
+++### 预设 UI（app-main.js 挂载注入 + partitions.css 样式）
+++
+++- 模板 `.app-main` 设默认 `data-backdrop="gradient"`，`.app-main__backdrop` 为首个子元素。
+++- `mountAppMode` 挂载时：`typeof window.__TAURI__ !== 'undefined'` → `.app-main` 写 `data-tauri="1"`；外观分区页（`.csettings__page[data-page="appearance"]`）在 `.csettings__cust` 前注入「背景装饰」小节（`.app-main__backdrop-sel` + 3 个 `.app-main__backdrop-opt[data-bd]`，激活态 `.app-main__backdrop-opt--active` + `aria-pressed`）。
+++- 点击更新 `.app-main` 的 `data-backdrop`（纯会话内 UI 态，不进 store、不触发配置链路，与右窗状态同类）；`.cust-group` count 6 不受影响（注入为 `.csettings__cust` 前独立小节，非分组）。
+++- 样式落 `src/app/partitions.css`：分段按钮组仿 `.csettings__modes/.csettings__mode` 视觉（胶囊 + paint-only 过渡，无入场/离场动效主体；预设切换本身为静态 `--backdrop-bg` 变化，不动画——红线合规）。
+++
+++### 与 brief 的一处必要偏差
+++
+++- brief 的 `grid` 预设把 `background-size: 40px 40px` 写在 `.app-main[data-backdrop="grid"]` 上，但承载 background 的是子元素 `.app-main__backdrop`，`background-size` 不继承 → 该行实际不生效（网格会以默认尺寸画单条线）。**保留 brief 行字面 + 补一行** `.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }` 令网格真实平铺（注释说明原因）。
+++
+++## 测试证据
+++
+++| 步骤 | 命令 | 结果 |
+++|---|---|---|
+++| 红 | `npx playwright test tests/e2e/app-shell.spec.js -g "背景层"` | 1 FAIL（`.app-main__backdrop` 不存在） |
+++| 绿 | `npx playwright test tests/e2e/app-shell.spec.js` | 21/21 PASS（含新「背景层」用例） |
+++| 单测全量 | `npm test` | 56/56 PASS（9 文件） |
+++| e2e 全量 | `npm run test:e2e` | 84/84 PASS（第二轮起；首轮 smoke 冷启动超时偶发，见下） |
+++| 视觉基线重生成 | `mv 旧快照 归档；npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS（强制重生成，见下） |
+++| 视觉 | `npm run test:visual` | 18/18 PASS |
+++| e2e 全量（重生成后） | `npm run test:e2e` | 84/84 PASS |
+++| 构建 | `npm run build` | PASS |
+++
+++### 背景层渲染确认（解码比对）
+++
+++- 同屏 with/without 差分（`.app-main` 元素截图，`data-tauri="1"` 隐背景层 vs 默认）：91700/921600 像素（9.95%）变化，max per-channel diff 25——背景层确已渲染，为**克制的软光晕**（各通道差 ≤25，远低于 Playwright 默认 0.2=51/255 阈值，故旧基线仍能通过）。
+++- 快照目录 `--update-snapshots` 首次未改写任何文件（18 张均在阈值内匹配，Playwright 仅写差异超出阈值的图）→ **归档旧快照后强制重生成**，捕获含背景层的新渲染。
+++- 新旧基线逐张解码差分（18/18）：全部为低通道差的颜色偏移（app-main max 4~61/通道，分区 max 2~52/通道），无结构性位移（无硬边/元素错位）。diff 分布与背景层 glow 几何吻合 → **差异确由背景层引起**，非布局破坏。
+++- 说明：app-main 亮色受影响 12~26% 像素、暗色 62~69% 像素（暗色 `--accent-200/300` 为浅色档，在近黑 `--surface-solid` 上光晕更广，max 通道差 ≤52）；分区图受影响较小（内容卡遮挡大部分）。均为 brief 字面 CSS 的必然结果，观感交 B2 整体评审确认。
+++
+++## 遇到的问题与判断
+++
+++1. **smoke.spec.js 首轮冷启动超时（与本次改动无关）**：全量 e2e 首轮 smoke「app shell renders」在 5s 超时边界失败，但 error-context 页面快照已完整渲染 `.app-main`（说明元素恰在超时边界出现，Vite 冷启动延迟）。隔离复跑 1/1 PASS；第二轮、第三轮全量均 84/84 PASS。本改动不新增动态 import 链，非因果。
+++2. **`--update-snapshots` 不强制改写**：视觉基线在默认阈值内匹配时 Playwright 不落盘，需先归档旧快照再重生成（否则 18 张仍是旧基线）。已按此流程完成。
+++3. **暗色下背景层光晕较广（app-main 像素 diff 62~69%）**：`--accent-200/300` 为浅档，暗色 `--surface-solid` 近黑 → 光晕覆盖大半背景。max 通道差 ≤52，仍属克制观感；按 brief 字面落地，交 B2 整体评审确认暗色审美（与 B2-1 deferred I-1 同题）。
+++4. **手机形态无预设选择 UI**：brief 落点决策限定「mount 时注入外观分区页」（桌面路径）；手机页面栈每次重建设置页（`renderSettingsPages`），未注入选择器——背景层（默认 gradient）在手机同样渲染，但无切换入口。brief 未要求，留待后续/最终评审定边界。
+++5. **Tauri 下预设选择器仍可见**：`[data-tauri="1"]` 仅使背景层透明，未隐藏「背景装饰」小节；brief 未要求隐藏，未加（Tauri 桌面不做 e2e 验证）。
+++6. **`background-size` 不继承**：见「与 brief 的一处必要偏差」，网格预设补 `.app-main__backdrop` 上的平铺尺寸。
+++
+++## 提交
+++
+++- 改动文件：`src/app/app-main.css`、`src/app/app-main.js`、`src/app/partitions.css`、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（18 张重生成）、`docs/superpowers/sdd/task-B2-2-brief.md`（纳入留痕）、`docs/superpowers/sdd/task-B2-2-report.md`、`docs/superpowers/sdd/progress-b2.md`。
+++- 未纳入：`src-tauri/Cargo.toml`（工作树既有行尾噪声，非本任务改动，见 ledger base 注记）。
++diff --git a/src/app/app-main.css b/src/app/app-main.css
++index 42e97b4..fbecc15 100644
++--- a/src/app/app-main.css
+++++ b/src/app/app-main.css
++@@ -10,20 +10,46 @@
++   grid-template-rows: 40px 1fr;
++   width: 100vw;
++   height: 100vh;
++   overflow: hidden;
++   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
++   --dur-push: calc(var(--dur-base) * 1.2);
++   --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
++ }
++ .app-main--dual { --app-nav-r-w: 64px; }
++ 
+++/* —— 浏览器装饰背景层（Task B2-2）：渐变/几何/网格三预设 ——
+++   position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
+++   玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
+++   transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
+++   预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
+++   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。 */
+++.app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+++  background: var(--backdrop-bg); }
+++.app-main[data-backdrop="gradient"] { --backdrop-bg:
+++  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
+++  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
+++  var(--surface-solid); }
+++.app-main[data-backdrop="geo"] { --backdrop-bg:
+++  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
+++  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
+++  var(--surface-solid); }
+++.app-main[data-backdrop="grid"] { --backdrop-bg:
+++  linear-gradient(var(--accent-100) 1px, transparent 1px),
+++  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
+++  var(--surface-solid); background-size: 40px 40px; }
+++/* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
+++   写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
+++.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+++/* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
+++.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+++
++ .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
++ 
++ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
++ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
++   background: var(--glass-bg);
++   backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
++   border-right: 1px solid var(--glass-border); }
++ .app-main__nav-l .c-navwheel__list { inset: 0; }
++ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
++ .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
++diff --git a/src/app/app-main.js b/src/app/app-main.js
++index 6cca10c..135db57 100644
++--- a/src/app/app-main.js
+++++ b/src/app/app-main.js
++@@ -84,21 +84,22 @@ const MODULES = [
++     render: placeholderPage,
++   },
++ ];
++ 
++ export function mountAppMode(root) {
++   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
++   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
++   applyConfig(getConfig());
++   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
++   root.innerHTML = `
++-  <div class="app-main">
+++  <div class="app-main" data-backdrop="gradient">
+++    <div class="app-main__backdrop"></div>
++     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
++     <div class="app-main__nav-l">
++       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
++     </div>
++     <div class="app-main__nav-r" aria-hidden="true">
++       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
++       <div class="app-main__nav-r-body"></div>
++     </div>
++     <main class="app-main__pages">
++       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
++@@ -119,20 +120,52 @@ export function mountAppMode(root) {
++   ctx.setAttribute('data-ctx', '');
++   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
++   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
++   const navRRoot = root.querySelector('.app-main__nav-r');
++   const navRBody = root.querySelector('.app-main__nav-r-body');
++   const pagesEl = root.querySelector('.app-main__pages');
++   const pages = [...pagesEl.children];
++   const stackEl = root.querySelector('.app-main__stack');
++   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
++ 
+++  // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+++  // Tauri 探测：桌面端背景层透明（模糊真实壁纸）；浏览器默认可见（渐变/几何/网格三预设）。
+++  // 外观分区「背景装饰」3 预设按钮，点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg
+++  // 变化，不动画）。预设为会话内纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
+++  if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+++  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格' };
+++  (() => {
+++    const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
+++    if (!page) return;
+++    const block = document.createElement('div');
+++    block.className = 'app-main__backdrop-sel';
+++    block.innerHTML = `
+++      <div class="app-main__backdrop-sel-head">背景装饰</div>
+++      <div class="app-main__backdrop-sel-opts" role="group" aria-label="背景装饰">
+++        ${Object.keys(BD_LABELS).map((bd) => `
+++          <button type="button" class="app-main__backdrop-opt${appMain.dataset.backdrop === bd ? ' app-main__backdrop-opt--active' : ''}"
+++            data-bd="${bd}" aria-pressed="${appMain.dataset.backdrop === bd}">${BD_LABELS[bd]}</button>`).join('')}
+++      </div>`;
+++    const cust = page.querySelector('.csettings__cust');
+++    page.insertBefore(block, cust);
+++    block.querySelector('.app-main__backdrop-sel-opts').addEventListener('click', (e) => {
+++      const btn = e.target.closest('.app-main__backdrop-opt');
+++      if (!btn || btn.dataset.bd === appMain.dataset.backdrop) return;
+++      appMain.dataset.backdrop = btn.dataset.bd;
+++      block.querySelectorAll('.app-main__backdrop-opt').forEach((b) => {
+++        const on = b.dataset.bd === appMain.dataset.backdrop;
+++        b.classList.toggle('app-main__backdrop-opt--active', on);
+++        b.setAttribute('aria-pressed', String(on));
+++      });
+++    });
+++  })();
+++
++   // —— 会话内纯 UI 态（不进配置存储）——
++   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
++   const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
++ 
++   // 手机形态（Task A6）：独立导航模型 —— 底部 dock（横向应用轮，点击驱动推入）+ 全屏页面栈。
++   // 栈 = 钻取路径（基底概览 → 应用目录页 → 详情页 / 设置页）；桌面/手机两套模型经媒体查询切换，
++   // 共享标题栏上下文；页面栈状态为纯 UI 态（会话内），不进配置存储。
++   const mobile = { stack: [{ type: 'overview' }], animateTop: false };
++   function isMobile() {
++     return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
++diff --git a/src/app/partitions.css b/src/app/partitions.css
++index b840c16..c2bebe7 100644
++--- a/src/app/partitions.css
+++++ b/src/app/partitions.css
++@@ -15,10 +15,26 @@
++ .app-partition > .ml-lead { margin-bottom: var(--space-5); font-size: var(--font-size-sm);
++   color: var(--text-2); }
++ 
++ /* 组件分区可交互悬浮窗实例（.csg-fwin .c-fwin 默认 fixed 于视口右下）与应用壳右下
++    FloatBall 演示（Task A5，right/bottom 16px）错位：抬高到 FloatBall 之上避免遮挡。
++    仅视觉微调，不改组件默认位（docs 展示仍贴底）。 */
++ .app-partition .csg-fwin .c-fwin { right: 24px; bottom: 96px; }
++ 
++ /* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
++ .app-partition .cfloat { margin-top: var(--space-6); }
+++
+++/* —— 外观分区「背景装饰」预设选择（Task B2-2）——
+++   3 预设按钮切换 .app-main 的 data-backdrop（渐变/几何/网格）。会话内纯 UI 态，
+++   不进 store（与右窗状态同类，非配置链路）。激活态仅 paint（color/background，
+++   paint-only 豁免过渡），无入场/离场动效主体。局部类 .app-main__backdrop-* 前缀。 */
+++.app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 420px; }
+++.app-main__backdrop-sel-head { font-size: var(--font-size-sm);
+++  font-weight: var(--font-weight-medium); color: var(--text-1); margin-bottom: var(--space-2); }
+++.app-main__backdrop-sel-opts { display: inline-flex; gap: 2px; padding: 3px;
+++  border: 1px solid var(--glass-border); border-radius: var(--radius-full);
+++  background: var(--surface-1); }
+++.app-main__backdrop-opt { padding: 5px 14px; border-radius: var(--radius-full);
+++  font-size: var(--font-size-xs); color: var(--text-2);
+++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+++.app-main__backdrop-opt:hover { color: var(--text-1); }
+++.app-main__backdrop-opt--active { color: var(--accent); background: var(--accent-50); }
++diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
++index 933821d..ca23d28 100644
++--- a/tests/e2e/app-shell.spec.js
+++++ b/tests/e2e/app-shell.spec.js
++@@ -342,10 +342,26 @@ test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 
++   await glassSwitch.click();
++   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
++   await expect(glassSwitch).toHaveAttribute('aria-checked', 'false');
++   const blurOff = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++   expect(blurOff).toBe('none');
++   // reload 持久化：开关经 saveConfig 写 store → 冷启动 data-glass=off 保持
++   await page.reload();
++   await expect(page.locator('.app-main')).toBeVisible();
++   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
++ });
+++
+++// —— B2-2 浏览器装饰背景层（模糊对象）——
+++// 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
+++// Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
+++
+++test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  const backdrop = page.locator('.app-main__backdrop');
+++  await expect(backdrop).toBeVisible();
+++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+++  // 外观分区切换背景预设
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+++});
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
++index f503bc9..4836874 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
++index 42e2077..ee21397 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
++index 0db45cb..4adab3b 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
++index 1804fad..a282942 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
++index e2e3775..b0ab533 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
++index cd895dc..a3605e3 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
++index d914302..31b21f7 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
++index 543b824..288eb60 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
++index caeae88..1b4c299 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
++index ee030b5..28bc233 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
++index 7d0c280..f2abdb5 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
++index 045aab5..f396607 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
++index 6bd3fef..a87b244 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
++index a3c86db..374533b 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
++index 9d9e44c..eee1bf4 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
++index 7993b35..e0fa869 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
++index f257bfd..c68e80d 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
++index 9c6fd2f..ebab598 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ
+diff --git a/docs/superpowers/sdd/review-B2-3.diff b/docs/superpowers/sdd/review-B2-3.diff
+new file mode 100644
+index 0000000..7efded3
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B2-3.diff
+@@ -0,0 +1,476 @@
++# Review package: e07a305..HEAD
++
++## Commits
++8e83e7f docs: B2-3 导航图标四项增强执行留痕（报告 + 进度台账）
++670396c feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）
++
++## Files changed
++ docs/superpowers/sdd/progress-b2.md                |  14 ++-
++ docs/superpowers/sdd/task-B2-3-brief.md            |  99 +++++++++++++++++++++
++ docs/superpowers/sdd/task-B2-3-report.md           |  68 ++++++++++++++
++ src/components/icon/icon.js                        |  10 ++-
++ src/components/navigation-wheel/nav-wheel.css      |  14 ++-
++ src/components/navigation-wheel/nav-wheel.js       |  22 ++++-
++ tests/e2e/app-shell.spec.js                        |  13 +++
++ .../app-main-dark-amber-chromium-win32.png         | Bin 126675 -> 129917 bytes
++ .../app-main-dark-emerald-chromium-win32.png       | Bin 124184 -> 127755 bytes
++ .../app-main-dark-indigo-chromium-win32.png        | Bin 131193 -> 134377 bytes
++ .../app-main-light-amber-chromium-win32.png        | Bin 67804 -> 71011 bytes
++ .../app-main-light-emerald-chromium-win32.png      | Bin 69815 -> 72731 bytes
++ .../app-main-light-indigo-chromium-win32.png       | Bin 57021 -> 60081 bytes
++ ...ponents-partition-dark-amber-chromium-win32.png | Bin 137320 -> 157871 bytes
++ ...nents-partition-dark-emerald-chromium-win32.png | Bin 136107 -> 156098 bytes
++ ...onents-partition-dark-indigo-chromium-win32.png | Bin 140259 -> 160017 bytes
++ ...onents-partition-light-amber-chromium-win32.png | Bin 86541 -> 104920 bytes
++ ...ents-partition-light-emerald-chromium-win32.png | Bin 87424 -> 106592 bytes
++ ...nents-partition-light-indigo-chromium-win32.png | Bin 80454 -> 97479 bytes
++ tests/unit/icon.test.js                            |  12 +++
++ 20 files changed, 241 insertions(+), 11 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
++index 980147e..d4f12bd 100644
++--- a/docs/superpowers/sdd/progress-b2.md
+++++ b/docs/superpowers/sdd/progress-b2.md
++@@ -30,16 +30,28 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
++ - **状态**：完成（2026-08-06，待评审）
++ - **提交**：见 task-B2-2-report.md 文末
++ - **验证**：npm test 56/56；npm run test:e2e 84/84（含「背景层」用例；首轮 smoke 冷启动超时偶发，非因果，复跑 84/84）；npm run test:visual 18/18（18 张重生成）；npm run build 通过
++ - **实现**：app-main.css `.app-main__backdrop`（`position:fixed; inset:0; z-index:-1; pointer-events:none`，画在 canvas 之上、壳内容之下，玻璃表面模糊到它）+ 三预设 `data-backdrop="gradient|geo|grid"`（`--backdrop-bg`，brief 字面）+ `[data-tauri="1"]` 透明；app-main.js 模板设默认 gradient + 首个子元素 backdrop + Tauri 探测写 data-tauri + 外观分区挂载注入「背景装饰」3 预设按钮（会话内纯 UI 态，不进 store；`.cust-group` count 6 不受影响）；partitions.css 分段按钮样式（paint-only 过渡）。一处必要偏差：`background-size` 不继承，网格平铺尺寸补在 `.app-main__backdrop` 上（brief 原行保留）
++ - **简报/报告**：docs/superpowers/sdd/task-B2-2-brief.md / task-B2-2-report.md
++ - **评审**：规格 ✅ / Approved（0 Critical，1 Important deferred + 4 Minor）
++ - **Important deferred → B2 最终评审**：I-1 暗色主题背景层光晕覆盖广（`--accent-200/300` 浅档 + `--surface-solid` 近黑，max 通道差 ≤52）——brief 字面 CSS 必然结果，与 B2-1 I-1 同题，最终评审确认观感
++ - **Minor 留收尾**：① M-1 手机形态无背景装饰选择 UI（桌面挂载注入，手机页面栈重建未注入；背景层默认 gradient 仍渲染）——brief 未要求，最终评审补断言或豁免；② M-2 Tauri 下背景层透明但「背景装饰」小节仍可见（功能无意义 UI，brief 未要求隐藏）；③ M-3 `background-size: 40px 40px` 在 `.app-main` 上为死 CSS（保留仅溯源，功能由 `.app-main__backdrop` 承担）；④ M-4 选择器样式落 partitions.css（brief 指定该文件，文件归属略偏）
++ - **评审独立验证**：paint 层级成立（html 无背景规则、body `--glass-bg` 传播为 canvas 背景、`.app-main` 不建 stacking context → backdrop z-index:-1 画 canvas 之上/壳内容之下，玻璃表面确会模糊到它）；`overflow:hidden` 不裁剪 fixed；两处声明偏差（grid background-size 补子元素、手机无切换 UI）均合理且已披露
++ 
+++## Task B2-3: 导航图标四项增强
+++
+++- **状态**：完成（2026-08-06，待评审）
+++- **提交**：见 task-B2-3-report.md 文末
+++- **验证**：npm test 58/58；npm run test:e2e 85/85（含「图标分级」用例；首轮/中间轮若干冷启动与 data-display 超时偶发，隔离复跑与终跑全绿，非因果）；npm run test:visual 18/18；npm run build 通过
+++- **实现**：icon.js `icon(name, size = 18, stroke = 1.8)` 第三参（默认 1.8 向后兼容）；nav-wheel.js 模板 item0 初始 active + 24px/2.2，其余 20px/1.8，select 捕获 prev 并对前后两项重渲染（`renderItemIcons` 原地改 svg width/height/stroke-width 属性）；nav-wheel.css brief Step 7 字面（40px 圆角衬底 hover/active 显、`--text-3`→`--text-2` 提亮、active accent + accent-100 衬底、glow scale(.8)→(1) 分层，过渡仅 color/background 与 transform/opacity）；setFocal 逐字不动
+++- **简报/报告**：docs/superpowers/sdd/task-B2-3-brief.md / task-B2-3-report.md
+++- **评审**：待评审
+++- **一处必要偏差（已披露）**：brief Step 6 建议「重设 innerHTML」→ 改为「原地改 svg 属性」。原因：pointerup 内同步替换 innerHTML 移除 mousedown 目标 → Chromium 抑制后续 click 派发（实测 5 个 e2e 回归：mobile-nav 3 + app-shell 收起通道二/设置模式退出轮回归），破坏依赖 click 的 dock 推入/左窗 toggle。原地属性变更实现相同分级 + 相同 e2e 断言（svg width 24>20），零副作用
+++- **视觉基线**：app-main（6）+ components-partition（6）重生成（解码比对确认差异为左窗图标栏与组件分区 nav-wheel 演示实例的图标/衬底/光晕局部变化）；motion-partition 6 张字节不变（无全局渲染回归）
+++- **Minor 留收尾（初评候选）**：① nav-wheel 挂载起 item0 即 `--active`（组件分区演示实例初始即高亮，基线随之变化——brief 预期，观感交最终评审）；② hover 时 active 项衬底被 `:hover` 规则覆盖为 `--surface-hover`（brief 字面 CSS 的选择器优先级结果，active+hover 态观感交最终评审）
+++
++ ## 执行状态
++ 
++ - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
++ - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
++-- Task B2-3 导航图标四项增强：待执行
+++- Task B2-3 导航图标四项增强：✅ 完成（待评审）
++ - 最终整体评审 + 合并 main：待执行
++diff --git a/docs/superpowers/sdd/task-B2-3-brief.md b/docs/superpowers/sdd/task-B2-3-brief.md
++new file mode 100644
++index 0000000..8dc7a6a
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B2-3-brief.md
++@@ -0,0 +1,99 @@
+++# Task B2-3: 导航图标四项增强
+++
+++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
+++
+++## Global Constraints（约束本任务）
+++
+++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
+++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
+++- **视觉基线会变**：导航图标变化改变 `app-main-*.png` 与 `components-partition-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
+++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
+++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
+++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
+++
+++## Files
+++
+++- Modify: `src/components/navigation-wheel/nav-wheel.css`（衬底/光晕/颜色/尺寸）
+++- Modify: `src/components/navigation-wheel/nav-wheel.js`（active 项图标尺寸/粗细分级）
+++- Modify: `src/components/icon/icon.js`（加 stroke-width 参数或 active 变体）
+++- Modify: `src/app/app-main.css`（应用壳图标栏微调，如需）
+++- Modify: `tests/unit/geometry.test.js`（如需）/ `tests/e2e/nav-wheel.spec.js` 迁移后所在 spec
+++- Modify: `tests/e2e/visual-regression.spec.js`（app-main/components-partition 基线重生成）
+++
+++## Interfaces
+++
+++- Consumes: `icon(name, size)`（icon.js，现固定 stroke-width 1.8）；`.c-navwheel__item/.c-navwheel__icon/.c-navwheel__glow`（nav-wheel.css）
+++- Produces: `icon(name, size, stroke?)` 第三参可选（默认 1.8 向后兼容）；`mountNavWheel` 渲染 active 项用 `icon(it.icon, 24, 2.2)`、非 active `icon(it.icon, 20)`；CSS 加 `.c-navwheel__icon-chips`（衬底）与增强 `.c-navwheel__glow`（选中光晕分层）；颜色 `--text-3`→`--text-2` 提亮 + active accent
+++
+++## Steps
+++
+++### Step 1: 写失败单测（icon 或新增 icon.test.js）
+++
+++```js
+++import { icon } from '../../src/components/icon/icon.js';
+++it('icon 支持 stroke-width 参数', () => {
+++  const svg = icon('home', 20, 2.2);
+++  expect(svg).toContain('stroke-width="2.2"');
+++});
+++it('默认 stroke-width 1.8（向后兼容）', () => {
+++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
+++});
+++```
+++
+++### Step 2: 运行确认红
+++
+++Run: `npm test`
+++Expected: FAIL（icon 无 stroke 参数）
+++
+++### Step 3: icon.js 加 stroke 参数
+++
+++`export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
+++
+++### Step 4: 写失败 e2e（应用壳导航图标分级）
+++
+++```js
+++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
+++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
+++  const activeW = await activeIcon.getAttribute('width');
+++  const inW = await inactiveIcon.getAttribute('width');
+++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
+++});
+++```
+++
+++### Step 5: 运行确认红
+++
+++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "图标分级"`
+++Expected: FAIL（两图标等宽 22）
+++
+++### Step 6: nav-wheel.js 分级渲染 + 重挂载
+++
+++`mountNavWheel` 渲染 item 时按初始 active 决定尺寸；`select(i)` 更新后重渲染该项图标（或 CSS class 控制——若用 CSS 无法改 svg 宽高属性，需 JS 重渲染 icon HTML）。实现建议：`itemEls.forEach` 时据 `--active` 类重设 `.c-navwheel__icon` innerHTML = `icon(it.icon, isActive ? 24 : 20, isActive ? 2.2 : 1.8)`。在 `select()` 内对前后两个 item 重渲染图标。**保持 setFocal 的 transform/opacity 逻辑不受影响**（图标尺寸变化是静态重渲染，非动画）。
+++
+++### Step 7: nav-wheel.css 衬底/光晕/颜色
+++
+++```css
+++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
+++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
+++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
+++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
+++.c-navwheel__glow { opacity: 0; transform: scale(.8);
+++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
+++```
+++
+++衬底 = `.c-navwheel__icon` 40px 圆角底（选中/hover 显）；光晕增强 = glow scale 分层（只动 transform/opacity，红线合规）。应用壳左右窗纯图标栏（`.app-main__nav-l/.nav-r .c-navwheel__name { display: none }`）——衬底占 40px 栏宽 64px 内可容纳。
+++
+++### Step 8: 全量回归 + 基线重生成
+++
+++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线重生成（app-main/components-partition 图标变化）。
+++Expected: 全绿
+++
+++### Step 9: 提交
+++
+++```bash
+++git add src/components/navigation-wheel/nav-wheel.css src/components/navigation-wheel/nav-wheel.js src/components/icon/icon.js src/app/app-main.css tests/unit/icon.test.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
+++git commit -m "feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）"
+++```
++diff --git a/docs/superpowers/sdd/task-B2-3-report.md b/docs/superpowers/sdd/task-B2-3-report.md
++new file mode 100644
++index 0000000..16c1702
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B2-3-report.md
++@@ -0,0 +1,68 @@
+++# Task B2-3 报告：导航图标四项增强
+++
+++- 分支：`feature/b2-visual`
+++- 状态：DONE（1 处必要实现偏差已披露，见「与 brief 的偏差」）
+++- 提交：见文末「提交」
+++
+++## 实现说明
+++
+++### icon.js：第三参 stroke-width
+++
+++- `export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
+++- 默认 1.8 向后兼容，既有 `icon(name, size)` 调用点零改动（全量回归零冲击佐证）。
+++- 头注释同步补充 stroke 参数契约。
+++
+++### nav-wheel.js：active 项 24px/2.2 分级 + select 重渲染
+++
+++- 模板按初始 active（索引 0）分级：item0 `icon(it.icon, 24, 2.2)` + `--active` 类；其余 `icon(it.icon, 20)`（默认 stroke 1.8）。初始渲染即带 `--active` 类（此前无任何 active 项，直到首次 select）—— brief Step 4 e2e 在初始加载即断言 active 项 svg 宽度，必须如此；且与宿主初始逻辑态一致（应用壳 `state.moduleId='home'` = MODULES[0]）。
+++- `select(i)` 内**捕获旧 active**（`const prev = active`，赋值前），class toggle 后调 `renderItemIcons(prev, i)` 对前后两项重渲染。
+++- `renderItemIcons(...indexes)`：据 `--active` 类将 `.c-navwheel__icon svg` 的 `width/height/stroke-width` 置为 24/24/2.2 或 20/20/1.8。
+++- **setFocal 逐字不动**：图标尺寸变化为静态重渲染（svg 属性），绝不触碰 item 上的 `style.transform/opacity`——动画红线合规。
+++
+++### nav-wheel.css：衬底 / 提亮 / 光晕分层（brief Step 7 字面）
+++
+++- `.c-navwheel__icon`：40px 圆角衬底（`width/height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1))`）+ 颜色提亮 `--text-3`→`--text-2`；`transition` 仅 color/background（paint-only 豁免）。
+++- `.c-navwheel__item:hover .c-navwheel__icon`：`background: var(--surface-hover); color: var(--text-1)`（hover 显衬底）。
+++- `.c-navwheel__item--active .c-navwheel__icon`：`color: var(--accent); background: var(--accent-100)`（选中显衬底）。
+++- `.c-navwheel__glow`：`transform: scale(.8)` + `transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out)`；active 时 `opacity: 1; transform: scale(1)`（光晕分层，只动 transform/opacity，红线合规）。原有 `position/inset/background/pointer-events` 保留。
+++- `src/app/app-main.css` 无需改动（brief 列「如需」；衬底 40px 在 64px 栏宽内可容纳，既有纯图标栏规则直接生效）。
+++
+++## 测试证据
+++
+++| 步骤 | 命令 | 结果 |
+++|---|---|---|
+++| 红（单测） | `npx vitest run tests/unit/icon.test.js` | 1 FAIL（`stroke-width="2.2"` 缺失）+ 1 PASS |
+++| 红（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | FAIL（无 active 项，locator 超时） |
+++| 绿（单测） | `npx vitest run tests/unit/icon.test.js` | 2/2 PASS |
+++| 绿（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | 1/1 PASS |
+++| 单测全量 | `npm test` | 58/58 PASS（10 文件） |
+++| e2e 全量（终跑） | `npm run test:e2e` | 85/85 PASS |
+++| 视觉基线重生成 | `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS（app-main 6 + components-partition 6 重写；motion 6 字节不变） |
+++| 视觉 | `npm run test:visual` | 18/18 PASS |
+++| 构建 | `npm run build` | PASS |
+++
+++### 视觉基线差异解码比对（重生成前）
+++
+++用自写 PNG 解码脚本（Python stdlib zlib）对 expected/actual 差分，确认差异**确由图标增强引起**：
+++
+++- **app-main**：diff 为左侧窄竖带（列 3~7/100），自上而下贯穿 7 个导航项 —— 左窗纯图标栏 22px→20px 常规 / item0 24px active + accent 高亮 + 衬底/光晕。亮色 125~250 px（0.01%），暗色 ~3300 px（accent-100 衬底在暗色下对比更高）。
+++- **components-partition**：diff 为顶部水平带 —— 组件分区「组 1 核心导航」的 NavigationWheel 8 项演示实例（item0 现为 active：24px 图标 + accent 衬底 + 光晕 + 名称 accent）。亮色 766~940 px，暗色 ~19k px（衬底/光晕暗色下高对比）。
+++- **motion-partition：0 diff**（全 6 张字节不变）—— 证明无全局渲染回归。
+++- 无结构性位移（无硬边/元素错位），全部为图标/衬底/光晕的局部颜色变化。
+++
+++## 遇到的问题与判断
+++
+++1. **（重要）brief 建议的 innerHTML 重渲染在 pointerup 中破坏宿主 click（必要偏差）**：brief Step 6 建议「重设 `.c-navwheel__icon` innerHTML」。初版照此实现后，全量 e2e 出现 5 个回归：mobile-nav「点击应用→目录页推入」「点击目录项→详情页」「返回回退」+ app-shell「收起通道二」「设置模式退出后右窗目录轮回归」。排查（临时 debug spec 捕获 document click）确认：**pointerup 内同步替换 innerHTML 会移除 mousedown 目标 svg → Chromium 抑制后续 click 派发**（`window.__clicks` 为空数组）。而应用壳 dock 推入 / 左窗 toggle 收起恰恰依赖 pointerup 后的 click 收尾。**修复**：`renderItemIcons` 改为**原地改 svg `width/height/stroke-width` 属性**（不替换 innerHTML）—— 分级结果与 e2e 断言（svg width 属性 24>20）完全一致，svg 保持 connected，click 正常派发。修复后 5 个回归全绿（debug spec 证实 click 事件 + stack-page 2 页均正常）。setFocal 逐字不受影响。
+++2. **初始 `--active` 类**：nav-wheel 现于挂载时即对 item0 加 `--active`（此前挂载无 active 项）。此为实现 brief Step 4 e2e（初始加载断言 active 项）与 Step 6（「按初始 active 决定尺寸」）的必要行为，且与宿主初始逻辑态一致。副作用：组件分区演示实例 item0 初始即 active（components-partition 基线随之重生成，brief 预期）。
+++3. **e2e 全量首轮偶发超时（非因果，既有）**：首轮全量曾出现 smoke/壳结构/data-display 等若干超时失败，均在同一运行内复跑通过；data-display「进度条达到目标值」隔离复跑 3/3 PASS、全量终跑 85/85 PASS。与 B2-2 留痕「首轮 smoke 冷启动超时偶发」同源（Vite 冷启动/全量负载下 5s 等待边界），本改动不新增动态 import 链，非因果。
+++4. **视觉基线重生成流程**：`--update-snapshots` 只在差异超阈值时改写，本任务 12 张（app-main/components-partition）超出即重写，motion 6 张阈值内匹配不动。
+++
+++## 与 brief 的偏差
+++
+++- **唯一偏差**：Step 6 建议的「重设 innerHTML」改为「原地改 svg 属性」。理由见「问题 1」——innerHTML 替换在 pointerup 内会抑制 Chromium click 派发，破坏应用壳 dock 推入/左窗 toggle 等依赖 click 的宿主行为（实测 5 个 e2e 回归）。原地属性变更实现相同分级视觉与相同 e2e 断言（svg width 属性 24 vs 20），零副作用。功能规格（active 24/2.2、非 active 20/1.8、select 重渲染、setFocal 不动）逐条满足。
+++- 其余（Step 1/3/4/5/7 测试代码与 CSS 片段）均按 brief 字面落地。
+++
+++## 提交
+++
+++- 改动文件：`src/components/icon/icon.js`、`src/components/navigation-wheel/nav-wheel.js`、`src/components/navigation-wheel/nav-wheel.css`、`tests/unit/icon.test.js`（新增）、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（12 张重生成：app-main 6 + components-partition 6）、`docs/superpowers/sdd/task-B2-3-brief.md`（纳入留痕）、`docs/superpowers/sdd/task-B2-3-report.md`（本报告）、`docs/superpowers/sdd/progress-b2.md`（台账）。
+++- 未纳入：`src-tauri/Cargo.toml`（工作树既有行尾噪声，非本任务改动，见 ledger base 注记）；`src/app/app-main.css`（brief 列「如需」，实际无需改动）。
++diff --git a/src/components/icon/icon.js b/src/components/icon/icon.js
++index 27ed7f5..9e4e43a 100644
++--- a/src/components/icon/icon.js
+++++ b/src/components/icon/icon.js
++@@ -1,12 +1,14 @@
++-// Lucide 风格图标集（24×24 viewBox，stroke-width 1.8，round cap/join）
++-// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）
+++// Lucide 风格图标集（24×24 viewBox，stroke-width 默认 1.8，round cap/join）
+++// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）。
+++// icon(name, size = 18, stroke = 1.8)：stroke 为第三参可选（B2-3 导航图标 active 项用 2.2 加粗分级），
+++// 默认 1.8 向后兼容，既有 icon(name, size) 调用点零改动。
++ const PATHS = {
++   // Task 5 已有
++   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
++   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
++   monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
++   // Task 6 新增（Interfaces 契约 47 个）
++   palette: '<circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h2c2.9 0 5.3-2.4 5.3-5.3C21.3 6.3 17.2 2 12 2z"/>',
++   box: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/>',
++   sparkles: '<path d="M9.94 15.5a2 2 0 0 0-1.1 1.1l-.6 1.8a1 1 0 0 1-1.87 0l-.6-1.8a2 2 0 0 0-1.1-1.1l-1.8-.6a1 1 0 0 1 0-1.87l1.8-.6a2 2 0 0 0 1.1-1.1l.6-1.8a1 1 0 0 1 1.87 0l.6 1.8a2 2 0 0 0 1.1 1.1l1.8.6a1 1 0 0 1 0 1.87z"/><path d="M20 3.5l.75 2.25L23 6.5l-2.25.75L20 9.5l-.75-2.25L17 6.5l2.25-.75z"/>',
++   layout: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
++@@ -50,15 +52,15 @@ const PATHS = {
++   'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
++   'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
++   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
++   command: '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
++   'mouse-pointer': '<path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/>',
++   drag: '<circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>',
++   // Task 19 场景模板 2 新增（主窗口 8 模块导航图标）
++   list: '<path d="M3 6h.01M3 12h.01M3 18h.01"/><path d="M8 6h13M8 12h13M8 18h13"/>',
++   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
++ };
++-export function icon(name, size = 18) {
+++export function icon(name, size = 18, stroke = 1.8) {
++   return `<svg class="c-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
++-    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+++    stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"
++     aria-hidden="true">${PATHS[name] ?? PATHS.monitor}</svg>`;
++ }
++diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
++index bd017f5..38d6e57 100644
++--- a/src/components/navigation-wheel/nav-wheel.css
+++++ b/src/components/navigation-wheel/nav-wheel.css
++@@ -31,25 +31,31 @@
++   flex-shrink: 0;
++   display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3);
++   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++   cursor: pointer; will-change: transform, opacity;
++   transition: color var(--dur-fast) var(--ease-out); }
++ .c-navwheel__item:hover { color: var(--text-1); }
++ .c-navwheel__item--active { color: var(--accent); }
++ 
++ .c-navwheel__glow { position: absolute; inset: 0; border-radius: inherit;
++   background: radial-gradient(120% 120% at 50% 50%, var(--accent-100) 0%, transparent 70%);
++-  opacity: 0; pointer-events: none; }
++-.c-navwheel__item--active .c-navwheel__glow { opacity: 1; }
+++  opacity: 0; transform: scale(.8); pointer-events: none;
+++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
+++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
++ 
++-.c-navwheel__icon { display: grid; place-items: center; color: var(--text-3); }
++-.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); }
+++/* B2-3 图标增强：40px 圆角衬底（hover/active 显）+ 提亮 --text-2 + active accent。
+++   衬底/光晕过渡只走 color/background（paint-only 豁免）与 transform/opacity（红线合规）。 */
+++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
+++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
+++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
++ 
++ /* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
++ .c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
++   clip-path: inset(0 100% 0 0); opacity: 0;
++   transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
++ .c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
++ 
++ /* —— horizontal 渲染层（Task A6，闭环 A2 Minor ①）——
++    仅当 mountNavWheel 收到 direction:'horizontal' 时列表根加 .c-navwheel__list--horizontal。
++    vertical 既有规则逐字节不动（docs 84 e2e + 36 基线 + app-shell 14 零冲击）。
++diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
++index f203980..f223508 100644
++--- a/src/components/navigation-wheel/nav-wheel.js
+++++ b/src/components/navigation-wheel/nav-wheel.js
++@@ -20,23 +20,23 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
++         pointer: 'clientX', prev: 'ArrowLeft', next: 'ArrowRight' }
++     : { size: 'height', margin: 'marginTop', len: 'clientHeight', scroll: 'scrollTop',
++         offset: 'offsetTop', translate: 'translateY', padBefore: 'paddingTop', padAfter: 'paddingBottom',
++         pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
++ 
++   const list = root.querySelector('.c-navwheel__list') ?? root;
++   // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
++   // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
++   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
++   list.innerHTML = items.map((it, i) => `
++-    <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+++    <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
++       <div class="c-navwheel__glow"></div>
++-      <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
+++      <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
++       <span class="c-navwheel__name">${it.name}</span>
++     </div>`).join('');
++   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
++   // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
++   // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
++   const holder = root.closest('.navwheel') ?? root.parentElement;
++   if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
++     holder.insertAdjacentHTML('beforeend',
++       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
++   }
++@@ -94,23 +94,41 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
++   }
++   function onScroll() {
++     cancelAnimationFrame(raf);
++     raf = requestAnimationFrame(setFocal);
++     // 滚动停止 150ms → 吸附并选中最近项（规格 §8.3：滚轮停在两项之间时不得悬置）。
++     // 拖拽中（pointerId 非空）跳过：吸附由 pointerup/惯性/pointercancel 接管，
++     // 且慢拖拽停顿 >150ms 时不会中途吸附与手指打架；pointerdown 已清掉滚轮残留定时器。
++     if (pointerId !== null) return;
++     scheduleSnap();
++   }
+++  // B2-3 图标分级：active 项 24px/2.2 加粗、非 active 20px/1.8（icon(name, size, stroke) 第三参）。
+++  // 分级落地为「原地改 svg 宽高/粗细属性」而非替换 .c-navwheel__icon innerHTML —— 在 pointerup
+++  // 内同步替换会移除 mousedown 目标，Chromium 将抑制后续 click 派发（实测），破坏依赖 click 的
+++  // 宿主行为（应用壳 dock 推入/左窗 toggle 靠 click 收尾）。尺寸变化是静态重渲染，绝不动 item
+++  // 上的 style.transform/opacity —— setFocal 逐字不变（动画红线）。
+++  function renderItemIcons(...indexes) {
+++    indexes.forEach((idx) => {
+++      if (idx < 0 || idx >= itemEls.length) return;
+++      const el = itemEls[idx];
+++      const isActive = el.classList.contains('c-navwheel__item--active');
+++      const svg = el.querySelector('.c-navwheel__icon svg');
+++      svg.setAttribute('width', isActive ? 24 : 20);
+++      svg.setAttribute('height', isActive ? 24 : 20);
+++      svg.setAttribute('stroke-width', isActive ? 2.2 : 1.8);
+++    });
+++  }
++   function select(i, animate = true) {
+++    const prev = active; // 捕获旧 active，供切换后对前后两项重渲染图标分级
++     active = i;
++     itemEls.forEach((el, idx) => el.classList.toggle('c-navwheel__item--active', idx === i));
+++    renderItemIcons(prev, i);
++     onChange(items[i]);
++     if (animate) animateScrollTo(scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP);
++   }
++   function animateScrollTo(target) {
++     const start = list[AXIS.scroll], diff = target - start;
++     if (diff === 0) return; // 已在目标位，无需动画
++     const durRaw = parseFloat(getComputedStyle(root).getPropertyValue('--dur-base'));
++     // reduced-motion（--dur-base: 0ms）→ 直接跳转；|| 200 只兜底未定义，不能把 0 兜成 200ms
++     if (durRaw === 0) { list[AXIS.scroll] = target; setFocal(); return; }
++     const dur = durRaw || 200;
++diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
++index ca23d28..e17e77c 100644
++--- a/tests/e2e/app-shell.spec.js
+++++ b/tests/e2e/app-shell.spec.js
++@@ -358,10 +358,23 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
++   await page.goto('/?mode=app');
++   const backdrop = page.locator('.app-main__backdrop');
++   await expect(backdrop).toBeVisible();
++   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
++   // 外观分区切换背景预设
++   await page.locator('.c-titlebar__control--settings').click();
++   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
++   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
++ });
+++
+++// —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
+++// icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
+++// select 切换时对前后两 item 重渲染 .c-navwheel__icon innerHTML；svg width 属性即尺寸分级。
+++
+++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
+++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
+++  const activeW = await activeIcon.getAttribute('width');
+++  const inW = await inactiveIcon.getAttribute('width');
+++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
+++});
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
++index 4836874..ba54f63 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
++index ee21397..0d3e4cb 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
++index 4adab3b..ea2c191 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
++index a282942..8bff8e6 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
++index b0ab533..ca7ee8d 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
++index a3605e3..f528a6f 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
++index 31b21f7..602db31 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
++index 288eb60..b1771ec 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
++index 1b4c299..72d356c 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
++index 28bc233..6faf271 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
++index f2abdb5..586e1d9 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
++index f396607..5e56a0d 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
++diff --git a/tests/unit/icon.test.js b/tests/unit/icon.test.js
++new file mode 100644
++index 0000000..624818a
++--- /dev/null
+++++ b/tests/unit/icon.test.js
++@@ -0,0 +1,12 @@
+++import { it, expect } from 'vitest';
+++import { icon } from '../../src/components/icon/icon.js';
+++
+++// B2-3：icon 支持第三参 stroke-width（导航图标四项增强——active 项 2.2 加粗分级）。
+++// 默认 1.8 保持既有调用点向后兼容（现有 icon(name, size) 调用零改动）。
+++it('icon 支持 stroke-width 参数', () => {
+++  const svg = icon('home', 20, 2.2);
+++  expect(svg).toContain('stroke-width="2.2"');
+++});
+++it('默认 stroke-width 1.8（向后兼容）', () => {
+++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
+++});
+diff --git a/docs/superpowers/sdd/task-B2-1-brief.md b/docs/superpowers/sdd/task-B2-1-brief.md
+new file mode 100644
+index 0000000..ca05945
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-1-brief.md
+@@ -0,0 +1,126 @@
++# Task B2-1: 玻璃材质两档（磨砂/纯色不透明）
++
++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
++- **视觉基线会变**：应用壳接玻璃必然改变 `app-main-*.png` 与 `components-partition-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
++
++## Files
++
++- Modify: `src/config/defaults.js`（glass 加 `blurEnabled`，默认 true）
++- Modify: `src/config/apply.js`（blurEnabled → CSS 变量层）
++- Modify: `src/styles/themes.css`（纯色不透明变量 `--surface-solid`，深浅两套）
++- Modify: `src/app/app-main.css`（导航栏/内容区/卡片从 `--surface-1` 切换为 `.glass` 体系 + blurEnabled 降级）
++- Modify: `tests/unit/apply.test.js`、`tests/e2e/app-shell.spec.js`
++- Modify: `tests/e2e/visual-regression.spec.js`（app-main 基线重生成）
++
++## Interfaces
++
++- Consumes: `applyConfig(cfg, root)`（apply.js，写 `--glass-*` 变量）；`.glass` 类（base.css:17-21）；`--surface-1`/`--glass-bg`/`--glass-blur`（themes.css）
++- Produces: `DEFAULTS.glass.blurEnabled = true`；`applyConfig` 写 `--glass-enabled: 1|0`（或等价 data-attr）；themes.css `--surface-solid`（light `#f8f9fb` / dark `#14161c`）；app-main.css 表面接 `.glass` 材质 + `[data-glass="off"]` 降级为纯色实背景
++
++## Steps
++
++### Step 1: 写失败单测（apply.test.js）
++
++```js
++it('blurEnabled=true 时写 --glass-enabled: 1', () => {
++  const s = { setProperty: vi.fn(), removeProperty: vi.fn() };
++  applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, { style: s, dataset: {} });
++  expect(s.setProperty).toHaveBeenCalledWith('--glass-enabled', '1');
++});
++it('blurEnabled=false 时写 --glass-enabled: 0', () => {
++  const s = { setProperty: vi.fn(), removeProperty: vi.fn() };
++  applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, { style: s, dataset: {} });
++  expect(s.setProperty).toHaveBeenCalledWith('--glass-enabled', '0');
++});
++```
++
++注：现有 apply.test.js 的 mock 结构需先读，按其 `root`/`s` 形式适配（`vi.fn()` 若项目用 `vi`，否则 `() => {}` + 手动断言）。
++
++### Step 2: 运行确认红
++
++Run: `npm test -- apply.test.js`
++Expected: FAIL（`--glass-enabled` 未写入）
++
++### Step 3: defaults.js 加 blurEnabled
++
++```js
++glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
++```
++
++### Step 4: apply.js 写玻璃开关
++
++在 `applyConfig` 玻璃变量区（~line 62-64）加：
++
++```js
++s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
++```
++
++### Step 5: themes.css 加纯色实背景变量
++
++light（`[data-theme="light"]`）加 `--surface-solid: #f8f9fb;`；dark 加 `--surface-solid: #14161c;`（与 `--glass-bg-rgb` 对应纯色，不透明）。
++
++### Step 6: app-main.css 表面接玻璃 + 降级
++
++导航栏/内容区/卡片背景从 `var(--surface-1)` 改为玻璃材质，并用 `--glass-enabled` 控制 backdrop-filter 与背景：
++
++```css
++.app-main__nav-l, .app-main__nav-r, .app-main__pages {
++  background: var(--glass-bg);
++  backdrop-filter: var(--glass-enabled, 1) === 1 ? blur(var(--glass-blur)) saturate(1.4) : none;
++}
++.app-main__card { background: var(--glass-bg); }
++```
++
++CSS 不支持三元——用两个规则：默认（磨砂）`backdrop-filter: blur(var(--glass-blur)) saturate(1.4)`；`[data-glass="off"]` 时 `backdrop-filter: none; background: var(--surface-solid);`。glass-enabled 开关落地为 `<html data-glass="off">`（apply.js 写 `root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off'`），CSS 选择器 `:root[data-glass="off"] .app-main__nav-l` 降级。**注意：apply.js 需同步写 dataset**（Step 4 补 `root.dataset.glass = ...`）。
++
++玻璃应用到：`.app-main__nav-l`、`.app-main__nav-r`、`.app-main__pages`、`.app-main__card`、手机 `.app-main__dock`/`.app-main__stack-page`（若视觉上需要）。**切页/推入动画仍只动 transform/opacity**（背景变化是静态，不参与动画）。
++
++### Step 7: 写失败 e2e（app-shell.spec.js）
++
++```js
++test('玻璃两档：默认磨砂，关闭后纯色不透明', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 默认磨砂：html data-glass=on + 导航栏有 backdrop-filter
++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
++  const blur = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(blur).toContain('blur');
++  // 设置→通用：动效开关下方无玻璃开关……玻璃开关放外观分区定制器？B3 才有完整 UI。
++  // 简化：直接改配置验证降级
++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({
++    glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: false },
++  })));
++  await page.reload();
++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
++  const blur2 = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(blur2).toBe('none');
++});
++```
++
++### Step 8: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "玻璃两档"`
++Expected: FAIL（data-glass 未实现）
++
++### Step 9: 玻璃开关 UI（外观分区）
++
++设置「外观」分区（settings-pages.js appearancePage 或 app-main 惰性挂载的定制器区域）加一个「玻璃磨砂」开关（`renderSwitch`，写 `saveConfig({ glass: { blurEnabled } })`）。这是 B3 外观完善的前置最小入口。e2e 可改为：设置→外观→切开关→断言 data-glass 翻转。
++
++### Step 10: 全量回归 + 基线重生成
++
++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线 `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots`（app-main 及分区基线随玻璃变化重生成，先解码比对差异区域确认）。
++Expected: 全绿；基线差异仅为玻璃材质变化
++
++### Step 11: 提交
++
++```bash
++git add src/config/defaults.js src/config/apply.js src/styles/themes.css src/app/app-main.css src/scenes/settings-window/settings-pages.js tests/unit/apply.test.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）"
++```
+diff --git a/docs/superpowers/sdd/task-B2-1-report.md b/docs/superpowers/sdd/task-B2-1-report.md
+new file mode 100644
+index 0000000..7f2d57d
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-1-report.md
+@@ -0,0 +1,66 @@
++# Task B2-1 报告：玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）
++
++- 分支：`feature/b2-visual`（自 main 检出）
++- 状态：DONE
++- 提交：见文末「提交」
++
++## 实现说明
++
++### 配置链路三件套（defaults → store → apply）
++
++- `src/config/defaults.js`：`glass` 追加 `blurEnabled: true`。既有持久化配置（无该键）经 `deepMerge` 自动补全默认值，向后兼容（store.test.js 覆盖）。
++- `src/config/apply.js`：`applyConfig` 玻璃变量区写 `--glass-enabled`（`1|0`，机器可读）+ `root.dataset.glass = blurEnabled ? 'on' : 'off'`（CSS 降级选择器用后者）。两处都由单测锁定。
++- `src/styles/themes.css`：`--surface-solid` 深浅两套（light `#f8f9fb` / dark `#14161c`，按 brief 字面值）。
++
++### 表面接玻璃 + 降级（app-main.css）
++
++- `.app-main__nav-l` / `.app-main__nav-r` / `.app-main__pages`：新增 `background: var(--glass-bg)` + `backdrop-filter: blur(var(--glass-blur)) saturate(1.4)`（原为透出 body 的 `--glass-bg`）。
++- `.app-main__card`：`var(--surface-1)` → `var(--glass-bg)`。
++- 手机形态 `.app-main__stack` / `.app-main__stack-page` / `.app-main__dock`：`var(--surface-1)` → `var(--glass-bg)`。
++- 降级：`:root[data-glass="off"] .app-main__{nav-l,nav-r,pages,card}` → `background: var(--surface-solid); backdrop-filter: none;`（手机形态在 `@media (max-width:900px)` 内同规则）。属性为静态切换、无 transition，backdrop-filter 永不动画（红线合规）；切页/推入动画仍只动 transform/opacity。
++
++### 玻璃开关 UI（共享定制器实现）
++
++- `src/demo/customizer-panel.js`：GROUPS「玻璃材质」组 `pre` 改为 `glassSwitchRow(cfg) + glassPreview()`；`glassSwitchRow` 仿 `motionSwitchRow`（`.cust-row.cust-row--switch` + `data-glass-switch` 容器 + `renderSwitch`），点击写 `saveConfig({ glass: { blurEnabled } })` + `applyConfig`；`syncUI` 同步玻璃开关 aria-checked；`renderCustomizerGroups` 加 `[data-glass-switch]` 点击委托。抽屉面板与设置「外观」分区共用同一实现（B1-3 迁移后的契约）。未新增分组，`.cust-group` count 6 保持。
++
++### 测试
++
++- 单测（apply.test.js，既有真实 `document.documentElement` 风格）：`blurEnabled=true` → `--glass-enabled:1` + `data-glass="on"`；`false` → `0` + `"off"`。
++- e2e（app-shell.spec.js「玻璃两档」）：默认 `html data-glass="on"` + 导航栏 backdrop-filter 含 blur → 设置→外观玻璃开关点击关闭 → `data-glass="off"` + backdrop-filter `none` + 开关 aria-checked 翻转 → reload 持久化保持 off（完整配置链路验证）。
++- 视觉基线：暗色 9 张重生成（亮色 9 张像素级不变）。
++
++## 测试证据
++
++| 步骤 | 命令 | 结果 |
++|---|---|---|
++| 红 | `npx vitest run tests/unit/apply.test.js` | 新 2 用例 FAIL（`--glass-enabled` 未写） |
++| 绿 | `npx vitest run tests/unit/apply.test.js` | 13/13 PASS |
++| 红 | `npx playwright test tests/e2e/app-shell.spec.js -g "玻璃两档"` | FAIL（`[data-glass-switch]` 未挂载） |
++| 绿 | `npx playwright test tests/e2e/app-shell.spec.js -g "玻璃两档"` | 1/1 PASS |
++| 单测全量 | `npm test` | 56/56 PASS（9 文件） |
++| e2e 全量 | `npm run test:e2e` | 74/83 PASS（余 9 为视觉暗色，基线重生成前预期失败） |
++| 视觉重生成 | `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS |
++| e2e 全量（重生成后） | `npm run test:e2e` | 83/83 PASS |
++| 构建 | `npm run build` | PASS |
++
++### 基线差异确认（先解码比对）
++
++对 `app-main-dark-indigo` 期望/实际 PNG 做逐像素差分（System.Drawing）：
++- 尺寸 1280×720，平均绝对差 38.98/通道，最大差 53，94.1% 像素变化；
++- 分列区域（左窗 47 / 右窗区 40 / 内容区 38）一致，无局部结构性位移。
++
++判定：暗色表面由玻璃层叠加 body 半透明底色而整体加深（约 -54/通道，与合成计算 `rgba(24 26 32 / 0.62)` 双层叠加预测吻合），为玻璃材质变化，非布局破坏。亮色下双层叠加近白，渲染与旧基线像素一致，无需重生成。
++
++## 遇到的问题与判断
++
++1. **暗色表面明显加深（mean abs diff ~39）**：`--glass-bg`（暗色 alpha 0.62）现直接绘在表面，叠加 body 同样半透明的 `--glass-bg` 底 → 暗色下表面显著变暗。这是 brief 字面指令（表面接 `var(--glass-bg)`）的必然结果，视觉基线按预期重生成；B2-2「浏览器装饰背景层」将提供模糊对象，届时观感由该任务统一。判断：按规格字面落地，留待整体评审确认暗色观感。
++2. **`--surface-solid` 暗色值**：brief 给定 `#14161c`（rgb 20 22 28），与 `--glass-bg-rgb`（24 26 32 = #181a20）略有出入，按 brief 字面使用。
++3. **apply.js 编辑事故**：Step 4 首次 Edit 意外删掉 `--glass-bg-opacity` 行 → 既有单测变红，立即恢复，最终全绿（无残留）。
++4. **e2e 路径选择**：brief Step 7 草稿用 localStorage 直写验证降级，Step 9 允许改为驱动真实开关；本实现走「外观分区玻璃开关 → data-glass 翻转 + reload 持久化」，覆盖配置链路 + 真实交互，比草稿更强。
++5. **手机形态降级**：`.app-main__stack`/`__stack-page`/`__dock` 的降级规则置于 `@media (max-width:900px)` 内（与玻璃规则同媒体上下文），选择器特异性（`:root[data-glass="off"]` + 类）恒高于默认类规则，不依赖顺序。
++
++## 提交
++
++- `55d0bcc`：`feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）`
++
++改动文件：`src/config/defaults.js`、`src/config/apply.js`、`src/styles/themes.css`、`src/app/app-main.css`、`src/demo/customizer-panel.js`、`tests/unit/apply.test.js`、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（暗色 9 张重生成）、`docs/superpowers/sdd/task-B2-1-report.md`、`docs/superpowers/sdd/progress-b2.md`。
+diff --git a/docs/superpowers/sdd/task-B2-2-brief.md b/docs/superpowers/sdd/task-B2-2-brief.md
+new file mode 100644
+index 0000000..e42c1ca
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-2-brief.md
+@@ -0,0 +1,87 @@
++# Task B2-2: 浏览器装饰背景层（模糊对象）
++
++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
++- **视觉基线会变**：应用壳加背景层改变 `app-main-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
++
++## Files
++
++- Modify: `src/app/app-main.css`（`.app-main__backdrop` 装饰层 + 3 预设）
++- Modify: `src/app/app-main.js`（渲染背景层 + 会话内预设切换）
++- Modify: `src/app/partitions.css`（外观分区背景装饰选择 UI）
++- Modify: `tests/e2e/app-shell.spec.js`（新用例）
++- Modify: `tests/e2e/visual-regression.spec.js`（app-main 基线重生成）
++
++## Interfaces
++
++- Consumes: `mountAppMode(root)`（app-main.js）；应用壳 `.app-main` grid 布局
++- Produces: `.app-main__backdrop`（`position: fixed; inset: 0; z-index: -1`）承载 3 预设背景；`data-backdrop="gradient|geo|grid"` 切换（默认 gradient）；Tauri 环境背景层透明（模糊真实壁纸）；浏览器默认可见
++
++## Steps
++
++### Step 1: 写失败 e2e（app-shell.spec.js）
++
++```js
++test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const backdrop = page.locator('.app-main__backdrop');
++  await expect(backdrop).toBeVisible();
++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
++  // 外观分区切换背景预设
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "背景层"`
++Expected: FAIL（`.app-main__backdrop` 不存在）
++
++### Step 3: app-main.css 装饰背景层
++
++```css
++.app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
++  background: var(--backdrop-bg); }
++.app-main[data-backdrop="gradient"] { --backdrop-bg:
++  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
++  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
++  var(--surface-solid); }
++.app-main[data-backdrop="geo"] { --backdrop-bg:
++  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
++  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
++  var(--surface-solid); }
++.app-main[data-backdrop="grid"] { --backdrop-bg:
++  linear-gradient(var(--accent-100) 1px, transparent 1px),
++  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
++  var(--surface-solid); background-size: 40px 40px; }
++/* Tauri：背景层透明，模糊真实壁纸（apply.js 或 JS 探测写 data-tauri） */
++.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
++```
++
++动画红线：背景预设切换是静态背景（`--backdrop-bg` 变化，非动画属性）；不参与 transform/opacity 动画。
++
++### Step 4: app-main.js 渲染背景层 + 会话内切换
++
++mountAppMode 内 `.app-main` 首个子元素前插 `.app-main__backdrop`；Tauri 探测（`window.__TAURI__`）写 `data-tauri="1"`；外观分区（settings-pages.js appearancePage 或 app-main 惰性定制器区）加「背景装饰」3 个预设按钮（`.app-main__backdrop-opt[data-bd]`），点击更新 `.app-main` 的 `data-backdrop`（纯会话内状态，不进 store）。
++
++### Step 5: 运行回归 + 基线重生成
++
++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线重生成（app-main 含背景层）。
++Expected: 全绿
++
++### Step 6: 提交
++
++```bash
++git add src/app/app-main.css src/app/app-main.js src/app/partitions.css src/scenes/settings-window/settings-pages.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 浏览器装饰背景层（渐变/几何/网格三预设 + Tauri 透明）"
++```
+diff --git a/docs/superpowers/sdd/task-B2-2-report.md b/docs/superpowers/sdd/task-B2-2-report.md
+new file mode 100644
+index 0000000..18ab1d3
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-2-report.md
+@@ -0,0 +1,59 @@
++# Task B2-2 报告：浏览器装饰背景层（模糊对象）
++
++- 分支：`feature/b2-visual`
++- 状态：DONE
++- 提交：见文末「提交」
++
++## 实现说明
++
++### 背景层（app-main.css）
++
++- `.app-main__backdrop`：`position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--backdrop-bg)`。
++  `.app-main` 无 transform（不建立 fixed 子元素 containing block），`overflow: hidden` 不裁剪背景层；`z-index: -1` 使背景层画在 canvas（body 半透明 `--glass-bg`）之上、壳内容之下——玻璃表面（backdrop-filter 磨砂）模糊到它，即浏览器侧模糊对象。
++- 三预设按 brief 字面：`.app-main[data-backdrop="gradient|geo|grid"] { --backdrop-bg: ... }`（`--accent-200/300/100` + `--surface-solid`）。
++- Tauri：`.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0 }`（模糊真实壁纸）。
++
++### 预设 UI（app-main.js 挂载注入 + partitions.css 样式）
++
++- 模板 `.app-main` 设默认 `data-backdrop="gradient"`，`.app-main__backdrop` 为首个子元素。
++- `mountAppMode` 挂载时：`typeof window.__TAURI__ !== 'undefined'` → `.app-main` 写 `data-tauri="1"`；外观分区页（`.csettings__page[data-page="appearance"]`）在 `.csettings__cust` 前注入「背景装饰」小节（`.app-main__backdrop-sel` + 3 个 `.app-main__backdrop-opt[data-bd]`，激活态 `.app-main__backdrop-opt--active` + `aria-pressed`）。
++- 点击更新 `.app-main` 的 `data-backdrop`（纯会话内 UI 态，不进 store、不触发配置链路，与右窗状态同类）；`.cust-group` count 6 不受影响（注入为 `.csettings__cust` 前独立小节，非分组）。
++- 样式落 `src/app/partitions.css`：分段按钮组仿 `.csettings__modes/.csettings__mode` 视觉（胶囊 + paint-only 过渡，无入场/离场动效主体；预设切换本身为静态 `--backdrop-bg` 变化，不动画——红线合规）。
++
++### 与 brief 的一处必要偏差
++
++- brief 的 `grid` 预设把 `background-size: 40px 40px` 写在 `.app-main[data-backdrop="grid"]` 上，但承载 background 的是子元素 `.app-main__backdrop`，`background-size` 不继承 → 该行实际不生效（网格会以默认尺寸画单条线）。**保留 brief 行字面 + 补一行** `.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }` 令网格真实平铺（注释说明原因）。
++
++## 测试证据
++
++| 步骤 | 命令 | 结果 |
++|---|---|---|
++| 红 | `npx playwright test tests/e2e/app-shell.spec.js -g "背景层"` | 1 FAIL（`.app-main__backdrop` 不存在） |
++| 绿 | `npx playwright test tests/e2e/app-shell.spec.js` | 21/21 PASS（含新「背景层」用例） |
++| 单测全量 | `npm test` | 56/56 PASS（9 文件） |
++| e2e 全量 | `npm run test:e2e` | 84/84 PASS（第二轮起；首轮 smoke 冷启动超时偶发，见下） |
++| 视觉基线重生成 | `mv 旧快照 归档；npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS（强制重生成，见下） |
++| 视觉 | `npm run test:visual` | 18/18 PASS |
++| e2e 全量（重生成后） | `npm run test:e2e` | 84/84 PASS |
++| 构建 | `npm run build` | PASS |
++
++### 背景层渲染确认（解码比对）
++
++- 同屏 with/without 差分（`.app-main` 元素截图，`data-tauri="1"` 隐背景层 vs 默认）：91700/921600 像素（9.95%）变化，max per-channel diff 25——背景层确已渲染，为**克制的软光晕**（各通道差 ≤25，远低于 Playwright 默认 0.2=51/255 阈值，故旧基线仍能通过）。
++- 快照目录 `--update-snapshots` 首次未改写任何文件（18 张均在阈值内匹配，Playwright 仅写差异超出阈值的图）→ **归档旧快照后强制重生成**，捕获含背景层的新渲染。
++- 新旧基线逐张解码差分（18/18）：全部为低通道差的颜色偏移（app-main max 4~61/通道，分区 max 2~52/通道），无结构性位移（无硬边/元素错位）。diff 分布与背景层 glow 几何吻合 → **差异确由背景层引起**，非布局破坏。
++- 说明：app-main 亮色受影响 12~26% 像素、暗色 62~69% 像素（暗色 `--accent-200/300` 为浅色档，在近黑 `--surface-solid` 上光晕更广，max 通道差 ≤52）；分区图受影响较小（内容卡遮挡大部分）。均为 brief 字面 CSS 的必然结果，观感交 B2 整体评审确认。
++
++## 遇到的问题与判断
++
++1. **smoke.spec.js 首轮冷启动超时（与本次改动无关）**：全量 e2e 首轮 smoke「app shell renders」在 5s 超时边界失败，但 error-context 页面快照已完整渲染 `.app-main`（说明元素恰在超时边界出现，Vite 冷启动延迟）。隔离复跑 1/1 PASS；第二轮、第三轮全量均 84/84 PASS。本改动不新增动态 import 链，非因果。
++2. **`--update-snapshots` 不强制改写**：视觉基线在默认阈值内匹配时 Playwright 不落盘，需先归档旧快照再重生成（否则 18 张仍是旧基线）。已按此流程完成。
++3. **暗色下背景层光晕较广（app-main 像素 diff 62~69%）**：`--accent-200/300` 为浅档，暗色 `--surface-solid` 近黑 → 光晕覆盖大半背景。max 通道差 ≤52，仍属克制观感；按 brief 字面落地，交 B2 整体评审确认暗色审美（与 B2-1 deferred I-1 同题）。
++4. **手机形态无预设选择 UI**：brief 落点决策限定「mount 时注入外观分区页」（桌面路径）；手机页面栈每次重建设置页（`renderSettingsPages`），未注入选择器——背景层（默认 gradient）在手机同样渲染，但无切换入口。brief 未要求，留待后续/最终评审定边界。
++5. **Tauri 下预设选择器仍可见**：`[data-tauri="1"]` 仅使背景层透明，未隐藏「背景装饰」小节；brief 未要求隐藏，未加（Tauri 桌面不做 e2e 验证）。
++6. **`background-size` 不继承**：见「与 brief 的一处必要偏差」，网格预设补 `.app-main__backdrop` 上的平铺尺寸。
++
++## 提交
++
++- 改动文件：`src/app/app-main.css`、`src/app/app-main.js`、`src/app/partitions.css`、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（18 张重生成）、`docs/superpowers/sdd/task-B2-2-brief.md`（纳入留痕）、`docs/superpowers/sdd/task-B2-2-report.md`、`docs/superpowers/sdd/progress-b2.md`。
++- 未纳入：`src-tauri/Cargo.toml`（工作树既有行尾噪声，非本任务改动，见 ledger base 注记）。
+diff --git a/docs/superpowers/sdd/task-B2-3-brief.md b/docs/superpowers/sdd/task-B2-3-brief.md
+new file mode 100644
+index 0000000..8dc7a6a
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-3-brief.md
+@@ -0,0 +1,99 @@
++# Task B2-3: 导航图标四项增强
++
++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2.md，唯一需求源）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行（不跑 tauri dev）；动画红线（只动 transform/opacity，模糊永不动画，时长/曲线经 CSS 变量）；配置链路（defaults→store→apply，不绕过）。
++- 零运行时依赖；组件无抽象封装；遵循现有代码风格（src/CLAUDE.md）。
++- **视觉基线会变**：导航图标变化改变 `app-main-*.png` 与 `components-partition-*.png` 渲染 → 需重生成基线；确认差异由本次改动引起后 `--update-snapshots`。
++- 每任务 TDD（先红后绿）、独立评审、修复循环（≤5 轮）；留痕入 `docs/superpowers/sdd/`。
++- **任务结束时 `npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿**。
++- docs 模式已删除（B1 完成）；浏览器 `/` 直进应用壳；`?mode=strip` 保留。
++
++## Files
++
++- Modify: `src/components/navigation-wheel/nav-wheel.css`（衬底/光晕/颜色/尺寸）
++- Modify: `src/components/navigation-wheel/nav-wheel.js`（active 项图标尺寸/粗细分级）
++- Modify: `src/components/icon/icon.js`（加 stroke-width 参数或 active 变体）
++- Modify: `src/app/app-main.css`（应用壳图标栏微调，如需）
++- Modify: `tests/unit/geometry.test.js`（如需）/ `tests/e2e/nav-wheel.spec.js` 迁移后所在 spec
++- Modify: `tests/e2e/visual-regression.spec.js`（app-main/components-partition 基线重生成）
++
++## Interfaces
++
++- Consumes: `icon(name, size)`（icon.js，现固定 stroke-width 1.8）；`.c-navwheel__item/.c-navwheel__icon/.c-navwheel__glow`（nav-wheel.css）
++- Produces: `icon(name, size, stroke?)` 第三参可选（默认 1.8 向后兼容）；`mountNavWheel` 渲染 active 项用 `icon(it.icon, 24, 2.2)`、非 active `icon(it.icon, 20)`；CSS 加 `.c-navwheel__icon-chips`（衬底）与增强 `.c-navwheel__glow`（选中光晕分层）；颜色 `--text-3`→`--text-2` 提亮 + active accent
++
++## Steps
++
++### Step 1: 写失败单测（icon 或新增 icon.test.js）
++
++```js
++import { icon } from '../../src/components/icon/icon.js';
++it('icon 支持 stroke-width 参数', () => {
++  const svg = icon('home', 20, 2.2);
++  expect(svg).toContain('stroke-width="2.2"');
++});
++it('默认 stroke-width 1.8（向后兼容）', () => {
++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npm test`
++Expected: FAIL（icon 无 stroke 参数）
++
++### Step 3: icon.js 加 stroke 参数
++
++`export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
++
++### Step 4: 写失败 e2e（应用壳导航图标分级）
++
++```js
++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
++  const activeW = await activeIcon.getAttribute('width');
++  const inW = await inactiveIcon.getAttribute('width');
++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
++});
++```
++
++### Step 5: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "图标分级"`
++Expected: FAIL（两图标等宽 22）
++
++### Step 6: nav-wheel.js 分级渲染 + 重挂载
++
++`mountNavWheel` 渲染 item 时按初始 active 决定尺寸；`select(i)` 更新后重渲染该项图标（或 CSS class 控制——若用 CSS 无法改 svg 宽高属性，需 JS 重渲染 icon HTML）。实现建议：`itemEls.forEach` 时据 `--active` 类重设 `.c-navwheel__icon` innerHTML = `icon(it.icon, isActive ? 24 : 20, isActive ? 2.2 : 1.8)`。在 `select()` 内对前后两个 item 重渲染图标。**保持 setFocal 的 transform/opacity 逻辑不受影响**（图标尺寸变化是静态重渲染，非动画）。
++
++### Step 7: nav-wheel.css 衬底/光晕/颜色
++
++```css
++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
++.c-navwheel__glow { opacity: 0; transform: scale(.8);
++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
++```
++
++衬底 = `.c-navwheel__icon` 40px 圆角底（选中/hover 显）；光晕增强 = glow scale 分层（只动 transform/opacity，红线合规）。应用壳左右窗纯图标栏（`.app-main__nav-l/.nav-r .c-navwheel__name { display: none }`）——衬底占 40px 栏宽 64px 内可容纳。
++
++### Step 8: 全量回归 + 基线重生成
++
++Run: `npm run test:e2e`（新用例绿 + 其余零冲击）+ `npm test` + `npm run build`；视觉基线重生成（app-main/components-partition 图标变化）。
++Expected: 全绿
++
++### Step 9: 提交
++
++```bash
++git add src/components/navigation-wheel/nav-wheel.css src/components/navigation-wheel/nav-wheel.js src/components/icon/icon.js src/app/app-main.css tests/unit/icon.test.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）"
++```
+diff --git a/docs/superpowers/sdd/task-B2-3-report.md b/docs/superpowers/sdd/task-B2-3-report.md
+new file mode 100644
+index 0000000..16c1702
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-3-report.md
+@@ -0,0 +1,68 @@
++# Task B2-3 报告：导航图标四项增强
++
++- 分支：`feature/b2-visual`
++- 状态：DONE（1 处必要实现偏差已披露，见「与 brief 的偏差」）
++- 提交：见文末「提交」
++
++## 实现说明
++
++### icon.js：第三参 stroke-width
++
++- `export function icon(name, size = 18, stroke = 1.8)`，svg `stroke-width="${stroke}"`。
++- 默认 1.8 向后兼容，既有 `icon(name, size)` 调用点零改动（全量回归零冲击佐证）。
++- 头注释同步补充 stroke 参数契约。
++
++### nav-wheel.js：active 项 24px/2.2 分级 + select 重渲染
++
++- 模板按初始 active（索引 0）分级：item0 `icon(it.icon, 24, 2.2)` + `--active` 类；其余 `icon(it.icon, 20)`（默认 stroke 1.8）。初始渲染即带 `--active` 类（此前无任何 active 项，直到首次 select）—— brief Step 4 e2e 在初始加载即断言 active 项 svg 宽度，必须如此；且与宿主初始逻辑态一致（应用壳 `state.moduleId='home'` = MODULES[0]）。
++- `select(i)` 内**捕获旧 active**（`const prev = active`，赋值前），class toggle 后调 `renderItemIcons(prev, i)` 对前后两项重渲染。
++- `renderItemIcons(...indexes)`：据 `--active` 类将 `.c-navwheel__icon svg` 的 `width/height/stroke-width` 置为 24/24/2.2 或 20/20/1.8。
++- **setFocal 逐字不动**：图标尺寸变化为静态重渲染（svg 属性），绝不触碰 item 上的 `style.transform/opacity`——动画红线合规。
++
++### nav-wheel.css：衬底 / 提亮 / 光晕分层（brief Step 7 字面）
++
++- `.c-navwheel__icon`：40px 圆角衬底（`width/height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1))`）+ 颜色提亮 `--text-3`→`--text-2`；`transition` 仅 color/background（paint-only 豁免）。
++- `.c-navwheel__item:hover .c-navwheel__icon`：`background: var(--surface-hover); color: var(--text-1)`（hover 显衬底）。
++- `.c-navwheel__item--active .c-navwheel__icon`：`color: var(--accent); background: var(--accent-100)`（选中显衬底）。
++- `.c-navwheel__glow`：`transform: scale(.8)` + `transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out)`；active 时 `opacity: 1; transform: scale(1)`（光晕分层，只动 transform/opacity，红线合规）。原有 `position/inset/background/pointer-events` 保留。
++- `src/app/app-main.css` 无需改动（brief 列「如需」；衬底 40px 在 64px 栏宽内可容纳，既有纯图标栏规则直接生效）。
++
++## 测试证据
++
++| 步骤 | 命令 | 结果 |
++|---|---|---|
++| 红（单测） | `npx vitest run tests/unit/icon.test.js` | 1 FAIL（`stroke-width="2.2"` 缺失）+ 1 PASS |
++| 红（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | FAIL（无 active 项，locator 超时） |
++| 绿（单测） | `npx vitest run tests/unit/icon.test.js` | 2/2 PASS |
++| 绿（e2e） | `npx playwright test tests/e2e/app-shell.spec.js:373` | 1/1 PASS |
++| 单测全量 | `npm test` | 58/58 PASS（10 文件） |
++| e2e 全量（终跑） | `npm run test:e2e` | 85/85 PASS |
++| 视觉基线重生成 | `npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots` | 18/18 PASS（app-main 6 + components-partition 6 重写；motion 6 字节不变） |
++| 视觉 | `npm run test:visual` | 18/18 PASS |
++| 构建 | `npm run build` | PASS |
++
++### 视觉基线差异解码比对（重生成前）
++
++用自写 PNG 解码脚本（Python stdlib zlib）对 expected/actual 差分，确认差异**确由图标增强引起**：
++
++- **app-main**：diff 为左侧窄竖带（列 3~7/100），自上而下贯穿 7 个导航项 —— 左窗纯图标栏 22px→20px 常规 / item0 24px active + accent 高亮 + 衬底/光晕。亮色 125~250 px（0.01%），暗色 ~3300 px（accent-100 衬底在暗色下对比更高）。
++- **components-partition**：diff 为顶部水平带 —— 组件分区「组 1 核心导航」的 NavigationWheel 8 项演示实例（item0 现为 active：24px 图标 + accent 衬底 + 光晕 + 名称 accent）。亮色 766~940 px，暗色 ~19k px（衬底/光晕暗色下高对比）。
++- **motion-partition：0 diff**（全 6 张字节不变）—— 证明无全局渲染回归。
++- 无结构性位移（无硬边/元素错位），全部为图标/衬底/光晕的局部颜色变化。
++
++## 遇到的问题与判断
++
++1. **（重要）brief 建议的 innerHTML 重渲染在 pointerup 中破坏宿主 click（必要偏差）**：brief Step 6 建议「重设 `.c-navwheel__icon` innerHTML」。初版照此实现后，全量 e2e 出现 5 个回归：mobile-nav「点击应用→目录页推入」「点击目录项→详情页」「返回回退」+ app-shell「收起通道二」「设置模式退出后右窗目录轮回归」。排查（临时 debug spec 捕获 document click）确认：**pointerup 内同步替换 innerHTML 会移除 mousedown 目标 svg → Chromium 抑制后续 click 派发**（`window.__clicks` 为空数组）。而应用壳 dock 推入 / 左窗 toggle 收起恰恰依赖 pointerup 后的 click 收尾。**修复**：`renderItemIcons` 改为**原地改 svg `width/height/stroke-width` 属性**（不替换 innerHTML）—— 分级结果与 e2e 断言（svg width 属性 24>20）完全一致，svg 保持 connected，click 正常派发。修复后 5 个回归全绿（debug spec 证实 click 事件 + stack-page 2 页均正常）。setFocal 逐字不受影响。
++2. **初始 `--active` 类**：nav-wheel 现于挂载时即对 item0 加 `--active`（此前挂载无 active 项）。此为实现 brief Step 4 e2e（初始加载断言 active 项）与 Step 6（「按初始 active 决定尺寸」）的必要行为，且与宿主初始逻辑态一致。副作用：组件分区演示实例 item0 初始即 active（components-partition 基线随之重生成，brief 预期）。
++3. **e2e 全量首轮偶发超时（非因果，既有）**：首轮全量曾出现 smoke/壳结构/data-display 等若干超时失败，均在同一运行内复跑通过；data-display「进度条达到目标值」隔离复跑 3/3 PASS、全量终跑 85/85 PASS。与 B2-2 留痕「首轮 smoke 冷启动超时偶发」同源（Vite 冷启动/全量负载下 5s 等待边界），本改动不新增动态 import 链，非因果。
++4. **视觉基线重生成流程**：`--update-snapshots` 只在差异超阈值时改写，本任务 12 张（app-main/components-partition）超出即重写，motion 6 张阈值内匹配不动。
++
++## 与 brief 的偏差
++
++- **唯一偏差**：Step 6 建议的「重设 innerHTML」改为「原地改 svg 属性」。理由见「问题 1」——innerHTML 替换在 pointerup 内会抑制 Chromium click 派发，破坏应用壳 dock 推入/左窗 toggle 等依赖 click 的宿主行为（实测 5 个 e2e 回归）。原地属性变更实现相同分级视觉与相同 e2e 断言（svg width 属性 24 vs 20），零副作用。功能规格（active 24/2.2、非 active 20/1.8、select 重渲染、setFocal 不动）逐条满足。
++- 其余（Step 1/3/4/5/7 测试代码与 CSS 片段）均按 brief 字面落地。
++
++## 提交
++
++- 改动文件：`src/components/icon/icon.js`、`src/components/navigation-wheel/nav-wheel.js`、`src/components/navigation-wheel/nav-wheel.css`、`tests/unit/icon.test.js`（新增）、`tests/e2e/app-shell.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/`（12 张重生成：app-main 6 + components-partition 6）、`docs/superpowers/sdd/task-B2-3-brief.md`（纳入留痕）、`docs/superpowers/sdd/task-B2-3-report.md`（本报告）、`docs/superpowers/sdd/progress-b2.md`（台账）。
++- 未纳入：`src-tauri/Cargo.toml`（工作树既有行尾噪声，非本任务改动，见 ledger base 注记）；`src/app/app-main.css`（brief 列「如需」，实际无需改动）。
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index 7b82e32..fbecc15 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -10,38 +10,68 @@
+   grid-template-rows: 40px 1fr;
+   width: 100vw;
+   height: 100vh;
+   overflow: hidden;
+   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
+   --dur-push: calc(var(--dur-base) * 1.2);
+   --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
+ }
+ .app-main--dual { --app-nav-r-w: 64px; }
+ 
++/* —— 浏览器装饰背景层（Task B2-2）：渐变/几何/网格三预设 ——
++   position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
++   玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
++   transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
++   预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
++   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。 */
++.app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
++  background: var(--backdrop-bg); }
++.app-main[data-backdrop="gradient"] { --backdrop-bg:
++  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
++  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
++  var(--surface-solid); }
++.app-main[data-backdrop="geo"] { --backdrop-bg:
++  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
++  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
++  var(--surface-solid); }
++.app-main[data-backdrop="grid"] { --backdrop-bg:
++  linear-gradient(var(--accent-100) 1px, transparent 1px),
++  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
++  var(--surface-solid); background-size: 40px 40px; }
++/* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
++   写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
++.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
++/* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
++.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
++
+ .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+ 
+ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
+ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border); }
+ .app-main__nav-l .c-navwheel__list { inset: 0; }
+ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
+ .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+   justify-content: center; }
+ .app-main__nav-l .c-navwheel__name { display: none; }
+ .app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
+ 
+ /* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
+    面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
+    网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
+ .app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
+   position: relative; z-index: var(--z-float);
+   display: flex; flex-direction: column;
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border);
+   transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
+   transition: transform var(--dur-push) var(--ease-spring),
+               opacity var(--dur-push) var(--ease-spring); }
+ .app-main--dual .app-main__nav-r { transform: translateX(0); opacity: 1;
+   visibility: visible; pointer-events: auto; }
+ .app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
+   color: var(--text-2); border-bottom: 1px solid var(--glass-border);
+   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+ .app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
+@@ -50,38 +80,40 @@
+ .app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+   justify-content: center; }
+ .app-main__nav-r .c-navwheel__name { display: none; }
+ .app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
+ .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
+   align-items: center; justify-content: center; gap: var(--space-2);
+   color: var(--text-3); font-size: var(--font-size-sm); }
+ 
+ /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
+ .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
+-  padding: var(--space-6); }
++  padding: var(--space-6);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */ }
+ .app-main__page { display: none; max-width: 720px; }
+ .app-main__page--active { display: block; }
+ .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
+   margin-bottom: var(--space-5); }
+ .app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
+ .app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
+ /* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
+    body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
+ .app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+ @keyframes app-main-page-in {
+   from { opacity: 0; transform: translateY(4px); }
+   to { opacity: 1; transform: translateY(0); }
+ }
+ 
+ /* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
+ .app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
+-.app-main__card { background: var(--surface-1); border: 1px solid var(--glass-border);
++.app-main__card { background: var(--glass-bg); border: 1px solid var(--glass-border);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
+ .app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+   margin-bottom: var(--space-3); }
+ .app-main__card-desc { font-size: var(--font-size-sm); color: var(--text-3); }
+ .app-main__welcome { display: flex; flex-direction: column; gap: var(--space-2); }
+ .app-main__welcome .app-main__card-title { margin-bottom: 0; }
+ .app-main__shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+   gap: var(--space-3); }
+ .app-main__shortcut { display: flex; flex-direction: column; align-items: center;
+   gap: var(--space-2); padding: var(--space-3);
+@@ -110,43 +142,54 @@
+ .app-main__settings .csettings__page { height: auto; overflow: visible; padding: 0; }
+ .app-main__settings .csettings__page--active { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+ 
+ /* —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall → 点击展开悬浮条 ——
+    body 级覆盖层（app/docs 互斥，docs 不加载本文件）。.c-strip 自身 position:fixed 定位，
+    宿主仅作容器（pointer-events:none 不拦截应用交互，strip 自身再启用）。 */
+ .app-main__float-ball { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast); }
+ .app-main__strip { position: fixed; inset: 0; pointer-events: none; }
+ .app-main__strip .c-strip { pointer-events: auto; }
+ 
++/* —— 玻璃降级（data-glass="off"，applyConfig 由 blurEnabled=false 写入）——
++   纯色不透明实背景 + 关闭 backdrop-filter。属性为静态切换（backdrop-filter 永不动画），
++   无 transition；选择器特异性高于表面默认规则，不依赖规则顺序。 */
++:root[data-glass="off"] .app-main__nav-l,
++:root[data-glass="off"] .app-main__nav-r,
++:root[data-glass="off"] .app-main__pages,
++:root[data-glass="off"] .app-main__card {
++  background: var(--surface-solid);
++  backdrop-filter: none;
++}
++
+ /* —— 手机形态（Task A6，规格：≤900px 底部横滑 + 全屏页面栈）——
+    桌面形态默认隐藏手机元素（display:none，不占网格单元）；≤900px 媒体查询切换：
+    双窗/内容区隐藏，底部 dock + 页面栈接管。dock 为 NavigationWheel horizontal
+    （.c-navwheel__list--horizontal，nav-wheel.css 提供的独立横排规则），纯 icon 横排。
+    页面栈 slide 左进 240ms（--dur-push）+ --ease-spring，只动 transform/opacity（红线）。 */
+ .app-main__stack,
+ .app-main__dock { display: none; }
+ 
+ @media (max-width: 900px) {
+   /* 单列网格：标题栏 40px + 页面栈 1fr + 底部 dock */
+   .app-main { grid-template-columns: 1fr; grid-template-rows: 40px 1fr var(--app-dock-h); }
+   .app-main__nav-l,
+   .app-main__nav-r,
+   .app-main__pages { display: none; }
+   .app-main__float-ball,
+   .app-main__strip { display: none; } /* 悬浮演示为桌面形态交互，手机隐藏避免遮挡 dock */
+ 
+   /* —— 全屏页面栈 —— */
+   .app-main__stack { display: block; grid-column: 1; grid-row: 2;
+     position: relative; min-height: 0; overflow: hidden;
+-    background: var(--surface-1); }
++    background: var(--glass-bg); }
+   .app-main__stack-page { position: absolute; inset: 0; display: flex;
+-    flex-direction: column; overflow-y: auto; background: var(--surface-1); }
++    flex-direction: column; overflow-y: auto; background: var(--glass-bg); }
+   .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
+   @keyframes app-main-stack-in {
+     from { transform: translateX(100%); opacity: 0; }
+     to { transform: translateX(0); opacity: 1; }
+   }
+   .app-main__stack-head { flex: none; display: flex; align-items: center;
+     height: 40px; padding: 0 var(--space-2); border-bottom: 1px solid var(--glass-border); }
+   .app-main__stack-back { display: grid; place-items: center; width: 40px; height: 32px;
+     color: var(--text-2); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+     transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+@@ -172,15 +215,23 @@
+     border: 1px solid var(--glass-border);
+     border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+     transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+   .app-main__settings-tab--active { color: var(--accent); border-color: var(--accent); }
+   /* csettings 页随栈滚动：桌面「壳内设置页溢出可见」规则已令各页 height:auto/overflow:visible，
+      纵向滚动由 .app-main__stack-page 的 overflow-y:auto 承担（同内容区行为） */
+ 
+   /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
+   .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
+     display: flex; align-items: center;
+-    border-top: 1px solid var(--glass-border); background: var(--surface-1); }
++    border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
+   .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
+   .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
+   .app-main__dock .c-navwheel__name { display: none; }
++
++  /* 手机形态玻璃降级（data-glass="off"）：页面栈/底部 dock 回落纯色不透明 */
++  :root[data-glass="off"] .app-main__stack,
++  :root[data-glass="off"] .app-main__stack-page,
++  :root[data-glass="off"] .app-main__dock {
++    background: var(--surface-solid);
++    backdrop-filter: none;
++  }
+ }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 6cca10c..135db57 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -84,21 +84,22 @@ const MODULES = [
+     render: placeholderPage,
+   },
+ ];
+ 
+ export function mountAppMode(root) {
+   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
+   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+   applyConfig(getConfig());
+   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
+   root.innerHTML = `
+-  <div class="app-main">
++  <div class="app-main" data-backdrop="gradient">
++    <div class="app-main__backdrop"></div>
+     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+     <main class="app-main__pages">
+       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
+@@ -119,20 +120,52 @@ export function mountAppMode(root) {
+   ctx.setAttribute('data-ctx', '');
+   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
+   const stackEl = root.querySelector('.app-main__stack');
+   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+ 
++  // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
++  // Tauri 探测：桌面端背景层透明（模糊真实壁纸）；浏览器默认可见（渐变/几何/网格三预设）。
++  // 外观分区「背景装饰」3 预设按钮，点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg
++  // 变化，不动画）。预设为会话内纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
++  if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
++  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格' };
++  (() => {
++    const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
++    if (!page) return;
++    const block = document.createElement('div');
++    block.className = 'app-main__backdrop-sel';
++    block.innerHTML = `
++      <div class="app-main__backdrop-sel-head">背景装饰</div>
++      <div class="app-main__backdrop-sel-opts" role="group" aria-label="背景装饰">
++        ${Object.keys(BD_LABELS).map((bd) => `
++          <button type="button" class="app-main__backdrop-opt${appMain.dataset.backdrop === bd ? ' app-main__backdrop-opt--active' : ''}"
++            data-bd="${bd}" aria-pressed="${appMain.dataset.backdrop === bd}">${BD_LABELS[bd]}</button>`).join('')}
++      </div>`;
++    const cust = page.querySelector('.csettings__cust');
++    page.insertBefore(block, cust);
++    block.querySelector('.app-main__backdrop-sel-opts').addEventListener('click', (e) => {
++      const btn = e.target.closest('.app-main__backdrop-opt');
++      if (!btn || btn.dataset.bd === appMain.dataset.backdrop) return;
++      appMain.dataset.backdrop = btn.dataset.bd;
++      block.querySelectorAll('.app-main__backdrop-opt').forEach((b) => {
++        const on = b.dataset.bd === appMain.dataset.backdrop;
++        b.classList.toggle('app-main__backdrop-opt--active', on);
++        b.setAttribute('aria-pressed', String(on));
++      });
++    });
++  })();
++
+   // —— 会话内纯 UI 态（不进配置存储）——
+   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
+   const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
+ 
+   // 手机形态（Task A6）：独立导航模型 —— 底部 dock（横向应用轮，点击驱动推入）+ 全屏页面栈。
+   // 栈 = 钻取路径（基底概览 → 应用目录页 → 详情页 / 设置页）；桌面/手机两套模型经媒体查询切换，
+   // 共享标题栏上下文；页面栈状态为纯 UI 态（会话内），不进配置存储。
+   const mobile = { stack: [{ type: 'overview' }], animateTop: false };
+   function isMobile() {
+     return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
+diff --git a/src/app/partitions.css b/src/app/partitions.css
+index b840c16..c2bebe7 100644
+--- a/src/app/partitions.css
++++ b/src/app/partitions.css
+@@ -15,10 +15,26 @@
+ .app-partition > .ml-lead { margin-bottom: var(--space-5); font-size: var(--font-size-sm);
+   color: var(--text-2); }
+ 
+ /* 组件分区可交互悬浮窗实例（.csg-fwin .c-fwin 默认 fixed 于视口右下）与应用壳右下
+    FloatBall 演示（Task A5，right/bottom 16px）错位：抬高到 FloatBall 之上避免遮挡。
+    仅视觉微调，不改组件默认位（docs 展示仍贴底）。 */
+ .app-partition .csg-fwin .c-fwin { right: 24px; bottom: 96px; }
+ 
+ /* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
+ .app-partition .cfloat { margin-top: var(--space-6); }
++
++/* —— 外观分区「背景装饰」预设选择（Task B2-2）——
++   3 预设按钮切换 .app-main 的 data-backdrop（渐变/几何/网格）。会话内纯 UI 态，
++   不进 store（与右窗状态同类，非配置链路）。激活态仅 paint（color/background，
++   paint-only 豁免过渡），无入场/离场动效主体。局部类 .app-main__backdrop-* 前缀。 */
++.app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 420px; }
++.app-main__backdrop-sel-head { font-size: var(--font-size-sm);
++  font-weight: var(--font-weight-medium); color: var(--text-1); margin-bottom: var(--space-2); }
++.app-main__backdrop-sel-opts { display: inline-flex; gap: 2px; padding: 3px;
++  border: 1px solid var(--glass-border); border-radius: var(--radius-full);
++  background: var(--surface-1); }
++.app-main__backdrop-opt { padding: 5px 14px; border-radius: var(--radius-full);
++  font-size: var(--font-size-xs); color: var(--text-2);
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.app-main__backdrop-opt:hover { color: var(--text-1); }
++.app-main__backdrop-opt--active { color: var(--accent); background: var(--accent-50); }
+diff --git a/src/components/icon/icon.js b/src/components/icon/icon.js
+index 27ed7f5..9e4e43a 100644
+--- a/src/components/icon/icon.js
++++ b/src/components/icon/icon.js
+@@ -1,12 +1,14 @@
+-// Lucide 风格图标集（24×24 viewBox，stroke-width 1.8，round cap/join）
+-// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）
++// Lucide 风格图标集（24×24 viewBox，stroke-width 默认 1.8，round cap/join）
++// 名称契约见计划 Task 6 Interfaces（后续任务按此引用）。
++// icon(name, size = 18, stroke = 1.8)：stroke 为第三参可选（B2-3 导航图标 active 项用 2.2 加粗分级），
++// 默认 1.8 向后兼容，既有 icon(name, size) 调用点零改动。
+ const PATHS = {
+   // Task 5 已有
+   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+   monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+   // Task 6 新增（Interfaces 契约 47 个）
+   palette: '<circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h2c2.9 0 5.3-2.4 5.3-5.3C21.3 6.3 17.2 2 12 2z"/>',
+   box: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/>',
+   sparkles: '<path d="M9.94 15.5a2 2 0 0 0-1.1 1.1l-.6 1.8a1 1 0 0 1-1.87 0l-.6-1.8a2 2 0 0 0-1.1-1.1l-1.8-.6a1 1 0 0 1 0-1.87l1.8-.6a2 2 0 0 0 1.1-1.1l.6-1.8a1 1 0 0 1 1.87 0l.6 1.8a2 2 0 0 0 1.1 1.1l1.8.6a1 1 0 0 1 0 1.87z"/><path d="M20 3.5l.75 2.25L23 6.5l-2.25.75L20 9.5l-.75-2.25L17 6.5l2.25-.75z"/>',
+   layout: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
+@@ -50,15 +52,15 @@ const PATHS = {
+   'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+   'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+   command: '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
+   'mouse-pointer': '<path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/>',
+   drag: '<circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>',
+   // Task 19 场景模板 2 新增（主窗口 8 模块导航图标）
+   list: '<path d="M3 6h.01M3 12h.01M3 18h.01"/><path d="M8 6h13M8 12h13M8 18h13"/>',
+   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+ };
+-export function icon(name, size = 18) {
++export function icon(name, size = 18, stroke = 1.8) {
+   return `<svg class="c-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+-    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
++    stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"
+     aria-hidden="true">${PATHS[name] ?? PATHS.monitor}</svg>`;
+ }
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index bd017f5..38d6e57 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -31,25 +31,31 @@
+   flex-shrink: 0;
+   display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   cursor: pointer; will-change: transform, opacity;
+   transition: color var(--dur-fast) var(--ease-out); }
+ .c-navwheel__item:hover { color: var(--text-1); }
+ .c-navwheel__item--active { color: var(--accent); }
+ 
+ .c-navwheel__glow { position: absolute; inset: 0; border-radius: inherit;
+   background: radial-gradient(120% 120% at 50% 50%, var(--accent-100) 0%, transparent 70%);
+-  opacity: 0; pointer-events: none; }
+-.c-navwheel__item--active .c-navwheel__glow { opacity: 1; }
++  opacity: 0; transform: scale(.8); pointer-events: none;
++  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
++.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
+ 
+-.c-navwheel__icon { display: grid; place-items: center; color: var(--text-3); }
+-.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); }
++/* B2-3 图标增强：40px 圆角衬底（hover/active 显）+ 提亮 --text-2 + active accent。
++   衬底/光晕过渡只走 color/background（paint-only 豁免）与 transform/opacity（红线合规）。 */
++.c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
++  width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
++.c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
++.c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
+ 
+ /* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
+ .c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
+   clip-path: inset(0 100% 0 0); opacity: 0;
+   transition: clip-path var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out); }
+ .c-navwheel__item--active .c-navwheel__name { clip-path: inset(0 0 0 0); opacity: 1; }
+ 
+ /* —— horizontal 渲染层（Task A6，闭环 A2 Minor ①）——
+    仅当 mountNavWheel 收到 direction:'horizontal' 时列表根加 .c-navwheel__list--horizontal。
+    vertical 既有规则逐字节不动（docs 84 e2e + 36 基线 + app-shell 14 零冲击）。
+diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
+index f203980..f223508 100644
+--- a/src/components/navigation-wheel/nav-wheel.js
++++ b/src/components/navigation-wheel/nav-wheel.js
+@@ -20,23 +20,23 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+         pointer: 'clientX', prev: 'ArrowLeft', next: 'ArrowRight' }
+     : { size: 'height', margin: 'marginTop', len: 'clientHeight', scroll: 'scrollTop',
+         offset: 'offsetTop', translate: 'translateY', padBefore: 'paddingTop', padAfter: 'paddingBottom',
+         pointer: 'clientY', prev: 'ArrowUp', next: 'ArrowDown' };
+ 
+   const list = root.querySelector('.c-navwheel__list') ?? root;
+   // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
+   // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
+   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
+   list.innerHTML = items.map((it, i) => `
+-    <div class="c-navwheel__item" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
++    <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+       <div class="c-navwheel__glow"></div>
+-      <span class="c-navwheel__icon">${icon(it.icon, 22)}</span>
++      <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
+       <span class="c-navwheel__name">${it.name}</span>
+     </div>`).join('');
+   // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
+   // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
+   // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
+   const holder = root.closest('.navwheel') ?? root.parentElement;
+   if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
+     holder.insertAdjacentHTML('beforeend',
+       '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
+   }
+@@ -94,23 +94,41 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+   }
+   function onScroll() {
+     cancelAnimationFrame(raf);
+     raf = requestAnimationFrame(setFocal);
+     // 滚动停止 150ms → 吸附并选中最近项（规格 §8.3：滚轮停在两项之间时不得悬置）。
+     // 拖拽中（pointerId 非空）跳过：吸附由 pointerup/惯性/pointercancel 接管，
+     // 且慢拖拽停顿 >150ms 时不会中途吸附与手指打架；pointerdown 已清掉滚轮残留定时器。
+     if (pointerId !== null) return;
+     scheduleSnap();
+   }
++  // B2-3 图标分级：active 项 24px/2.2 加粗、非 active 20px/1.8（icon(name, size, stroke) 第三参）。
++  // 分级落地为「原地改 svg 宽高/粗细属性」而非替换 .c-navwheel__icon innerHTML —— 在 pointerup
++  // 内同步替换会移除 mousedown 目标，Chromium 将抑制后续 click 派发（实测），破坏依赖 click 的
++  // 宿主行为（应用壳 dock 推入/左窗 toggle 靠 click 收尾）。尺寸变化是静态重渲染，绝不动 item
++  // 上的 style.transform/opacity —— setFocal 逐字不变（动画红线）。
++  function renderItemIcons(...indexes) {
++    indexes.forEach((idx) => {
++      if (idx < 0 || idx >= itemEls.length) return;
++      const el = itemEls[idx];
++      const isActive = el.classList.contains('c-navwheel__item--active');
++      const svg = el.querySelector('.c-navwheel__icon svg');
++      svg.setAttribute('width', isActive ? 24 : 20);
++      svg.setAttribute('height', isActive ? 24 : 20);
++      svg.setAttribute('stroke-width', isActive ? 2.2 : 1.8);
++    });
++  }
+   function select(i, animate = true) {
++    const prev = active; // 捕获旧 active，供切换后对前后两项重渲染图标分级
+     active = i;
+     itemEls.forEach((el, idx) => el.classList.toggle('c-navwheel__item--active', idx === i));
++    renderItemIcons(prev, i);
+     onChange(items[i]);
+     if (animate) animateScrollTo(scrollTopForAnchor(i, itemH, GAP, viewLen(), anchorRatio) + CONTENT_TOP);
+   }
+   function animateScrollTo(target) {
+     const start = list[AXIS.scroll], diff = target - start;
+     if (diff === 0) return; // 已在目标位，无需动画
+     const durRaw = parseFloat(getComputedStyle(root).getPropertyValue('--dur-base'));
+     // reduced-motion（--dur-base: 0ms）→ 直接跳转；|| 200 只兜底未定义，不能把 0 兜成 200ms
+     if (durRaw === 0) { list[AXIS.scroll] = target; setFocal(); return; }
+     const dur = durRaw || 200;
+diff --git a/src/config/apply.js b/src/config/apply.js
+index d5f3f88..3f987c9 100644
+--- a/src/config/apply.js
++++ b/src/config/apply.js
+@@ -50,22 +50,26 @@ function applyColorTint(cfg, root) {
+   const S = Math.min(100, Math.max(0, Math.round(bs * (saturation / 100) * 10) / 10));
+   s.setProperty('--accent', `hsl(${H} ${S}% ${l}%)`);
+   s.setProperty('--accent-hover', `hsl(${H} ${S}% ${Math.min(95, l + 6)}%)`);
+   s.setProperty('--accent-active', `hsl(${H} ${S}% ${Math.max(5, l - 6)}%)`);
+ }
+ 
+ export function applyConfig(cfg, root = document.documentElement) {
+   root.dataset.theme = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+   root.dataset.accent = cfg.accent;
+   root.dataset.motion = cfg.motion.enabled ? 'on' : 'off';
++  // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
++  // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
++  root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
+ 
+   const s = root.style;
++  s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
+   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
+   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
+   s.setProperty('--glass-highlight-opacity', String(cfg.glass.highlight));
+   s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
+   s.setProperty('--radius-scale', String(cfg.radiusScale));
+   s.setProperty('--shadow-intensity', String(cfg.shadow));
+   s.setProperty('--spring-strength', String(cfg.motion.springStrength));
+   const d = scaledDurations(cfg.motion.durationScale, cfg.motion.enabled);
+   s.setProperty('--dur-fast', `${d.fast}ms`);
+   s.setProperty('--dur-base', `${d.base}ms`);
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index 3835a33..dbc6d73 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -1,14 +1,14 @@
+ export const DEFAULTS = {
+   theme: 'system',
+   accent: 'indigo',
+-  glass: { opacity: 0.62, blur: 24, highlight: 0.5 },
++  glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
+   type: { baseSize: 14, scale: 1, weight: 400 },
+   radiusScale: 1,
+   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
+   shadow: 0.5,
+   color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
+ };
+ 
+ export const RANGES = {
+   opacity: [0.4, 0.95, 0.01],
+   blur: [8, 48, 1],
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index bb41237..8310528 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -41,21 +41,21 @@ const GROUPS = [
+     title: '色彩',
+     pre: (cfg) => accentCards(cfg) + semanticBar(),
+     sliders: [
+       { key: 'hue', label: '色相', unit: '°' },
+       { key: 'saturation', label: '饱和度', unit: '%' },
+       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+     ],
+   },
+   {
+     title: '玻璃材质',
+-    pre: () => glassPreview(),
++    pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+       { key: 'highlight', label: '高光' },
+     ],
+   },
+   {
+     title: '排版',
+     sliders: [
+       { key: 'baseSize', label: '基准字号', unit: 'px' },
+@@ -180,20 +180,32 @@ function glassPreview() {
+ function motionSwitchRow(cfg) {
+   return `
+     <div class="cust-row cust-row--switch">
+       <div class="cust-row__head">
+         <span class="cust-row__label">动效总开关</span>
+       </div>
+       <div class="cust-switch-wrap" data-motion-switch>${renderSwitch({ checked: cfg.motion.enabled, label: '动效总开关' })}</div>
+     </div>`;
+ }
+ 
++/** 玻璃材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
++ *  写 saveConfig + applyConfig，订阅同步 aria-checked；抽屉与设置外观分区共用。 */
++function glassSwitchRow(cfg) {
++  return `
++    <div class="cust-row cust-row--switch" data-glass-switch>
++      <div class="cust-row__head">
++        <span class="cust-row__label">玻璃磨砂</span>
++      </div>
++      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '玻璃磨砂' })}
++    </div>`;
++}
++
+ function panelTemplate() {
+   return `
+     <header class="cust-header">
+       <div class="cust-header__text">
+         <h3 class="cust-header__title">主题定制器</h3>
+         <p class="cust-header__sub">所有界面效果 · 即时生效</p>
+       </div>
+       <button type="button" class="cust-close" data-cust-close aria-label="关闭定制器">${icon('close', 18)}</button>
+     </header>
+     <div class="cust-body"></div>
+@@ -231,20 +243,22 @@ function syncUI(container, cfg) {
+       input.disabled = !cfg.motion.enabled;
+     }
+   });
+   container.querySelectorAll('.cust-accent-card').forEach((card) => {
+     const active = card.dataset.accent === cfg.accent;
+     card.classList.toggle('cust-accent-card--active', active);
+     card.setAttribute('aria-pressed', String(active));
+   });
+   const swWrap = container.querySelector('[data-motion-switch]');
+   if (swWrap) swWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.motion.enabled));
++  const glassWrap = container.querySelector('[data-glass-switch]');
++  if (glassWrap) glassWrap.querySelector('.c-switch').setAttribute('aria-checked', String(cfg.glass.blurEnabled));
+ }
+ 
+ function resetAll(panel) {
+   localStorage.removeItem(KEY);
+   const defaults = structuredClone(DEFAULTS);
+   notify(defaults); // 广播：main.js 重渲染展示区 / 各组容器 syncUI
+   applyConfig(defaults);
+   syncUI(panel.querySelector('.cust-body'), defaults); // 双保险（订阅回调之外立即同步）
+   toast('已恢复默认配置');
+ }
+@@ -309,20 +323,28 @@ export function renderCustomizerGroups(container) {
+   });
+ 
+   // 动效总开关
+   const swWrap = container.querySelector('[data-motion-switch]');
+   swWrap?.addEventListener('click', () => {
+     const sw = swWrap.querySelector('.c-switch');
+     const next = sw.getAttribute('aria-checked') !== 'true';
+     applyConfig(saveConfig({ motion: { enabled: next } }));
+   });
+ 
++  // 玻璃磨砂开关（B2-1）：blurEnabled → data-glass 降级
++  const glassWrap = container.querySelector('[data-glass-switch]');
++  glassWrap?.addEventListener('click', () => {
++    const sw = glassWrap.querySelector('.c-switch');
++    const next = sw.getAttribute('aria-checked') !== 'true';
++    applyConfig(saveConfig({ glass: { blurEnabled: next } }));
++  });
++
+   // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
+   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
+   const unsub = subscribe((next) => syncUI(container, next));
+   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
+   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
+   syncUI(container, cfg);
+   return unsub;
+ }
+ 
+ /**
+diff --git a/src/styles/themes.css b/src/styles/themes.css
+index 72b3f5c..1420747 100644
+--- a/src/styles/themes.css
++++ b/src/styles/themes.css
+@@ -1,32 +1,34 @@
+ /* 亮色主题 */
+ :root[data-theme="light"] {
+   --text-1: var(--neutral-900);  --text-2: var(--neutral-600);  --text-3: var(--neutral-400);
+   --surface-1: rgba(255,255,255,0.72);  --surface-2: rgba(255,255,255,0.85);
++  --surface-solid: #f8f9fb; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
+   --surface-hover: rgba(0,0,0,0.045);
+   --glass-bg-rgb: 248 249 251;  --glass-highlight-rgb: 255 255 255;
+   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));  --glass-blur: 20px;
+   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.5));
+   --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.6));  --glass-border-opacity: 0.6;
+   --glass-shadow: 0 8px 32px rgba(20,24,40,calc(0.14 * var(--shadow-intensity, 0.5))),
+                   0 2px 8px rgba(20,24,40,calc(0.08 * var(--shadow-intensity, 0.5)));
+   --shadow-sm: 0 1px 3px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5)));
+   --shadow-md: 0 4px 16px rgba(20,24,40,calc(0.12 * var(--shadow-intensity, 0.5)));
+   --shadow-lg: 0 12px 40px rgba(20,24,40,calc(0.18 * var(--shadow-intensity, 0.5)));
+   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
+   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
+ }
+ 
+ /* 暗色主题 */
+ :root[data-theme="dark"] {
+   --text-1: var(--neutral-100);  --text-2: var(--neutral-400);  --text-3: var(--neutral-600);
+   --surface-1: rgba(26,29,35,0.62);  --surface-2: rgba(32,36,44,0.78);
++  --surface-solid: #14161c; /* 玻璃关闭降级：与 --glass-bg-rgb 对应纯色，不透明 */
+   --surface-hover: rgba(255,255,255,0.06);
+   --glass-bg-rgb: 24 26 32;  --glass-highlight-rgb: 255 255 255;
+   --glass-bg: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.62));  --glass-blur: 28px;
+   --glass-highlight: rgba(var(--glass-highlight-rgb) / var(--glass-highlight-opacity, 0.08));
+   --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.08));  --glass-border-opacity: 0.08;
+   --glass-shadow: 0 8px 32px rgba(0,0,0,calc(0.5 * var(--shadow-intensity, 0.5))),
+                   0 2px 8px rgba(0,0,0,calc(0.3 * var(--shadow-intensity, 0.5)));
+   --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
+   --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
+   --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index c0fd902..e17e77c 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -312,10 +312,69 @@ test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% 
+   await page.waitForTimeout(400); // 吸附完成后测量位置
+   // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
+   const scrolled = await list.evaluate(el => el.scrollTop);
+   expect(scrolled).toBeGreaterThan(50);
+   // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
+   const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await list.boundingBox();
+   const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
+   expect(anchorDelta).toBeLessThan(4);
+ });
++
++// —— B2-1 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
++// 默认 blurEnabled=true → html data-glass="on" + 表面 backdrop-filter 生效；
++// 外观分区「玻璃磨砂」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
++// 开关写 store（saveConfig），reload 冷启动保持关闭 —— 完整配置链路（defaults→store→apply）。
++
++test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 默认磨砂：html data-glass=on + 导航栏 backdrop-filter 生效
++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
++  const blur = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(blur).toContain('blur');
++  // 设置→外观：玻璃磨砂开关初始为开
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
++  const glassSwitch = page.locator('.app-main__settings [data-glass-switch] .c-switch');
++  await expect(glassSwitch).toBeVisible();
++  await expect(glassSwitch).toHaveAttribute('aria-checked', 'true');
++  // 关闭 → data-glass 翻转为 off + backdrop-filter none（纯色不透明降级）
++  await glassSwitch.click();
++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
++  await expect(glassSwitch).toHaveAttribute('aria-checked', 'false');
++  const blurOff = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(blurOff).toBe('none');
++  // reload 持久化：开关经 saveConfig 写 store → 冷启动 data-glass=off 保持
++  await page.reload();
++  await expect(page.locator('.app-main')).toBeVisible();
++  await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
++});
++
++// —— B2-2 浏览器装饰背景层（模糊对象）——
++// 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
++// Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
++
++test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const backdrop = page.locator('.app-main__backdrop');
++  await expect(backdrop).toBeVisible();
++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
++  // 外观分区切换背景预设
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
++});
++
++// —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
++// icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
++// select 切换时对前后两 item 重渲染 .c-navwheel__icon innerHTML；svg width 属性即尺寸分级。
++
++test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
++  const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
++  const activeW = await activeIcon.getAttribute('width');
++  const inW = await inactiveIcon.getAttribute('width');
++  expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 11a5b1b..ba54f63 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index f36e7f1..0d3e4cb 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index f93ef69..ea2c191 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index 1804fad..8bff8e6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index e2e3775..ca7ee8d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index cd895dc..f528a6f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+index c3b651f..602db31 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+index 524d7d6..b1771ec 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+index c262d1f..72d356c 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+index ee030b5..6faf271 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+index 7d0c280..586e1d9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+index 045aab5..5e56a0d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+index 38d55f0..a87b244 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
+index 133464a..374533b 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
+index b717d4c..eee1bf4 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+index 7993b35..e0fa869 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
+index f257bfd..c68e80d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
+index 9c6fd2f..ebab598 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index 6bcee32..4c17ad6 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -22,20 +22,30 @@ describe('applyConfig', () => {
+   });
+   it('玻璃与动效参数写入 CSS 变量覆盖层', () => {
+     applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, highlight: 0.2 },
+       motion: { enabled: true, durationScale: 1, springStrength: 0.6 } }, root);
+     const s = root.style;
+     expect(s.getPropertyValue('--glass-bg-opacity')).toBe('0.8');
+     expect(s.getPropertyValue('--glass-blur')).toBe('30px');
+     expect(s.getPropertyValue('--dur-fast')).toBe('120ms');
+     expect(s.getPropertyValue('--ease-spring')).toBe('cubic-bezier(0.34, 1.336, 0.64, 1)');
+   });
++  it('玻璃磨砂开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
++    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, root);
++    expect(root.style.getPropertyValue('--glass-enabled')).toBe('1');
++    expect(root.dataset.glass).toBe('on');
++  });
++  it('玻璃磨砂关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
++    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
++    expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
++    expect(root.dataset.glass).toBe('off');
++  });
+   it('动效关闭时时长全部为 0', () => {
+     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
+     expect(root.style.getPropertyValue('--dur-fast')).toBe('0ms');
+   });
+   // —— 色彩微调：色相/饱和度覆盖（默认跟随主题色时不写覆盖）——
+   it('hue 跟随（-1）且饱和度 100 时不写 --accent 覆盖', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('');
+   });
+   it('自定义色相写入 --accent/--accent-hover/--accent-active 覆盖（保持基色明度）', () => {
+diff --git a/tests/unit/icon.test.js b/tests/unit/icon.test.js
+new file mode 100644
+index 0000000..624818a
+--- /dev/null
++++ b/tests/unit/icon.test.js
+@@ -0,0 +1,12 @@
++import { it, expect } from 'vitest';
++import { icon } from '../../src/components/icon/icon.js';
++
++// B2-3：icon 支持第三参 stroke-width（导航图标四项增强——active 项 2.2 加粗分级）。
++// 默认 1.8 保持既有调用点向后兼容（现有 icon(name, size) 调用零改动）。
++it('icon 支持 stroke-width 参数', () => {
++  const svg = icon('home', 20, 2.2);
++  expect(svg).toContain('stroke-width="2.2"');
++});
++it('默认 stroke-width 1.8（向后兼容）', () => {
++  expect(icon('home', 20)).toContain('stroke-width="1.8"');
++});

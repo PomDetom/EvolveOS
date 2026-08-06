@@ -55,3 +55,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
 - Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）
 - 最终整体评审 + 合并 main：待执行
+
+## 最终整体评审（2026-08-06，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-b2-final.diff（0839414..6788bf0，9 commits）
+- **裁决**：Ready to merge: Yes —— 0 Critical / 0 Important / 无必须合并前修项；评审独立复跑 npm test 58/58、npm run build、npm run test:e2e 85/85（含视觉 18）全绿
+- **两项 Important deferred（暗色观感）—— 豁免随合并**：B2-1 I-1 表面双层层叠加深 + B2-2 I-1 背景层光晕广，均为 brief 字面 CSS 必然结果；最终用户视角判断为「克制的暗色玻璃」、可接受且有逃生口（data-glass=off / B3 滑杆调色）；改它们需改规格口径，不属本分支缺陷
+- **Minors 分诊（~13 条）**：0 必须合并前修；1 条建议顺手修（B2-3 M-1 app-shell.spec.js:371 误导注释）已闭环（efb8638，scoped 复查 ADDRESSED、无新增破坏）；7 条随合并带入 B3 收尾（B2-1 M-1 标题栏/遮罩未降级、M-2 玻璃开关行结构、M-4 手机降级无 e2e；B2-2 M-1 手机无背景预设 UI、M-2 Tauri 下无意义小节；B2-3 M-2 select 互换无断言、M-3 active:hover 覆盖）；5 条豁免（B2-1 M-3 `--glass-enabled` 预留钩子、B2-2 M-3 死 CSS 溯源、M-4 文件归属、B2-3 M-4 chip 40px 字面、M-5 Interfaces 类名差异）
+- **评审建议（B3 参考）**：暗色下玻璃开/关两档视觉差异近零、三表面同色——观感杠杆在暗色 `--surface-solid`/`--glass-bg-rgb`，属规格层调整须先固口径
+
+## 执行状态
+
+- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）
+- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）
+- Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）
+- 最终整体评审 + 合并 main：✅ 最终评审 Ready to merge（0 Critical/Important，唯一建议修复已闭环）→ 待合并 main
