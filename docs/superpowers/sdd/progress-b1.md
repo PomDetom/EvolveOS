@@ -1,6 +1,6 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-08-06-app-shell-b1.md
 
-Base: 86398d0（branch feature/b1-product，自 main 检出）
+Base: 86398d0（branch feature/b1-product，自 main 检出）→ ✅ 合并 main（2ff6502，分支已删；合并后全量回归：npm test 54/54、npm run test:e2e 82/82、npm run build 通过）
 
 规格：docs/superpowers/specs/2026-08-06-app-shell-product-design.md（§2 B1 部分）
 计划书：docs/superpowers/plans/2026-08-06-app-shell-b1.md
@@ -70,6 +70,7 @@ Base: 86398d0（branch feature/b1-product，自 main 检出）
 - Task B1-3 docs e2e 迁移：✅ 完成（2026-08-06，修复闭环）
 - Task B1-4 模式简化 + docs 删除：✅ 完成（2026-08-06）
 - 最终评审：With fixes（2 Important 已闭环，Ready to merge ✅）
+- **合并 main**：✅ 完成（2026-08-06）
 
 ## 执行规则（摘要，详见计划书与 docs/CLAUDE.md）
 
