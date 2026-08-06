@@ -1,0 +1,353 @@
+# Review package: e5d2305..HEAD
+
+## Commits
+82ef80e docs: Task B1-2 执行留痕（窗口控制双通道 + 评审）
+b03117e feat: 窗口控制浏览器降级通道（按钮保留 + 桌面端提示）
+
+## Files changed
+ docs/superpowers/sdd/task-B1-2-brief.md  | 41 +++++++++++++
+ docs/superpowers/sdd/task-B1-2-report.md | 99 ++++++++++++++++++++++++++++++++
+ src/components/title-bar/title-bar.css   |  6 ++
+ src/demo/window-controls.js              | 33 ++++++++++-
+ src/docs/docs-mode.js                    | 10 ++--
+ tests/e2e/app-shell.spec.js              | 13 +++++
+ tests/e2e/title-bar.spec.js              |  5 +-
+ 7 files changed, 197 insertions(+), 10 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B1-2-brief.md b/docs/superpowers/sdd/task-B1-2-brief.md
+new file mode 100644
+index 0000000..a20f1ac
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B1-2-brief.md
+@@ -0,0 +1,41 @@
++# Task B1-2: 窗口控制双通道（浏览器降级）
++
++**Files:**
++- Modify: `src/demo/window-controls.js`（浏览器无 Tauri API 时降级绑定）
++- Modify: `src/app/app-main.js`（若需区分降级态）
++- Modify: `tests/e2e/app-shell.spec.js`（新用例）
++
++**Interfaces:**
++- Consumes: `bindWindowControls(api?)`（现有：Tauri 探测注入，浏览器返回 false 不绑定）；`toast(message, { variant, duration })`（toast.js，全局右下角提示，`.c-toast`）
++- Produces: `bindWindowControls` 浏览器分支——三按钮 click → `toast('此功能在桌面端生效')`；拖拽区浏览器给轻量视觉反馈；返回 `'browser'` 标记降级态
++
++- [ ] **Step 1: 写失败 e2e**（app-shell.spec.js，浏览器 /?mode=app）
++
++```js
++test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--close').click();
++  await expect(page.locator('.c-toast')).toContainText('桌面端');
++});
++```
++
++- [ ] **Step 2: 运行确认红**
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "浏览器模式"`
++Expected: FAIL（close 点击无 toast）
++
++- [ ] **Step 3: window-controls.js 浏览器降级**
++
++`bindWindowControls` 在 `if (!win) return false;` 后补浏览器分支：遍历 `.c-titlebar__control`，min/max/close 各绑定 click → `toast('此功能在桌面端生效', { variant: 'info' })`，返回 `'browser'`。注意 `toast` 从 `../components/toast/toast.js` import（现有依赖）。拖拽区（`.c-titlebar__drag`）浏览器内 pointer 拖动给视觉反馈（如 `:active` 类/轻微缩放，只动 transform/opacity）。
++
++- [ ] **Step 4: 运行回归**
++
++Run: `npm run test:e2e`（新用例绿 + 其余零冲击，Tauri 路径不受影响）+ `npm test` + `npm run build`
++Expected: 全绿
++
++- [ ] **Step 5: 提交**
++
++```bash
++git add src/demo/window-controls.js src/app/app-main.js tests/e2e/app-shell.spec.js
++git commit -m "feat: 窗口控制浏览器降级通道（按钮保留 + 桌面端提示）"
++```
+diff --git a/docs/superpowers/sdd/task-B1-2-report.md b/docs/superpowers/sdd/task-B1-2-report.md
+new file mode 100644
+index 0000000..5cbdb65
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B1-2-report.md
+@@ -0,0 +1,99 @@
++# Task B1-2 执行留痕：窗口控制双通道（浏览器降级）
++
++## What I implemented
++
++### 1. `src/demo/window-controls.js` — 浏览器降级分支
++
++`bindWindowControls(api)` 的 Tauri 探测/绑定逻辑**逐字节未动**（min→minimize、max→toggleMaximize+真实 isMaximized 同步图标、close→close、失败静默降级、返回 true）。仅在 `if (!win) return false;` 处改为 `if (!win) return bindBrowserFallback();`，新增浏览器 else 分支：
++
++- 遍历 `.c-titlebar__control`，仅 min/max/close 三按钮绑定 `click → toast('此功能在桌面端生效', { variant: 'info' })`；**设置按钮（--settings）不劫持**（应用壳有真实功能）。
++- 拖拽区 `.c-titlebar__drag` 全部加 `c-titlebar__drag--browser` 标记类，启用 CSS `:active` 轻量反馈。
++- 返回 `'browser'` 标记降级态。
++
++### 2. 返回值处理
++
++- 原契约返回 `true`（Tauri 已绑）/ `false`（浏览器不绑）。改后：Tauri 仍返回 `true`，浏览器返回 `'browser'`。
++- **调用方检查**：两个运行时调用点（`app-main.js:581`、`docs-mode.js:178`）均不读取返回值，无运行时依赖。唯一依赖是 `tests/e2e/title-bar.spec.js:48` 断言 `bound === false` —— 属旧契约断言，已同步更新为 `'browser'`（否则 docs e2e 全红，违反「docs 84 零冲击」硬门槛）。`src/app/app-main.js` 无需改动（返回值未被使用，降级行为自包含于 window-controls.js）。
++
++### 3. `src/components/title-bar/title-bar.css` — 拖拽区反馈
++
++```css
++.c-titlebar__drag--browser { transition: transform var(--dur-fast) var(--ease-out),
++  opacity var(--dur-fast) var(--ease-out); }
++.c-titlebar__drag--browser:active { transform: scale(0.99); opacity: 0.75; }
++```
++
++- 只动 transform/opacity（红线），时长经 CSS 变量 `--dur-fast`/`--ease-out`。
++- 标记类仅由浏览器分支 JS 添加，Tauri 环境不产生该 class → **Tauri 渲染零冲击**。
++- 不 preventDefault / 不 setPointerCapture，浏览器内不干扰选择与滚动（`.c-titlebar` 本就 `user-select: none`）。
++
++### 4. 幂等
++
++模块级 `WeakSet<HTMLElement>` 按按钮元素去重：`bindWindowControls` 被多次调用（docs/app 各自入口 + title-bar.spec 测试直调 `bindWindowControls()`）时不重复绑 toast（否则双 toast）。拖拽区标记类 `classList.add` 天然幂等。
++
++## TDD Evidence
++
++### RED
++
++```bash
++npx playwright test tests/e2e/app-shell.spec.js -g "浏览器模式"
++```
++
++```
++1 failed
++  [chromium] › tests\e2e\app-shell.spec.js:288 › 浏览器模式下窗口控制按钮点击给出桌面端提示
++Error: expect(locator).toHaveClass(expected) failed
++  Locator: locator('.app-main .c-titlebar__drag')
++  Expected pattern: /c-titlebar__drag--browser/
++  Received string:  "c-titlebar__drag"
++```
++
++预期失败：浏览器降级尚未实现 → 拖拽区无标记类、三按钮点击无 toast，断言超时。
++
++### GREEN
++
++```bash
++npx playwright test tests/e2e/app-shell.spec.js -g "浏览器模式"
++```
++
++```
++✓  1 [chromium] › tests\e2e\app-shell.spec.js:288 › 浏览器模式下窗口控制按钮点击给出桌面端提示
++1 passed (18.4s)
++```
++
++## Test results
++
++| 验证 | 结果 |
++|---|---|
++| `npm run test:e2e`（全量 Playwright，含视觉回归） | **120 passed**（含新用例 1 + 既有全部，docs 零冲击） |
++| `npm test`（Vitest 单测） | 51 passed (8 files) |
++| `npm run build`（Vite） | ✓ built in 861ms，106 modules |
++
++### 视觉回归 flake 排查（非本次引入）
++
++本次改动不改变任何静止渲染（`.c-titlebar__drag--browser` 仅 transition + `:active`，截图无按压态），且 `#scenes` 内 titlebar 实例的标记类 at-rest 无视觉效果。全量并行跑时 `scenes · dark/amber` 曾偶发失败 —— 已在**干净树（stash 后）**复跑视觉套件证实同样 flake（`dark/amber` + `dark/emerald` 失败），即 **pre-existing 并行负载渲染 flake**（项目自述「Windows 文字抗锯齿跨实例抖动」类），与本次改动无关。最终全量跑 120 全绿。
++
++## Files changed
++
++- `src/demo/window-controls.js` — 浏览器降级分支 + toast import + WeakSet 幂等 + 注释
++- `src/components/title-bar/title-bar.css` — 拖拽区 `--browser` 标记类 + `:active` 反馈
++- `src/docs/docs-mode.js` — 仅注释更新（原「浏览器不绑定」描述已过期）
++- `tests/e2e/app-shell.spec.js` — 新用例（浏览器模式窗口控制按钮 → toast + 标记类断言）
++- `tests/e2e/title-bar.spec.js` — 返回值断言 `false` → `'browser'`（旧契约随双通道变更，docs e2e 不回归）
++
++`src/app/app-main.js`：未改动（返回值未被使用，降级行为自包含，brief 中「若需区分降级态」不成立）。
++
++## Self-review findings
++
++- 规格符合：按钮保留（布局与 Tauri 一致）、点击 toast 文案/变体逐字符合、拖拽区只动 transform/opacity、时长经 CSS 变量、返回 `'browser'`。
++- Tauri 路径零冲击：分支逐字未动；`tests/e2e/title-bar.spec.js` mock 注入测试 `toBe(true)` 仍绿。
++- docs 零冲击：全量 e2e 120 绿；新增用例只测 `?mode=app`。
++- 设置按钮不被劫持（仅 min/max/close 绑定），应用壳设置 toggle 无 toast 干扰。
++- 幂等：title-bar.spec 测试在同一页面二次直调 `bindWindowControls()`（docs-mode 已绑一次）不产生双 toast。
++- 零运行时依赖：仅 import 既有 `toast` 组件。
++- 动画红线：拖拽反馈仅 transform/opacity，时长/曲线经 CSS 变量；toast 动画为既有组件行为。
++
++## Issues / concerns
++
++- `tests/e2e/title-bar.spec.js` 返回值断言更新是契约变更的必要连带（brief 明确「检查调用方是否依赖返回值」），属预期改动，非任务外蔓延。
++- 视觉回归 `scenes` 组在**全量并行**下偶发 flake（干净树同样复现，已证实 pre-existing，见上），非本次引入；若 CI 受其困扰建议单独以低并行度跑视觉套件。
+diff --git a/src/components/title-bar/title-bar.css b/src/components/title-bar/title-bar.css
+index f6a6e19..ba72912 100644
+--- a/src/components/title-bar/title-bar.css
++++ b/src/components/title-bar/title-bar.css
+@@ -5,10 +5,16 @@
+ .c-titlebar__drag { flex: 1; height: 100%; display: flex; align-items: center;
+   gap: var(--space-2); padding: 0 var(--space-4); }
+ .c-titlebar__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+   color: var(--text-2); }
+ .c-titlebar__controls { display: flex; height: 100%; }
+ .c-titlebar__control { width: 44px; height: 100%; display: grid; place-items: center;
+   color: var(--text-2); transition: background var(--dur-fast) var(--ease-out),
+     color var(--dur-fast) var(--ease-out); }
+ .c-titlebar__control:hover { background: var(--surface-hover); color: var(--text-1); }
+ .c-titlebar__control--close:hover { background: var(--danger-500); color: #fff; }
++/* 浏览器降级（Task B1-2）：拖拽区在浏览器无系统效果，按压给轻量视觉反馈 ——
++   标记类仅由 window-controls 浏览器分支添加，Tauri 环境不产生（零冲击）；
++   只动 transform/opacity（红线），时长经 CSS 变量。 */
++.c-titlebar__drag--browser { transition: transform var(--dur-fast) var(--ease-out),
++  opacity var(--dur-fast) var(--ease-out); }
++.c-titlebar__drag--browser:active { transform: scale(0.99); opacity: 0.75; }
+diff --git a/src/demo/window-controls.js b/src/demo/window-controls.js
+index 74c0cc8..3fdc3ae 100644
+--- a/src/demo/window-controls.js
++++ b/src/demo/window-controls.js
+@@ -1,23 +1,26 @@
+ import { icon } from '../components/icon/icon.js';
++import { toast } from '../components/toast/toast.js';
+ 
+-// 窗口控制桥（Task I2）：Tauri 环境把 TitleBar 三按钮接真实窗口 API，浏览器环境不绑定。
++// 窗口控制桥（Task I2 + Task B1-2 浏览器降级）：Tauri 环境把 TitleBar 三按钮接真实窗口 API，
++// 浏览器环境降级为提示通道（按钮保留、点击 toast「桌面端生效」、拖拽区轻量反馈）。
+ // - 双通道：`bindWindowControls(api)` 接受注入的 windowApi（测试可注入 mock，
+ //   Playwright 无法测真实 Tauri API，按计划书「桥接可测」设计）；
+ //   api 缺省时探测 `window.__TAURI__?.window?.getCurrentWindow()`（withGlobalTauri 全局通道）。
+ // - 绑定策略：页面上所有 `.c-titlebar` 实例（titlebar-demo / 场景模板 / 组件矩阵）
+ //   统一绑定 —— 同一 getCurrentWindow() 句柄对每个实例操作同一个主窗口，重复绑定无副作用。
+ // - 失败静默降级：各 API 调用 .catch 忽略，最大化图标按真实 isMaximized() 状态同步。
+-// - 浏览器无 API：不绑定（返回 false），mountTitleBar 的演示行为原样保持。
++// - 浏览器降级（B1-2）：无 API 时三按钮（min/max/close，不含 --settings 真实功能按钮）
++//   click → toast 提示；拖拽区加标记类启用 CSS :active 反馈；返回 'browser' 标记降级态。
+ export function bindWindowControls(api) {
+   const win = api || probeTauriWindow();
+-  if (!win) return false;
++  if (!win) return bindBrowserFallback();
+ 
+   document.querySelectorAll('.c-titlebar__control').forEach((btn) => {
+     if (btn.classList.contains('c-titlebar__control--min')) {
+       btn.addEventListener('click', () => {
+         Promise.resolve(win.minimize()).catch(() => {});
+       });
+     } else if (btn.classList.contains('c-titlebar__control--max')) {
+       btn.addEventListener('click', async () => {
+         try {
+           await win.toggleMaximize();
+@@ -33,16 +36,40 @@ export function bindWindowControls(api) {
+       });
+     } else if (btn.classList.contains('c-titlebar__control--close')) {
+       btn.addEventListener('click', () => {
+         Promise.resolve(win.close()).catch(() => {});
+       });
+     }
+   });
+   return true;
+ }
+ 
++// 浏览器降级绑定（B1-2）：三窗口控制按钮 click → 桌面端提示 toast；拖拽区加标记类
++// 启用 CSS :active 轻量反馈（transform/opacity，红线内）。只绑定 min/max/close ——
++// 设置按钮（--settings）在应用壳有真实功能，不劫持。
++// 幂等：WeakSet 按按钮元素去重 —— bindWindowControls 可能被多次调用（docs/app 各自入口 +
++// 测试注入直调），重复绑定会弹双 toast；拖拽区标记类 classList.add 天然幂等。
++const browserBoundButtons = new WeakSet();
++
++function bindBrowserFallback() {
++  document.querySelectorAll('.c-titlebar__control').forEach((btn) => {
++    const isWindowControl = btn.classList.contains('c-titlebar__control--min')
++      || btn.classList.contains('c-titlebar__control--max')
++      || btn.classList.contains('c-titlebar__control--close');
++    if (!isWindowControl || browserBoundButtons.has(btn)) return;
++    browserBoundButtons.add(btn);
++    btn.addEventListener('click', () => {
++      toast('此功能在桌面端生效', { variant: 'info' });
++    });
++  });
++  document.querySelectorAll('.c-titlebar__drag').forEach((drag) => {
++    drag.classList.add('c-titlebar__drag--browser');
++  });
++  return 'browser';
++}
++
+ function probeTauriWindow() {
+   if (typeof window !== 'undefined' && window.__TAURI__?.window?.getCurrentWindow) {
+     return window.__TAURI__.window.getCurrentWindow();
+   }
+   return null;
+ }
+diff --git a/src/docs/docs-mode.js b/src/docs/docs-mode.js
+index dbe228f..88604d1 100644
+--- a/src/docs/docs-mode.js
++++ b/src/docs/docs-mode.js
+@@ -162,18 +162,18 @@ export function mountDocsMode() {
+   const scenesSection = document.querySelector('#scenes');
+   scenesSection.innerHTML = '<h2>场景模板</h2>';
+   mountClipboardFloat(scenesSection);
+   mountMainWindow(scenesSection);
+   mountSettingsWindow(scenesSection);
+ 
+   // 测试桥：overlays.spec.js 依赖（__renderIcon 已随 Task 15 真实展示区移除）
+   window.__toast = toast;
+   window.__openDialog = openDialog;
+ 
+-  // 窗口控制桥（Task I2）：放在全部挂载之后 —— 场景模板/组件矩阵的 .c-titlebar 实例
+-  // 此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，无副作用）。
+-  // Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
+-  // 图标按真实状态同步、close → close，失败静默降级）；浏览器环境探测不到 API 不绑定，
+-  // 保留 mountTitleBar 演示行为（含 max 图标切换）。
++  // 窗口控制桥（Task I2 + Task B1-2 浏览器降级）：放在全部挂载之后 —— 场景模板/组件矩阵
++  // 的 .c-titlebar 实例此时已渲染，统一绑定（同一 getCurrentWindow() 对每个实例操作同一主窗口，
++  // 无副作用）。Tauri 环境探测 window.__TAURI__ 自动生效（min → minimize、max → toggleMaximize +
++  // 图标按真实状态同步、close → close，失败静默降级）；浏览器环境降级为提示通道（三按钮
++  // click → toast「桌面端生效」+ 拖拽区轻量反馈，返回 'browser'），mountTitleBar 演示行为保持。
+   // 测试经 /src/demo/window-controls.js 动态 import 注入 mock windowApi 验证绑定逻辑。
+   bindWindowControls();
+ }
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 00a1101..3d50bd4 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -275,10 +275,23 @@ test('设置分区包含组件/动效且挂载展示内容', async ({ page }) =>
+   // （[...SECTIONS, components, motion] 追加到尾部 —— 索引以实现核对为准）
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click();
+   // 7 个 .csg：6 组矩阵（核心导航/表单/数据/浮层/辅助/悬浮窗专属）+ 1 个交互悬浮窗实例块（csg csg-fwin）
+   await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
+   await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
+   // 动效分区
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
+   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
+   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
+ });
++
++// —— 窗口控制双通道（Task B1-2：浏览器降级）——
++
++test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 拖拽区浏览器降级标记类已挂（CSS :active 轻量反馈通道开启）
++  await expect(page.locator('.app-main .c-titlebar__drag')).toHaveClass(/c-titlebar__drag--browser/);
++  // 三窗口控制按钮（min/max/close）均降级为 toast 提示；设置按钮（--settings）有真实功能不劫持
++  for (const modifier of ['min', 'max', 'close']) {
++    await page.locator(`.app-main .c-titlebar__control--${modifier}`).click();
++    await expect(page.locator('.c-toast').last()).toContainText('桌面端');
++  }
++});
+diff --git a/tests/e2e/title-bar.spec.js b/tests/e2e/title-bar.spec.js
+index afbfa08..dd13b3d 100644
+--- a/tests/e2e/title-bar.spec.js
++++ b/tests/e2e/title-bar.spec.js
+@@ -32,24 +32,25 @@ test('窗口控制桥：注入 mock windowApi 时三按钮调用对应窗口方
+   });
+   await expect.poll(() => page.evaluate(() => window.__mockBound)).toBe(true);
+   const bar = page.locator('#titlebar-demo');
+   await bar.locator('.c-titlebar__control--min').click();
+   await bar.locator('.c-titlebar__control--max').click();
+   await bar.locator('.c-titlebar__control--close').click();
+   await expect.poll(() => page.evaluate(() => window.__mockCalls))
+     .toEqual(['minimize', 'toggleMaximize', 'close']);
+ });
+ 
+-test('窗口控制桥：无 windowApi（浏览器）不绑定、演示行为保持', async ({ page }) => {
++test('窗口控制桥：无 windowApi（浏览器）返回降级态、演示行为保持', async ({ page }) => {
+   await page.goto('/');
+   const bound = await page.evaluate(async () => {
+     const { bindWindowControls } = await import('/src/demo/window-controls.js');
+     return bindWindowControls();
+   });
+-  expect(bound).toBe(false);
++  // 浏览器降级（Task B1-2）：返回 'browser' 标记降级态（原 false 契约随双通道变更）
++  expect(bound).toBe('browser');
+   // 演示行为保持：max 图标切换仍在、不抛错
+   const btn = page.locator('#titlebar-demo .c-titlebar__control--max');
+   await btn.click();
+   await expect(btn).toHaveAttribute('data-maxed', '1');
+   await btn.click();
+   await expect(btn).not.toHaveAttribute('data-maxed', '1');
+ });
