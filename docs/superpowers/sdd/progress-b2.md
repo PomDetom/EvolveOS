@@ -91,6 +91,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **必要偏差（已披露，评审独立验证必要且原子完整）**：RANGES 删 `highlight` 令定制器 `renderSlider`（解构 `RANGES[spec.key]`）抛 TypeError，故 CFG_PATH 与 GROUPS 第三滑杆键/标签同步换 `noise`（「噪点强度」）——本属 R5 的该项提前完成；R5 仍需组名「表面质感」/开关「亚克力材质」/预览去高光/措辞
 - **Minor 留收尾**：① M1 customizer-panel.js:166/174 注释「高光」过时（预览重做属 R5，一并更新）；② M2 存量 localStorage 死键 `glass.highlight`（deepMerge 拷贝残留，apply 不读，无功能影响）；③ M3 apply.js 无条件写 `--noise-opacity`（R2 噪点层落地时决策 data-glass=off 是否抑制噪点）；④ M4 border 0.45 视觉基线未漂移（R2 重生成 18 张时复核）
 
+## Task B2-R2: 表面应用亚克力 + 去高光 + 噪点层 + 闭环 M-1
+
+- **状态**：完成（2026-08-06，评审通过；1 Important 修复闭环）
+- **提交**：`1d45bd4` `feat: 表面应用亚克力材质（去高光反光 + 噪点层 + 标题栏/遮罩降级闭环）` + `bbfbe62` `fix: 亚克力材质一致化其余 --glass-* 消费者 + 视觉基线重生成（评审 R1/5）`
+- **验证**：npm test 60/60；npm run test:e2e 86/86（含「亚克力材质」+「玻璃两档」回归；首轮 smoke 冷启动超时偶发，隔离复跑绿，非因果）；npm run test:visual 18/18（**删除陈旧基线强制重生成后的 fresh 基线**，逐像素全绿）；npm run build 通过
+- **实现**：app-main.css 全部表面 backdrop-filter 消费亚克力配方（nav-l/nav-r/pages/card + 手机 stack/stack-page/dock，card 与手机表面由 B2-1 的「仅着色」补为完整亚克力模糊）+ `.app-main::after` 噪点覆盖层（`--acrylic-noise` 120px 平铺，`z-index: var(--z-float)`，pointer-events:none，`data-glass=off` 时 opacity 0）；base.css `.glass` 去 inset-highlight 用亚克力配方；card/dialog/floating-window 去 `--shadow-inset-highlight` 反光用亚克力配方；titlebar 亚克力 + `data-glass=off` 纯色降级；nav-wheel 遮罩 `data-glass=off` 渐变底色换 `--surface-solid`（闭环 B2-1 M-1）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R2-brief.md / task-B2-R2-report.md
+- **评审**：规格 ✅ / Needs changes → 修复轮 R1/5 闭环 → 最终 Approved（1 Important：视觉基线陈旧 → 删除强制重生成 18 张新字节 + 解码比对确认材质差异/无布局位移；Minor：其余 `--glass-*` 消费者一致化 toast/float-strip/settings-window(.csettings)/motion-lab(.ml-pop) 换亚克力配方，layout.css `.topbar` docs 死规则未碰）
+- **一处字面差异（已披露）**：brief Step 3 谓 card/手机表面已有 backdrop-filter——实测仅着色无模糊（git show 55d0bcc 复核），按 brief「全部表面用亚克力配方」意图补全新增
+- **视觉基线更正**：初版「重生成=no-op」结论错误——Playwright `--update-snapshots` 只为失败用例重写，亚克力 vs 玻璃像素差（mean≈2-4/通道）低于 toHaveScreenshot 默认容差 → 陈旧基线容差内通过、快照未被重写。评审独立验证 + 实施者复核一致：SwiftShader 会合成 backdrop-filter/噪点层；删除陈旧基线强制重生成 → 18 张全新字节（解码比对 meanΔ 0.16-4.01/通道、>30 级差异 0%、无布局位移）
+- **性能注记（不改动）**：手机 stack/stack-page 嵌套双全屏 blur——spec §3.3 两者均在清单内、合规，冗余留待后续优化
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
@@ -98,7 +110,7 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ **返工 R4 去光晕**
 - 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
 - Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
-- Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：待执行
+- Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
 - Task R3 背景层预设柔和补色：待执行
 - Task R4 图标选中态去光晕：待执行
 - Task R5 自定义器调整 + 措辞同步：待执行

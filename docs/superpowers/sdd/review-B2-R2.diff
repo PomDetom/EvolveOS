@@ -1,0 +1,361 @@
+# Review package: 382f5be..HEAD
+
+## Commits
+1d45bd4 feat: 表面应用亚克力材质（去高光反光 + 噪点层 + 标题栏/遮罩降级闭环）
+
+## Files changed
+ src/app/app-main.css                               | 31 +++++++++++++++++-----
+ src/components/card/card.css                       |  5 ++--
+ src/components/dialog/dialog.css                   |  5 ++--
+ src/components/floating-window/floating-window.css |  7 +++--
+ src/components/navigation-wheel/nav-wheel.css      |  4 +++
+ src/components/title-bar/title-bar.css             |  5 +++-
+ src/styles/base.css                                |  7 ++---
+ tests/e2e/app-shell.spec.js                        | 13 +++++++++
+ 8 files changed, 58 insertions(+), 19 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index fbecc15..a8bbfe7 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -36,42 +36,54 @@
+ .app-main[data-backdrop="grid"] { --backdrop-bg:
+   linear-gradient(var(--accent-100) 1px, transparent 1px),
+   linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
+   var(--surface-solid); background-size: 40px 40px; }
+ /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
+    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
+ .app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+ /* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
+ .app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+ 
++/* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
++   .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳
++   （含右窗轮 —— 同为 --z-float、DOM 序靠后故在上）；pointer-events:none 不挡交互；
++   静态层（不参与动画，红线）；data-glass="off" 纯色降级时隐去噪点。 */
++.app-main::after {
++  content: ''; position: absolute; inset: 0; pointer-events: none;
++  background-image: var(--acrylic-noise); background-size: 120px 120px;
++  opacity: var(--noise-opacity, 0.04);
++  z-index: var(--z-float); /* 覆盖右窗轮（同为 --z-float，DOM 序靠后故在上）；pointer-events:none 不挡交互 */
++}
++:root[data-glass="off"] .app-main::after { opacity: 0; }
++
+ .app-main .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+ 
+ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
+ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+   background: var(--glass-bg);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border); }
+ .app-main__nav-l .c-navwheel__list { inset: 0; }
+ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
+ .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+   justify-content: center; }
+ .app-main__nav-l .c-navwheel__name { display: none; }
+ .app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
+ 
+ /* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
+    面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
+    网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
+ .app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
+   position: relative; z-index: var(--z-float);
+   display: flex; flex-direction: column;
+   background: var(--glass-bg);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border);
+   transform: translateX(-100%); opacity: 0; visibility: hidden; pointer-events: none;
+   transition: transform var(--dur-push) var(--ease-spring),
+               opacity var(--dur-push) var(--ease-spring); }
+ .app-main--dual .app-main__nav-r { transform: translateX(0); opacity: 1;
+   visibility: visible; pointer-events: auto; }
+ .app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
+   color: var(--text-2); border-bottom: 1px solid var(--glass-border);
+   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+ .app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
+@@ -82,38 +94,40 @@
+ .app-main__nav-r .c-navwheel__name { display: none; }
+ .app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
+ .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
+   align-items: center; justify-content: center; gap: var(--space-2);
+   color: var(--text-3); font-size: var(--font-size-sm); }
+ 
+ /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
+ .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
+   padding: var(--space-6);
+   background: var(--glass-bg);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); /* 玻璃材质（静态属性，不动画） */ }
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+ .app-main__page { display: none; max-width: 720px; }
+ .app-main__page--active { display: block; }
+ .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
+   margin-bottom: var(--space-5); }
+ .app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
+ .app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
+ /* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
+    body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
+ .app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+ @keyframes app-main-page-in {
+   from { opacity: 0; transform: translateY(4px); }
+   to { opacity: 1; transform: translateY(0); }
+ }
+ 
+ /* —— 概览页（欢迎卡 + 7 快捷入口卡 + 主题状态卡）—— */
+ .app-main__overview { display: flex; flex-direction: column; gap: var(--space-5); }
+-.app-main__card { background: var(--glass-bg); border: 1px solid var(--glass-border);
++.app-main__card { background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
++  border: 1px solid var(--glass-border);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); padding: var(--space-5); }
+ .app-main__card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold);
+   margin-bottom: var(--space-3); }
+ .app-main__card-desc { font-size: var(--font-size-sm); color: var(--text-3); }
+ .app-main__welcome { display: flex; flex-direction: column; gap: var(--space-2); }
+ .app-main__welcome .app-main__card-title { margin-bottom: 0; }
+ .app-main__shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+   gap: var(--space-3); }
+ .app-main__shortcut { display: flex; flex-direction: column; align-items: center;
+   gap: var(--space-2); padding: var(--space-3);
+@@ -173,23 +187,25 @@
+   .app-main { grid-template-columns: 1fr; grid-template-rows: 40px 1fr var(--app-dock-h); }
+   .app-main__nav-l,
+   .app-main__nav-r,
+   .app-main__pages { display: none; }
+   .app-main__float-ball,
+   .app-main__strip { display: none; } /* 悬浮演示为桌面形态交互，手机隐藏避免遮挡 dock */
+ 
+   /* —— 全屏页面栈 —— */
+   .app-main__stack { display: block; grid-column: 1; grid-row: 2;
+     position: relative; min-height: 0; overflow: hidden;
+-    background: var(--glass-bg); }
++    background: var(--glass-bg);
++    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+   .app-main__stack-page { position: absolute; inset: 0; display: flex;
+-    flex-direction: column; overflow-y: auto; background: var(--glass-bg); }
++    flex-direction: column; overflow-y: auto; background: var(--glass-bg);
++    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+   .app-main__stack-page--push { animation: app-main-stack-in var(--dur-push) var(--ease-spring); }
+   @keyframes app-main-stack-in {
+     from { transform: translateX(100%); opacity: 0; }
+     to { transform: translateX(0); opacity: 1; }
+   }
+   .app-main__stack-head { flex: none; display: flex; align-items: center;
+     height: 40px; padding: 0 var(--space-2); border-bottom: 1px solid var(--glass-border); }
+   .app-main__stack-back { display: grid; place-items: center; width: 40px; height: 32px;
+     color: var(--text-2); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+     transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+@@ -215,21 +231,22 @@
+     border: 1px solid var(--glass-border);
+     border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+     transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+   .app-main__settings-tab--active { color: var(--accent); border-color: var(--accent); }
+   /* csettings 页随栈滚动：桌面「壳内设置页溢出可见」规则已令各页 height:auto/overflow:visible，
+      纵向滚动由 .app-main__stack-page 的 overflow-y:auto 承担（同内容区行为） */
+ 
+   /* —— 底部 dock：NavigationWheel horizontal 纯 icon（名称由标题栏上下文承担）—— */
+   .app-main__dock { grid-column: 1; grid-row: 3; position: relative; overflow: hidden;
+     display: flex; align-items: center;
+-    border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
++    border-top: 1px solid var(--glass-border); background: var(--glass-bg);
++    backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+   .app-main__dock .c-navwheel__list { position: absolute; inset: 0; }
+   .app-main__dock .c-navwheel__item { padding: 0; justify-content: center; }
+   .app-main__dock .c-navwheel__name { display: none; }
+ 
+   /* 手机形态玻璃降级（data-glass="off"）：页面栈/底部 dock 回落纯色不透明 */
+   :root[data-glass="off"] .app-main__stack,
+   :root[data-glass="off"] .app-main__stack-page,
+   :root[data-glass="off"] .app-main__dock {
+     background: var(--surface-solid);
+     backdrop-filter: none;
+diff --git a/src/components/card/card.css b/src/components/card/card.css
+index b408f76..cbf28a5 100644
+--- a/src/components/card/card.css
++++ b/src/components/card/card.css
+@@ -1,8 +1,9 @@
+ .c-card { padding: var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   background: var(--surface-1); border: 1px solid var(--glass-border); }
+-.c-card--glass { background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur));
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight); }
++.c-card--glass { background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
++  box-shadow: var(--glass-shadow); }
+ .c-card__title { font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);
+   margin-bottom: var(--space-2); }
+ .c-card__body { color: var(--text-2); font-size: var(--font-size-sm); }
+ .c-card__footer { margin-top: var(--space-3); }
+diff --git a/src/components/dialog/dialog.css b/src/components/dialog/dialog.css
+index f4c78ba..82bcd15 100644
+--- a/src/components/dialog/dialog.css
++++ b/src/components/dialog/dialog.css
+@@ -1,20 +1,21 @@
+ /* Dialog 对话框：全屏遮罩 + 居中玻璃面板，scale+fade 进入，--z-modal 层级 */
+ .c-dialog__mask { position: fixed; inset: 0; z-index: var(--z-modal);
+   background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(4px);
+   display: grid; place-items: center;
+   animation: mask-in var(--dur-base) var(--ease-out); }
+ .c-dialog { width: 360px; max-width: 90vw; padding: var(--space-5);
+   border-radius: calc(var(--radius-lg) * var(--radius-scale, 1));
+-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   border: 1px solid var(--glass-border);
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
++  box-shadow: var(--glass-shadow);
+   animation: dialog-in var(--dur-base) var(--ease-spring); }
+ @keyframes mask-in { from { opacity: 0; } }
+ @keyframes dialog-in { from { transform: scale(0.96) translateY(8px); opacity: 0; } }
+ .c-dialog__header { display: flex; justify-content: space-between; align-items: center;
+   margin-bottom: var(--space-3); }
+ .c-dialog__header h3 { font-size: var(--font-size-base);
+   font-weight: var(--font-weight-semibold); }
+ .c-dialog__body { font-size: var(--font-size-sm); color: var(--text-2);
+   margin-bottom: var(--space-5); }
+ .c-dialog__footer { display: flex; justify-content: flex-end; gap: var(--space-2); }
+diff --git a/src/components/floating-window/floating-window.css b/src/components/floating-window/floating-window.css
+index 64407e6..51060e1 100644
+--- a/src/components/floating-window/floating-window.css
++++ b/src/components/floating-window/floating-window.css
+@@ -1,21 +1,20 @@
+ .c-fwin { position: fixed; z-index: var(--z-float); width: 360px;
+   border-radius: calc(var(--radius-xl) * var(--radius-scale, 1));
+   overflow: hidden; border: 1px solid var(--glass-border);
+   background: var(--glass-bg);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
++  box-shadow: var(--glass-shadow);
+   transition: box-shadow var(--dur-base) var(--ease-out);
+   will-change: transform; }
+ /* 置顶：accent 高亮边框（0 0 0 1px 描边，不改布局） */
+-.c-fwin--pinned { box-shadow: 0 0 0 1px var(--accent-300), var(--glass-shadow),
+-  var(--shadow-inset-highlight); }
++.c-fwin--pinned { box-shadow: 0 0 0 1px var(--accent-300), var(--glass-shadow); }
+ 
+ .c-fwin__titlebar { display: flex; align-items: center; gap: var(--space-2);
+   padding: var(--space-2) var(--space-3); cursor: grab; user-select: none;
+   border-bottom: 1px solid var(--glass-border); }
+ .c-fwin__titlebar:active { cursor: grabbing; }
+ .c-fwin__title { flex: 1; font-size: var(--font-size-sm);
+   font-weight: var(--font-weight-medium); color: var(--text-2);
+   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+ .c-fwin__btn { width: 24px; height: 24px; flex: none; display: grid;
+   place-items: center; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index 38d6e57..122d04a 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -77,17 +77,21 @@
+   width: var(--navwheel-item-w);
+   flex: none;
+ }
+ 
+ /* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
+ .c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;
+   pointer-events: none;
+   background: linear-gradient(var(--glass-bg), transparent); }
+ .c-navwheel__mask--bottom { top: auto; bottom: 56px;
+   background: linear-gradient(transparent, var(--glass-bg)); }
++/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：遮罩渐变底色换纯色实底，
++   避免半透明 --glass-bg 叠在纯色降级表面上的透叠发暗 */
++:root[data-glass="off"] .c-navwheel__mask { background: linear-gradient(var(--surface-solid), transparent); }
++:root[data-glass="off"] .c-navwheel__mask--bottom { background: linear-gradient(transparent, var(--surface-solid)); }
+ 
+ /* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
+    此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */
+ .c-navwheel__settings { display: flex; align-items: center; gap: var(--space-2);
+   padding: 0 var(--space-4); height: 56px; width: 100%; color: var(--text-2);
+   font-size: var(--font-size-sm); }
+ .c-navwheel__settings:hover { color: var(--text-1); background: var(--surface-hover); }
+diff --git a/src/components/title-bar/title-bar.css b/src/components/title-bar/title-bar.css
+index ba72912..10b8d9d 100644
+--- a/src/components/title-bar/title-bar.css
++++ b/src/components/title-bar/title-bar.css
+@@ -1,13 +1,16 @@
+ .c-titlebar { height: 40px; display: flex; align-items: center;
+-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+   user-select: none; }
++/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：标题栏回落纯色不透明，关闭磨砂 */
++:root[data-glass="off"] .c-titlebar { background: var(--surface-solid); backdrop-filter: none; }
+ /* 无底部边框：与内容共享玻璃背景，上下无割裂 */
+ .c-titlebar__drag { flex: 1; height: 100%; display: flex; align-items: center;
+   gap: var(--space-2); padding: 0 var(--space-4); }
+ .c-titlebar__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+   color: var(--text-2); }
+ .c-titlebar__controls { display: flex; height: 100%; }
+ .c-titlebar__control { width: 44px; height: 100%; display: grid; place-items: center;
+   color: var(--text-2); transition: background var(--dur-fast) var(--ease-out),
+     color var(--dur-fast) var(--ease-out); }
+ .c-titlebar__control:hover { background: var(--surface-hover); color: var(--text-1); }
+diff --git a/src/styles/base.css b/src/styles/base.css
+index 85c65fb..12b25e3 100644
+--- a/src/styles/base.css
++++ b/src/styles/base.css
+@@ -6,20 +6,21 @@ body {
+   background: var(--glass-bg);  -webkit-font-smoothing: antialiased;
+   overflow: hidden; /* 展示页为应用式布局，滚动在内容容器内 */
+ }
+ button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+ input, textarea, select { font: inherit; color: inherit; }
+ ::selection { background: var(--accent-200); }
+ ::-webkit-scrollbar { width: 8px; height: 8px; }
+ ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+ ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+ 
+-/* 玻璃面板工具类：外壳级材质（rgba 由主题 RGB 基准色 + 可配置透明度合成） */
++/* 玻璃面板工具类：外壳级材质（rgba 由主题 RGB 基准色 + 可配置透明度合成；
++   B2-R2 亚克力：表面 backdrop-filter 增饱和 + 提亮，去除 inset 反光边缘） */
+ .glass {
+   background: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity, 0.72));
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   border: 1px solid rgba(255 255 255 / var(--glass-border-opacity, 0.08));
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
++  box-shadow: var(--glass-shadow);
+ }
+ 
+ /* 焦点环（所有可聚焦元素）—— 用 --accent 而非固定档，切换 6 套主题色后焦点环跟随 */
+ :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index a8c69f9..634a005 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -343,20 +343,33 @@ test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 
+   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
+   await expect(glassSwitch).toHaveAttribute('aria-checked', 'false');
+   const blurOff = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+   expect(blurOff).toBe('none');
+   // reload 持久化：开关经 saveConfig 写 store → 冷启动 data-glass=off 保持
+   await page.reload();
+   await expect(page.locator('.app-main')).toBeVisible();
+   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
+ });
+ 
++// —— B2-R2 亚克力材质（表面增饱和模糊 + 噪点层）——
++// 表面 backdrop-filter 消费亚克力配方：blur + saturate(--acrylic-saturate=1.8) + brightness；
++// .app-main::after 噪点覆盖层（SVG data-URI 平铺）——pointer-events:none 不挡交互。
++
++test('亚克力材质：表面增饱和模糊 + 噪点层存在', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const filter = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(filter).toContain('saturate(1.8)');
++  expect(filter).toContain('brightness(');
++  const noise = await page.locator('.app-main').evaluate((el) => getComputedStyle(el, '::after').backgroundImage);
++  expect(noise).toContain('data:image/svg+xml');
++});
++
+ // —— B2-2 浏览器装饰背景层（模糊对象）——
+ // 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
+ // Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
+ 
+ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+   await page.goto('/?mode=app');
+   const backdrop = page.locator('.app-main__backdrop');
+   await expect(backdrop).toBeVisible();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+   // 外观分区切换背景预设

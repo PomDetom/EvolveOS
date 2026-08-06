@@ -1,0 +1,194 @@
+# Review package: 1d45bd4..HEAD
+
+## Commits
+bbfbe62 fix: 亚克力材质一致化其余 --glass-* 消费者 + 视觉基线重生成（评审 R1/5）
+
+## Files changed
+ src/components/float-strip/float-strip.css         |   2 +-
+ src/components/toast/toast.css                     |   2 +-
+ src/scenes/settings-window/settings-window.css     |   3 ++-
+ src/styles/motion-lab.css                          |   3 ++-
+ .../app-main-dark-amber-chromium-win32.png         | Bin 129917 -> 611489 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 127755 -> 595604 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 134377 -> 630104 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 71011 -> 314127 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 72731 -> 312406 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 60081 -> 244862 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 157871 -> 618714 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 156098 -> 619605 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 160017 -> 667359 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 104920 -> 368031 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 106592 -> 376971 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 97479 -> 301130 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 86718 -> 390270 bytes
+ ...otion-partition-dark-emerald-chromium-win32.png | Bin 84736 -> 379299 bytes
+ ...motion-partition-dark-indigo-chromium-win32.png | Bin 87606 -> 390183 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 55789 -> 226257 bytes
+ ...tion-partition-light-emerald-chromium-win32.png | Bin 56114 -> 227600 bytes
+ ...otion-partition-light-indigo-chromium-win32.png | Bin 51883 -> 193385 bytes
+ 22 files changed, 6 insertions(+), 4 deletions(-)
+
+## Diff
+diff --git a/src/components/float-strip/float-strip.css b/src/components/float-strip/float-strip.css
+index 25f60e4..47deff9 100644
+--- a/src/components/float-strip/float-strip.css
++++ b/src/components/float-strip/float-strip.css
+@@ -15,21 +15,21 @@
+   --strip-thick: 48px;
+   --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
+   display: flex;
+   box-sizing: border-box;
+   max-width: calc(100vw - var(--strip-gap) * 2);
+   max-height: calc(100vh - var(--strip-gap) * 2);
+   overflow: hidden;
+   border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   background: var(--glass-bg);
+-  backdrop-filter: blur(var(--glass-blur)); /* 静态材质，永不动画 */
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 静态材质，永不动画 */
+   color: var(--text-1);
+   cursor: grab;
+   user-select: none;
+   -webkit-user-select: none;
+   box-shadow: none;
+   /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
+   transition: transform var(--dur-slow) var(--ease-spring),
+     border-color var(--dur-base) var(--ease-out),
+     box-shadow var(--dur-base) var(--ease-out);
+ }
+diff --git a/src/components/toast/toast.css b/src/components/toast/toast.css
+index 8be6aec..00372d2 100644
+--- a/src/components/toast/toast.css
++++ b/src/components/toast/toast.css
+@@ -5,20 +5,20 @@
+ .c-toast { display: flex; align-items: center; gap: var(--space-2);
+   padding: var(--space-3) var(--space-4); font-size: var(--font-size-sm);
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   border: 1px solid var(--glass-border);
+   box-shadow: var(--shadow-md);
+   animation: toast-in var(--dur-base) var(--ease-spring);
+   pointer-events: auto;
+   transition: opacity var(--dur-base) var(--ease-out); }
+ @keyframes toast-in { from { transform: translateY(12px); opacity: 0; } }
+ .c-toast--default { background: var(--glass-bg); color: var(--text-1);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); }
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); }
+ .c-toast--success { background: var(--success-50); color: var(--success-600); }
+ .c-toast--warning { background: var(--warning-50); color: var(--warning-600); }
+ .c-toast--danger { background: var(--danger-50); color: var(--danger-600); }
+ .c-toast--info { background: var(--info-50); color: var(--info-600); }
+ /* 深色主题：语义色 50 档过亮，改用同色相低透明度玻璃底 */
+ :root[data-theme="dark"] .c-toast--success { background: rgba(16, 185, 129, 0.16); }
+ :root[data-theme="dark"] .c-toast--warning { background: rgba(245, 158, 11, 0.16); }
+ :root[data-theme="dark"] .c-toast--danger { background: rgba(239, 68, 68, 0.16); }
+ :root[data-theme="dark"] .c-toast--info { background: rgba(59, 130, 246, 0.16); }
+diff --git a/src/scenes/settings-window/settings-window.css b/src/scenes/settings-window/settings-window.css
+index d1bd2cb..ecf9005 100644
+--- a/src/scenes/settings-window/settings-window.css
++++ b/src/scenes/settings-window/settings-window.css
+@@ -12,21 +12,22 @@
+ .csettings-scene__head h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+   color: var(--text-1); }
+ .csettings-scene__head p { font-size: var(--font-size-sm); color: var(--text-2); }
+ .csettings-scene__head code { padding: 1px 5px; font-size: 11px; font-family: var(--font-mono, monospace);
+   color: var(--text-2); background: var(--surface-2);
+   border: 1px solid var(--glass-border); border-radius: var(--radius-xs); }
+ 
+ /* 窗口：820×520 圆角玻璃，内部 grid（220px 1fr / 40px 1fr）—— 设置导航比主页更宽 */
+ .csettings { width: 820px; height: 520px; border-radius: var(--radius-lg);
+   border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+-  background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 40px 1fr;
+   overflow: hidden; }
+ 
+ .csettings .c-titlebar { grid-column: 1 / -1; grid-row: 1; }
+ /* 上下无割裂：标题栏无底部边框（title-bar.css 契约），与内容共享玻璃背景 */
+ 
+ /* 导航列：grid cell 需 min-height:0（.c-navwheel__list 绝对定位 inset 依赖父容器高度）；
+    .c-navwheel 用 height:100% 跟随 grid cell 实际高度（520 - 2 边框 - 40 标题栏 = 478px，
+    组件类默认同此值）—— 固定 480px 会溢出 2px、裁切列表底缘（Task 20 收尾修复） */
+ .csettings__nav { position: relative; grid-column: 1; grid-row: 2; min-height: 0;
+diff --git a/src/styles/motion-lab.css b/src/styles/motion-lab.css
+index b778648..22a1a66 100644
+--- a/src/styles/motion-lab.css
++++ b/src/styles/motion-lab.css
+@@ -26,21 +26,22 @@
+   background-color: var(--surface-1);
+   background-image: radial-gradient(var(--neutral-300) 1px, transparent 1px);
+   background-size: 16px 16px;
+ }
+ 
+ /* ---------- 演示 1：面板呼出 ---------- */
+ .ml-pop {
+   display: flex; flex-direction: column; gap: 6px; width: 150px;
+   padding: var(--space-3); border-radius: var(--radius-md);
+   background: var(--glass-bg); border: 1px solid var(--glass-border);
+-  box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--glass-blur));
++  box-shadow: var(--glass-shadow);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+ }
+ .ml-pop__dots { display: flex; gap: 4px; margin-bottom: 2px; }
+ .ml-pop__dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--neutral-300); }
+ .ml-pop__dot:nth-child(1) { background: var(--danger-500); }
+ .ml-pop__dot:nth-child(2) { background: var(--warning-500); }
+ .ml-pop__dot:nth-child(3) { background: var(--success-500); }
+ .ml-pop__line { height: 6px; border-radius: 3px; background: var(--neutral-200); }
+ .ml-pop__line--short { width: 55%; }
+ 
+ /* ---------- 演示 2：hover 提升（transition，只动 transform/opacity） ---------- */
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index ba54f63..0363214 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index 0d3e4cb..975bfb7 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index ea2c191..0aa4ccb 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index 8bff8e6..097629a 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index ca7ee8d..733a8c3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index f528a6f..c5343d9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+index 602db31..d0c31fe 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+index b1771ec..80e04b6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+index 72d356c..14b0da2 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+index 6faf271..70ec785 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+index 586e1d9..50b7416 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+index 5e56a0d..fdca68f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+index a87b244..6fa0ae2 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
+index 374533b..cc1f26c 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
+index eee1bf4..3716b49 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+index e0fa869..091bc32 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
+index c68e80d..e835509 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
+index ebab598..68205ac 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ
