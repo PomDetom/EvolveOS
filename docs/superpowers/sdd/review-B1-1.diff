@@ -1,0 +1,540 @@
+# Review package: 86398d0..HEAD
+
+## Commits
+a4fad8e feat: 设置分区扩展（组件/动效分区 + 展示内容内化）
+
+## Files changed
+ src/app/app-main.js                           | 59 ++++++++++++++++++++++-----
+ src/app/partitions.css                        | 24 +++++++++++
+ src/demo/component-showcase-full.js           |  2 +
+ src/demo/motion-lab.js                        |  2 +
+ src/scenes/clipboard-float/clipboard-float.js |  2 +
+ src/scenes/settings-window/settings-pages.js  | 20 +++++++--
+ tests/e2e/app-shell.spec.js                   | 31 +++++++++++---
+ 7 files changed, 122 insertions(+), 18 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 266206a..3eaadb9 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -9,25 +9,26 @@
+ //   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
+ // 右窗状态为纯 UI 态（会话内），不进配置存储。
+ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+-import { SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
++import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import { getConfig } from '../config/store.js';
+ import { applyConfig } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
++import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+   { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview },
+   {
+     id: 'clipboard', name: '剪贴板', icon: 'clipboard',
+@@ -80,21 +81,21 @@ const MODULES = [
+       { id: 'license', name: '许可', icon: 'shield' },
+     ],
+     render: placeholderPage,
+   },
+ ];
+ 
+ export function mountAppMode(root) {
+   // 冷启动应用持久化配置（闭环 I1，镜像 docs-mode.js）：重启/Tauri 重开后界面保持
+   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+   applyConfig(getConfig());
+-  const settingsPagesHtml = renderSettingsPages();
++  const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
+   root.innerHTML = `
+   <div class="app-main">
+     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+@@ -147,21 +148,21 @@ export function mountAppMode(root) {
+   function modCtx(mod) {
+     const dirId = mod.id === state.moduleId ? state.dirId : (mod.dir[0]?.id ?? null);
+     return { module: mod, dirId, dirName: mod.dir.find((d) => d.id === dirId)?.name ?? null };
+   }
+ 
+   // —— 右窗：按 rightMode 渲染应用目录轮 / 设置目录轮（纯 icon，38.2% 锚点）——
+   function renderRight() {
+     if (state.rightMode === 'settings') {
+       navRBody.innerHTML = `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`;
+       const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
+-        items: SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
++        items: APP_SECTIONS.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
+         onChange: (item) => setSettingsSection(item.id),
+         anchorRatio: 0.382,
+       });
+       wheel.setActive(state.settingsId); // 保持上次选中的设置分区
+       return wheel;
+     }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     navRBody.innerHTML = mod.dir.length
+       ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
+       : `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无子目录</span></div>`;
+@@ -181,45 +182,76 @@ export function mountAppMode(root) {
+       pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === 'settings'));
+       setSettingsPageActive();
+       return;
+     }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
+     const page = pages.find((p) => p.dataset.page === state.moduleId);
+     page.innerHTML = mod.render(modCtx(mod));
+   }
+ 
+-  // —— 设置页分区切换：唯一 active 页 + 外观分区定制器首次激活惰性挂载（与场景同构，
+-  //   类名 .csettings__* 不变；.cust-group 只在 app 模式出现，docs 互斥不并存）——
++  // —— 设置页分区切换：唯一 active 页 + 惰性挂载（外观定制器 + 组件/动效展示内容，Task B1-1）。
++  //   类名 .csettings__* 不变；.cust-group/.csg/.ml-card/.cfloat 只在 app 模式出现，docs 互斥不并存。
++  //   组件/动效分区：首次激活时动态 import 展示模块挂到 .app-partition（Vite 代码分包，
++  //   展示模块 CSS 随 chunk 加载）；桌面 DOM 常驻，模块级标志防重复挂载。
++  //   组件分区末尾追加「组合示例：剪贴板悬浮窗」（mountClipboardFloat 流式 in-flow，不遮挡分区）。
++  function mountComponentsPartition(part) {
++    if (part.children.length) return; // 已挂载（移动端按空态重挂的防线）
++    Promise.all([
++      import('../demo/component-showcase-full.js'),
++      import('../scenes/clipboard-float/clipboard-float.js'),
++    ]).then(([{ mountComponentsShowcase }, { mountClipboardFloat }]) => {
++      if (part.children.length) return; // 并发 import 竞态防御：同时触发时只挂一次
++      mountComponentsShowcase(part);
++      mountClipboardFloat(part); // 组合示例：剪贴板悬浮窗（复用既有场景模块）
++    });
++  }
++  function mountMotionPartition(part) {
++    if (part.children.length) return;
++    import('../demo/motion-lab.js').then(({ mountMotionLab }) => {
++      if (part.children.length) return;
++      mountMotionLab(part);
++    });
++  }
+   let custMounted = false;
++  let componentsMounted = false;
++  let motionMounted = false;
+   function setSettingsPageActive() {
+     const sec = pages.find((p) => p.dataset.page === 'settings');
+     sec.querySelectorAll('.csettings__page').forEach((p) =>
+       p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
+     if (state.settingsId === 'appearance' && !custMounted) {
+       renderCustomizerGroups(sec.querySelector('[data-page="appearance"] .csettings__cust'));
+       custMounted = true;
+     }
++    if (state.settingsId === 'components' && !componentsMounted) {
++      componentsMounted = true; // 先置位防并发 import 重复挂载（import 异步，挂载前切走再切回）
++      mountComponentsPartition(sec.querySelector('[data-page="components"] [data-partition="components"]'));
++    }
++    if (state.settingsId === 'motion' && !motionMounted) {
++      motionMounted = true;
++      mountMotionPartition(sec.querySelector('[data-page="motion"] [data-partition="motion"]'));
++    }
+   }
+ 
+   function setSettingsSection(id) {
+     if (id === state.settingsId) return;
+     state.settingsId = id;
+     setSettingsPageActive();
+     updateCtx();
+   }
+ 
+   // —— 标题栏上下文「应用名 › 页面名」/「设置 › 分区」（单窗口态只应用名）——
+   function updateCtx() {
+     if (isMobile()) { updateCtxMobile(); return; } // 手机形态：上下文由页面栈栈顶承担
+     if (state.rightMode === 'settings') {
+-      const s = SECTIONS.find((x) => x.id === state.settingsId);
++      const s = APP_SECTIONS.find((x) => x.id === state.settingsId);
+       ctx.textContent = `设置 › ${s.name}`;
+       ctx.dataset.module = 'settings';
+       ctx.dataset.page = state.settingsId;
+       return;
+     }
+     const mod = MODULES.find((m) => m.id === state.moduleId);
+     ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
+       ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
+       : mod.name;
+     ctx.dataset.module = mod.id;
+@@ -332,23 +364,23 @@ export function mountAppMode(root) {
+             <button class="app-main__dir-item" data-dir="${d.id}">
+               ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
+             </button>`).join('')}
+         </div>`;
+     } else if (entry.type === 'detail') {
+       const mod = MODULES.find((m) => m.id === entry.moduleId);
+       body = mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName });
+     } else if (entry.type === 'settings') {
+       body = `
+         <div class="app-main__settings-tabs">
+-          ${SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
++          ${APP_SECTIONS.map((s) => `<button class="app-main__settings-tab${s.id === state.settingsId ? ' app-main__settings-tab--active' : ''}" data-tab="${s.id}">${s.name}</button>`).join('')}
+         </div>
+-        <div class="app-main__settings csettings__pages">${renderSettingsPages()}</div>`;
++        <div class="app-main__settings csettings__pages">${renderSettingsPages(APP_SECTIONS)}</div>`;
+     }
+     return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}">${head}<div class="app-main__stack-body">${body}</div></section>`;
+   }
+ 
+   // 外观分区定制器退订句柄（闭环 M1）：手机路径每次 renderStack 重建 DOM → 重挂
+   // renderCustomizerGroups 新增一次 store 订阅。重建前释放旧订阅（回调引用已脱离容器的旧 DOM），
+   // 防订阅数随进入设置次数线性累积。renderCustomizerGroups 现返回 subscribe 的退订函数。
+   let mobileCustUnsub = null;
+   function renderStack() {
+     mobileCustUnsub?.(); // 重建前释放上一订阅（可能未挂载 = noop）
+@@ -380,46 +412,53 @@ export function mountAppMode(root) {
+     mobile.animateTop = false;
+     renderStack();
+     updateSettingsActive();
+   }
+   function updateSettingsActive() {
+     settingsBtn.classList.toggle('app-main__settings-toggle--active',
+       mobile.stack[mobile.stack.length - 1]?.type === 'settings');
+   }
+ 
+   // 设置分区激活（移动端复用共享 settings-pages；外观定制器首次激活惰性挂载 ——
+-  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）
++  // 每次渲染页面容器为空即重挂，避免沿用桌面实例的已挂载标志误判）。
++  // 组件/动效分区（Task B1-1）：同样按容器空态惰性挂载 —— 页面栈每次 renderStack 重建 DOM，
++  // 不能沿用桌面模块级标志（重建后容器已空，标志仍 true 会漏挂）；与桌面共用 mountComponentsPartition/
++  // mountMotionPartition（内部再按 children 空态防御，仅首次激活挂载一次）。
+   function activateMobileSettings() {
+     const sec = stackEl.querySelector('[data-stack="settings"]');
+     if (!sec) return;
+     sec.querySelectorAll('.csettings__page').forEach((p) =>
+       p.classList.toggle('csettings__page--active', p.dataset.page === state.settingsId));
+     sec.querySelectorAll('.app-main__settings-tab').forEach((t) =>
+       t.classList.toggle('app-main__settings-tab--active', t.dataset.tab === state.settingsId));
+     const cust = sec.querySelector('[data-page="appearance"] .csettings__cust');
+     if (state.settingsId === 'appearance' && cust && !cust.children.length) {
+       mobileCustUnsub?.(); // 防御：同容器重复挂载先释放旧订阅
+       mobileCustUnsub = renderCustomizerGroups(cust);
+     }
++    const comp = sec.querySelector('[data-page="components"] [data-partition="components"]');
++    if (state.settingsId === 'components' && comp && !comp.children.length) mountComponentsPartition(comp);
++    const motion = sec.querySelector('[data-page="motion"] [data-partition="motion"]');
++    if (state.settingsId === 'motion' && motion && !motion.children.length) mountMotionPartition(motion);
+   }
+ 
+   function updateCtxMobile() {
+     const top = mobile.stack[mobile.stack.length - 1];
+     const mod = top?.moduleId ? MODULES.find((m) => m.id === top.moduleId) : null;
+     if (top?.type === 'detail' && mod) {
+       ctx.textContent = `${mod.name} › ${top.dirName}`;
+       ctx.dataset.module = mod.id; ctx.dataset.page = top.dirId;
+     } else if (top?.type === 'dir' && mod) {
+       ctx.textContent = mod.name;
+       ctx.dataset.module = mod.id; ctx.dataset.page = '';
+     } else if (top?.type === 'settings') {
+-      const s = SECTIONS.find((x) => x.id === state.settingsId);
++      const s = APP_SECTIONS.find((x) => x.id === state.settingsId);
+       ctx.textContent = `设置 › ${s.name}`;
+       ctx.dataset.module = 'settings'; ctx.dataset.page = state.settingsId;
+     } else {
+       ctx.textContent = '概览';
+       ctx.dataset.module = 'home'; ctx.dataset.page = '';
+     }
+   }
+ 
+   // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；其他应用 → 目录页。
+   // 滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
+diff --git a/src/app/partitions.css b/src/app/partitions.css
+new file mode 100644
+index 0000000..b840c16
+--- /dev/null
++++ b/src/app/partitions.css
+@@ -0,0 +1,24 @@
++/* 应用壳设置分区（Task B1-1）：组件/动效分区展示内容内化的容器样式。
++   局部类名 .app-partition 前缀 —— app/docs 互斥渲染，仍守「场景/展示区局部类名」约定
++   （src/CLAUDE.md：避免与 docs 全页严格计数断言冲突）。
++   分区容器承接组件矩阵 / 动效实验室 / 剪贴板悬浮窗组合示例，
++   由 app-main.js 首次激活时动态 import 展示模块挂载（Vite 代码分包）。 */
++
++.app-partition { padding-top: 2px; }
++
++/* 展示模块写入的分区标题 <h2>（mountComponentsShowcase 写「组件」、mountMotionLab 写
++   「动效实验室」）：base.css 已全局 reset，压掉默认边距并对齐壳内页面标题规格（B2 视觉归位）。 */
++.app-partition > h2 { margin-bottom: var(--space-5); font-size: var(--font-size-xl);
++  font-weight: var(--font-weight-semibold); color: var(--text-1); }
++
++/* 动效分区 lead 说明（motion-lab.js 的 .ml-lead，partition 根直接子级） */
++.app-partition > .ml-lead { margin-bottom: var(--space-5); font-size: var(--font-size-sm);
++  color: var(--text-2); }
++
++/* 组件分区可交互悬浮窗实例（.csg-fwin .c-fwin 默认 fixed 于视口右下）与应用壳右下
++   FloatBall 演示（Task A5，right/bottom 16px）错位：抬高到 FloatBall 之上避免遮挡。
++   仅视觉微调，不改组件默认位（docs 展示仍贴底）。 */
++.app-partition .csg-fwin .c-fwin { right: 24px; bottom: 96px; }
++
++/* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
++.app-partition .cfloat { margin-top: var(--space-6); }
+diff --git a/src/demo/component-showcase-full.js b/src/demo/component-showcase-full.js
+index c4c2eac..0a87e68 100644
+--- a/src/demo/component-showcase-full.js
++++ b/src/demo/component-showcase-full.js
+@@ -1,14 +1,16 @@
+ // 组件展示区完整矩阵（Task 15）：6 组 32 组件变体矩阵 + 交互实例。
+ // 只组装不新建组件（SidebarItem 为本任务内建的唯一新组件）；
+ // 每组内部调用 showcase()，浮层组件附「点击演示」触发按钮，
+ // 悬浮窗专属组底部渲染可交互 FloatingWindow + SearchBar + FloatBall 联动实例。
++// 自身 import 本组 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
++import './component-showcase-full.css';
+ import { icon } from '../components/icon/icon.js';
+ import { renderButton } from '../components/button/button.js';
+ import { renderInput } from '../components/input/input.js';
+ import { renderTextarea } from '../components/textarea/textarea.js';
+ import { renderSelect } from '../components/select/select.js';
+ import { renderCheckbox } from '../components/checkbox/checkbox.js';
+ import { renderRadio } from '../components/radio/radio.js';
+ import { renderSwitch, mountSwitch } from '../components/switch/switch.js';
+ import { renderSlider } from '../components/slider/slider.js';
+ import { renderKbd } from '../components/kbd/kbd.js';
+diff --git a/src/demo/motion-lab.js b/src/demo/motion-lab.js
+index 0c95312..c2aadad 100644
+--- a/src/demo/motion-lab.js
++++ b/src/demo/motion-lab.js
+@@ -1,10 +1,12 @@
++// 自身 import 本模块 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
++import '../styles/motion-lab.css';
+ import { icon } from '../components/icon/icon.js';
+ import { springCurve } from '../motion/spring.js';
+ import { getConfig, subscribe } from '../config/store.js';
+ 
+ /**
+  * 动效实验室（Task 16）：5 个动效演示卡 + 参数试玩器 + 重播。
+  *
+  * 契约：
+  * - 每卡 .ml-card 内：.ml-stage（演示舞台）/ .ml-controls（试玩器）/ .ml-slider（弹性、位移滑杆）/ .ml-replay（重播）
+  * - 试玩器把局部 CSS 变量写到 .ml-card（--dur-base / --ease-spring / --lift），不碰全局
+diff --git a/src/scenes/clipboard-float/clipboard-float.js b/src/scenes/clipboard-float/clipboard-float.js
+index 73f3645..6e6c1fb 100644
+--- a/src/scenes/clipboard-float/clipboard-float.js
++++ b/src/scenes/clipboard-float/clipboard-float.js
+@@ -1,14 +1,16 @@
+ // 场景模板 1：剪贴板悬浮窗（Task 18）—— 模拟悬浮窗 + 搜索过滤 + 列表操作 + 清空 Dialog。
+ // 纯原生组件组装：FloatingWindow（窗口壳）+ SearchBar（过滤）+ 自建 .cfloat 列表
+ // （类型 icon + 首行 + 时间 meta + 悬停操作组）+ EmptyState。状态本地管理，不写 store。
+ // 动画红线：列表项 stagger 进入只动 transform/opacity；悬停操作组只动 opacity。
++// 自身 import 本场景 CSS（Task B1-1 内化）：Vite 按模块去重，docs 静态引用与 app 动态 chunk 双引无害。
++import './clipboard-float.css';
+ import { icon } from '../../components/icon/icon.js';
+ import { renderFloatingWindow, mountFloatingWindow } from '../../components/floating-window/floating-window.js';
+ import { renderSearchBar, mountSearchBar } from '../../components/search-bar/search-bar.js';
+ import { renderEmptyState } from '../../components/empty-state/empty-state.js';
+ import { toast } from '../../components/toast/toast.js';
+ import { openDialog } from '../../components/dialog/dialog.js';
+ import { CLIP_ITEMS } from './data.js';
+ 
+ // type → 类型图标（icon 集契约：globe/clipboard/image 均已存在）
+ const TYPE_ICON = { link: 'globe', text: 'clipboard', image: 'image' };
+diff --git a/src/scenes/settings-window/settings-pages.js b/src/scenes/settings-window/settings-pages.js
+index 6c81640..a636a20 100644
+--- a/src/scenes/settings-window/settings-pages.js
++++ b/src/scenes/settings-window/settings-pages.js
+@@ -9,34 +9,44 @@
+ // - 交互接线：mountSettingsInteractions(root) —— 主题三态 click→store、动效开关、保存、
+ //   快捷键录制、开源链接、开关视觉（场景与应用壳行为一致）。
+ import { icon } from '../../components/icon/icon.js';
+ import { renderSwitch, mountSwitch } from '../../components/switch/switch.js';
+ import { renderSelect } from '../../components/select/select.js';
+ import { renderEmptyState } from '../../components/empty-state/empty-state.js';
+ import { renderHotkeyRecorder, mountHotkeyRecorder } from '../../components/hotkey-recorder/hotkey-recorder.js';
+ import { getConfig, saveConfig } from '../../config/store.js';
+ import { applyConfig } from '../../config/apply.js';
+ import { toast } from '../../components/toast/toast.js';
++import './settings-window.css';
+ 
+ // 8 分区（pre-flight 修订）：8×64px = 512px > 列表视口 424px，滑动选择真实生效。
+ // 界面类模块（原第 3 分区）统一收纳于「界面」分区，其余沿用原分区结构。
+ export const SECTIONS = [
+   { id: 'general',    name: '通用',   icon: 'home' },
+   { id: 'appearance', name: '外观',   icon: 'palette' },
+   { id: 'interface',  name: '界面',   icon: 'layout' },
+   { id: 'shortcuts',  name: '快捷键', icon: 'key' },
+   { id: 'notify',     name: '通知',   icon: 'bell' },
+   { id: 'data',       name: '数据',   icon: 'folder' },
+   { id: 'advanced',   name: '高级',   icon: 'settings' },
+   { id: 'about',      name: '关于',   icon: 'info' },
+ ];
+ 
++// 应用壳专用：共享 8 分区 + 组件/动效（Task B1-1）。
++// docs 设置场景仍用 SECTIONS（count 8 不变）；组件/动效分区为应用壳内化展示内容，
++// pageBody 分支返回含 .app-partition 容器（场景不渲染这两 id，仅应用壳触发惰性挂载）。
++export const APP_SECTIONS = [
++  ...SECTIONS,
++  { id: 'components', name: '组件', icon: 'box' },
++  { id: 'motion', name: '动效', icon: 'sparkles' },
++];
++
+ // —— 通用分区 ——
+ 
+ // 主题三态：与顶栏 tsw 同语义（浅/深/跟随系统），类名场景局部（.csettings__mode）
+ const THEME_MODES = [
+   { id: 'light',  label: '浅色',   icon: 'sun' },
+   { id: 'dark',   label: '深色',   icon: 'moon' },
+   { id: 'system', label: '跟随系统', icon: 'monitor' },
+ ];
+ 
+ function pageHead(title, desc = '') {
+@@ -170,31 +180,35 @@ function aboutPage() {
+ export function pageBody(id) {
+   switch (id) {
+     case 'general':    return generalPage();
+     case 'appearance': return appearancePage();
+     case 'interface':  return interfacePage();
+     case 'shortcuts':  return shortcutsPage();
+     case 'notify':     return emptyPage('bell', '通知设置', '新复制提醒、声音与角标等将在接入应用后开放');
+     case 'data':       return emptyPage('folder', '数据管理', '导出备份与多端同步将在接入应用后开放');
+     case 'advanced':   return emptyPage('shield', '高级设置', '实验性功能与调试选项将在接入应用后开放');
+     case 'about':      return aboutPage();
++    // 应用壳专用分区（Task B1-1）：空 .app-partition 容器，展示内容由 app-main.js 首次激活时惰性挂载
++    case 'components': return `<div class="app-partition" data-partition="components"></div>`;
++    case 'motion':     return `<div class="app-partition" data-partition="motion"></div>`;
+     default: return '';
+   }
+ }
+ 
+ /**
+  * 页面栈 HTML：8 个 .csettings__page（首项 active，类名不变）。
+  * 调用方负责包一层 .csettings__pages 容器（场景 820×520 网格 / 应用壳内容区各自接管尺寸）。
+- * @returns {string} 8 个分区页的 HTML 拼接
++ * @param {Array} [sections=SECTIONS] 分区列表 —— docs 场景不传（8 分区）；应用壳传 APP_SECTIONS（10 分区）
++ * @returns {string} 分区页的 HTML 拼接
+  */
+-export function renderSettingsPages() {
+-  return SECTIONS.map((s, i) => `
++export function renderSettingsPages(sections = SECTIONS) {
++  return sections.map((s, i) => `
+     <div class="csettings__page${i === 0 ? ' csettings__page--active' : ''}" data-page="${s.id}">
+       ${pageBody(s.id)}
+     </div>`).join('');
+ }
+ 
+ /**
+  * 设置页交互接线（场景模板与应用壳共用，行为一致）。
+  * @param {HTMLElement} root 含 8 个分区页的容器（scene 传 .csettings；应用壳传设置页 section）
+  */
+ export function mountSettingsInteractions(root) {
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index bd51ea1..00a1101 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -120,25 +120,25 @@ test('概览页结构：欢迎卡 + 7 快捷入口 + 主题状态卡', async ({
+ });
+ 
+ // —— 设置模式（Task A4：⚙ 按钮 + 右窗设置目录 + 设置页共享）——
+ 
+ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活高亮', async ({ page }) => {
+   await page.goto(APP_URL);
+   const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+   await expect(settingsBtn).toHaveCount(1);
+   // 初始未激活
+   await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
+-  // 点击 ⚙ → 右窗展开 + 8 项设置目录 + 内容区显示通用设置页
++  // 点击 ⚙ → 右窗展开 + 10 项设置目录（APP_SECTIONS：共享 8 + 组件/动效）+ 内容区显示通用设置页
+   await settingsBtn.click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeVisible();
+-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+   const active = page.locator('.app-main__page--active');
+   await expect(active).toHaveAttribute('data-page', 'settings');
+   await expect(active).toContainText('通用');
+   // ⚙ 激活态高亮
+   await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
+ });
+ 
+ test('设置模式：选择「外观」→ 内容区设置页含 cust-group 6', async ({ page }) => {
+   await page.goto(APP_URL);
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+@@ -160,21 +160,21 @@ test('设置模式：再次点击 ⚙ 收起右窗（toggle）+ 取消激活', a
+   await settingsBtn.click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeHidden();
+   await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
+ });
+ 
+ test('设置模式：左栏应用仍可选（点应用切回应用模式）', async ({ page }) => {
+   await page.goto(APP_URL);
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+   await page.waitForTimeout(400);
+-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+   // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
+   await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeVisible();
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+   const active = page.locator('.app-main__page--active');
+   await expect(active).toHaveAttribute('data-page', 'clipboard');
+   await expect(active).toContainText('剪贴板');
+   await expect(page.locator('.app-main .c-titlebar__control--settings')).not.toHaveClass(/settings-toggle--active/);
+ });
+@@ -236,28 +236,49 @@ test('左窗对已选中项拖拽（位移 >10px）松手不触发收起（拖
+   await expect(page.locator('.app-main__nav-r')).toBeVisible();
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+ });
+ 
+ test('设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录', async ({ page }) => {
+   await page.goto(APP_URL);
+   // 应用模式：选中剪贴板（右窗 = 剪贴板目录 3 项）
+   await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+-  // 进入设置模式（右窗 = 设置目录 8 项）
++  // 进入设置模式（右窗 = 设置目录 10 项）
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+   await page.waitForTimeout(400);
+-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(8);
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+   // 退出设置模式（⚙ 再点 → 右窗收起）
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeHidden();
+   // 再次点击仍选中的剪贴板项 → 右窗重开：应显示剪贴板目录，而非残留的设置目录轮
+   await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main__nav-r')).toBeVisible();
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="general"]')).toHaveCount(0);
+   // 上下文为应用模式（剪贴板 › 历史）
+   await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 历史');
+ });
++
++// —— 设置分区扩展（Task B1-1：APP_SECTIONS 10 分区 + 组件/动效分区惰性挂载展示内容）——
++
++test('设置分区包含组件/动效且挂载展示内容', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  // 10 分区（共享 8 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
++  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
++  // 组件分区：点击「组件」→ 内容区出现组件矩阵组 + 剪贴板悬浮窗组合示例
++  // APP_SECTIONS 实际序：通用0/外观1/界面2/快捷键3/通知4/数据5/高级6/关于7/组件8/动效9
++  // （[...SECTIONS, components, motion] 追加到尾部 —— 索引以实现核对为准）
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click();
++  // 7 个 .csg：6 组矩阵（核心导航/表单/数据/浮层/辅助/悬浮窗专属）+ 1 个交互悬浮窗实例块（csg csg-fwin）
++  await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
++  await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
++  // 动效分区
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
++  await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
++  await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
++});
