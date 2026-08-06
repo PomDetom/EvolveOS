@@ -22,3 +22,19 @@
 
 /* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
 .app-partition .cfloat { margin-top: var(--space-6); }
+
+/* —— 外观分区「背景装饰」预设选择（Task B2-2）——
+   3 预设按钮切换 .app-main 的 data-backdrop（渐变/几何/网格）。会话内纯 UI 态，
+   不进 store（与右窗状态同类，非配置链路）。激活态仅 paint（color/background，
+   paint-only 豁免过渡），无入场/离场动效主体。局部类 .app-main__backdrop-* 前缀。 */
+.app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 420px; }
+.app-main__backdrop-sel-head { font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium); color: var(--text-1); margin-bottom: var(--space-2); }
+.app-main__backdrop-sel-opts { display: inline-flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-full);
+  background: var(--surface-1); }
+.app-main__backdrop-opt { padding: 5px 14px; border-radius: var(--radius-full);
+  font-size: var(--font-size-xs); color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+.app-main__backdrop-opt:hover { color: var(--text-1); }
+.app-main__backdrop-opt--active { color: var(--accent); background: var(--accent-50); }

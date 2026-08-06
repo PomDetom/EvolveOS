@@ -91,7 +91,8 @@ export function mountAppMode(root) {
   applyConfig(getConfig());
   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
   root.innerHTML = `
-  <div class="app-main">
+  <div class="app-main" data-backdrop="gradient">
+    <div class="app-main__backdrop"></div>
     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
     <div class="app-main__nav-l">
       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
@@ -125,6 +126,38 @@ export function mountAppMode(root) {
   const pages = [...pagesEl.children];
   const stackEl = root.querySelector('.app-main__stack');
   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+
+  // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+  // Tauri 探测：桌面端背景层透明（模糊真实壁纸）；浏览器默认可见（渐变/几何/网格三预设）。
+  // 外观分区「背景装饰」3 预设按钮，点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg
+  // 变化，不动画）。预设为会话内纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
+  if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格' };
+  (() => {
+    const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
+    if (!page) return;
+    const block = document.createElement('div');
+    block.className = 'app-main__backdrop-sel';
+    block.innerHTML = `
+      <div class="app-main__backdrop-sel-head">背景装饰</div>
+      <div class="app-main__backdrop-sel-opts" role="group" aria-label="背景装饰">
+        ${Object.keys(BD_LABELS).map((bd) => `
+          <button type="button" class="app-main__backdrop-opt${appMain.dataset.backdrop === bd ? ' app-main__backdrop-opt--active' : ''}"
+            data-bd="${bd}" aria-pressed="${appMain.dataset.backdrop === bd}">${BD_LABELS[bd]}</button>`).join('')}
+      </div>`;
+    const cust = page.querySelector('.csettings__cust');
+    page.insertBefore(block, cust);
+    block.querySelector('.app-main__backdrop-sel-opts').addEventListener('click', (e) => {
+      const btn = e.target.closest('.app-main__backdrop-opt');
+      if (!btn || btn.dataset.bd === appMain.dataset.backdrop) return;
+      appMain.dataset.backdrop = btn.dataset.bd;
+      block.querySelectorAll('.app-main__backdrop-opt').forEach((b) => {
+        const on = b.dataset.bd === appMain.dataset.backdrop;
+        b.classList.toggle('app-main__backdrop-opt--active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+  })();
 
   // —— 会话内纯 UI 态（不进配置存储）——
   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态

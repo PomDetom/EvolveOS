@@ -349,3 +349,19 @@ test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + �
   await expect(page.locator('.app-main')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
 });
+
+// —— B2-2 浏览器装饰背景层（模糊对象）——
+// 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
+// Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
+
+test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const backdrop = page.locator('.app-main__backdrop');
+  await expect(backdrop).toBeVisible();
+  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+  // 外观分区切换背景预设
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+});
