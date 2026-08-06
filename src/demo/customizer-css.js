@@ -35,7 +35,7 @@ export function exportCss(cfg) {
 :root {
   --glass-bg-opacity: ${glass.opacity};
   --glass-blur: ${glass.blur}px;
-  --glass-highlight-opacity: ${glass.highlight};
+  --noise-opacity: ${glass.noise};
   --font-size-base: ${type.baseSize}px;
   --radius-scale: ${radiusScale};
   --shadow-intensity: ${shadow};

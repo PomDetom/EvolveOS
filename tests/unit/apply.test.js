@@ -21,7 +21,7 @@ describe('applyConfig', () => {
     expect(root.dataset.theme).toMatch(/^(light|dark)$/);
   });
   it('玻璃与动效参数写入 CSS 变量覆盖层', () => {
-    applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, highlight: 0.2 },
+    applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, noise: 0.06 },
       motion: { enabled: true, durationScale: 1, springStrength: 0.6 } }, root);
     const s = root.style;
     expect(s.getPropertyValue('--glass-bg-opacity')).toBe('0.8');
@@ -38,6 +38,14 @@ describe('applyConfig', () => {
     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
     expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
     expect(root.dataset.glass).toBe('off');
+  });
+  it('噪点强度写入 --noise-opacity 覆盖', () => {
+    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
+    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+  });
+  it('默认噪点强度 0.04 写入', () => {
+    applyConfig(DEFAULTS, root);
+    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.04');
   });
   it('动效关闭时时长全部为 0', () => {
     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);

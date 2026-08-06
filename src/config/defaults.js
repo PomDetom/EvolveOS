@@ -1,7 +1,7 @@
 export const DEFAULTS = {
   theme: 'system',
   accent: 'indigo',
-  glass: { opacity: 0.62, blur: 24, highlight: 0.5, blurEnabled: true },
+  glass: { opacity: 0.62, blur: 24, noise: 0.04, blurEnabled: true },
   type: { baseSize: 14, scale: 1, weight: 400 },
   radiusScale: 1,
   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
@@ -12,7 +12,7 @@ export const DEFAULTS = {
 export const RANGES = {
   opacity: [0.4, 0.95, 0.01],
   blur: [8, 48, 1],
-  highlight: [0, 1, 0.05],
+  noise: [0, 0.12, 0.01],
   baseSize: [12, 16, 0.5],
   scale: [0.9, 1.15, 0.01],
   radiusScale: [0.7, 1.6, 0.05],

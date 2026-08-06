@@ -24,7 +24,7 @@ import { exportCss } from './customizer-css.js';
 const CFG_PATH = {
   opacity: ['glass', 'opacity'],
   blur: ['glass', 'blur'],
-  highlight: ['glass', 'highlight'],
+  noise: ['glass', 'noise'],
   baseSize: ['type', 'baseSize'],
   scale: ['type', 'scale'],
   radiusScale: ['radiusScale'],
@@ -52,7 +52,7 @@ const GROUPS = [
     sliders: [
       { key: 'opacity', label: '透明度' },
       { key: 'blur', label: '模糊', unit: 'px' },
-      { key: 'highlight', label: '高光' },
+      { key: 'noise', label: '噪点强度' },
     ],
   },
   {

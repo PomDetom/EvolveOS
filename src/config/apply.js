@@ -65,7 +65,7 @@ export function applyConfig(cfg, root = document.documentElement) {
   s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
-  s.setProperty('--glass-highlight-opacity', String(cfg.glass.highlight));
+  s.setProperty('--noise-opacity', String(cfg.glass.noise));
   s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
   s.setProperty('--radius-scale', String(cfg.radiusScale));
   s.setProperty('--shadow-intensity', String(cfg.shadow));
