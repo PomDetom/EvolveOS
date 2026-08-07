@@ -161,6 +161,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
 - **Minor 留收尾**：① M1 app-main.css:25 头部块注释仍写「Tauri 背景层透明，模糊真实壁纸」「三预设」——已失实（R7 后 Tauri 同显、四预设），建议同步；② M2 `data-tauri` 探测写成为死标志（无 CSS 消费者，保留无害，可标注为未来钩子）；③ M3 e2e none 断言未在点击后复验背景层可见（稳健性增强建议）
 
+## Task B2-R8: 导航栏割裂修复 + 深浅切换按钮
+
+- **状态**：完成（2026-08-07，评审通过）
+- **提交**：`556c936` `feat: 导航栏遮罩改内容遮罩（消除顶部色带）+ 标题栏快捷深浅切换按钮` + `cc5c34d` `docs: R8 执行留痕`
+- **验证**：npm test 60/60；npm run test:e2e 97/97（含 2 新用例：遮罩守卫 + 深浅切换，其余零冲击）；npm run test:visual 24/24（仅 app-main 6 张重生成，其余 18 张零漂移）；npm run build 通过
+- **背景**：用户反馈两个导航栏顶部背景与整体割裂。控制器像素采样实证：`.c-navwheel__mask` 叠加渐变 `--glass-bg`（0.48）叠导航栏 0.48 背景 = 顶部 48px 双倍着色色带（标题栏 235 vs 导航栏顶 242，更亮更白）。R6 降透明度后更明显
+- **实现**：Part A nav-wheel.js 删叠加渐变遮罩 div 插入；nav-wheel.css 删渐变规则 + `data-glass="off"` 覆盖，改 `.c-navwheel__list:not(--horizontal)` mask-image 内容遮罩（`linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent)`，顶/底 48px 淡出滚动内容、无叠加色带；横向 dock 排除）；app-main.css 删 2 条死规则。Part B title-bar.js `renderTitleBar` 加 `themeToggle` 选项（默认 false，按钮插设置按钮左缘）；app-main.js 传 themeToggle:true + 补 import（saveConfig/subscribe/prefersDark）+ 点击经 saveConfig→applyConfig 翻转深浅 + subscribe 同步图标（深显 sun/浅显 moon）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R8-brief.md / task-B2-R8-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
+- **基线说明**：仅 app-main 6 张重生成（标题栏按钮 + 顶部色带消除 + 底部遮罩机制变化 + mask 强制列表入合成层引起图标字形亚像素 AA 位移）；components/motion/appearance 18 张零漂移（组件分区演示实例首项 padTop≈115px > 48px 淡出带、静止帧像素全落在 mask 不透明区 → 与旧叠加在无玻璃叠加上下文像素级等价）
+- **Minor 留收尾**：① app-main.js:147 `themeUnsub` 死变量（声明未退订，桌面单次挂载无泄漏，建议直接 subscribe 或补注释）；② 概览页「主题状态」卡在快捷切换后显示陈旧主题（卡片挂载时按 data-theme 渲染，点按钮不触发重渲——设置分区路径因变更时卡片不可见故此前无此问题，新按钮首次从主页触发，可在 click 内同步或重渲）；③ `subscribe(() => updateThemeIcon())` 每次 saveConfig 都重渲按钮 SVG（成本极小，可短路）
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ 返工 R2 覆盖表面应用
@@ -174,4 +186,5 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，评审通过）
 - Task R6 亚克力可见性调参：✅ 完成（d1c7166，评审通过）
 - Task R7 Tauri 背景修复 + 关闭背景：✅ 完成（43caf2b，评审通过）
-- R-验收 用户视觉验收（Tauri 复验）+ 最终评审 + 合并：待执行
+- Task R8 导航栏割裂修复 + 深浅切换按钮：✅ 完成（556c936，评审通过）
+- R-验收 用户视觉验收（Tauri + 网页复验）+ 最终评审 + 合并：待执行

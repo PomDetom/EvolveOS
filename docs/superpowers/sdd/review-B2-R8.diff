@@ -1,0 +1,558 @@
+# Review package: 813e108..HEAD
+
+## Commits
+cc5c34d docs: B2-R8 导航栏遮罩改内容遮罩 + 标题栏深浅切换执行留痕（报告 + brief）
+556c936 feat: 导航栏遮罩改内容遮罩（消除顶部色带）+ 标题栏快捷深浅切换按钮
+
+## Files changed
+ docs/superpowers/sdd/task-B2-R8-brief.md           | 150 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B2-R8-report.md          |  56 ++++++++
+ src/app/app-main.css                               |   2 -
+ src/app/app-main.js                                |  25 +++-
+ src/components/navigation-wheel/nav-wheel.css      |  19 ++-
+ src/components/navigation-wheel/nav-wheel.js       |  11 +-
+ src/components/title-bar/title-bar.js              |   5 +-
+ tests/e2e/app-shell.spec.js                        |  32 +++++
+ .../app-main-dark-amber-chromium-win32.png         | Bin 479493 -> 474082 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 386401 -> 381552 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 503151 -> 498689 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 245331 -> 239628 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 232392 -> 226457 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 180255 -> 174881 bytes
+ 14 files changed, 276 insertions(+), 24 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B2-R8-brief.md b/docs/superpowers/sdd/task-B2-R8-brief.md
+new file mode 100644
+index 0000000..6e25ac6
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-R8-brief.md
+@@ -0,0 +1,150 @@
++# Task B2-R8: 导航栏顶部割裂修复（遮罩改内容遮罩）+ 标题栏快捷深浅切换按钮
++
++（用户反馈：两个导航栏顶部背景与整体割裂、不完整，web/桌面都有；加一个设置按钮左边的深浅切换快捷按钮）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行；动画红线（背景/遮罩静态、blur 不动画、过渡只走 color/background 豁免 + transform/opacity）；配置链路经 saveConfig→applyConfig。
++- 零运行时依赖；遵循 src/CLAUDE.md。
++- 视觉基线会变（导航栏顶部遮罩机制变化 + 标题栏新增按钮，app-main 6 + components-partition 6 预期）→ 确认差异由本次改动引起后 `--update-snapshots`。
++- TDD；`npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿。
++
++## 背景（控制器诊断，2026-08-07）
++
++用户反馈「两个导航栏的顶部背景和整体割裂」。控制器像素采样实证：标题栏背景 235,239,252，导航栏顶部（`.c-navwheel__mask` 遮罩带内）242,245,249——明显更亮更白。根因：`.c-navwheel__mask` 是 `linear-gradient(var(--glass-bg), transparent)` 的**叠加渐变层**，`--glass-bg` 为 48% 半透明 → 叠在导航栏自己 48% 背景上 = 顶部 48px 双倍着色，把模糊后的背景洗白，形成与标题栏割裂的色带（R6 降透明度后更明显）。
++
++**修法**：把「叠加渐变遮罩」换成 **CSS mask-image 内容遮罩**——淡出滚动内容但不叠加颜色层，彻底消除色带。用户同时要求：标题栏设置按钮左边加快捷深浅切换按钮。
++
++## Files
++
++- Modify: `src/components/navigation-wheel/nav-wheel.js`（删除遮罩 div 插入）
++- Modify: `src/components/navigation-wheel/nav-wheel.css`（删叠加遮罩规则，改 mask-image 内容遮罩）
++- Modify: `src/app/app-main.css`（删 app-shell 遮罩位置覆盖死规则）
++- Modify: `src/components/title-bar/title-bar.js`（renderTitleBar 加 themeToggle 选项 + 按钮）
++- Modify: `src/app/app-main.js`（模板传 themeToggle:true + 接线切换主题 + 图标随主题）
++- Modify: `tests/e2e/app-shell.spec.js`（深浅切换快捷按钮用例）
++- Test: 视觉基线重生成（app-main 6 + components-partition 6）
++
++## Interfaces
++
++- Consumes: `renderTitleBar({ title, iconName, settings, themeToggle })`（title-bar.js）；`saveConfig`/`getConfig`（store.js）；`applyConfig`/`prefersDark`（apply.js）；`icon(name, size)`；`mountTitleBar(root)`（app-main.js 调用）
++- Produces: 竖向 nav-wheel 列表 `mask-image` 内容遮罩（顶部 48px + 底部 48px 淡出，无叠加色带）；`.c-titlebar__control--theme` 快捷按钮（设置按钮左边，点击切换深浅，图标随当前主题 sun/moon）
++
++## Part A: 导航栏顶部割裂修复（遮罩 → 内容遮罩）
++
++### Step 1: 写失败 e2e（app-shell.spec.js，遮罩不带色带的守卫）
++
++```js
++test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
++  await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
++  // 竖向列表有 mask-image 内容遮罩
++  const maskImg = await page.locator('.app-main__nav-l .c-navwheel__list').evaluate((el) => getComputedStyle(el).maskImage);
++  expect(maskImg).toContain('linear-gradient');
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "顶部无叠加遮罩"`
++Expected: FAIL（`.c-navwheel__mask` 存在、mask-image 为 none）
++
++### Step 3: nav-wheel.js 删遮罩插入
++
++删除 36-41 行（`.c-navwheel__mask` 两 div 的 `insertAdjacentHTML` 块 + holder 查找逻辑）。竖向/横向都不再插入遮罩元素。
++
++### Step 4: nav-wheel.css 删叠加遮罩规则 + 加 mask-image
++
++删除：
++- `.c-navwheel__mask` 与 `.c-navwheel__mask--bottom` 的 gradient 规则（约 79-83 行）
++- `:root[data-glass="off"] .c-navwheel__mask` 与 `--bottom` 规则（约 84-87 行）
++
++新增（竖向列表内容遮罩，顶部 48px + 底部 48px 淡出；横向 dock 不加）：
++```css
++.c-navwheel__list:not(.c-navwheel__list--horizontal) {
++  -webkit-mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
++  mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
++}
++```
++> 说明：mask-image 淡出的是列表内容（滚动项），不叠加颜色层 → 无双倍着色带。竖向列表底部 48px 淡出与原底部遮罩（app-shell 底 0 / 默认底 56px 对应列表底 48px）位置一致。横向 dock 无竖向遮罩需求，不加。
++
++### Step 5: app-main.css 删遮罩位置覆盖死规则
++
++删除 `.app-main__nav-l .c-navwheel__mask--bottom { bottom: 0 }`（30 行）与 `.app-main__nav-r .c-navwheel__mask--bottom { bottom: 0 }`（53 行）——遮罩元素已删除，这些覆盖成为死规则。
++
++### Step 6: 运行绿（A 部分）
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "顶部无叠加遮罩"` → PASS
++
++## Part B: 标题栏快捷深浅切换按钮
++
++### Step 7: title-bar.js 加 themeToggle 选项
++
++`renderTitleBar({ title, iconName, settings, themeToggle = false })`——controls 区设置按钮之前加（settings 可选已存在）：
++```js
++${themeToggle ? `<button class="c-titlebar__control c-titlebar__control--theme" aria-label="切换深浅主题" title="切换深浅主题">${icon('sun', 16)}</button>` : ''}
++```
++默认 false → 其他调用方（如未来 strip）逐字节不变。
++
++### Step 8: 写失败 e2e（app-shell.spec.js，深浅切换）
++
++```js
++test('标题栏快捷深浅切换按钮：点击翻转 data-theme', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
++  await page.reload();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++  await page.locator('.c-titlebar__control--theme').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  await page.locator('.c-titlebar__control--theme').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++});
++```
++
++### Step 9: 运行确认红
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "深浅切换"`
++Expected: FAIL（`.c-titlebar__control--theme` 不存在）
++
++### Step 10: app-main.js 接线
++
++模板 `renderTitleBar({ title: '概览', iconName: 'box', settings: true })` 加 `themeToggle: true`。
++
++挂载后（settingsBtn 之后）加：
++```js
++const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
++const updateThemeIcon = () => {
++  const cfg = getConfig();
++  const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++  themeBtn.innerHTML = icon(resolved === 'dark' ? 'sun' : 'moon', 16);
++};
++updateThemeIcon();
++themeBtn.addEventListener('click', () => {
++  const cfg = getConfig();
++  const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++  applyConfig(saveConfig({ theme: resolved === 'dark' ? 'light' : 'dark' }));
++  updateThemeIcon();
++});
++// 主题从设置分区等源变更时同步图标
++const themeUnsub = subscribe(() => updateThemeIcon());
++```
++> 图标语义：当前深色显示 sun（点切浅），当前浅色显示 moon（点切深）。`saveConfig`/`getConfig`（store.js）、`applyConfig`/`prefersDark`（apply.js）、`subscribe`（store.js）均已在 app-main.js 顶部 import——核对现有 import，缺的补上。`themeUnsub` 桌面常驻订阅无需退订（应用壳单次挂载）；若有移动端重建路径需注意，但标题栏为桌面专属，移动端不重建标题栏。
++
++### Step 11: 运行绿（B 部分）
++
++Run: `npx playwright test tests/e2e/app-shell.spec.js -g "深浅切换"` → PASS
++
++## 收尾
++
++### Step 12: 全量回归 + 基线重生成
++
++Run: `npm run test:e2e`（含两个新用例 + 其余零冲击：mobile-nav/app-shell 点击路径不依赖遮罩元素，nav-wheel 滚轮吸附不依赖遮罩）+ `npm test` + `npm run build`；视觉基线 `--update-snapshots`（app-main 6——标题栏按钮 + 导航栏顶部色带消除；components-partition 6——nav-wheel 演示实例遮罩机制变化；motion-partition 6 应零漂移）。若 no-op，删对应快照强制重生成。
++Expected: 全绿
++
++### Step 13: 提交
++
++```bash
++git add src/components/navigation-wheel/nav-wheel.js src/components/navigation-wheel/nav-wheel.css src/app/app-main.css src/components/title-bar/title-bar.js src/app/app-main.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 导航栏遮罩改内容遮罩（消除顶部色带）+ 标题栏快捷深浅切换按钮"
++```
+diff --git a/docs/superpowers/sdd/task-B2-R8-report.md b/docs/superpowers/sdd/task-B2-R8-report.md
+new file mode 100644
+index 0000000..3b56f94
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-R8-report.md
+@@ -0,0 +1,56 @@
++# Task B2-R8: 导航栏顶部割裂修复（遮罩 → 内容遮罩）+ 标题栏快捷深浅切换按钮 — 实施报告
++
++- **状态**：DONE
++- **提交**：`556c936`（feat，12 文件：5 源 + app-shell.spec.js + 6 张 app-main 快照重生成）
++- **需求源**：docs/superpowers/sdd/task-B2-R8-brief.md（唯一需求源，代码按字面使用）
++- **分支**：feature/b2-visual（R1-R7 已完成并入；Cargo.toml 为本会话前已有改动，未碰）
++
++## 变更文件
++
++| 文件 | 变更 |
++|---|---|
++| `src/components/navigation-wheel/nav-wheel.js` | 删除 34-41 行叠加渐变遮罩 div 插入块（`.c-navwheel__mask` + `--bottom` 两 div + holder 查找逻辑）；竖向/横向都不再插入遮罩元素 |
++| `src/components/navigation-wheel/nav-wheel.css` | 删 `.c-navwheel__mask`/`--bottom` gradient 规则 + `[data-glass="off"]` 覆盖（约 79-87 行）；新增竖向列表内容遮罩 `.c-navwheel__list:not(--horizontal)` mask-image（顶/底 48px 淡出，无叠加色带） |
++| `src/app/app-main.css` | 删 `.app-main__nav-l/.nav-r .c-navwheel__mask--bottom { bottom: 0 }` 两条死规则（遮罩元素已删） |
++| `src/components/title-bar/title-bar.js` | `renderTitleBar` 加 `themeToggle = false` 选项，按钮（`.c-titlebar__control--theme`）插在设置按钮之前（左缘）；默认 false → 其他调用方逐字节不变 |
++| `src/app/app-main.js` | 模板 `renderTitleBar` 传 `themeToggle: true`；import 补 `saveConfig`/`subscribe`（store.js）+ `prefersDark`（apply.js）；挂载后接线主题按钮（点击翻转经 saveConfig→applyConfig，图标随主题 sun/moon，subscribe 同步设置分区等源的变更） |
++| `tests/e2e/app-shell.spec.js` | 新增两用例（brief Step 1/Step 8 字面；Step 1 用例加「先等导航轮 7 项挂载」守卫，见下） |
++| `tests/e2e/visual-regression.spec.js-snapshots/app-main-*.png` | **6 张** app-main 基线重生成（light/dark × indigo/amber/emerald） |
++
++## TDD 证据
++
++- **Part A Step 1/2（红）**：新增「导航栏顶部无叠加遮罩色带（内容遮罩）」后运行 `npx playwright test tests/e2e/app-shell.spec.js -g "顶部无叠加遮罩"` → FAIL（实测 `.c-navwheel__mask` 解析为 2 个元素，mask-image 为 none）。
++- **Part A Step 3-5（实现）**：按上表落地（nav-wheel.js 删插入 → nav-wheel.css 删渐变规则 + 加 mask-image → app-main.css 删死规则）。
++- **Part A Step 6（绿）**：`-g "顶部无叠加遮罩"` → PASS。
++- **Part B Step 8/9（红）**：新增「标题栏快捷深浅切换按钮：点击翻转 data-theme」→ FAIL（`.c-titlebar__control--theme` 不存在，locator 超时）。
++- **Part B Step 7/10（实现）**：title-bar.js 加 themeToggle → app-main.js 接线（模板 + import + 事件 + subscribe）。
++- **Part B Step 11（绿）**：`-g "深浅切换"` → PASS。
++
++### 与 brief 的一处测试字面差异（红绿门禁加固）
++
++brief Step 1 用例在 `page.goto('/?mode=app')` 后直接断言 `.c-navwheel__mask` count 0。若挂载前断言，空 DOM 上 `toHaveCount(0)` 会**真空通过**（失去「删叠加遮罩」真门禁）。参照 B2-R4 用例同款注释（「若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过」），在 count 断言前加 `await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);` 等导航轮挂载——旧代码挂载后 mask 仍为 2 个 → 正确红；新代码挂载后 0 个 → 正确绿。断言本体（`toHaveCount(0)` + mask-image 含 linear-gradient）与 brief 字面一致。
++
++## 视觉基线：6 张 app-main 重生成（components/motion 分区零漂移，未重写）
++
++- **实测差异集**：`npm run test:visual` 初跑仅 **app-main 6 张**失败（light/dark × 3 accent）；**appearance-partition 6 + components-partition 6 + motion-partition 6 = 18 张零漂移通过**。brief 预期「components-partition 6 也变」未发生——组件分区截图为设置页内容区，nav-wheel 演示实例在组件分区上下文无可见遮罩观感差异（无玻璃叠加、无 mask 视觉变化），实测为 no-op。`--update-snapshots` 全量重跑后 git 仅 6 张 app-main png 变更，另 18 张字节级不变（证实零漂移）。
++- **解码比对（headless canvas 像素级，old baseline vs new，代表 3 张）**：
++  - 差异包围盒：`(0,13)-(1088,719)`，粗网格 24×16 定位差异集中在 **x0-107（左导航栏）** + **x1067-1120（标题栏右侧控件区）** 两带，内容区（页面区 x64+）逐像素零差异。
++  - 逐点采样（light-indigo）：标题栏 x1075,y20 expected `(249,249,250)`（无按钮）→ actual `(179,180,189)`（新增 sun 图标字形像素）＝**标题栏按钮**；导航栏 y60,x0-64 expected `(243,245,250)` → actual `(242,244,251)`（叠加渐变洗白带消失）＝**顶部色带消除**；y690-720 底缘 expected → actual 微亮＝**底部遮罩机制变化**（叠加渐变 → 内容 mask 淡出）。
++  - 中间带（y260-680）少量孤立像素差异（每行 2-7 点，均落在 x8-54 图标字形区）= mask-image 强制列表进入合成层引起的矢量描边亚像素抗锯齿位移，非结构变化。
++  - 结论：差异＝导航栏顶部色带消除 + 标题栏按钮 + 底部遮罩机制（均本次改动直接引起），**无布局位移、无内容区漂移** → 仅重生成 app-main 6 张，其余 18 张维持。
++
++## 验证结果
++
++- `npm test`：**60/60**（10 files）
++- `npm run test:e2e`：**97/97**（含两个新用例 + 其余零冲击：app-shell 全量 + mobile-nav/nav-wheel/smoke + 24 张视觉基线；首轮全量曾出现 1 次 smoke「app shell renders」孤立失败，隔离复跑 PASS 判为并发 flake，终轮全量 97/97 未复发）
++- `npm run test:visual`：**24/24**（重生成后逐像素全绿）
++- `npm run build`：**通过**
++
++## 命名边界核对
++
++- `.c-navwheel__mask` 相关仅剩 docs 历史 diff，源码/测试零引用 ✓
++- 横向 dock（`.c-navwheel__list--horizontal`）不加 mask-image（列表规则以 `:not(--horizontal)` 排除）✓
++- 深浅切换走完整配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；`subscribe` 同步设置分区主题变更 ✓
++- 动画红线：mask-image 为静态遮罩（非动画属性）、blur 不动画、过渡只走既有豁免（color/background）✓
++- `.cust-group` count 6 不受影响（app-shell「设置模式：选择外观」通过）✓
++- `themeUnsub` 变量按 brief 字面声明，桌面常驻订阅无需退订（应用壳单次挂载，移动端不重建标题栏）；无 lint/构建约束 ✓
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index 5ceb64f..e9bd236 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -65,21 +65,20 @@
+ /* —— 左窗（恒为应用列表，纯 icon 64px）—— */
+ .app-main__nav-l { grid-column: 1; grid-row: 2; position: relative; min-height: 0;
+   background: var(--glass-bg);
+   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border); }
+ .app-main__nav-l .c-navwheel__list { inset: 0; }
+ /* 纯图标栏：名称隐藏（上下文由标题栏承担），图标居中 */
+ .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+   justify-content: center; }
+ .app-main__nav-l .c-navwheel__name { display: none; }
+-.app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
+ 
+ /* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
+    面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
+    网格列宽瞬时切换 + transform/opacity 过渡，均不触发布局动画。 */
+ .app-main__nav-r { grid-column: 2; grid-row: 2; width: 64px; min-width: 0; overflow: hidden;
+   position: relative; z-index: var(--z-float);
+   display: flex; flex-direction: column;
+   background: var(--glass-bg);
+   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */
+   border-right: 1px solid var(--glass-border);
+@@ -90,21 +89,20 @@
+   visibility: visible; pointer-events: auto; }
+ .app-main__nav-r-back { flex: none; height: 40px; display: grid; place-items: center;
+   color: var(--text-2); border-bottom: 1px solid var(--glass-border);
+   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+ .app-main__nav-r-back:hover { color: var(--text-1); background: var(--surface-hover); }
+ .app-main__nav-r-body { flex: 1; position: relative; min-height: 0; }
+ .app-main__nav-r .c-navwheel__list { inset: 0; }
+ .app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
+   justify-content: center; }
+ .app-main__nav-r .c-navwheel__name { display: none; }
+-.app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
+ .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
+   align-items: center; justify-content: center; gap: var(--space-2);
+   color: var(--text-3); font-size: var(--font-size-sm); }
+ 
+ /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
+ .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
+   padding: var(--space-6);
+   background: var(--glass-bg);
+   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+ .app-main__page { display: none; max-width: 720px; }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index db8ba97..b981bd9 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -11,22 +11,22 @@
+ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+ import { toast } from '../components/toast/toast.js';
+ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+-import { getConfig } from '../config/store.js';
+-import { applyConfig } from '../config/apply.js';
++import { getConfig, saveConfig, subscribe } from '../config/store.js';
++import { applyConfig, prefersDark } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+@@ -86,21 +86,21 @@ const MODULES = [
+ ];
+ 
+ export function mountAppMode(root) {
+   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
+   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+   applyConfig(getConfig());
+   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
+   root.innerHTML = `
+   <div class="app-main" data-backdrop="gradient">
+     <div class="app-main__backdrop"></div>
+-    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
++    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true, themeToggle: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+     <main class="app-main__pages">
+       ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
+       <section class="app-main__page" data-page="settings">
+@@ -120,20 +120,39 @@ export function mountAppMode(root) {
+   ctx.setAttribute('data-ctx', '');
+   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
+   const stackEl = root.querySelector('.app-main__stack');
+   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+ 
++  // —— 标题栏快捷深浅切换（B2-R8）：设置按钮左边按钮，点击翻转深浅主题 ——
++  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标语义：当前深色显示
++  // sun（点切浅）、当前浅色显示 moon（点切深）。subscribe 令主题从设置分区等源变更时同步图标。
++  const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
++  const updateThemeIcon = () => {
++    const cfg = getConfig();
++    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++    themeBtn.innerHTML = icon(resolved === 'dark' ? 'sun' : 'moon', 16);
++  };
++  updateThemeIcon();
++  themeBtn.addEventListener('click', () => {
++    const cfg = getConfig();
++    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++    applyConfig(saveConfig({ theme: resolved === 'dark' ? 'light' : 'dark' }));
++    updateThemeIcon();
++  });
++  // 主题从设置分区等源变更时同步图标；桌面常驻订阅无需退订（应用壳单次挂载，移动端不重建标题栏）
++  const themeUnsub = subscribe(() => updateThemeIcon());
++
+   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
+   // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
+   // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
+   // 不触发配置链路（与右窗状态同类）。
+   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+   const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+   (() => {
+     const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
+     if (!page) return;
+diff --git a/src/components/navigation-wheel/nav-wheel.css b/src/components/navigation-wheel/nav-wheel.css
+index fc9406f..7ce09cc 100644
+--- a/src/components/navigation-wheel/nav-wheel.css
++++ b/src/components/navigation-wheel/nav-wheel.css
+@@ -68,27 +68,26 @@
+   /* 横向拖轮不应吞掉页面的纵向滚动：允许浏览器接管纵向 pan */
+   touch-action: pan-y;
+   padding: 0; /* 首尾精确 padding 由 JS 以 paddingLeft/Right 覆盖 */
+ }
+ .c-navwheel__list--horizontal .c-navwheel__item {
+   margin: 0 calc(var(--navwheel-gap) / 2);
+   width: var(--navwheel-item-w);
+   flex: none;
+ }
+ 
+-/* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
+-.c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;
+-  pointer-events: none;
+-  background: linear-gradient(var(--glass-bg), transparent); }
+-.c-navwheel__mask--bottom { top: auto; bottom: 56px;
+-  background: linear-gradient(transparent, var(--glass-bg)); }
+-/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：遮罩渐变底色换纯色实底，
+-   避免半透明 --glass-bg 叠在纯色降级表面上的透叠发暗 */
+-:root[data-glass="off"] .c-navwheel__mask { background: linear-gradient(var(--surface-solid), transparent); }
+-:root[data-glass="off"] .c-navwheel__mask--bottom { background: linear-gradient(transparent, var(--surface-solid)); }
++/* 顶部/底部内容遮罩（B2-R8）：竖向列表淡出滚动项但不叠加颜色层（CSS mask-image）。
++   原实现是叠加渐变 div（linear-gradient(var(--glass-bg), transparent)）挂在列表之上，
++   48% 半透明 --glass-bg 叠在导航栏自身 48% 半透明背景上 = 顶部 48px 双倍着色洗白，
++   与标题栏割裂成色带（用户反馈）。mask-image 只做 alpha 淡出（内容顶/底 48px 渐隐），
++   无色带；mask 是静态遮罩（非动画属性，红线无关）。横向 dock 无竖向遮罩需求，排除。 */
++.c-navwheel__list:not(.c-navwheel__list--horizontal) {
++  -webkit-mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
++  mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
++}
+ 
+ /* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
+    此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */
+ .c-navwheel__settings { display: flex; align-items: center; gap: var(--space-2);
+   padding: 0 var(--space-4); height: 56px; width: 100%; color: var(--text-2);
+   font-size: var(--font-size-sm); }
+ .c-navwheel__settings:hover { color: var(--text-1); background: var(--surface-hover); }
+diff --git a/src/components/navigation-wheel/nav-wheel.js b/src/components/navigation-wheel/nav-wheel.js
+index 215d216..8a9ef75 100644
+--- a/src/components/navigation-wheel/nav-wheel.js
++++ b/src/components/navigation-wheel/nav-wheel.js
+@@ -24,28 +24,23 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio =
+ 
+   const list = root.querySelector('.c-navwheel__list') ?? root;
+   // Task A6（闭环 A2 Minor ①）：horizontal 渲染层 —— 列表根加方向类，CSS 走独立横排规则
+   // （flex row / overflow-x / 主轴半间距 6px / touch-action pan-y）；vertical 默认无类，逐字节等价
+   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
+   list.innerHTML = items.map((it, i) => `
+     <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
+       <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
+       <span class="c-navwheel__name">${it.name}</span>
+     </div>`).join('');
+-  // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
+-  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
+-  // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
+-  const holder = root.closest('.navwheel') ?? root.parentElement;
+-  if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
+-    holder.insertAdjacentHTML('beforeend',
+-      '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
+-  }
++  // B2-R8：顶部/底部内容遮罩改用 CSS mask-image（nav-wheel.css 竖向列表规则），
++  // 不再插入叠加渐变 div —— 叠加层把导航栏自身 48% 半透明背景双倍着色洗白，
++  // 与标题栏割裂成色带。横向 dock 无竖向遮罩需求，列表规则以 :not(--horizontal) 排除。
+   const itemEls = [...list.children];
+   const itemH = parseFloat(getComputedStyle(itemEls[0])[AXIS.size]);
+   // 项上边距（6px = --navwheel-gap/2）：offsetTop 含 margin，pad 须同样扣除，
+   // 否则首/末项中心初始偏下 6px（最终审查 B；CSS 兜底 calc(38.2% - 32px) 已同步修正）
+   const marginTop = parseFloat(getComputedStyle(itemEls[0])[AXIS.margin]);
+   const viewLen = () => list[AXIS.len];
+   // 精确首尾 padding：使首/末项能滚到主轴锚线（38.2%）。锚点非居中 → 上/下 padding 非对称：
+   // 首项对齐 viewportLen*anchorRatio，末项对齐 viewportLen*(1-anchorRatio)；anchorRatio=0.5 时
+   // 二者相等 = 旧中心语义（CSS calc(38.2% - 32px) 相对宽度，实测值才正确）
+   const padTop = Math.max(0, viewLen() * anchorRatio - itemH / 2 - marginTop);
+diff --git a/src/components/title-bar/title-bar.js b/src/components/title-bar/title-bar.js
+index 3162b7f..6667a97 100644
+--- a/src/components/title-bar/title-bar.js
++++ b/src/components/title-bar/title-bar.js
+@@ -1,25 +1,28 @@
+ import { icon } from '../icon/icon.js';
+ 
+ // data-tauri-drag-region：Tauri 场景下由系统接管拖动窗口。
+ // 只挂在 .c-titlebar__drag（最小安全拖区）—— 不挂根元素：整条 .c-titlebar 含三按钮，
+ // 若挂根元素则按钮 mousedown 会被原生拖拽劫持（真实点击被吞、最小化/最大化后会被
+ // 拖拽动作立即还原 —— 接入指南 §2 明确此坑；真机验证 I2 实测复现后按指南修正）。
+ // settings: 是否渲染 ⚙ 设置按钮（右缘窗口控制之前）。默认 false —— docs 模式/场景模板
+ // 输出逐字节不变；应用壳（app-main.js）传 true 并自行接线（共享 mountTitleBar 不感知）。
+-export function renderTitleBar({ title = 'UI Design System', iconName = 'palette', settings = false } = {}) {
++// themeToggle: 是否渲染 ⚙ 左边的快捷深浅切换按钮（左缘）。默认 false，其他调用方零改动；
++// 应用壳传 true 并自行接线（图标 sun/moon 随当前主题，点击翻转经 saveConfig→applyConfig）。
++export function renderTitleBar({ title = 'UI Design System', iconName = 'palette', settings = false, themeToggle = false } = {}) {
+   return `
+   <div class="c-titlebar">
+     <div class="c-titlebar__drag" data-tauri-drag-region>
+       ${icon(iconName, 16)}<span class="c-titlebar__title">${title}</span>
+     </div>
+     <div class="c-titlebar__controls">
++      ${themeToggle ? `<button class="c-titlebar__control c-titlebar__control--theme" aria-label="切换深浅主题" title="切换深浅主题">${icon('sun', 16)}</button>` : ''}
+       ${settings ? `<button class="c-titlebar__control c-titlebar__control--settings" aria-label="设置" title="设置">${icon('settings', 16)}</button>` : ''}
+       <button class="c-titlebar__control c-titlebar__control--min" aria-label="最小化">${icon('minus', 14)}</button>
+       <button class="c-titlebar__control c-titlebar__control--max" aria-label="最大化">${icon('maximize', 12)}</button>
+       <button class="c-titlebar__control c-titlebar__control--close" aria-label="关闭">${icon('close', 14)}</button>
+     </div>
+   </div>`;
+ }
+ 
+ export function mountTitleBar(root) {
+   const maxBtn = root.querySelector('.c-titlebar__control--max');
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 5d27875..c4bacb1 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -419,10 +419,42 @@ test('导航图标选中项放大加粗、非选中项常规', async ({ page })
+ test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) => {
+   await page.goto('/?mode=app');
+   // 先等导航轮挂载（7 项）再断言：若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过，
+   // 失去「删光晕」的真门禁（挂载后仍有 glow 时也必须失败）
+   await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+   await expect(page.locator('.c-navwheel__glow')).toHaveCount(0);
+   const bg = await page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon')
+     .evaluate((el) => getComputedStyle(el).backgroundColor);
+   expect(bg).not.toBe('rgba(0, 0, 0, 0)'); // accent-100 衬底非透明
+ });
++
++// —— B2-R8 导航栏顶部割裂修复（遮罩 → 内容遮罩）——
++// 顶部 48px 渐变叠加层（.c-navwheel__mask，linear-gradient(var(--glass-bg), transparent)）
++// 叠在导航栏自身 48% 半透明背景上 = 双倍着色把顶部洗白，与标题栏割裂成色带。
++// 修法：删除叠加渐变 div，竖向列表改 CSS mask-image 内容遮罩（淡出滚动项但不叠加颜色层）。
++// 先等导航轮挂载（7 项）再断言 count 0 —— 若在挂载前断言，空 DOM 上 toHaveCount(0) 会真空通过
++// （B2-R4 同款门禁：挂载后仍有 mask 时必须失败）。横向 dock 无竖向遮罩需求，不加 mask-image。
++
++test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
++  // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
++  await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
++  // 竖向列表有 mask-image 内容遮罩
++  const maskImg = await page.locator('.app-main__nav-l .c-navwheel__list').evaluate((el) => getComputedStyle(el).maskImage);
++  expect(maskImg).toContain('linear-gradient');
++});
++
++// —— B2-R8 标题栏快捷深浅切换按钮 ——
++// 设置按钮左边快捷按钮，点击经配置链路 saveConfig→applyConfig 翻转 data-theme；
++// 图标随当前主题：深色显示 sun（点切浅）、浅色显示 moon（点切深）。
++
++test('标题栏快捷深浅切换按钮：点击翻转 data-theme', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
++  await page.reload();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++  await page.locator('.c-titlebar__control--theme').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  await page.locator('.c-titlebar__control--theme').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 1519623..ca6ef88 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index 707aa6d..ecf80b8 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index cf4e461..394cfe8 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index 489b186..f6de2ed 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index 7aaf98f..b8fb9fc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index 76c074c..869f1c3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
