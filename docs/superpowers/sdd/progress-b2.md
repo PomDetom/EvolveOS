@@ -199,3 +199,21 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R8 导航栏割裂修复 + 深浅切换按钮：✅ 完成（556c936，评审通过）
 - Task R9 标题栏主题按钮三态循环 + 设置同步：✅ 完成（4e4fda5 + 7d9ddfe，评审通过）
 - R-验收 用户视觉验收（最终复验）+ 最终评审 + 合并：待执行
+
+## 最终整体评审（返工后，2026-08-07，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-b2-rework-final.diff（0839414..HEAD，39 commits）
+- **裁决**：Ready to merge: Yes —— 0 Critical / 0 Important；评审独立复跑 npm test 60/60、npm run build、npm run test:e2e 97/97（含视觉 24）全绿；用户验收已通过
+- **5 Minor → 最终修复波（efad983）**：①概览页「主题状态」卡陈旧 ②app-main.css 头部注释失实 ③themeUnsub 死变量 ④噪点覆盖测试同义 ⑤噪点兜底 0.04。修复波复查：2-5 闭环；**① 修复无效（parked）**——saveConfig 先触发 subscribe（写 data-theme 前），回调读 data-theme 得旧值 → 概览卡陈旧依旧；正确修法=读 `getConfig().theme` + `prefersDark()` 解析（同 updateThemeIcon 模式），移交 B3 收尾
+- **deferred Minors 分诊**：~25 条；1 条随修复波闭环 4 条；8 条随合并带入 B3 收尾（B2-1 M-2 开关行结构 / B2-2 M-1 手机背景预设 UI / R3① 弱断言补强等）；9 条豁免（--glass-enabled 钩子、R7② data-tauri 死标志、R5③ 死令牌清理等）
+- **已知风险（随合并，不 gate）**：components-partition 长截图 run-to-run 抖动（噪点层 × 拼接相位，当前基线稳定绿，本轮全过）
+- **残留跟进（B3 优先）**：Issue 1 概览卡正确修法 + 移动端概览卡同病（选择器仅桌面）+ customizer.css:175 兜底 0.04 未对齐（报告路径笔误 src/demo→src/styles）
+
+## 执行状态
+
+- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc）→ 返工 R2 覆盖
+- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435）→ 返工 R3 重调
+- Task B2-3 导航图标四项增强：✅ 完成（670396c）→ 返工 R4 去光晕
+- Task R1-R9 亚克力返工：✅ 全部完成（评审通过）
+- 最终整体评审（返工后）：✅ Ready to merge: Yes（0 Critical/Important，Issue 1 parked 移交 B3）
+- 合并 main + B3：待用户决定（本会话 or 下一对话）
