@@ -115,19 +115,6 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **基线指纹**：18 张尺寸全部下降（光晕收窄→细节减少→压缩率升，与 R2 噪点层引入时上涨方向相反，逻辑自洽）；尺寸一致无布局位移
 - **Minor 留收尾**：① 断言只守卫默认 gradient 预设（geo/grid alpha 未守卫，注释言明真实 gate 为基线+验收）；② 断言隐式耦合 Chromium color-mix 序列化（已实测对 rgb()/rgba()/color(srgb) 三种格式健壮）；③ `--surface-solid` 末层计算值序列化为 none（B2-2 既有行为，非 R3 引入）；④ flake 归因含两个正交环境理论（AA 抖动 vs server 陈旧），观测一致
 
-## 执行状态
-
-- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
-- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）→ **返工 R3 重调预设**
-- Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ **返工 R4 去光晕**
-- 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
-- Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
-- Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
-- Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
-- Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
-- Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，待评审）
-- R-验收 用户视觉验收 + 最终评审 + 合并：待执行
-
 ## Task B2-R4: 图标选中态去光晕
 
 - **状态**：完成（2026-08-06，评审通过）
@@ -142,15 +129,6 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 
 ## Task B2-R5: 自定义器调整 + 措辞同步
 
-- **状态**：完成（2026-08-07，待评审）
-- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步`
-- **验证**：npm test 60/60；npm run test:e2e 95/95（含新「表面质感」用例 + 「亚克力两档」重命名回归 + 24 张视觉基线）；npm run test:visual 24/24（18 张既有逐像素不变 + 6 张全新外观分区基线）；npm run build 通过
-- **实现**：customizer-panel.js GROUPS 第 2 组「表面质感」+ 开关「亚克力材质」+ glassPreview 注释去「高光」改「噪点强度」（闭环 R1 M1）；customizer.css `.cust-panel`/`.cust-glass-preview__glass` backdrop-filter 统一亚克力配方（saturate(1.4) → `--acrylic-saturate`/`--acrylic-brightness`，闭环 R2 复查范围）+ box-shadow 去 inset-highlight + `::before` 高光层改噪点层（`--acrylic-noise` 120px 平铺 + `opacity: var(--noise-opacity)`，实时反映噪点滑杆）；settings-pages.js / component-showcase-full.js 措辞「玻璃」→「亚克力」；测试名/注释同步（apply「亚克力材质开/关」、app-shell「亚克力两档」、customizer「调整亚克力透明度」）；visual-regression.spec.js SHOTS **新增外观分区截图**（partition 1，挂载守卫断言 `.cust-group` count 6）
-- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
-- **评审**：待评审
-
-## Task B2-R5: 自定义器调整 + 措辞同步
-
 - **状态**：完成（2026-08-06，评审通过）
 - **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步` + `2e72da6` `docs: R5 执行留痕`
 - **验证**：npm test 60/60；npm run test:e2e 95/95（含新「表面质感」用例 + 「亚克力两档」重命名回归 + 24 张视觉基线）；npm run test:visual 24/24；npm run build 通过
@@ -159,6 +137,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **评审**：规格 ✅ / Approved（0 Critical/Important，4 Minor）
 - **必要偏离（brief 内演进，评审验证与意图一致且必要）**：视觉基线 18→24——为覆盖被改外观分区，visual-regression.spec.js SHOTS 新增外观分区 shot（partition 1，挂载守卫断言 `.cust-group` count 6）；仅新增 6 张 appearance-partition-*，既有 18 张零字节变动（提交文件清单独立证实）；把「count 6 不破坏」固化为基线门禁
 - **Minor 留收尾**：① apply.test.js:23 测试名「玻璃与动效参数…」保留「玻璃」指代 `--glass-*` 变量族（命名保留口径下可辩护）；② customizer-css.js:34 注释「玻璃/排版/…」保留（内部注释非用户可见）；③ themes.css `--glass-highlight-rgb/highlight/--shadow-inset-highlight` 定义已零消费者（spec §6 允许保留或移除，可收尾清理）；④ settings-pages.js:94 外观页头「与右侧抽屉面板共用同一份配置」提及的抽屉为死代码（mountCustomizer 无人调用，前置存在，超 R5 范围）
+
+## Task B2-R6: 亚克力可见性调参（明显亚克力）
+
+- **状态**：完成（2026-08-07，评审通过）
+- **提交**：`d1c7166` `feat: 亚克力可见性调参（明显亚克力：着色0.48/模糊30/噪点0.06 + 背景层增强）` + `27fd15c` `docs: R6 执行留痕` + `0663712` `test: 视觉基线重生成（明显亚克力调参后 24 张全量更新）`
+- **验证**：npm test 60/60；npm run test:e2e 95/95（含「背景层」「亚克力两档」「亚克力材质」+ 其余零冲击）；npm run test:visual 24/24（强制重生成后稳定绿）；npm run build 通过
+- **背景**：用户视觉验收 R1-R5 后指出 ①背景装饰无效果 ②亚克力不明显（展示板更像亚克力）③噪点只影响展示板。控制器实测（computed-style）确认结构全对，问题是可见性——表面着色 0.62 太不透明 + 背景层 alpha ≤0.3 太淡 → 模糊无物可糊
+- **实现**：defaults.js `glass.opacity 0.62→0.48` / `blur 24→30` / `noise 0.04→0.06`（用户选「明显亚克力」）；app-main.css 三预设 alpha 提升 + 范围铺开（gradient 50%/30% 停靠点 60%/55%→65%/60%、geo 40%、grid 25%）——背景层成为可感知的彩色 wash，经 0.48 透明 + blur 30 呈克制彩色磨砂；apply.test.js 默认噪点断言 0.04→0.06
+- **简报/报告**：docs/superpowers/sdd/task-B2-R6-brief.md / task-B2-R6-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
+- **基线重生成（同 R2 机制）**：`--update-snapshots` no-op（pixelmatch 阈值 ≈37 > 本次最大差异 ~15/通道，旧基线容差内通过不重写）→ 控制器删 24 张快照强制重生成 + 稳定复跑绿；基线现反映「明显亚克力」渲染（暗色 0.44%-9.96% 像素偏移、浅色 ≈0、无布局位移）
+- **Minor 留收尾**：① apply.test.js:42-44 「覆盖」测试值 0.06 恰等于新默认，退化为与默认测试同义重复（建议改 0.08 恢复区分度）；② app-main.css:57 CSS 兜底 `--noise-opacity, 0.04` 与新默认 0.06 不一致（仅无配置路径生效，可后续任一并齐）；③ 评审留痕本已随提交（见上）
 
 ## 执行状态
 
@@ -171,4 +161,5 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
 - Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
 - Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，评审通过）
-- R-验收 用户视觉验收 + 最终评审 + 合并：待执行
+- Task R6 亚克力可见性调参：✅ 完成（d1c7166，评审通过）
+- R-验收 用户视觉验收（R6 后复验）+ 最终评审 + 合并：待执行

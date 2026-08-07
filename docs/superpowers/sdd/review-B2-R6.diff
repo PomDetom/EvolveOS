@@ -1,0 +1,113 @@
+# Review package: 3ef07a1..d1c7166
+
+## Commits
+d1c7166 feat: 亚克力可见性调参（明显亚克力：着色0.48/模糊30/噪点0.06 + 背景层增强）
+
+## Files changed
+ src/app/app-main.css     | 18 ++++++++++--------
+ src/config/defaults.js   |  2 +-
+ tests/unit/apply.test.js |  4 ++--
+ 3 files changed, 13 insertions(+), 11 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index 64dc276..e2dbfe0 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -16,36 +16,38 @@
+   --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
+ }
+ .app-main--dual { --app-nav-r-w: 64px; }
+ 
+ /* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格三预设 ——
+    position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
+    玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
+    transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
+    预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
+    Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。
+-   R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha（≤0.3）、
+-   范围收窄 —— 实色 hex 直铺会与近黑 --surface-solid 叠出大面积亮晕，改带透明度后干净。 */
++   R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha、范围收窄。
++   R6 可见性调参（用户验收：亚克力不明显）：光晕 alpha 提升（gradient 50%/30%、geo 40%、
++   grid 25%）、停靠点范围铺开 —— 背景层须有可感知的彩色 wash，经表面 0.48 透明 + blur 30
++   呈克制彩色磨砂（不发艳）。 */
+ .app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+   background: var(--backdrop-bg); }
+ .app-main[data-backdrop="gradient"] { --backdrop-bg:
+-  radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--accent-300) 26%, transparent) 0%, transparent 60%),
+-  radial-gradient(100% 100% at 85% 90%, color-mix(in srgb, var(--accent-300) 18%, transparent) 0%, transparent 55%),
++  radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--accent-300) 50%, transparent) 0%, transparent 65%),
++  radial-gradient(100% 100% at 85% 90%, color-mix(in srgb, var(--accent-300) 30%, transparent) 0%, transparent 60%),
+   var(--surface-solid); }
+ .app-main[data-backdrop="geo"] { --backdrop-bg:
+-  radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 20%, transparent) 0%, transparent 32%),
++  radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 40%, transparent) 0%, transparent 38%),
+   linear-gradient(135deg, transparent 30%, rgba(255,255,255,.03) 30% 32%, transparent 32%),
+   var(--surface-solid); }
+ .app-main[data-backdrop="grid"] { --backdrop-bg:
+-  linear-gradient(color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
+-  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
+-  var(--surface-solid); background-size: 40px 40px; }
++  linear-gradient(color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
++  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
++  var(--surface-solid); }
+ /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
+    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
+ .app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+ /* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
+ .app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+ 
+ /* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
+    .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳
+    （含右窗轮 —— 同为 --z-float、DOM 序靠后故在上）；pointer-events:none 不挡交互；
+    静态层（不参与动画，红线）；data-glass="off" 纯色降级时隐去噪点。 */
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index e063b2d..a31ace8 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -1,14 +1,14 @@
+ export const DEFAULTS = {
+   theme: 'system',
+   accent: 'indigo',
+-  glass: { opacity: 0.62, blur: 24, noise: 0.04, blurEnabled: true },
++  glass: { opacity: 0.48, blur: 30, noise: 0.06, blurEnabled: true },
+   type: { baseSize: 14, scale: 1, weight: 400 },
+   radiusScale: 1,
+   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
+   shadow: 0.5,
+   color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
+ };
+ 
+ export const RANGES = {
+   opacity: [0.4, 0.95, 0.01],
+   blur: [8, 48, 1],
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index e1ca74b..fff2e5d 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -36,23 +36,23 @@ describe('applyConfig', () => {
+   });
+   it('亚克力材质关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
+     expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
+     expect(root.dataset.glass).toBe('off');
+   });
+   it('噪点强度写入 --noise-opacity 覆盖', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
+     expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+   });
+-  it('默认噪点强度 0.04 写入', () => {
++  it('默认噪点强度 0.06 写入', () => {
+     applyConfig(DEFAULTS, root);
+-    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.04');
++    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+   });
+   it('动效关闭时时长全部为 0', () => {
+     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
+     expect(root.style.getPropertyValue('--dur-fast')).toBe('0ms');
+   });
+   // —— 色彩微调：色相/饱和度覆盖（默认跟随主题色时不写覆盖）——
+   it('hue 跟随（-1）且饱和度 100 时不写 --accent 覆盖', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('');
+   });
