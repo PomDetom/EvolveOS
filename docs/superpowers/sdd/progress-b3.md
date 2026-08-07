@@ -57,3 +57,10 @@ Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.t
 - **Minors 分诊（5 条，全部免修随合并）**：① customizer-panel.js:307 `renderOverviewCard(cfg)` 参数未用（静态 HTML + updateOverview 承载值，建议删参）；② :346 `--preview-theme` 写了无 CSS 消费（仅 `--preview-theme-bg` 被读，死数据，cosmetic）；③ customizer.css 若干硬编码装饰值（rgba 阴影/渐变停靠点/gap，沿用 glassPreview 既有先例，风格一致）；④ 覆盖广度：B3-2 e2e 未断言主题/玻璃联动、P0 system 分支未断言（同机制，低风险）；⑤ 保真度：玻璃微缩块 blurEnabled=off 仍显示模糊（brief 范围只要求 opacity+噪点，非偏差，下轮补）
 - **评审亮点**：`--preview-theme-bg` 非简单间接——subscribe 回调先于 applyConfig 执行，根 `--surface-solid` 在回调内还是旧主题，JS 计算色使预览反映新配置（正确且必要）；box-shadow: var(--shadow-inset-highlight) 意外「复活」了交接书 §5 R5③ 死令牌清理候选（正向小加分）
 - **执行状态**：全部任务完成 → 待合并 main + 合并后全量回归
+
+## 合并 main + 合并后全量回归（2026-08-08）
+
+- **合并**：`git merge --no-ff feature/b3-settings`（b601904，ort 策略无冲突，23 文件）；feature/b3-settings 已删除（merged）
+- **合并后全量回归**：npm test 60/60；npm run test:e2e 99 passed（含视觉基线 24，appearance-partition 6 张随 B3-1/B3-2 重生成后零漂移）；npm run build 通过
+- **1 例 cold-start flake（非回归）**：smoke.spec.js「app shell renders」首跑超时（`.app-main` 5s 未现），隔离复跑 14.6s 通过 —— 与 B2/B3 全程已知冷启动偶发同类，非因果
+- **B3 完成**：P0 主题卡修复 + B3-1 分组重命名（全局语义 + desc）+ B3-2 实时整体预览卡 全部落地 main；移交收尾项 P0 已闭环，P1/P2 随下一阶段
