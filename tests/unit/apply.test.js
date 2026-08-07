@@ -43,9 +43,9 @@ describe('applyConfig', () => {
     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
     expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
   });
-  it('默认噪点强度 0.04 写入', () => {
+  it('默认噪点强度 0.06 写入', () => {
     applyConfig(DEFAULTS, root);
-    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.04');
+    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
   });
   it('动效关闭时时长全部为 0', () => {
     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
