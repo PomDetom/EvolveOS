@@ -150,6 +150,17 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **基线重生成（同 R2 机制）**：`--update-snapshots` no-op（pixelmatch 阈值 ≈37 > 本次最大差异 ~15/通道，旧基线容差内通过不重写）→ 控制器删 24 张快照强制重生成 + 稳定复跑绿；基线现反映「明显亚克力」渲染（暗色 0.44%-9.96% 像素偏移、浅色 ≈0、无布局位移）
 - **Minor 留收尾**：① apply.test.js:42-44 「覆盖」测试值 0.06 恰等于新默认，退化为与默认测试同义重复（建议改 0.08 恢复区分度）；② app-main.css:57 CSS 兜底 `--noise-opacity, 0.04` 与新默认 0.06 不一致（仅无配置路径生效，可后续任一并齐）；③ 评审留痕本已随提交（见上）
 
+## Task B2-R7: Tauri 背景修复 + 关闭背景选项
+
+- **状态**：完成（2026-08-07，评审通过）
+- **提交**：`43caf2b` `feat: Tauri 桌面显示背景层（关窗口透明）+ 背景装饰「关闭背景」预设`
+- **验证**：npm test 60/60；npm run test:e2e 95/95（含扩展「背景层」none 用例 + 其余零冲击）；npm run test:visual 24/24（外观分区 6 张重生成——结构性新增按钮超过阈值故非 no-op，其余 18 张零漂移）；npm run build 通过
+- **背景**：用户 Tauri 目检反馈桌面端三个背景无效 + 主题颜色不正常。根因：`[data-tauri="1"] .app-main__backdrop { opacity: 0 }` 隐藏背景层 + WebView2 透明窗口下 backdrop-filter 无法模糊桌面壁纸
+- **实现**：app-main.css 删 `[data-tauri="1"]` 隐藏规则 + 加 `.app-main[data-backdrop="none"] { --backdrop-bg: var(--surface-solid); }`；app-main.js `BD_LABELS` 加 `none: '关闭'`（按钮 3→4）；tauri.conf.json 窗口 `transparent: true`→`false`（背景层为不透明实底，桌面壁纸不透出，消除 WebView2 透明渲染怪癖）；e2e「背景层」用例扩展 none 断言
+- **简报/报告**：docs/superpowers/sdd/task-B2-R7-brief.md / task-B2-R7-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，3 Minor）
+- **Minor 留收尾**：① M1 app-main.css:25 头部块注释仍写「Tauri 背景层透明，模糊真实壁纸」「三预设」——已失实（R7 后 Tauri 同显、四预设），建议同步；② M2 `data-tauri` 探测写成为死标志（无 CSS 消费者，保留无害，可标注为未来钩子）；③ M3 e2e none 断言未在点击后复验背景层可见（稳健性增强建议）
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ 返工 R2 覆盖表面应用
@@ -162,4 +173,5 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
 - Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，评审通过）
 - Task R6 亚克力可见性调参：✅ 完成（d1c7166，评审通过）
-- R-验收 用户视觉验收（R6 后复验）+ 最终评审 + 合并：待执行
+- Task R7 Tauri 背景修复 + 关闭背景：✅ 完成（43caf2b，评审通过）
+- R-验收 用户视觉验收（Tauri 复验）+ 最终评审 + 合并：待执行

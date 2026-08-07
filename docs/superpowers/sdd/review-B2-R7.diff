@@ -1,0 +1,174 @@
+# Review package: ae932ec..43caf2b
+
+## Commits
+43caf2b feat: Tauri 桌面显示背景层（关窗口透明）+ 背景装饰「关闭背景」预设
+
+## Files changed
+ src-tauri/tauri.conf.json                          |   2 +-
+ src/app/app-main.css                               |   5 +++--
+ src/app/app-main.js                                |   9 +++++----
+ tests/e2e/app-shell.spec.js                        |   9 +++++++--
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 323043 -> 323448 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 274642 -> 275435 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 333815 -> 334175 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 213487 -> 213511 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 210044 -> 209478 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 169832 -> 170360 bytes
+ 10 files changed, 16 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/src-tauri/tauri.conf.json b/src-tauri/tauri.conf.json
+index c515fb7..74be513 100644
+--- a/src-tauri/tauri.conf.json
++++ b/src-tauri/tauri.conf.json
+@@ -12,21 +12,21 @@
+   "app": {
+     "withGlobalTauri": true,
+     "windows": [
+       {
+         "title": "UI Design System",
+         "width": 960,
+         "height": 560,
+         "minWidth": 720,
+         "minHeight": 480,
+         "decorations": false,
+-        "transparent": true,
++        "transparent": false,
+         "shadow": true
+       }
+     ],
+     "security": {
+       "csp": null
+     }
+   },
+   "bundle": {
+     "active": true,
+     "targets": "all",
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index e2dbfe0..5ceb64f 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -37,22 +37,23 @@
+   radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 40%, transparent) 0%, transparent 38%),
+   linear-gradient(135deg, transparent 30%, rgba(255,255,255,.03) 30% 32%, transparent 32%),
+   var(--surface-solid); }
+ .app-main[data-backdrop="grid"] { --backdrop-bg:
+   linear-gradient(color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
+   linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
+   var(--surface-solid); }
+ /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
+    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
+ .app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+-/* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
+-.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
++/* B2-R7「关闭背景」预设：平铺实底，无渐变装饰（桌面/浏览器一致；Tauri 不再隐藏背景层，
++   关窗口透明后背景层为不透明实底，观感与浏览器一致） */
++.app-main[data-backdrop="none"] { --backdrop-bg: var(--surface-solid); }
+ 
+ /* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
+    .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳
+    （含右窗轮 —— 同为 --z-float、DOM 序靠后故在上）；pointer-events:none 不挡交互；
+    静态层（不参与动画，红线）；data-glass="off" 纯色降级时隐去噪点。 */
+ .app-main::after {
+   content: ''; position: absolute; inset: 0; pointer-events: none;
+   background-image: var(--acrylic-noise); background-size: 120px 120px;
+   opacity: var(--noise-opacity, 0.04);
+   z-index: var(--z-float); /* 覆盖右窗轮（同为 --z-float，DOM 序靠后故在上）；pointer-events:none 不挡交互 */
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 135db57..db8ba97 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -121,25 +121,26 @@ export function mountAppMode(root) {
+   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
+   const stackEl = root.querySelector('.app-main__stack');
+   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+ 
+   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+-  // Tauri 探测：桌面端背景层透明（模糊真实壁纸）；浏览器默认可见（渐变/几何/网格三预设）。
+-  // 外观分区「背景装饰」3 预设按钮，点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg
+-  // 变化，不动画）。预设为会话内纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
++  // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
++  // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
++  // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
++  // 不触发配置链路（与右窗状态同类）。
+   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+-  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格' };
++  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+   (() => {
+     const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
+     if (!page) return;
+     const block = document.createElement('div');
+     block.className = 'app-main__backdrop-sel';
+     block.innerHTML = `
+       <div class="app-main__backdrop-sel-head">背景装饰</div>
+       <div class="app-main__backdrop-sel-opts" role="group" aria-label="背景装饰">
+         ${Object.keys(BD_LABELS).map((bd) => `
+           <button type="button" class="app-main__backdrop-opt${appMain.dataset.backdrop === bd ? ' app-main__backdrop-opt--active' : ''}"
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 6686a8c..5d27875 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -357,33 +357,38 @@ test('亚克力两档：默认磨砂，关闭后纯色不透明（外观开关 +
+ test('亚克力材质：表面增饱和模糊 + 噪点层存在', async ({ page }) => {
+   await page.goto('/?mode=app');
+   const filter = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+   expect(filter).toContain('saturate(1.8)');
+   expect(filter).toContain('brightness(');
+   const noise = await page.locator('.app-main').evaluate((el) => getComputedStyle(el, '::after').backgroundImage);
+   expect(noise).toContain('data:image/svg+xml');
+ });
+ 
+ // —— B2-2 浏览器装饰背景层（模糊对象）——
+-// 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
+-// Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
++// 背景层为浏览器侧装饰（渐变/几何/网格/关闭四预设），非配置链路（会话内纯 UI 态，不进 store）；
++// Tauri 探测（window.__TAURI__）保留标志但不再隐藏背景层（B2-R7：桌面端同显背景层）。
+ 
+ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+   await page.goto('/?mode=app');
+   const backdrop = page.locator('.app-main__backdrop');
+   await expect(backdrop).toBeVisible();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+   // 外观分区切换背景预设
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
++  // 关闭背景：data-backdrop=none → 背景层平铺实底（无渐变装饰）
++  await page.locator('.app-main__backdrop-opt[data-bd="none"]').click();
++  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'none');
++  const flat = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
++  expect(flat).not.toMatch(/radial-gradient\(|linear-gradient\(/);
+ });
+ 
+ // —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
+ // 三预设 --backdrop-bg 从 --accent-200/300 实色改 color-mix 加 alpha（≤0.3）、范围收窄；
+ // 默认 gradient 实色光晕经 color-mix 后计算值带非零 alpha（Chromium 序列化为
+ // color(srgb r g b / alpha)）—— 观感守卫（弱断言），真实 gate 为视觉基线 + 用户验收；
+ // 前实现光晕为实色 rgb / rgba(0,0,0,0)（transparent 停靠点），无任何非零 alpha 颜色。
+ 
+ test('背景层预设柔和：accent 光晕层带透明度', async ({ page }) => {
+   await page.goto('/?mode=app');
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index eade328..053fb9a 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 2d242a1..6d50c04 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index f6b619b..67f46f3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index c0f3a29..c3db701 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index 917dad8..19ff93f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 97bd94a..977fedd 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
