@@ -13,7 +13,8 @@ import { exportCss } from './customizer-css.js';
  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
- * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
+ * - 6 组 .cust-group（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次），每组 .cust-row = 标签 + 控件；
+ *   组标题下渲染 .cust-group__desc 一行描述（全局语义名 + 简述，B3-1）
  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
@@ -38,7 +39,8 @@ const CFG_PATH = {
 
 const GROUPS = [
   {
-    title: '色彩',
+    title: '整体色调',
+    desc: '主题色/色相/饱和度/色温',
     pre: (cfg) => accentCards(cfg) + semanticBar(),
     sliders: [
       { key: 'hue', label: '色相', unit: '°' },
@@ -48,6 +50,7 @@ const GROUPS = [
   },
   {
     title: '表面质感',
+    desc: '透明度/模糊/噪点强度/亚克力材质',
     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
     sliders: [
       { key: 'opacity', label: '透明度' },
@@ -56,18 +59,21 @@ const GROUPS = [
     ],
   },
   {
-    title: '排版',
+    title: '文字排版',
+    desc: '基准字号/缩放',
     sliders: [
       { key: 'baseSize', label: '基准字号', unit: 'px' },
       { key: 'scale', label: '缩放', unit: '×' },
     ],
   },
   {
-    title: '圆角',
+    title: '边角形状',
+    desc: '圆角比例',
     sliders: [{ key: 'radiusScale', label: '圆角比例', unit: '×' }],
   },
   {
-    title: '动效',
+    title: '动效节奏',
+    desc: '时长缩放/弹性强度',
     pre: (cfg) => motionSwitchRow(cfg),
     sliders: [
       { key: 'durationScale', label: '时长缩放', unit: '×' },
@@ -75,7 +81,8 @@ const GROUPS = [
     ],
   },
   {
-    title: '阴影',
+    title: '阴影层次',
+    desc: '阴影强度',
     sliders: [{ key: 'shadowIntensity', label: '阴影强度' }],
   },
 ];
@@ -304,6 +311,7 @@ export function renderCustomizerGroups(container) {
   container.innerHTML = GROUPS.map((g) => `
     <section class="cust-group">
       <h4 class="cust-group__title">${g.title}</h4>
+      ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
       ${g.pre ? g.pre(cfg) : ''}
       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
     </section>`).join('');

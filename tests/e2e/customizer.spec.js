@@ -44,3 +44,23 @@ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', as
   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
 });
+
+test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  const group = page.locator('.cust-group');
+  await expect(group).toHaveCount(6);
+  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
+  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
+  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
+  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
+  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
+  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
+  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
+  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
+  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
+  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
+  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
+  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
+});
