@@ -16,9 +16,9 @@
   z-index: var(--z-overlay);
   display: flex; flex-direction: column;
   background: var(--surface-2);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
   border-left: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  box-shadow: var(--glass-shadow);
   transform: translateX(100%);
   visibility: hidden;
   transition: transform var(--dur-base) var(--ease-spring), visibility 0s var(--dur-base);
@@ -144,7 +144,7 @@
   background: var(--chip);
 }
 
-/* ---- 玻璃材质即时预览 ---- */
+/* ---- 表面质感即时预览 ---- */
 .cust-glass-preview {
   position: relative; height: 92px;
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
@@ -165,13 +165,14 @@
 .cust-glass-preview__glass {
   position: absolute; inset: 0;
   background: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity));
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
+  box-shadow: var(--glass-shadow);
 }
 .cust-glass-preview__glass::before {
   content: ''; position: absolute; inset: 0;
-  background: var(--glass-highlight); /* 高光滑杆实时可见 */
+  background-image: var(--acrylic-noise); background-size: 120px 120px;
+  opacity: var(--noise-opacity, 0.04); /* 噪点滑杆实时可见 */
 }
 
 /* ---- 色彩微调：色相/饱和度组合色预览点 ---- */

@@ -320,18 +320,18 @@ test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% �
   expect(anchorDelta).toBeLessThan(4);
 });
 
-// —— B2-1 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
+// —— B2-1 亚克力材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
 // 默认 blurEnabled=true → html data-glass="on" + 表面 backdrop-filter 生效；
-// 外观分区「玻璃磨砂」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
+// 外观分区「亚克力材质」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
 // 开关写 store（saveConfig），reload 冷启动保持关闭 —— 完整配置链路（defaults→store→apply）。
 
-test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
+test('亚克力两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
   await page.goto('/?mode=app');
   // 默认磨砂：html data-glass=on + 导航栏 backdrop-filter 生效
   await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
   const blur = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
   expect(blur).toContain('blur');
-  // 设置→外观：玻璃磨砂开关初始为开
+  // 设置→外观：亚克力材质开关初始为开
   await page.locator('.c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();

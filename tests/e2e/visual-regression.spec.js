@@ -9,11 +9,14 @@ import { test, expect } from '@playwright/test';
 // 之后 npm run test:visual 对比基线；界面有意变更（含新组件/令牌）后需重新生成。
 // accent 抽样取 3 套（默认靛蓝 + 暖色琥珀 + 冷色翡翠）覆盖色相两端，基线不膨胀。
 // SHOTS：name / selector / settingsPartitionIndex（⚙ 进入设置右窗分区项序号；null = 单窗口态不进设置）。
-//   应用壳右窗默认收起单窗口态，无入场相位；设置分区惰性挂载展示内容（组件/动效），
+//   应用壳右窗默认收起单窗口态，无入场相位；设置分区惰性挂载展示内容（外观定制器/组件/动效），
 //   截图稳定化沿用 data-motion=off + animations disabled（入场 stagger 相位无关）。
+//   appearance-partition：B2 返工后外观分区「表面质感」组（亚克力开关 + 噪点强度滑杆 + 噪点预览），
+//   锁定自定义器整页形态的亚克力观感（与 R2 起 surface 配方一致）。
 
 const SHOTS = [
   ['app-main', '.app-main', null],
+  ['appearance-partition', '.app-main__settings [data-page="appearance"]', 1],
   ['components-partition', '.app-main__settings [data-page="components"]', 8],
   ['motion-partition', '.app-main__settings [data-page="motion"]', 9],
 ];
@@ -42,7 +45,10 @@ for (const [name, selector, partition] of SHOTS) {
           await page.locator('.c-titlebar__control--settings').click();
           await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
           await page.locator('.app-main__nav-r .c-navwheel__item').nth(partition).click();
-          if (partition === 8) {
+          if (partition === 1) {
+            // 外观分区：定制器整页形态 6 组（含「表面质感」组 + 噪点预览），锁定 .cust-group 计数
+            await expect(page.locator('.app-main__settings [data-page="appearance"] .cust-group')).toHaveCount(6);
+          } else if (partition === 8) {
             // 组件分区：6 组矩阵 + 1 个交互悬浮窗实例块（csg count 7）+ 剪贴板悬浮窗组合示例
             await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
             await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();

@@ -7,7 +7,7 @@ import { openSettingsPartition } from './helpers.js';
 // 取舍：导出（.cust-export）与重置（.cust-reset）在分区整页形态无对应（footer 为抽屉面板
 // 专属），相应用例删除，保留滑杆 → CSS 变量实时生效的核心行为验证。
 
-test('调整玻璃透明度实时生效', async ({ page }) => {
+test('调整亚克力透明度实时生效', async ({ page }) => {
   const appr = await openSettingsPartition(page, 1);
   const slider = appr.locator('.cust-row:has-text("透明度") input[type="range"]');
   await slider.fill('0.8');
@@ -34,4 +34,13 @@ test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
   let hue = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
   expect(hue).toBe('40');
+});
+
+test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
+  await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
+  await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
 });

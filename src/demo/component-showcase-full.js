@@ -162,7 +162,7 @@ export function mountComponentsShowcase(root) {
   // ============ 组 3：数据展示（Card / List / Badge / Tag / Progress / Avatar / Skeleton / EmptyState） ============
   const cardBox = showcase('卡片 Card', [
     { label: '默认', html: renderCard({ title: '剪贴板历史', content: '最近 20 条复制记录会保存在这里，支持搜索与固定。', footer: renderButton({ label: '查看全部', variant: 'ghost', size: 'sm' }) }) },
-    { label: '玻璃材质', html: renderCard({ title: '密码条目', content: '为每个网站生成独立的强密码，自动填充登录表单。', glass: true }) },
+    { label: '亚克力材质', html: renderCard({ title: '密码条目', content: '为每个网站生成独立的强密码，自动填充登录表单。', glass: true }) },
     { label: '徽标页脚', html: renderCard({ title: '同步状态', content: '剪贴板数据将在设备间自动同步。', footer: renderBadge({ label: '已同步', variant: 'success' }) }) },
   ]);
   const listBox = showcase('列表 List', [
@@ -245,7 +245,7 @@ export function mountComponentsShowcase(root) {
     btn.addEventListener('click', () => {
       openDialog(danger
         ? { title: '确认删除', content: '删除后无法恢复，确定要继续吗？', confirmLabel: '删除', danger: true }
-        : { title: '关于', content: 'UI Design System v0.1 — 克制的玻璃质感设计语言。', confirmLabel: '知道了' })
+        : { title: '关于', content: 'UI Design System v0.1 — 克制的亚克力质感设计语言。', confirmLabel: '知道了' })
         .then((ok) => { if (ok) toast(danger ? '已删除' : '感谢阅读', { variant: danger ? 'danger' : 'success' }); });
     });
   });

@@ -29,12 +29,12 @@ describe('applyConfig', () => {
     expect(s.getPropertyValue('--dur-fast')).toBe('120ms');
     expect(s.getPropertyValue('--ease-spring')).toBe('cubic-bezier(0.34, 1.336, 0.64, 1)');
   });
-  it('玻璃磨砂开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
+  it('亚克力材质开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, root);
     expect(root.style.getPropertyValue('--glass-enabled')).toBe('1');
     expect(root.dataset.glass).toBe('on');
   });
-  it('玻璃磨砂关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
+  it('亚克力材质关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
     expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
     expect(root.dataset.glass).toBe('off');

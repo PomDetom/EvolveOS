@@ -13,7 +13,7 @@ import { exportCss } from './customizer-css.js';
  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
- * - 6 组 .cust-group（色彩/玻璃材质/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
+ * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
@@ -47,7 +47,7 @@ const GROUPS = [
     ],
   },
   {
-    title: '玻璃材质',
+    title: '表面质感',
     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
     sliders: [
       { key: 'opacity', label: '透明度' },
@@ -163,7 +163,7 @@ function semanticBar() {
     </div>`;
 }
 
-/** 玻璃材质即时预览：色点/线条在玻璃层之后，backdrop-filter 实时呈现透明度/模糊/高光 */
+/** 表面质感即时预览：色点/线条在玻璃层之后，backdrop-filter 实时呈现透明度/模糊/噪点强度 */
 function glassPreview() {
   return `
     <div class="cust-glass-preview" aria-hidden="true">
@@ -187,15 +187,15 @@ function motionSwitchRow(cfg) {
     </div>`;
 }
 
-/** 玻璃材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
+/** 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
  *  写 saveConfig + applyConfig，订阅同步 aria-checked；抽屉与设置外观分区共用。 */
 function glassSwitchRow(cfg) {
   return `
     <div class="cust-row cust-row--switch" data-glass-switch>
       <div class="cust-row__head">
-        <span class="cust-row__label">玻璃磨砂</span>
+        <span class="cust-row__label">亚克力材质</span>
       </div>
-      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '玻璃磨砂' })}
+      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '亚克力材质' })}
     </div>`;
 }
 
@@ -330,7 +330,7 @@ export function renderCustomizerGroups(container) {
     applyConfig(saveConfig({ motion: { enabled: next } }));
   });
 
-  // 玻璃磨砂开关（B2-1）：blurEnabled → data-glass 降级
+  // 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级
   const glassWrap = container.querySelector('[data-glass-switch]');
   glassWrap?.addEventListener('click', () => {
     const sw = glassWrap.querySelector('.c-switch');
