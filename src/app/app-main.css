@@ -17,12 +17,12 @@
 }
 .app-main--dual { --app-nav-r-w: 64px; }
 
-/* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格三预设 ——
+/* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格/关闭四预设 ——
    position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
    玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
    transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
    预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
-   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。
+   Tauri（[data-tauri="1"]）同显背景层（窗口已不透明 transparent:false，观感与浏览器一致）。
    R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha、范围收窄。
    R6 可见性调参（用户验收：亚克力不明显）：光晕 alpha 提升（gradient 50%/30%、geo 40%、
    grid 25%）、停靠点范围铺开 —— 背景层须有可感知的彩色 wash，经表面 0.48 透明 + blur 30
@@ -55,7 +55,7 @@
 .app-main::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image: var(--acrylic-noise); background-size: 120px 120px;
-  opacity: var(--noise-opacity, 0.04);
+  opacity: var(--noise-opacity, 0.06);
   z-index: var(--z-float); /* 覆盖右窗轮（同为 --z-float，DOM 序靠后故在上）；pointer-events:none 不挡交互 */
 }
 :root[data-glass="off"] .app-main::after { opacity: 0; }

@@ -98,6 +98,6 @@
   --acrylic-saturate: 1.8;
   --acrylic-brightness: 1.1; /* light 基准 */
   --acrylic-noise: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --noise-opacity: 0.04; /* 兜底；apply.js 从 glass.noise 覆盖 */
+  --noise-opacity: 0.06; /* 兜底；apply.js 从 glass.noise 覆盖 */
 }
 :root[data-theme="dark"] { --acrylic-brightness: 0.92; }

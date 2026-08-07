@@ -40,8 +40,8 @@ describe('applyConfig', () => {
     expect(root.dataset.glass).toBe('off');
   });
   it('噪点强度写入 --noise-opacity 覆盖', () => {
-    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
-    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+    applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.08 } }, root);
+    expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.08');
   });
   it('默认噪点强度 0.06 写入', () => {
     applyConfig(DEFAULTS, root);

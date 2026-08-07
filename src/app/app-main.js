@@ -156,7 +156,14 @@ export function mountAppMode(root) {
   };
   // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
   // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
-  const themeUnsub = subscribe(() => { updateThemeIcon(); syncSettingsThemeModes(); });
+  subscribe(() => {
+    updateThemeIcon();
+    syncSettingsThemeModes();
+    // 概览页「主题状态」卡同步：标题栏/设置切主题经 applyConfig 改 html data-theme，概览页不重渲；
+    // 仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）
+    const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+    if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
+  });
 
   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
