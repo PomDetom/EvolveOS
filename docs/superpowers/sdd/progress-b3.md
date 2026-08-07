@@ -25,3 +25,15 @@ Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.t
 - **简报/报告**：docs/superpowers/sdd/task-B3-P0-brief.md / task-B3-P0-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor）——Minor：① system 分支仅被既有循环用例 exercise 未断言（代码正确，brief 未要求）；② app-main.js 注释密度偏重（文档化了一个真微妙的顺序根因，可接受）
 - **执行状态**：Task B3-P0：✅ 完成（71e55cd，评审通过）
+
+## Task B3-1: 外观分组重命名（全局语义 + desc）
+
+- **状态**：完成（2026-08-07，评审通过，0 Critical/Important，1 Minor 免修）
+- **提交**：`352398a` `feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc` + `115aa4b` `docs: B3-1 实施报告`
+- **验证**：TDD 红→绿（新用例实测收到旧标题）；customizer.spec 5/5；npm run test:e2e 99/99（含视觉 24）；npm test 60/60；npm run build 通过
+- **实现**：customizer-panel.js GROUPS 重命名 5 组（色彩→整体色调、排版→文字排版、圆角→边角形状、动效→动效节奏、阴影→阴影层次；表面质感 B2-R5 已完成不动）+ 全部 6 组加 desc（整体色调「主题色/色相/饱和度/色温」、表面质感「透明度/模糊/噪点强度/亚克力材质」、文字排版「基准字号/缩放」、边角形状「圆角比例」、动效节奏「时长缩放/弹性强度」、阴影层次「阴影强度」）；组模板 title 后渲染 `.cust-group__desc`；customizer.css `.cust-group__desc`（text-3 小字）+ title 下边距 space-3→space-1 收紧（desc 贴标题，依赖 base.css 全局 margin reset）
+- **视觉基线**：仅 appearance-partition 6 张重生成（解码比对：差异 = 标题改字 + 6 行 desc +120px 整、y680-1492 逐像素一致、group2 内容 +20px 干净下移 99.99% 匹配、无布局位移）；其余 18 张零漂移；复跑 24 全绿
+- **简报/报告**：docs/superpowers/sdd/task-B3-1-brief.md / task-B3-1-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，1 Minor）——Minor：暗色 3 张 appearance 顶部 y1-143 有 ~184px 的 1-3px 色带（非标题/desc 区域，评审判定与交接书 P2 已知风险「分区长截图 run-to-shot 抖动」同源，重生成后复跑绿即确定性噪音，勿归因产品改动）
+- **⚠️ 已裁决（控制器）**：评审 ⚠️ 暗色 top-band —— 交接书 §5 P2 明示「components-partition 长截图 run-to-shot 抖动…勿归因产品改动」，appearance 同为长分区截图；复跑全绿，判定为确定性 AA 抖动噪音，非真实 gap
+- **执行状态**：Task B3-1：✅ 完成（352398a，评审通过）
