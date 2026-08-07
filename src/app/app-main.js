@@ -19,7 +19,7 @@ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
-import { applyConfig } from '../config/apply.js';
+import { applyConfig, prefersDark } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
 import './partitions.css';
@@ -159,10 +159,18 @@ export function mountAppMode(root) {
   subscribe(() => {
     updateThemeIcon();
     syncSettingsThemeModes();
-    // 概览页「主题状态」卡同步：标题栏/设置切主题经 applyConfig 改 html data-theme，概览页不重渲；
-    // 仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）
-    const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
-    if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
+    // 概览页「主题状态」卡同步（B3-P0）：saveConfig 先同步触发订阅、applyConfig 才写 data-theme，
+    // 回调内读 data-theme 仍是旧值（桌面/手机 label 均陈旧）—— 改读 getConfig().theme +
+    // prefersDark() 解析 system（与 updateThemeIcon 同模式），订阅同步执行时能读到新值。
+    // 桌面仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）；手机卡片无条件
+    // 更新（值始终正确，pop 回概览时即正确）。
+    const cfg = getConfig();
+    const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
+    const label = `当前主题：${isDark ? '深色' : '浅色'}`;
+    const desktopLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+    if (desktopLabel) desktopLabel.textContent = label;
+    const mobileLabel = document.querySelector('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span');
+    if (mobileLabel) mobileLabel.textContent = label;
   });
 
   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
