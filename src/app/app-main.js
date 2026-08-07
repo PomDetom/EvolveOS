@@ -128,11 +128,12 @@ export function mountAppMode(root) {
   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
 
   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
-  // Tauri 探测：桌面端背景层透明（模糊真实壁纸）；浏览器默认可见（渐变/几何/网格三预设）。
-  // 外观分区「背景装饰」3 预设按钮，点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg
-  // 变化，不动画）。预设为会话内纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
+  // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
+  // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
+  // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
+  // 不触发配置链路（与右窗状态同类）。
   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
-  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格' };
+  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
   (() => {
     const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
     if (!page) return;

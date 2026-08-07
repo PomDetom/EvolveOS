@@ -44,8 +44,9 @@
 /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
 .app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
-/* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
-.app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+/* B2-R7「关闭背景」预设：平铺实底，无渐变装饰（桌面/浏览器一致；Tauri 不再隐藏背景层，
+   关窗口透明后背景层为不透明实底，观感与浏览器一致） */
+.app-main[data-backdrop="none"] { --backdrop-bg: var(--surface-solid); }
 
 /* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
    .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳

@@ -364,8 +364,8 @@ test('亚克力材质：表面增饱和模糊 + 噪点层存在', async ({ page 
 });
 
 // —— B2-2 浏览器装饰背景层（模糊对象）——
-// 背景层为浏览器侧装饰（渐变/几何/网格三预设），非配置链路（会话内纯 UI 态，不进 store）；
-// Tauri 探测（window.__TAURI__）令背景层透明（模糊真实壁纸），浏览器默认可见。
+// 背景层为浏览器侧装饰（渐变/几何/网格/关闭四预设），非配置链路（会话内纯 UI 态，不进 store）；
+// Tauri 探测（window.__TAURI__）保留标志但不再隐藏背景层（B2-R7：桌面端同显背景层）。
 
 test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await page.goto('/?mode=app');
@@ -377,6 +377,11 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+  // 关闭背景：data-backdrop=none → 背景层平铺实底（无渐变装饰）
+  await page.locator('.app-main__backdrop-opt[data-bd="none"]').click();
+  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'none');
+  const flat = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(flat).not.toMatch(/radial-gradient\(|linear-gradient\(/);
 });
 
 // —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
