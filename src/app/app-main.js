@@ -19,7 +19,7 @@ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
-import { applyConfig, prefersDark } from '../config/apply.js';
+import { applyConfig } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
 import './partitions.css';
@@ -127,24 +127,34 @@ export function mountAppMode(root) {
   const stackEl = root.querySelector('.app-main__stack');
   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
 
-  // —— 标题栏快捷深浅切换（B2-R8）：设置按钮左边按钮，点击翻转深浅主题 ——
-  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标语义：当前深色显示
-  // sun（点切浅）、当前浅色显示 moon（点切深）。subscribe 令主题从设置分区等源变更时同步图标。
+  // —— 标题栏快捷主题按钮（B2-R9）：设置按钮左边按钮，三态循环 light→dark→system→light ——
+  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标显示当前主题状态：
+  // 浅 sun / 深 moon / 系统 monitor。subscribe 是唯一同步点：主题从标题栏按钮或设置分区
+  // 三态选择器任一入口变更，标题栏图标 + 设置分区 .csettings__mode 高亮/aria-pressed 双向同步。
   const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
+  const THEME_CYCLE = ['light', 'dark', 'system'];
+  const THEME_ICONS = { light: 'sun', dark: 'moon', system: 'monitor' };
   const updateThemeIcon = () => {
-    const cfg = getConfig();
-    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
-    themeBtn.innerHTML = icon(resolved === 'dark' ? 'sun' : 'moon', 16);
+    themeBtn.innerHTML = icon(THEME_ICONS[getConfig().theme] ?? 'sun', 16);
   };
-  updateThemeIcon();
   themeBtn.addEventListener('click', () => {
-    const cfg = getConfig();
-    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
-    applyConfig(saveConfig({ theme: resolved === 'dark' ? 'light' : 'dark' }));
+    const cur = getConfig().theme;
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+    applyConfig(saveConfig({ theme: next }));
     updateThemeIcon();
   });
-  // 主题从设置分区等源变更时同步图标；桌面常驻订阅无需退订（应用壳单次挂载，移动端不重建标题栏）
-  const themeUnsub = subscribe(() => updateThemeIcon());
+  // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
+  const syncSettingsThemeModes = () => {
+    const cfg = getConfig();
+    document.querySelectorAll('.csettings__mode').forEach((b) => {
+      const on = b.dataset.mode === cfg.theme;
+      b.classList.toggle('csettings__mode--active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  };
+  // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
+  // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
+  const themeUnsub = subscribe(() => { updateThemeIcon(); syncSettingsThemeModes(); });
 
   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见

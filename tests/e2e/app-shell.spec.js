@@ -444,17 +444,44 @@ test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) 
   expect(maskImg).toContain('linear-gradient');
 });
 
-// —— B2-R8 标题栏快捷深浅切换按钮 ——
-// 设置按钮左边快捷按钮，点击经配置链路 saveConfig→applyConfig 翻转 data-theme；
-// 图标随当前主题：深色显示 sun（点切浅）、浅色显示 moon（点切深）。
+// —— B2-R9 标题栏快捷主题按钮三态循环（浅/深/跟随系统）+ 与设置同步 ——
+// 三态循环 light→dark→system→light，图标显示当前主题状态（浅 sun / 深 moon / 系统 monitor）；
+// 主题从标题栏按钮或设置分区三态选择器任一入口变更，另一处 UI 同步（subscribe 唯一同步点）：
+// 标题栏按钮 → 设置分区 .csettings__mode 高亮/aria-pressed；设置选择器 → 标题栏图标。
+// 图标判别：sun 含 <circle>、moon 无 circle 无 rect、monitor（显示器）含 <rect>。
 
-test('标题栏快捷深浅切换按钮：点击翻转 data-theme', async ({ page }) => {
+test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  // 初始图标 = sun（浅色，当前状态语义）
+  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
+  // light → dark
   await page.locator('.c-titlebar__control--theme').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+  await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+  // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
+  await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
+  const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
+  expect(['light', 'dark']).toContain(systemResolved);
+  await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
+  // 设置选择器 → 标题栏图标同步（反向）：点「浅色」→ data-theme light + 图标回 sun（含 circle）
+  await page.locator('.app-main .csettings__mode[data-mode="light"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
+  // 从设置切回标题栏入口：light → dark → system → light 完整循环仍正确
+  await page.locator('.c-titlebar__control--theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.locator('.c-titlebar__control--theme').click();
+  const systemResolved2 = await page.evaluate(() => document.documentElement.dataset.theme);
+  expect(['light', 'dark']).toContain(systemResolved2);
+  await expect(page.locator('.app-main .csettings__mode[data-mode="system"]')).toHaveClass(/csettings__mode--active/);
+  // system → light（回到起点）
   await page.locator('.c-titlebar__control--theme').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
