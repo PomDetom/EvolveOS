@@ -406,3 +406,18 @@ test('导航图标选中项放大加粗、非选中项常规', async ({ page }) 
   const inW = await inactiveIcon.getAttribute('width');
   expect(Number(activeW)).toBeGreaterThan(Number(inW)); // 24 > 20
 });
+
+// —— B2-R4 图标选中态去光晕：删 .c-navwheel__glow 光晕层，选中态 = accent-100 衬底 + accent icon ——
+// 光晕与 icon 叠加看不清（B2-3 用户反馈），本任务移除该层；选中衬底（B2-3 40px 圆角底）保留，
+// 断言无 .c-navwheel__glow 元素 + active icon 衬底为选中底色（非透明）。
+
+test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) => {
+  await page.goto('/?mode=app');
+  // 先等导航轮挂载（7 项）再断言：若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过，
+  // 失去「删光晕」的真门禁（挂载后仍有 glow 时也必须失败）
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+  await expect(page.locator('.c-navwheel__glow')).toHaveCount(0);
+  const bg = await page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bg).not.toBe('rgba(0, 0, 0, 0)'); // accent-100 衬底非透明
+});

@@ -28,7 +28,6 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
   if (direction === 'horizontal') list.classList.add('c-navwheel__list--horizontal');
   list.innerHTML = items.map((it, i) => `
     <div class="c-navwheel__item${i === 0 ? ' c-navwheel__item--active' : ''}" data-id="${it.id}" data-index="${i}" role="button" tabindex="0">
-      <div class="c-navwheel__glow"></div>
       <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
       <span class="c-navwheel__name">${it.name}</span>
     </div>`).join('');

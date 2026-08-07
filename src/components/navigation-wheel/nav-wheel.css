@@ -36,19 +36,16 @@
 .c-navwheel__item:hover { color: var(--text-1); }
 .c-navwheel__item--active { color: var(--accent); }
 
-.c-navwheel__glow { position: absolute; inset: 0; border-radius: inherit;
-  background: radial-gradient(120% 120% at 50% 50%, var(--accent-100) 0%, transparent 70%);
-  opacity: 0; transform: scale(.8); pointer-events: none;
-  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-base) var(--ease-out); }
-.c-navwheel__item--active .c-navwheel__glow { opacity: 1; transform: scale(1); }
-
 /* B2-3 图标增强：40px 圆角衬底（hover/active 显）+ 提亮 --text-2 + active accent。
-   衬底/光晕过渡只走 color/background（paint-only 豁免）与 transform/opacity（红线合规）。 */
+   衬底过渡只走 color/background（paint-only 豁免）。B2-R4 已删选中光晕层（.c-navwheel__glow）。 */
 .c-navwheel__icon { display: grid; place-items: center; color: var(--text-2);
   width: 40px; height: 40px; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
   transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
 .c-navwheel__item:hover .c-navwheel__icon { background: var(--surface-hover); color: var(--text-1); }
 .c-navwheel__item--active .c-navwheel__icon { color: var(--accent); background: var(--accent-100); }
+/* B2-R4 闭环 B2-3 M-3：选中项 hover 仍保持选中态（accent-100 底 + accent icon），不被 hover 浅灰覆盖。
+   与 .c-navwheel__item:hover .c-navwheel__icon 特异性同级，置于其后取胜。 */
+.c-navwheel__item--active:hover .c-navwheel__icon { background: var(--accent-100); color: var(--accent); }
 
 /* 名称：clip-path 收缩滑入 + opacity 双保险（合成器友好，不触发布局） */
 .c-navwheel__name { font-size: var(--font-size-sm); white-space: nowrap;
