@@ -46,4 +46,6 @@ Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.t
 - **实现**：customizer-panel.js 新增 `renderOverviewCard(cfg)` + `updateOverview(container, cfg)`，`renderCustomizerGroups` 顶部渲染 `.cust-overview`，订阅回调与初始同步都调 `updateOverview`（只读写容器局部 `--preview-*`，不调 applyConfig —— 预飞检已裁定）；`--preview-theme` 经 prefersDark 解析 system（jsdom 无 matchMedia 由 apply.js 守卫）、`--preview-accent` 复用 `tintHsl(cfg)`（与色相 swatch 同源）；customizer.css `.cust-overview` 卡片样式（`--surface-1` 底 / `--glass-border` 边 / `calc(var(--radius-*) * var(--radius-scale))` 圆角，全部静态背景无动画，玻璃层 backdrop-filter 静态声明）
 - **视觉基线**：仅 appearance-partition 6 张重生成。解码比对（System.Drawing 逐像素 + 当前代码复拍对照）：基线 PNG == 当前代码隐藏预览卡后的复拍（md5 逐字节一致 e08c38b6…）；失败 actual == 当前代码完整复拍（md5 逐字节一致 a99968bb…）→ 差异完全由预览卡引入（卡 100px + 24px 外边距 = +124px 元素增高，下方内容干净下移；y720-1559 零差异区为长分区截图既存空白底，基线/actual 一致）；其余 18 张零漂移；复跑 24 全绿
 - **简报/报告**：docs/superpowers/sdd/task-B3-2-brief.md / task-B3-2-report.md
-- **执行状态**：Task B3-2：✅ 完成（2514d41）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① `--preview-theme` 已写但 CSS 未消费（主题色块走 `--preview-theme-bg`，CSS 无法按字符串变量分支，功能等价，已披露）；② 主题色块 JS 硬编码 `#16181f`/`#f8f9fb` 复刻 themes.css `--surface-solid`（若令牌变更会静默发散，报告已加注释钉住来源）
+- **⚠️ 已裁决（控制器）**：评审 ⚠️ 基线 md5 复拍证据为报告声称不可从 diff 复现——实施者用「解码逐像素 + 双向复拍 md5」双法自证，视觉 24 复跑全绿、仅 appearance-partition 重生成，判定可信
+- **执行状态**：Task B3-2：✅ 完成（2514d41，评审通过）
