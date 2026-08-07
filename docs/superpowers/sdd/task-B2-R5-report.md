@@ -1,0 +1,23 @@
+# Task B2-R5: 自定义器调整 + 措辞同步 — 执行报告
+
+- **状态**：完成（2026-08-07）
+- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步`
+- **验证**：npm test 60/60（10 文件）；npm run test:e2e 95/95（含新「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」+「亚克力两档」重命名回归 + 既有零冲击 + 24 张视觉基线）；npm run test:visual 24/24（18 张既有逐像素不变 + 6 张全新外观分区基线）；npm run build 通过
+- **实现**：
+  - `customizer-panel.js`：GROUPS 第 2 组 `title: '玻璃材质'` → `'表面质感'`；`glassSwitchRow` label + `renderSwitch` aria-label「玻璃磨砂」→「亚克力材质」；`glassPreview()` 注释「透明度/模糊/高光」→「透明度/模糊/噪点强度」（闭环 R1 M1）；文件头/行内注释「玻璃材质/玻璃磨砂」→「表面质感/亚克力材质开关」。`CFG_PATH.noise` 不动；`noise` 键 + `--noise-opacity` 消费链路（R1）未触碰。
+  - `customizer.css`：`.cust-panel` 与 `.cust-glass-preview__glass` 两处 backdrop-filter 从 `saturate(1.4)` 统一为亚克力配方 `blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness))`（闭环 R2 复查记录的「裸 saturate(1.4) 属 R5 范围」）；两处 `box-shadow` 去掉 `--shadow-inset-highlight`（亚克力无反光）；`.cust-glass-preview__glass::before` 高光层 → 噪点层（`background-image: var(--acrylic-noise); background-size: 120px 120px; opacity: var(--noise-opacity, 0.04)`），预览实时反映噪点强度滑杆。
+  - `settings-pages.js` 172 行 about：「克制的玻璃质感」→「克制的亚克力质感」。
+  - `component-showcase-full.js` 165 行卡片 label「玻璃材质」→「亚克力材质」（`renderCard({ glass: true })` 卡片组件本身不变）；248 行 about 弹窗「克制的玻璃质感设计语言」→「克制的亚克力质感设计语言」。
+  - 测试名/注释：`apply.test.js`「玻璃磨砂开/关」→「亚克力材质开/关」；`app-shell.spec.js`「玻璃两档」→「亚克力两档」+ 323-335 注释同步；`customizer.spec.js`「调整玻璃透明度」→「调整亚克力透明度」。
+- **TDD**：Step 1 新 e2e（外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆）→ 实测红（组名仍为「玻璃材质」）→ 实现 → 绿（4/4 customizer）。
+- **视觉基线解码比对**（`--update-snapshots` 前）：
+  - **必要说明**：R1-R4 期间视觉基线固定为 18 张（app-main/components-partition/motion-partition ×6），**外观分区不在基线内**。R5 的观感变更主体（表面质感组标题、亚克力开关、噪点预览、去 inset-highlight）集中在设置页外观分区，既有 18 张不覆盖。按计划 Step 6「视觉基线重生成（appearance 分区含表面质感组/噪点预览）」，本次在 `visual-regression.spec.js` SHOTS **新增外观分区截图**（`['appearance-partition', '.app-main__settings [data-page="appearance"]', 1]`，partition 挂载守卫断言 `.cust-group` count 6——顺带把全局约束「count 6 不破坏」纳入基线门禁）。
+  - **差异来源确认**（新截图逐项解码 + DOM 计算样式验证，非像素盲抄）：
+    - 组标题序列 = 色彩/表面质感/排版/圆角/动效/阴影，count 6（未增删组）；
+    - 开关行文本 = 亚克力材质，`data-glass-switch` 选择器不变（e2e 依赖未破）；
+    - `.cust-glass-preview__glass` backdrop-filter 计算值 `blur(24px) saturate(1.8) brightness(1.1)`（亚克力配方生效，light 档 brightness 1.1）；box-shadow 计算值仅 `--glass-shadow` 两段（inset-highlight 已去除）；
+    - `::before` 噪点层计算值 = SVG data-URI background-image + 120px 120px + opacity 0.04（实时跟随噪点滑杆默认值）。
+  - **零冲击确认**：既有 18 张在 `--update-snapshots` 前先跑一遍全绿（本次改动不触碰 app-main 隐藏抽屉 / components 卡片 label 在折叠线下方 / motion），`--update-snapshots` 后 git status 显示**仅新增 6 张外观分区 PNG**，18 张既有字节未动。
+- **R4 已披露的基线抖动风险（未触发）**：R4 报告记 components-partition 长截图 run-to-run 抖动（R2 噪点层 × 拼接截图子像素相位）。本次全量视觉两遍（重生成前后）+ 全量 e2e 均 24/24、95/95 稳定绿，未再现；该既有风险仍留待 R-验收 统一处理。
+- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
+- **评审**：待评审

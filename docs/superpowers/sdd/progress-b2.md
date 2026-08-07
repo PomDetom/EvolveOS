@@ -125,7 +125,7 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
 - Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
 - Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
-- Task R5 自定义器调整 + 措辞同步：待执行
+- Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，待评审）
 - R-验收 用户视觉验收 + 最终评审 + 合并：待执行
 
 ## Task B2-R4: 图标选中态去光晕
@@ -140,4 +140,11 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **既有基线不稳定（非本次引入，未修，升格已知风险→最终评审）**：components-partition 长截图（720×8626 拼接）run-to-run 抖动（同代码连渲两遍 dark-indigo 差 37501px；stash 证实与本次无关），根因指向 R2 `.app-main::after` feTurbulence 噪点层 × 拼接截图子像素相位；dark ≫ light（light-amber≈0），仅拼接长截图散布。当前基线稳定绿，潜在偶发 flake 风险，R-验收 时统一处理（拼接相位稳定或深色噪点对比收窄）
 - **Minor 留收尾**：① 报告基线解码叙事略欠精确（light-amber「浅色不可见」应限定为左窗衬底光晕 vs 平色演示面）；② 漂移证据为自报（临时备份目录已删，事后无法独立复核像素数字，最终评审如需复算须保留一对基线 A/B）
 
-## 执行状态
+## Task B2-R5: 自定义器调整 + 措辞同步
+
+- **状态**：完成（2026-08-07，待评审）
+- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步`
+- **验证**：npm test 60/60；npm run test:e2e 95/95（含新「表面质感」用例 + 「亚克力两档」重命名回归 + 24 张视觉基线）；npm run test:visual 24/24（18 张既有逐像素不变 + 6 张全新外观分区基线）；npm run build 通过
+- **实现**：customizer-panel.js GROUPS 第 2 组「表面质感」+ 开关「亚克力材质」+ glassPreview 注释去「高光」改「噪点强度」（闭环 R1 M1）；customizer.css `.cust-panel`/`.cust-glass-preview__glass` backdrop-filter 统一亚克力配方（saturate(1.4) → `--acrylic-saturate`/`--acrylic-brightness`，闭环 R2 复查范围）+ box-shadow 去 inset-highlight + `::before` 高光层改噪点层（`--acrylic-noise` 120px 平铺 + `opacity: var(--noise-opacity)`，实时反映噪点滑杆）；settings-pages.js / component-showcase-full.js 措辞「玻璃」→「亚克力」；测试名/注释同步（apply「亚克力材质开/关」、app-shell「亚克力两档」、customizer「调整亚克力透明度」）；visual-regression.spec.js SHOTS **新增外观分区截图**（partition 1，挂载守卫断言 `.cust-group` count 6）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
+- **评审**：待评审
