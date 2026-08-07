@@ -1,5 +1,5 @@
 import { getConfig, saveConfig, subscribe, notify, KEY } from '../config/store.js';
-import { applyConfig, hexToHsl } from '../config/apply.js';
+import { applyConfig, hexToHsl, prefersDark } from '../config/apply.js';
 import { DEFAULTS, RANGES, ACCENTS } from '../config/defaults.js';
 import { icon } from '../components/icon/icon.js';
 import { toast } from '../components/toast/toast.js';
@@ -13,7 +13,8 @@ import { exportCss } from './customizer-css.js';
  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
- * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
+ * - 6 组 .cust-group（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次），每组 .cust-row = 标签 + 控件；
+ *   组标题下渲染 .cust-group__desc 一行描述（全局语义名 + 简述，B3-1）
  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
@@ -38,7 +39,8 @@ const CFG_PATH = {
 
 const GROUPS = [
   {
-    title: '色彩',
+    title: '整体色调',
+    desc: '主题色/色相/饱和度/色温',
     pre: (cfg) => accentCards(cfg) + semanticBar(),
     sliders: [
       { key: 'hue', label: '色相', unit: '°' },
@@ -48,6 +50,7 @@ const GROUPS = [
   },
   {
     title: '表面质感',
+    desc: '透明度/模糊/噪点强度/亚克力材质',
     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
     sliders: [
       { key: 'opacity', label: '透明度' },
@@ -56,18 +59,21 @@ const GROUPS = [
     ],
   },
   {
-    title: '排版',
+    title: '文字排版',
+    desc: '基准字号/缩放',
     sliders: [
       { key: 'baseSize', label: '基准字号', unit: 'px' },
       { key: 'scale', label: '缩放', unit: '×' },
     ],
   },
   {
-    title: '圆角',
+    title: '边角形状',
+    desc: '圆角比例',
     sliders: [{ key: 'radiusScale', label: '圆角比例', unit: '×' }],
   },
   {
-    title: '动效',
+    title: '动效节奏',
+    desc: '时长缩放/弹性强度',
     pre: (cfg) => motionSwitchRow(cfg),
     sliders: [
       { key: 'durationScale', label: '时长缩放', unit: '×' },
@@ -75,7 +81,8 @@ const GROUPS = [
     ],
   },
   {
-    title: '阴影',
+    title: '阴影层次',
+    desc: '阴影强度',
     sliders: [{ key: 'shadowIntensity', label: '阴影强度' }],
   },
 ];
@@ -292,6 +299,59 @@ function bindFooter(panel) {
 }
 
 /**
+ * 实时整体预览卡（B3-2）：外观分区顶部缩略展示当前主题/强调色/玻璃/圆角/图标层级。
+ * 全部静态背景、无任何动画（红线：布局/几何只动 transform/opacity，模糊永不动画 —— 本卡
+ * 玻璃层 backdrop-filter 为静态声明）。值经 --preview-* 变量映射当前 config，由
+ * updateOverview 在订阅回调里只读写入（不调 applyConfig —— 变更发起方已先 saveConfig+applyConfig）。
+ */
+function renderOverviewCard(cfg) {
+  return `
+    <div class="cust-overview" role="group" aria-label="实时整体预览">
+      <h4 class="cust-overview__title">整体预览</h4>
+      <div class="cust-overview__items">
+        <div class="cust-overview__item">
+          <span class="cust-overview__label">主题</span>
+          <span class="cust-overview__theme" aria-hidden="true"></span>
+        </div>
+        <div class="cust-overview__item">
+          <span class="cust-overview__label">强调色</span>
+          <span class="cust-overview__accent" aria-hidden="true"></span>
+        </div>
+        <div class="cust-overview__item">
+          <span class="cust-overview__label">玻璃</span>
+          <span class="cust-overview__glass" aria-hidden="true"></span>
+        </div>
+        <div class="cust-overview__item">
+          <span class="cust-overview__label">圆角</span>
+          <span class="cust-overview__radius" aria-hidden="true"></span>
+        </div>
+        <div class="cust-overview__item">
+          <span class="cust-overview__label">图标</span>
+          <span class="cust-overview__icons" aria-hidden="true">
+            <span class="cust-overview__icon cust-overview__icon--active"></span>
+            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
+            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
+          </span>
+        </div>
+      </div>
+    </div>`;
+}
+
+/** 把当前 config 写入预览卡 .cust-overview 的 --preview-* 局部变量（只读，不调 applyConfig）。
+ *  空值守卫：jsdom 单测容器 / 未挂预览卡场景下安全跳过。theme: system 经 prefersDark 解析（jsdom 无 matchMedia 由守卫兜底）。 */
+function updateOverview(container, cfg) {
+  const el = container.querySelector('.cust-overview');
+  if (!el) return;
+  const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+  el.style.setProperty('--preview-theme', resolved);
+  // 主题块底色：与主题色对应 solid 面（themes.css 同值），使色块随 --preview-theme 解析变化
+  el.style.setProperty('--preview-theme-bg', resolved === 'dark' ? '#16181f' : '#f8f9fb');
+  el.style.setProperty('--preview-accent', tintHsl(cfg));
+  el.style.setProperty('--preview-glass-opacity', String(cfg.glass.opacity));
+  el.style.setProperty('--preview-radius', String(cfg.radiusScale));
+}
+
+/**
  * 定制器分组（Task 20 重构抽出）：6 组 .cust-group HTML + 事件绑定 + store 双向同步。
  * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
@@ -301,9 +361,10 @@ function bindFooter(panel) {
  */
 export function renderCustomizerGroups(container) {
   const cfg = getConfig();
-  container.innerHTML = GROUPS.map((g) => `
+  container.innerHTML = renderOverviewCard(cfg) + GROUPS.map((g) => `
     <section class="cust-group">
       <h4 class="cust-group__title">${g.title}</h4>
+      ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
       ${g.pre ? g.pre(cfg) : ''}
       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
     </section>`).join('');
@@ -338,12 +399,18 @@ export function renderCustomizerGroups(container) {
     applyConfig(saveConfig({ glass: { blurEnabled: next } }));
   });
 
-  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
+  // store 订阅：本容器控件态 + 预览卡实时同步（面板与设置页各自订阅，双向生效）。
   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
-  const unsub = subscribe((next) => syncUI(container, next));
+  // 订阅回调只读 getConfig()/cfg 并写局部 --preview-* 变量，绝不再调 applyConfig
+  // （变更发起方已先 saveConfig + applyConfig）。
+  const unsub = subscribe((next) => {
+    syncUI(container, next);
+    updateOverview(container, next);
+  });
   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
   syncUI(container, cfg);
+  updateOverview(container, cfg);
   return unsub;
 }
 

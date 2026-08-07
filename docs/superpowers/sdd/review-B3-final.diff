@@ -1,0 +1,2472 @@
+# Review package: 099c3b9f60d5401f1d4beb1c67b165b424cfb82a..HEAD
+
+## Commits
+28ade38 docs: B3-2 执行留痕（评审结论 + 审查包）
+59d9589 docs: B3-2 执行留痕（进度台账）
+bdcff0d docs: B3-2 实施报告（含提交哈希 2514d41）
+2514d41 feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）
+d25e525 docs: B3-1 执行留痕（进度台账 + 审查包）
+115aa4b docs: B3-1 实施报告（含提交哈希 352398a）
+352398a feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc
+6cdfb93 docs: B3-P0 执行留痕（进度台账 + 审查包）
+fe3f68c docs: B3-P0 实施报告（含提交哈希回填 71e55cd）
+71e55cd fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）
+
+## Files changed
+ docs/superpowers/sdd/progress-b3.md                |  51 ++
+ docs/superpowers/sdd/review-B3-1.diff              | 420 ++++++++++++++++
+ docs/superpowers/sdd/review-B3-2.diff              | 530 +++++++++++++++++++++
+ docs/superpowers/sdd/review-B3-P0.diff             | 315 ++++++++++++
+ docs/superpowers/sdd/task-B3-1-brief.md            | 111 +++++
+ docs/superpowers/sdd/task-B3-1-report.md           |  67 +++
+ docs/superpowers/sdd/task-B3-2-brief.md            | 100 ++++
+ docs/superpowers/sdd/task-B3-2-report.md           |  91 ++++
+ docs/superpowers/sdd/task-B3-P0-brief.md           | 102 ++++
+ docs/superpowers/sdd/task-B3-P0-report.md          |  66 +++
+ src/app/app-main.js                                |  18 +-
+ src/demo/customizer-panel.js                       |  87 +++-
+ src/styles/customizer.css                          |  67 ++-
+ tests/e2e/app-shell.spec.js                        |   2 +
+ tests/e2e/customizer.spec.js                       |  41 ++
+ tests/e2e/mobile-nav.spec.js                       |  14 +
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 323448 -> 357496 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 275435 -> 341466 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 334175 -> 375543 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 213511 -> 241856 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 209478 -> 243584 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 170360 -> 198311 bytes
+ 22 files changed, 2066 insertions(+), 16 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b3.md b/docs/superpowers/sdd/progress-b3.md
+new file mode 100644
+index 0000000..1097724
+--- /dev/null
++++ b/docs/superpowers/sdd/progress-b3.md
+@@ -0,0 +1,51 @@
++# SDD ledger — plan: docs/superpowers/plans/2026-08-06-app-shell-b3.md
++
++Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.toml 行尾噪声未动）
++交接：docs/HANDOFF-B3.md
++规格：docs/superpowers/specs/2026-08-06-app-shell-product-design.md（§4 B3 部分）
++计划书：docs/superpowers/plans/2026-08-06-app-shell-b3.md（唯一实施需求源）
++
++## Pre-flight 扫描（2026-08-07，无阻塞冲突；一处计划内矛盾由交接书裁定）
++
++- B3-1 重命名范围：计划书谓 6 组全改；「玻璃材质→表面质感」已在 B2-R5 完成 → 本计划只改其余 5 组（色彩→整体色调、排版→文字排版、圆角→边角形状、动效→动效节奏、阴影→阴影层次）+ 全部 6 组加 desc。
++- B3-1 不破坏既有断言：唯一分组标题断言是 customizer.spec.js:43「表面质感」（不动）；`.cust-group` count 6（app-shell.spec.js:148 + 视觉守卫）不受影响（不新增分组）。
++- B3-2 计划 Step 3 伪代码 `subscribe((cfg) => { applyConfig(cfg); updateOverview(cfg); })` 与同句「沿用现有双向同步模式」自相矛盾——现有 renderCustomizerGroups 订阅只 syncUI（变更发起方已 applyConfig，订阅不再重复应用）。交接书明确「计划 Step 3 提示沿用『订阅不重渲染、只同步局部』模式」→ 裁定：预览卡订阅只 updateOverview(cfg)，不调 applyConfig。
++- B3-2 测试 `.cust-accent-card[data-accent="teal"]`：teal 在 ACCENTS（defaults.js:29）✓；默认 accent=indigo，点击 teal 后 `--preview-accent` 变化可断言。
++- `.cust-overview` 加在 renderCustomizerGroups 内 → 外观分区与抽屉面板共用（计划 Step 3 字面「renderCustomizerGroups 渲染外观分区顶部」，抽屉共享实现为既有架构）。非 .cust-group，计数断言不受影响。
++- customizer.test.js（jsdom）不断言分组结构，仅测订阅退订；新增预览卡不影响。jsdom 无 matchMedia，updateOverview 若读 prefersDark 已有守卫。
++- P0（交接书 §5 首个任务）：概览「主题状态」卡陈旧——saveConfig 先触发 subscribe、applyConfig 后写 data-theme → 回调读 data-theme 得旧值。修法：subscribe 回调内读 getConfig().theme + prefersDark() 解析 system；桌面 + 手机（.app-main__stack-page[data-stack="overview"]）两处更新；补 e2e 断言。
++
++## Task B3-P0: 概览「主题状态」卡陈旧修复
++
++- **状态**：完成（2026-08-07，评审通过，0 Critical/Important，2 Minor 免修）
++- **提交**：`71e55cd` `fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）` + `fe3f68c` `docs: B3-P0 实施报告`
++- **验证**：桌面三态循环 1/1（含新断言）；mobile-nav 8/8（含新用例）；npm test 60/60；npm run test:e2e 98/98（视觉 24 基线零漂移）；npm run build 通过
++- **实现**：app-main.js subscribe 回调改读 `getConfig().theme` + `prefersDark()` 解析 system（同 updateThemeIcon 模式，修复「saveConfig 先触发 subscribe、applyConfig 后写 data-theme → 读 data-theme 得旧值」根因）；桌面 `.app-main__theme-row` 首 span（保留 --active 守卫）+ 手机 `.app-main__stack-page[data-stack="overview"]` 内同卡（R8 未覆盖）两处更新，均空值守卫
++- **必要偏差（已披露，评审独立验证正确且必要）**：brief 手机测试草稿假设初始 theme=light，但 config 默认 system、首击标题栏 system→light → 草稿断言永久红。实施者补 `theme:'light'` 种子 + reload（与桌面测试既有模式一致），断言文本/选择器/意图逐字保留
++- **简报/报告**：docs/superpowers/sdd/task-B3-P0-brief.md / task-B3-P0-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor）——Minor：① system 分支仅被既有循环用例 exercise 未断言（代码正确，brief 未要求）；② app-main.js 注释密度偏重（文档化了一个真微妙的顺序根因，可接受）
++- **执行状态**：Task B3-P0：✅ 完成（71e55cd，评审通过）
++
++## Task B3-1: 外观分组重命名（全局语义 + desc）
++
++- **状态**：完成（2026-08-07，评审通过，0 Critical/Important，1 Minor 免修）
++- **提交**：`352398a` `feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc` + `115aa4b` `docs: B3-1 实施报告`
++- **验证**：TDD 红→绿（新用例实测收到旧标题）；customizer.spec 5/5；npm run test:e2e 99/99（含视觉 24）；npm test 60/60；npm run build 通过
++- **实现**：customizer-panel.js GROUPS 重命名 5 组（色彩→整体色调、排版→文字排版、圆角→边角形状、动效→动效节奏、阴影→阴影层次；表面质感 B2-R5 已完成不动）+ 全部 6 组加 desc（整体色调「主题色/色相/饱和度/色温」、表面质感「透明度/模糊/噪点强度/亚克力材质」、文字排版「基准字号/缩放」、边角形状「圆角比例」、动效节奏「时长缩放/弹性强度」、阴影层次「阴影强度」）；组模板 title 后渲染 `.cust-group__desc`；customizer.css `.cust-group__desc`（text-3 小字）+ title 下边距 space-3→space-1 收紧（desc 贴标题，依赖 base.css 全局 margin reset）
++- **视觉基线**：仅 appearance-partition 6 张重生成（解码比对：差异 = 标题改字 + 6 行 desc +120px 整、y680-1492 逐像素一致、group2 内容 +20px 干净下移 99.99% 匹配、无布局位移）；其余 18 张零漂移；复跑 24 全绿
++- **简报/报告**：docs/superpowers/sdd/task-B3-1-brief.md / task-B3-1-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，0 Important，1 Minor）——Minor：暗色 3 张 appearance 顶部 y1-143 有 ~184px 的 1-3px 色带（非标题/desc 区域，评审判定与交接书 P2 已知风险「分区长截图 run-to-shot 抖动」同源，重生成后复跑绿即确定性噪音，勿归因产品改动）
++- **⚠️ 已裁决（控制器）**：评审 ⚠️ 暗色 top-band —— 交接书 §5 P2 明示「components-partition 长截图 run-to-shot 抖动…勿归因产品改动」，appearance 同为长分区截图；复跑全绿，判定为确定性 AA 抖动噪音，非真实 gap
++- **执行状态**：Task B3-1：✅ 完成（352398a，评审通过）
++
++## Task B3-2: 外观分区实时整体预览卡
++
++- **状态**：完成（2026-08-08，见 task-B3-2-report.md）
++- **提交**：`2514d41` `feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
++- **验证**：TDD 红→绿（`.cust-overview` 不存在实测红，实现后绿）；customizer.spec 6/6；npm test 60/60；npm run test:e2e 98 passed（2 例既有 flake 与本任务无关，隔离复跑 app-shell+floatstrip 33/33 绿）；视觉 24（重生成 6 张 appearance-partition 后零漂移）；npm run build 通过
++- **实现**：customizer-panel.js 新增 `renderOverviewCard(cfg)` + `updateOverview(container, cfg)`，`renderCustomizerGroups` 顶部渲染 `.cust-overview`，订阅回调与初始同步都调 `updateOverview`（只读写容器局部 `--preview-*`，不调 applyConfig —— 预飞检已裁定）；`--preview-theme` 经 prefersDark 解析 system（jsdom 无 matchMedia 由 apply.js 守卫）、`--preview-accent` 复用 `tintHsl(cfg)`（与色相 swatch 同源）；customizer.css `.cust-overview` 卡片样式（`--surface-1` 底 / `--glass-border` 边 / `calc(var(--radius-*) * var(--radius-scale))` 圆角，全部静态背景无动画，玻璃层 backdrop-filter 静态声明）
++- **视觉基线**：仅 appearance-partition 6 张重生成。解码比对（System.Drawing 逐像素 + 当前代码复拍对照）：基线 PNG == 当前代码隐藏预览卡后的复拍（md5 逐字节一致 e08c38b6…）；失败 actual == 当前代码完整复拍（md5 逐字节一致 a99968bb…）→ 差异完全由预览卡引入（卡 100px + 24px 外边距 = +124px 元素增高，下方内容干净下移；y720-1559 零差异区为长分区截图既存空白底，基线/actual 一致）；其余 18 张零漂移；复跑 24 全绿
++- **简报/报告**：docs/superpowers/sdd/task-B3-2-brief.md / task-B3-2-report.md
++- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① `--preview-theme` 已写但 CSS 未消费（主题色块走 `--preview-theme-bg`，CSS 无法按字符串变量分支，功能等价，已披露）；② 主题色块 JS 硬编码 `#16181f`/`#f8f9fb` 复刻 themes.css `--surface-solid`（若令牌变更会静默发散，报告已加注释钉住来源）
++- **⚠️ 已裁决（控制器）**：评审 ⚠️ 基线 md5 复拍证据为报告声称不可从 diff 复现——实施者用「解码逐像素 + 双向复拍 md5」双法自证，视觉 24 复跑全绿、仅 appearance-partition 重生成，判定可信
++- **执行状态**：Task B3-2：✅ 完成（2514d41，评审通过）
+diff --git a/docs/superpowers/sdd/review-B3-1.diff b/docs/superpowers/sdd/review-B3-1.diff
+new file mode 100644
+index 0000000..a396a3b
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B3-1.diff
+@@ -0,0 +1,420 @@
++# Review package: 6cdfb93..HEAD
++
++## Commits
++115aa4b docs: B3-1 实施报告（含提交哈希 352398a）
++352398a feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc
++
++## Files changed
++ docs/superpowers/sdd/task-B3-1-brief.md            | 111 +++++++++++++++++++++
++ docs/superpowers/sdd/task-B3-1-report.md           |  67 +++++++++++++
++ src/demo/customizer-panel.js                       |  20 ++--
++ src/styles/customizer.css                          |   6 +-
++ tests/e2e/customizer.spec.js                       |  20 ++++
++ ...earance-partition-dark-amber-chromium-win32.png | Bin 323448 -> 372428 bytes
++ ...rance-partition-dark-emerald-chromium-win32.png | Bin 275435 -> 352322 bytes
++ ...arance-partition-dark-indigo-chromium-win32.png | Bin 334175 -> 392848 bytes
++ ...arance-partition-light-amber-chromium-win32.png | Bin 213511 -> 243790 bytes
++ ...ance-partition-light-emerald-chromium-win32.png | Bin 209478 -> 248162 bytes
++ ...rance-partition-light-indigo-chromium-win32.png | Bin 170360 -> 200402 bytes
++ 11 files changed, 217 insertions(+), 7 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/task-B3-1-brief.md b/docs/superpowers/sdd/task-B3-1-brief.md
++new file mode 100644
++index 0000000..0b5852c
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-1-brief.md
++@@ -0,0 +1,111 @@
+++# Task B3-1: 外观分组重命名（全局语义 + desc）
+++
+++## 任务定位
+++
+++应用壳 B3 第二个任务。B3 的目标是让设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。**「玻璃材质→表面质感」已在 B2-R5 完成**，本任务只改其余 5 组，并给全部 6 组加 desc。
+++
+++## 现状（src/demo/customizer-panel.js，GROUPS 常量约 39-81 行）
+++
+++当前 6 组：`色彩` / `表面质感`（已改）/ `排版` / `圆角` / `动效` / `阴影`。每组结构 `{ title, pre?, sliders }`。唯一既有分组标题断言是 tests/e2e/customizer.spec.js:43 的「表面质感」（保持不动）。
+++
+++## 需求（唯一需求源）
+++
+++**1. 重命名 5 组 title**（`表面质感` 不动）：
+++
+++| 现 title | 新 title |
+++|---|---|
+++| 色彩 | **整体色调** |
+++| 表面质感 | 表面质感（不动） |
+++| 排版 | **文字排版** |
+++| 圆角 | **边角形状** |
+++| 动效 | **动效节奏** |
+++| 阴影 | **阴影层次** |
+++
+++**2. 每组加 `desc` 字段**，渲染在组标题下、pre/sliders 之前：
+++
+++| title | desc |
+++|---|---|
+++| 整体色调 | 主题色/色相/饱和度/色温 |
+++| 表面质感 | 透明度/模糊/噪点强度/亚克力材质 |
+++| 文字排版 | 基准字号/缩放 |
+++| 边角形状 | 圆角比例 |
+++| 动效节奏 | 时长缩放/弹性强度 |
+++| 阴影层次 | 阴影强度 |
+++
+++**3. 渲染**：`renderCustomizerGroups`（customizer-panel.js:302-310）的组模板改为：
+++
+++```js
+++container.innerHTML = GROUPS.map((g) => `
+++  <section class="cust-group">
+++    <h4 class="cust-group__title">${g.title}</h4>
+++    ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
+++    ${g.pre ? g.pre(cfg) : ''}
+++    ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
+++  </section>`).join('');
+++```
+++
+++**4. 样式**（src/styles/customizer.css）：加 `.cust-group__desc`（次要色小字），并相应收紧 `.cust-group__title` 的下边距使 desc 紧贴标题。样式要点：
+++- `color: var(--text-3)`；`font-size: var(--font-size-xs)`
+++- 让 desc 贴住标题下方（`.cust-group__title` 现 `margin-bottom: var(--space-3)` 需调小，desc 承担与后续内容的间距），可用负 margin 或改 title margin-bottom 达成，保持组内紧凑
+++- **不改组内滑杆布局**；不动 `.cust-group__title` 的 flex 结构与其 `::after` 分隔线
+++
+++## 待修改文件
+++
+++- `src/demo/customizer-panel.js`：GROUPS 重命名 + desc；组模板渲染 desc
+++- `src/styles/customizer.css`：`.cust-group__desc` 样式 + 标题下边距调整
+++- `tests/e2e/customizer.spec.js`：新增用例断言 6 组新标题 + desc
+++- `tests/e2e/visual-regression.spec.js-snapshots/`：`appearance-partition-*.png`（6 张）重生成
+++
+++## 测试（TDD：先写断言确认红，再实现确认绿）
+++
+++customizer.spec.js 新增用例（放在既有「外观分区：表面质感组标题」用例附近）：
+++
+++```js
+++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  const group = page.locator('.cust-group');
+++  await expect(group).toHaveCount(6);
+++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
+++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
+++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
+++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
+++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
+++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
+++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
+++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
+++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
+++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
+++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
+++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
+++});
+++```
+++
+++既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（customizer.spec.js:39-46）必须继续通过（`toContainText('表面质感')` 在新实现下仍匹配）。
+++
+++## 视觉基线（重点：必须先解码比对再重生成）
+++
+++重命名 + desc 会改变 `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）。流程：
+++
+++1. 先跑 `npm run test:visual`，确认只有 `appearance-partition-*` 失败（app-main/components-partition/motion-partition 应零漂移）。
+++2. **解码比对**失败快照，确认差异区域 = 分组标题文字 + desc 行（本次改动引入），无布局位移/无意外区域。
+++3. 确认后 `--update-snapshots` 只重生成 appearance-partition 6 张（`npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots`）。
+++4. 复跑 `npm run test:visual` 全绿。
+++
+++如出现 app-main 或其它分区基线漂移，**不要 update-snapshots**，报告给控制器（可能是 no-op 抖动或真实回归）。
+++
+++## 验证要求
+++
+++- `npx playwright test tests/e2e/customizer.spec.js`（新旧用例全绿）
+++- `npm run test:e2e`（全量交互绿，含视觉基线重生成后）
+++- `npm test`（单元全量绿——customizer.test.js 只测订阅退订，应零影响）
+++- `npm run build` 通过
+++
+++## 提交
+++
+++一个 commit，message：`feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc`
+++
+++## 报告
+++
+++完整报告写入 `docs/superpowers/sdd/task-B3-1-report.md`：改动说明、测试命令与输出摘要、**基线重生成的解码比对说明**（差异区域确认）、self-review、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
++diff --git a/docs/superpowers/sdd/task-B3-1-report.md b/docs/superpowers/sdd/task-B3-1-report.md
++new file mode 100644
++index 0000000..5411e36
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-1-report.md
++@@ -0,0 +1,67 @@
+++# Task B3-1: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc — 实施报告
+++
+++- **状态**：DONE
+++- **提交**：`352398a`
+++- **需求源**：docs/superpowers/sdd/task-B3-1-brief.md（唯一需求源，标题/desc/模板/CSS/测试逐字执行）
+++- **分支**：feature/b3-settings
+++
+++## 任务背景
+++
+++B3 目标：设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。「玻璃材质→表面质感」已在 B2-R5 完成，本任务只改其余 5 组标题，并给全部 6 组加 `desc`。定制器 GROUPS 由 `renderCustomizerGroups`（customizer-panel.js）渲染，抽屉面板与外观设置分区共用同一实现——两侧都获得新标题/desc（设计使然）。
+++
+++## 改动说明
+++
+++| 文件 | 变更 |
+++|---|---|
+++| `src/demo/customizer-panel.js` | GROUPS 常量：5 组 title 重命名（色彩→**整体色调**、排版→**文字排版**、圆角→**边角形状**、动效→**动效节奏**、阴影→**阴影层次**；表面质感不动）+ 全部 6 组加 `desc` 字段；`renderCustomizerGroups` 组模板按 brief 逐字加 `desc` 渲染行（`${g.desc ? ... : ''}` 守卫）；模块 doc 注释同步 6 组新名 + desc 说明 |
+++| `src/styles/customizer.css` | 新增 `.cust-group__desc`（`color: var(--text-3)`；`font-size: var(--font-size-xs)`；`margin-bottom: var(--space-3)`，由 desc 承担与后续内容的间距）；`.cust-group__title` 的 `margin-bottom` 从 `var(--space-3)` 收紧为 `var(--space-1)` 使 desc 紧贴标题下方；**未动** `.cust-group__title` 的 flex 结构与 `::after` 分隔线，未改组内滑杆布局 |
+++| `tests/e2e/customizer.spec.js` | 新增用例「外观分组标题体现全局语义（重命名 + desc）」（brief 逐字）：断言 6 组新标题 + 6 条 desc；既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（`toContainText('表面质感')`）在新实现下继续通过 |
+++| `tests/e2e/visual-regression.spec.js-snapshots/` | `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）按基线流程重生成 |
+++
+++- **配置链路**：本任务仅重命名分组标签 + 加静态文本 desc，零配置改动（defaults → store → apply 链路未触碰）。
+++- **动画红线**：desc 为静态文本，未触碰任何动画；CSS 中唯一 transition 仍是既有 `.cust-group__title` 相关（未改）。仅 transform/opacity 动效规则不受影响。
+++
+++## TDD 证据
+++
+++- **Step 1（红）**：先写新用例 → `npx playwright test tests/e2e/customizer.spec.js -g "外观分组标题体现全局语义"` → **1 failed**。`expect(...).toHaveText('整体色调')` 实测收到 `"色彩"`（`<h4 class="cust-group__title">色彩</h4>`）——正是待改的旧标题。
+++- **Step 3（绿）**：实现后 `npx playwright test tests/e2e/customizer.spec.js` → **5 passed**（新用例 + 既有 4 用例，含「表面质感」用例零冲击）。
+++
+++## 验证结果
+++
+++| 命令 | 结果 |
+++|---|---|
+++| `npx playwright test tests/e2e/customizer.spec.js` | 5 passed（新用例 + 既有 4 用例） |
+++| `npm run test:visual`（基线比对前） | 6 failed（**仅** appearance-partition）/ 18 passed（app-main、components-partition、motion-partition 零漂移） |
+++| `npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots` | 6 passed（仅重生成 appearance-partition 6 张，git status 确认无其它分区文件变动） |
+++| `npm run test:visual`（复跑） | 24 passed 全绿 |
+++| `npm run test:e2e` | 99 passed（含 24 张视觉回归 + 新交互用例；B3-P0 为 98，+1 为本任务新增） |
+++| `npm test` | 60/60 passed（10 files；customizer.test.js 只测订阅退订，零影响） |
+++| `npm run build` | 通过（Vite，435ms） |
+++
+++## 视觉基线重生成：解码比对说明
+++
+++**流程执行**：先跑 `npm run test:visual` 确认只有 `appearance-partition-*` 失败（18 张其它分区零漂移）→ 解码比对失败快照 → `--update-snapshots` 只重生成 appearance-partition 6 张 → 复跑全绿。
+++
+++**解码比对方法**（环境 Read 工具无法直接显示 PNG，改用 numpy/PIL 逐像素解码比对）：
+++
+++1. **尺寸变化**：expected 720×1493 → actual 720×1613，**+120px 整**。6 组各加一行 desc（约 +20px/组，含字体行高 + margin 调整），120px = 6 行 desc 的精确高度增量。
+++2. **差异区域**：逐行 diff 带分析，6 张快照一致——差异带全部落在**分组区顶部 y≈145–679**（6 组标题/desc 所在行）+ **底部 y1493–1612 的 +120px 高度延伸**（86400px = 120×720，正是新增的 6 行 desc 高度）。**y680–1492 整段逐像素一致（maxdiff=0）**：设置页头部、各组下方内容、分区下部均无任何意外改动。
+++3. **位移性质**：对 group 2 内容区做垂直位移相关验证，best shift **+20px、匹配率 99.99%**——实际截图内容 = 期望截图同一内容向下平移 20px。证明差异是**纯竖直插入 desc 行**导致的级联下移，非布局重排/重绘/破损。
+++4. **暗色主题额外顶部细带**：dark 三张在 y1–143 出现若干 1–3px 细带，合计仅 **184px**（143×720 区域内）——玻璃表面/头部文字的次像素 AA 抖动（SwiftShader 软件栅格化下确定性渲染，与 18 张零漂移其它分区同源）。已随基线重生成确定性固化。
+++5. **无意外区域**：app-main（应用壳整窗）、components-partition、motion-partition 三组 18 张**零漂移**，确认无级联污染。
+++
+++**结论**：差异区域 = 分组标题文字（色彩→整体色调 等 5 组改名）+ 每组新增 desc 行（6 行），为本次改动引入；无布局位移（y680–1492 逐像素一致）、无意外区域。满足 brief「必须先解码比对再重生成」要求。
+++
+++## Self-review 结论
+++
+++- **规格符合**：5 组 title 按表逐字重命名、表面质感不动；6 组 desc 逐字；组模板、CSS、测试用例均按 brief 逐字实现；既有「表面质感」断言（customizer.spec.js:43 `toContainText`）在新实现下继续匹配。
+++- **配置链路**：零配置改动，无绕过。
+++- **动画红线**：仅静态文本 + 既有 title transition（未改），无新增动画。
+++- **样式红线**：`.cust-group__title` flex 结构与 `::after` 分隔线原样保留；desc 用令牌变量（`--text-3`/`--font-size-xs`/`--space-3`），无硬编码值。
+++- **质量**：customizer.spec 5/5、full e2e 99/99、单测 60/60、build 通过；视觉基线按流程重生成后全绿。
+++- **结论**：Ready to merge（DONE），无遗留 Minor。
+++
+++## 备注
+++
+++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**（提交前/后 `git status` 均确认）。
+++- 提交内容（`352398a`）：`src/demo/customizer-panel.js`、`src/styles/customizer.css`、`tests/e2e/customizer.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-*.png`（6 张）、`docs/superpowers/sdd/task-B3-1-brief.md`。
++diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
++index 5745451..b006716 100644
++--- a/src/demo/customizer-panel.js
+++++ b/src/demo/customizer-panel.js
++@@ -6,21 +6,22 @@ import { toast } from '../components/toast/toast.js';
++ import { renderSwitch } from '../components/switch/switch.js';
++ import { exportCss } from './customizer-css.js';
++ 
++ /**
++  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
++  *
++  * 契约：
++  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
++  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
++  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
++- * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
+++ * - 6 组 .cust-group（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次），每组 .cust-row = 标签 + 控件；
+++ *   组标题下渲染 .cust-group__desc 一行描述（全局语义名 + 简述，B3-1）
++  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
++  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
++  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
++  * - 动画红线：抽屉只动 transform + visibility（透明度走 backdrop 的 opacity），模糊不动画
++  */
++ 
++ // 滑杆 data-key → 配置路径（映射关系与 apply.js 写入的变量一一对应）
++ const CFG_PATH = {
++   opacity: ['glass', 'opacity'],
++   blur: ['glass', 'blur'],
++@@ -31,58 +32,64 @@ const CFG_PATH = {
++   durationScale: ['motion', 'durationScale'],
++   springStrength: ['motion', 'springStrength'],
++   shadowIntensity: ['shadow'],
++   hue: ['color', 'hue'],
++   saturation: ['color', 'saturation'],
++   temperature: ['color', 'temperature'],
++ };
++ 
++ const GROUPS = [
++   {
++-    title: '色彩',
+++    title: '整体色调',
+++    desc: '主题色/色相/饱和度/色温',
++     pre: (cfg) => accentCards(cfg) + semanticBar(),
++     sliders: [
++       { key: 'hue', label: '色相', unit: '°' },
++       { key: 'saturation', label: '饱和度', unit: '%' },
++       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
++     ],
++   },
++   {
++     title: '表面质感',
+++    desc: '透明度/模糊/噪点强度/亚克力材质',
++     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
++     sliders: [
++       { key: 'opacity', label: '透明度' },
++       { key: 'blur', label: '模糊', unit: 'px' },
++       { key: 'noise', label: '噪点强度' },
++     ],
++   },
++   {
++-    title: '排版',
+++    title: '文字排版',
+++    desc: '基准字号/缩放',
++     sliders: [
++       { key: 'baseSize', label: '基准字号', unit: 'px' },
++       { key: 'scale', label: '缩放', unit: '×' },
++     ],
++   },
++   {
++-    title: '圆角',
+++    title: '边角形状',
+++    desc: '圆角比例',
++     sliders: [{ key: 'radiusScale', label: '圆角比例', unit: '×' }],
++   },
++   {
++-    title: '动效',
+++    title: '动效节奏',
+++    desc: '时长缩放/弹性强度',
++     pre: (cfg) => motionSwitchRow(cfg),
++     sliders: [
++       { key: 'durationScale', label: '时长缩放', unit: '×' },
++       { key: 'springStrength', label: '弹性强度' },
++     ],
++   },
++   {
++-    title: '阴影',
+++    title: '阴影层次',
+++    desc: '阴影强度',
++     sliders: [{ key: 'shadowIntensity', label: '阴影强度' }],
++   },
++ ];
++ 
++ const SEMANTIC = [
++   { key: 'success-500', label: '成功' },
++   { key: 'warning-500', label: '警告' },
++   { key: 'danger-500', label: '危险' },
++   { key: 'info-500', label: '信息' },
++ ];
++@@ -297,20 +304,21 @@ function bindFooter(panel) {
++  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
++  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
++  * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
++  *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
++  */
++ export function renderCustomizerGroups(container) {
++   const cfg = getConfig();
++   container.innerHTML = GROUPS.map((g) => `
++     <section class="cust-group">
++       <h4 class="cust-group__title">${g.title}</h4>
+++      ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
++       ${g.pre ? g.pre(cfg) : ''}
++       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
++     </section>`).join('');
++ 
++   // 风格卡片：点击切换主题色
++   container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
++     const card = e.target.closest('.cust-accent-card');
++     if (!card) return;
++     applyConfig(saveConfig({ accent: card.dataset.accent }));
++   });
++diff --git a/src/styles/customizer.css b/src/styles/customizer.css
++index a23e57d..9f2e5df 100644
++--- a/src/styles/customizer.css
+++++ b/src/styles/customizer.css
++@@ -42,26 +42,30 @@
++   transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out);
++ }
++ .cust-close:hover { color: var(--text-1); background: var(--surface-hover); }
++ .cust-close:active { transform: scale(0.92); }
++ 
++ /* ---- 主体（滚动区） ---- */
++ .cust-body { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5); }
++ .cust-group { margin-bottom: var(--space-5); }
++ .cust-group__title {
++   font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
++-  color: var(--text-2); margin-bottom: var(--space-3);
+++  color: var(--text-2); margin-bottom: var(--space-1);
++   display: flex; align-items: center; gap: var(--space-2);
++ }
++ .cust-group__title::after {
++   content: ''; flex: 1; height: 1px; background: var(--glass-border);
++ }
+++.cust-group__desc {
+++  font-size: var(--font-size-xs); color: var(--text-3);
+++  margin-bottom: var(--space-3);
+++}
++ 
++ /* ---- 行：标签 + 控件 ---- */
++ .cust-row { margin-bottom: var(--space-3); }
++ .cust-row__head {
++   display: flex; align-items: baseline; justify-content: space-between;
++   margin-bottom: 6px;
++ }
++ .cust-row__label { font-size: var(--font-size-sm); color: var(--text-1); }
++ .cust-row__hint {
++   font-style: normal; font-size: var(--font-size-xs); color: var(--text-3);
++diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
++index 076f35d..9a5ee8d 100644
++--- a/tests/e2e/customizer.spec.js
+++++ b/tests/e2e/customizer.spec.js
++@@ -37,10 +37,30 @@ test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
++ });
++ 
++ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
++   await page.goto('/?mode=app');
++   await page.locator('.c-titlebar__control--settings').click();
++   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
++   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
++   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
++ });
+++
+++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  const group = page.locator('.cust-group');
+++  await expect(group).toHaveCount(6);
+++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
+++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
+++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
+++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
+++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
+++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
+++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
+++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
+++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
+++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
+++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
+++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
+++});
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
++index 053fb9a..e79eb52 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
++index 6d50c04..900de8f 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
++index 67f46f3..1f9bad6 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
++index c3db701..ca8ad87 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
++index 19ff93f..2ae5390 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
++index 977fedd..79075f9 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/docs/superpowers/sdd/review-B3-2.diff b/docs/superpowers/sdd/review-B3-2.diff
+new file mode 100644
+index 0000000..cb213f6
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B3-2.diff
+@@ -0,0 +1,530 @@
++# Review package: d25e525..HEAD
++
++## Commits
++59d9589 docs: B3-2 执行留痕（进度台账）
++bdcff0d docs: B3-2 实施报告（含提交哈希 2514d41）
++2514d41 feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）
++
++## Files changed
++ docs/superpowers/sdd/progress-b3.md                |  10 +++
++ docs/superpowers/sdd/task-B3-2-brief.md            | 100 +++++++++++++++++++++
++ docs/superpowers/sdd/task-B3-2-report.md           |  91 +++++++++++++++++++
++ src/demo/customizer-panel.js                       |  67 +++++++++++++-
++ src/styles/customizer.css                          |  61 +++++++++++++
++ tests/e2e/customizer.spec.js                       |  21 +++++
++ ...earance-partition-dark-amber-chromium-win32.png | Bin 372428 -> 357496 bytes
++ ...rance-partition-dark-emerald-chromium-win32.png | Bin 352322 -> 341466 bytes
++ ...arance-partition-dark-indigo-chromium-win32.png | Bin 392848 -> 375543 bytes
++ ...arance-partition-light-amber-chromium-win32.png | Bin 243790 -> 241856 bytes
++ ...ance-partition-light-emerald-chromium-win32.png | Bin 248162 -> 243584 bytes
++ ...rance-partition-light-indigo-chromium-win32.png | Bin 200402 -> 198311 bytes
++ 12 files changed, 346 insertions(+), 4 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/progress-b3.md b/docs/superpowers/sdd/progress-b3.md
++index 52c761f..14e367f 100644
++--- a/docs/superpowers/sdd/progress-b3.md
+++++ b/docs/superpowers/sdd/progress-b3.md
++@@ -30,10 +30,20 @@ Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.t
++ 
++ - **状态**：完成（2026-08-07，评审通过，0 Critical/Important，1 Minor 免修）
++ - **提交**：`352398a` `feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc` + `115aa4b` `docs: B3-1 实施报告`
++ - **验证**：TDD 红→绿（新用例实测收到旧标题）；customizer.spec 5/5；npm run test:e2e 99/99（含视觉 24）；npm test 60/60；npm run build 通过
++ - **实现**：customizer-panel.js GROUPS 重命名 5 组（色彩→整体色调、排版→文字排版、圆角→边角形状、动效→动效节奏、阴影→阴影层次；表面质感 B2-R5 已完成不动）+ 全部 6 组加 desc（整体色调「主题色/色相/饱和度/色温」、表面质感「透明度/模糊/噪点强度/亚克力材质」、文字排版「基准字号/缩放」、边角形状「圆角比例」、动效节奏「时长缩放/弹性强度」、阴影层次「阴影强度」）；组模板 title 后渲染 `.cust-group__desc`；customizer.css `.cust-group__desc`（text-3 小字）+ title 下边距 space-3→space-1 收紧（desc 贴标题，依赖 base.css 全局 margin reset）
++ - **视觉基线**：仅 appearance-partition 6 张重生成（解码比对：差异 = 标题改字 + 6 行 desc +120px 整、y680-1492 逐像素一致、group2 内容 +20px 干净下移 99.99% 匹配、无布局位移）；其余 18 张零漂移；复跑 24 全绿
++ - **简报/报告**：docs/superpowers/sdd/task-B3-1-brief.md / task-B3-1-report.md
++ - **评审**：规格 ✅ / Approved（0 Critical，0 Important，1 Minor）——Minor：暗色 3 张 appearance 顶部 y1-143 有 ~184px 的 1-3px 色带（非标题/desc 区域，评审判定与交接书 P2 已知风险「分区长截图 run-to-shot 抖动」同源，重生成后复跑绿即确定性噪音，勿归因产品改动）
++ - **⚠️ 已裁决（控制器）**：评审 ⚠️ 暗色 top-band —— 交接书 §5 P2 明示「components-partition 长截图 run-to-shot 抖动…勿归因产品改动」，appearance 同为长分区截图；复跑全绿，判定为确定性 AA 抖动噪音，非真实 gap
++ - **执行状态**：Task B3-1：✅ 完成（352398a，评审通过）
+++
+++## Task B3-2: 外观分区实时整体预览卡
+++
+++- **状态**：完成（2026-08-08，见 task-B3-2-report.md）
+++- **提交**：`2514d41` `feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
+++- **验证**：TDD 红→绿（`.cust-overview` 不存在实测红，实现后绿）；customizer.spec 6/6；npm test 60/60；npm run test:e2e 98 passed（2 例既有 flake 与本任务无关，隔离复跑 app-shell+floatstrip 33/33 绿）；视觉 24（重生成 6 张 appearance-partition 后零漂移）；npm run build 通过
+++- **实现**：customizer-panel.js 新增 `renderOverviewCard(cfg)` + `updateOverview(container, cfg)`，`renderCustomizerGroups` 顶部渲染 `.cust-overview`，订阅回调与初始同步都调 `updateOverview`（只读写容器局部 `--preview-*`，不调 applyConfig —— 预飞检已裁定）；`--preview-theme` 经 prefersDark 解析 system（jsdom 无 matchMedia 由 apply.js 守卫）、`--preview-accent` 复用 `tintHsl(cfg)`（与色相 swatch 同源）；customizer.css `.cust-overview` 卡片样式（`--surface-1` 底 / `--glass-border` 边 / `calc(var(--radius-*) * var(--radius-scale))` 圆角，全部静态背景无动画，玻璃层 backdrop-filter 静态声明）
+++- **视觉基线**：仅 appearance-partition 6 张重生成。解码比对（System.Drawing 逐像素 + 当前代码复拍对照）：基线 PNG == 当前代码隐藏预览卡后的复拍（md5 逐字节一致 e08c38b6…）；失败 actual == 当前代码完整复拍（md5 逐字节一致 a99968bb…）→ 差异完全由预览卡引入（卡 100px + 24px 外边距 = +124px 元素增高，下方内容干净下移；y720-1559 零差异区为长分区截图既存空白底，基线/actual 一致）；其余 18 张零漂移；复跑 24 全绿
+++- **简报/报告**：docs/superpowers/sdd/task-B3-2-brief.md / task-B3-2-report.md
+++- **执行状态**：Task B3-2：✅ 完成（2514d41）
++diff --git a/docs/superpowers/sdd/task-B3-2-brief.md b/docs/superpowers/sdd/task-B3-2-brief.md
++new file mode 100644
++index 0000000..7f1640f
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-2-brief.md
++@@ -0,0 +1,100 @@
+++# Task B3-2: 外观分区实时整体预览卡
+++
+++## 任务定位
+++
+++应用壳 B3 第三个（最后一个）任务。B3 目标「让改的是整个 UI 而非字体」从文案和默认效果都明显——外观分区顶部加一张**实时整体预览卡**（缩略展示当前主题/强调色/玻璃/圆角/图标效果），订阅 store 实时刷新。B3-1 已重命名分组。
+++
+++## 现状（src/demo/customizer-panel.js）
+++
+++- `renderCustomizerGroups(container)`（约 302-348 行）渲染 6 组 `.cust-group` + 事件 + store 订阅。**实际只有外观分区整页形态使用它**（settings-pages.js appearancePage → app-main.js setSettingsPageActive/activateMobileSettings 惰性挂载）；抽屉 mountCustomizer 已无调用方。
+++- store 订阅模式（约 343-347 行）：
+++  ```js
+++  const unsub = subscribe((next) => syncUI(container, next));
+++  syncUI(container, cfg);
+++  return unsub;
+++  ```
+++  订阅**只同步局部控件态，不重渲染整个定制器**。变更发起方（滑杆 input / 强调色卡点击）已先 `saveConfig` + `applyConfig`，订阅回调绝不再调 applyConfig（避免重复应用）。
+++- 模块内已有 `tintHsl(cfg)`（约 113-119 行）返回当前强调色经色相/饱和度微调后的 `hsl(...)`——预览卡强调色应复用此函数（与色相 swatch 同源，联动 accent+hue+saturation）。
+++
+++## 需求（唯一需求源）
+++
+++**在 `renderCustomizerGroups` 渲染的分组上方加 `.cust-overview` 整体预览卡**（外观分区顶部；抽屉已无调用方，无别处影响）。缩略展示 5 项，全部经 CSS 变量映射当前 config：
+++
+++1. **主题**（深浅）：一块色块，背景随 `--preview-theme`（'light'|'dark'，system 经 prefersDark 解析）
+++2. **强调色**：一个色点，`--preview-accent`（用 `tintHsl(cfg)`）
+++3. **玻璃效果**：一个小玻璃面板（backdrop-filter + rgba 底色），`--preview-glass-opacity`（= cfg.glass.opacity）+ 噪点层
+++4. **圆角**：一个圆角示例块，`--preview-radius`（= cfg.radiusScale）
+++5. **图标层级**：两个尺寸不同的圆点/图标示意（active 大、inactive 小，对应 B2-3 分级）
+++
+++**`updateOverview(container, cfg)`**：在容器内 `querySelector('.cust-overview')`，把上述变量写到该元素 inline style（`el.style.setProperty('--preview-accent', tintHsl(cfg))` 等；空值守卫）。**不调 applyConfig**。
+++
+++**接线**：`renderCustomizerGroups` 内
+++- 初始渲染：`container.innerHTML = renderOverviewCard(cfg) + GROUPS.map(...).join('')`
+++- 订阅回调与初始同步都调 `updateOverview`：
+++  ```js
+++  const unsub = subscribe((next) => { syncUI(container, next); updateOverview(container, next); });
+++  syncUI(container, cfg);
+++  updateOverview(container, cfg);
+++  return unsub;
+++  ```
+++
+++**样式**（src/styles/customizer.css 新增 `.cust-overview` 等）：小卡布局，视觉语言与既有定制器一致（`--surface-1` 底 / `--glass-border` 边 / `calc(var(--radius-*) * var(--radius-scale))` 圆角）。**全部静态背景，无任何动画**；backdrop-filter 用于玻璃面板是静态声明（红线：模糊永不动画，本卡无动画即合规）。
+++
+++## 待修改文件
+++
+++- `src/demo/customizer-panel.js`：`renderOverviewCard(cfg)` + `updateOverview(container, cfg)` + renderCustomizerGroups 接线
+++- `src/styles/customizer.css`：`.cust-overview` 预览卡样式
+++- `tests/e2e/customizer.spec.js`：新用例
+++- `tests/e2e/visual-regression.spec.js-snapshots/`：`appearance-partition-*.png`（6 张）重生成
+++
+++## 测试（TDD：先写断言确认红——`.cust-overview` 不存在必然红，再实现确认绿）
+++
+++customizer.spec.js 新增用例（计划书 Step 1 字面 + 补一条圆角联动断言，验证「全局联动」不止强调色）：
+++
+++```js
+++test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动）', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  const overview = page.locator('.cust-overview');
+++  await expect(overview).toBeVisible();
+++  // 切强调色 → 预览卡强调色同步变化
+++  const before = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
+++  await page.locator('.cust-accent-card[data-accent="teal"]').click();
+++  const after = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
+++  expect(after).not.toBe(before);
+++  // 圆角滑杆 → 预览卡圆角比例同步变化（全局联动验证）
+++  const rBefore = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
+++  await page.locator('.cust-range[data-key="radiusScale"]').fill('1.5');
+++  const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
+++  expect(rAfter).not.toBe(rBefore);
+++});
+++```
+++
+++注意：`getComputedStyle(el).getPropertyValue('--preview-accent')` 读的是 `.cust-overview` 元素 inline 写入的变量；`fill` 触发 input → saveConfig → 订阅回调 updateOverview。`--preview-accent` 用 `tintHsl` 时初始（indigo，hue=-1/sat=100）与 teal 结果必不同。`--preview-radius` 初始 '1'，fill('1.5') 后必不同。
+++
+++## 视觉基线（重点：必须先解码比对再重生成）
+++
+++新增预览卡会改变 `appearance-partition-*.png`（6 张）。流程与 B3-1 相同：
+++
+++1. 先跑 `npm run test:visual`，确认只有 `appearance-partition-*` 失败（其余 18 张零漂移）。
+++2. **解码比对**失败快照：差异区域 = 顶部新增预览卡（约 +100-140px 高，分区顶部块状新增），无布局位移/无意外区域。
+++3. 确认后 `--update-snapshots` 只重生成 appearance-partition 6 张。
+++4. 复跑 `npm run test:visual` 全绿。
+++
+++如 app-main 或其它分区漂移，**不要 update-snapshots**，报告控制器。
+++
+++## 验证要求
+++
+++- `npx playwright test tests/e2e/customizer.spec.js`（新旧用例全绿）
+++- `npm test`（单元全绿——customizer.test.js 只测订阅退订，updateOverview 加入订阅回调不破坏其断言；jsdom 无 matchMedia 由 prefersDark 守卫）
+++- `npm run test:e2e`（全量交互绿）
+++- `npm run build` 通过
+++
+++## 提交
+++
+++一个 commit，message：`feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
+++
+++## 报告
+++
+++完整报告写入 `docs/superpowers/sdd/task-B3-2-report.md`：改动说明、测试命令与输出摘要、基线重生成的解码比对说明、self-review、提交哈希。回复本会话只需：状态 + 提交哈希 + 一行测试摘要 + 疑虑（如有）。
++diff --git a/docs/superpowers/sdd/task-B3-2-report.md b/docs/superpowers/sdd/task-B3-2-report.md
++new file mode 100644
++index 0000000..e05d449
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-2-report.md
++@@ -0,0 +1,91 @@
+++# Task B3-2 实施报告：外观分区实时整体预览卡
+++
+++- **任务**：B3 收尾任务 —— 外观分区顶部加 `.cust-overview` 实时整体预览卡（缩略展示当前主题/强调色/玻璃/圆角/图标层级），订阅 store 实时刷新
+++- **状态**：完成
+++- **提交**：`2514d41`
+++- **日期**：2026-08-08
+++
+++## 改动说明
+++
+++### src/demo/customizer-panel.js
+++
+++1. **import 增补**：从 `../config/apply.js` 追加 `prefersDark`（解析 `system` 主题到 'light'|'dark'；jsdom 无 `matchMedia` 由该函数守卫兜底 false → light）。
+++2. **新增 `renderOverviewCard(cfg)`**：返回 `.cust-overview` 卡片 HTML，5 个缩略项（主题色块 / 强调色点 / 玻璃小面板 / 圆角示例块 / 图标层级两圆点），每项带 `.cust-overview__label` 小字标签，`aria-hidden` 装饰项。
+++3. **新增 `updateOverview(container, cfg)`**：在容器内 `querySelector('.cust-overview')`（**空值守卫** `if (!el) return`，jsdom 单测容器安全），把当前 config 写入该元素 inline 的 `--preview-*` 局部变量：
+++   - `--preview-theme` = cfg.theme 经 prefersDark 解析的 'light'|'dark'
+++   - `--preview-theme-bg` = 解析主题对应的 solid 面底色（'#f8f9fb' / '#16181f'，与 themes.css 的 `--surface-solid` 同值），使色块随 `--preview-theme` 变化
+++   - `--preview-accent` = `tintHsl(cfg)`（复用既有函数，与色相 swatch 同源，联动 accent + hue + saturation）
+++   - `--preview-glass-opacity` = String(cfg.glass.opacity)
+++   - `--preview-radius` = String(cfg.radiusScale)
+++   - **不调 applyConfig**（变更发起方已先 saveConfig + applyConfig；订阅只同步局部，与既有 renderCustomizerGroups 模式一致）
+++4. **`renderCustomizerGroups` 接线**：
+++   - 初始渲染 `container.innerHTML = renderOverviewCard(cfg) + GROUPS.map(...).join('')`
+++   - 订阅回调：`subscribe((next) => { syncUI(container, next); updateOverview(container, next); })`
+++   - 初始同步：`syncUI(container, cfg); updateOverview(container, cfg);`
+++
+++### src/styles/customizer.css
+++
+++新增 `.cust-overview` 卡片样式（置于 `.cust-group__desc` 之后、行样式之前）：
+++- 卡片底 `--surface-1`、边 `--glass-border`、圆角 `calc(var(--radius-md) * var(--radius-scale, 1))`、内边距 space-3/space-4、下边距 space-5
+++- 标题 `.cust-overview__title`（text-2 小字 semibold）+ `.cust-overview__items` flex 横排 5 项（`.cust-overview__item` 居中 flex 列，`flex: 1`）
+++- 主题色块：`background: var(--preview-theme-bg, var(--surface-solid, #f8f9fb))`，`--shadow-inset-highlight` 内高光
+++- 强调色点：`background: var(--preview-accent)` 圆点
+++- 玻璃小面板：`::before` = 背景三色渐变（preview-accent + teal + amber，供模糊呈现）；`::after` = 玻璃层 `rgba(var(--glass-bg-rgb) / var(--preview-glass-opacity, 0.48))` + `backdrop-filter: blur(4px) saturate/brightness` + 噪点层 `--acrylic-noise`（opacity 随 `--noise-opacity`）
+++- 圆角示例块：`border-radius: calc(var(--radius-md) * var(--preview-radius, 1))`，preview-accent 低透明度填充
+++- 图标层级：active 12px accent 圆点 + inactive 6px text-3 圆点（对应 B2-3 分级）
+++- **全部静态背景、无任何动画**；玻璃层 backdrop-filter 为静态声明（红线：模糊永不动画，本卡无动画即合规）；时长/曲线不经 CSS 变量即不涉及
+++
+++### tests/e2e/customizer.spec.js
+++
+++新增用例（计划书 Step 1 字面 + 补圆角联动断言）「外观分区顶部有实时整体预览卡（强调色/圆角实时联动）」：导航进外观分区 → `.cust-overview` 可见 → 点 teal 强调色卡，`--preview-accent` 变化（indigo hsl(234 83.5% 65%) → teal hsl(172 66% 65%) 必不同）→ radiusScale 滑杆 fill('1.5')，`--preview-radius` 由 '1' → '1.5'。
+++
+++### docs/superpowers/sdd/task-B3-2-brief.md / progress-b3.md
+++
+++brief 随任务入库；progress-b3.md 追加 B3-2 执行留痕条目。
+++
+++## 验证命令与输出摘要
+++
+++**TDD 红 → 绿**：
+++- 红：`npx playwright test tests/e2e/customizer.spec.js -g "实时整体预览"` → `expect(locator('.cust-overview')).toBeVisible()` 失败 `element(s) not found`（1 failed）✓
+++- 绿：同命令 → `1 passed` ✓
+++
+++**全量验证**：
+++| 命令 | 结果 |
+++|---|---|
+++| `npx playwright test tests/e2e/customizer.spec.js` | 6/6 passed |
+++| `npm test` | 10 文件 60/60 passed（含 customizer.test.js 订阅退订 2 例，updateOverview 加入订阅回调未破坏） |
+++| `npm run test:e2e` | 98 passed + 2 failed（见下方 flake 说明；与本任务相关用例全绿） |
+++| `npm run build` | ✓ built in 415ms（99 modules） |
+++| `npx playwright test tests/e2e/visual-regression.spec.js` | 24/24 passed |
+++
+++首轮 `npm run test:e2e` 6 failed —— 全部为 `appearance-partition-*`（预览卡预期改变），其余 94 passed；基线重生成后复跑。
+++
+++**复跑 flake 说明（与本任务无关，非本次改动引起）**：重生成后全量复跑 98 passed + 2 failed —— `app-shell.spec.js:124`（设置模式，`expect(settingsBtn).toHaveCount(1)` 超时）与 `floatstrip.spec.js:83`（右下 FloatBall，`expect(ball).toHaveCount(1)` 超时）。两例均为元素计数超时类 flake：首轮全量运行曾通过；隔离重跑 app-shell + floatstrip 两文件 **33/33 全绿**；均不涉及外观分区（.cust-overview 不参与该两测试路径）。判定为全量负载下既有时序 flake，与本次改动无关。
+++
+++## 视觉基线重生成：解码比对说明
+++
+++**流程**（先解码比对确认差异由本次改动引起，再重生成）：
+++
+++1. **首跑确认范围**：`npm run test:e2e` 仅 `appearance-partition-*` 6 张失败（其余 18 张视觉 + 全部交互零漂移）。失败输出：`Expected an image 720px by 1613px, received 720px by 1737px` —— 元素增高 **+124px**（预览卡 100px + 外边距 24px）。
+++2. **解码比对**（Read 工具无法解码 PNG，改用两条证据链）：
+++   - **逐像素分析**（System.Drawing LockBits，PowerShell）：期望 vs 实际直接对比，差异集中于顶部 y52-719（dark）/ y142-719（light，新卡位于分区顶部 y142-242），y720-1559 零差异（该带两图为长分区截图既存空白底），y1560+ 为 +124px 底部延伸；下移对比（`expected(y) vs actual(y+124)`）在 y680-1612 逐像素 100% 匹配 → 下方内容为干净 124px 下移，无布局位移、无意外区域。
+++   - **当前代码复拍对照（决定性）**：以与视觉测试完全相同的流程（注入 dark/emerald → reload → 进外观 → 设 data-* / 清 style）复拍元素截图，与失败 actual **md5 逐字节一致**（`a99968bb…`）；同流程 `display:none` 隐藏 `.cust-overview` 后复拍，与基线 expected **md5 逐字节一致**（`e08c38b6…`）。即「基线 = 当前代码减去预览卡」—— 差异 100% 由本次改动引入，其余渲染（含空白底、AA 细节）与基线完全一致。
+++3. **重生成**：仅 6 张 appearance-partition（`-g "appearance-partition" --update-snapshots`），其余 18 张不触碰（git 确认 diff 只含 6 张）。
+++4. **复跑**：`npx playwright test tests/e2e/visual-regression.spec.js` 24/24 全绿。
+++
+++## Self-Review
+++
+++- **配置链路合规**：预览卡只**读** config（订阅回调只写容器局部 `--preview-*` 变量），不调 applyConfig —— 与 pre-flight 已裁定模式一致；变更发起方（滑杆 input / 强调色卡 / 亚克力开关）仍先 saveConfig + applyConfig。
+++- **动画红线**：`.cust-overview` 全部静态背景、无任何动画；玻璃层 backdrop-filter 为静态声明（无过渡）；无 layout 属性动画；不涉及时长/曲线变量。
+++- **零运行时依赖 / 无抽象封装**：纯原生 DOM + CSS 变量；组件直接 render 字符串；遵循既有函数式 helper 风格（readCfg/writePatch/tintHsl 同层）。
+++- **与 B3-1 无冲突**：未触碰 GROUPS 重命名与 `.cust-group__desc`；`.cust-overview` 非 `.cust-group`，6 组计数断言不受影响。
+++- **单测兼容**：`updateOverview` 空值守卫 + `prefersDark` jsdom 守卫，customizer.test.js 订阅退订断言未破坏（npm test 60/60）。
+++- **基线确定性**：复拍 md5 逐字节一致证明渲染确定，非 run-to-shot 抖动。
+++- **已知说明**：`--preview-theme` 为机器可读 'light'|'dark'（镜像 apply.js `--glass-enabled` 先例），色块实际底色经同源派生的 `--preview-theme-bg` 消费 —— CSS 无法对字符串变量分支，此为实现 `--preview-theme` 语义的最贴近做法。
+++
+++## 提交
+++
+++- `git add`：src/demo/customizer-panel.js、src/styles/customizer.css、tests/e2e/customizer.spec.js、tests/e2e/visual-regression.spec.js-snapshots/（6 张 appearance-partition）、docs/superpowers/sdd/task-B3-2-brief.md、docs/superpowers/sdd/task-B3-2-report.md、docs/superpowers/sdd/progress-b3.md
+++- **未 add**：`src-tauri/Cargo.toml`（既有行尾噪声，保持未暂存）
+++- message：`feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
+++- hash：`2514d41`
++diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
++index b006716..38debaa 100644
++--- a/src/demo/customizer-panel.js
+++++ b/src/demo/customizer-panel.js
++@@ -1,12 +1,12 @@
++ import { getConfig, saveConfig, subscribe, notify, KEY } from '../config/store.js';
++-import { applyConfig, hexToHsl } from '../config/apply.js';
+++import { applyConfig, hexToHsl, prefersDark } from '../config/apply.js';
++ import { DEFAULTS, RANGES, ACCENTS } from '../config/defaults.js';
++ import { icon } from '../components/icon/icon.js';
++ import { toast } from '../components/toast/toast.js';
++ import { renderSwitch } from '../components/switch/switch.js';
++ import { exportCss } from './customizer-css.js';
++ 
++ /**
++  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
++  *
++  * 契约：
++@@ -291,31 +291,84 @@ function bindFooter(panel) {
++ 
++   // 保存我的方案：配置经 store 每次变更即自动持久化，此处为确认反馈
++   panel.querySelector('.cust-save').addEventListener('click', () => {
++     toast('我的方案已保存');
++   });
++ 
++   // 重置：清除存储 + 广播默认值 + applyConfig（不写回 localStorage）
++   panel.querySelector('.cust-reset').addEventListener('click', () => resetAll(panel));
++ }
++ 
+++/**
+++ * 实时整体预览卡（B3-2）：外观分区顶部缩略展示当前主题/强调色/玻璃/圆角/图标层级。
+++ * 全部静态背景、无任何动画（红线：布局/几何只动 transform/opacity，模糊永不动画 —— 本卡
+++ * 玻璃层 backdrop-filter 为静态声明）。值经 --preview-* 变量映射当前 config，由
+++ * updateOverview 在订阅回调里只读写入（不调 applyConfig —— 变更发起方已先 saveConfig+applyConfig）。
+++ */
+++function renderOverviewCard(cfg) {
+++  return `
+++    <div class="cust-overview" role="group" aria-label="实时整体预览">
+++      <h4 class="cust-overview__title">整体预览</h4>
+++      <div class="cust-overview__items">
+++        <div class="cust-overview__item">
+++          <span class="cust-overview__label">主题</span>
+++          <span class="cust-overview__theme" aria-hidden="true"></span>
+++        </div>
+++        <div class="cust-overview__item">
+++          <span class="cust-overview__label">强调色</span>
+++          <span class="cust-overview__accent" aria-hidden="true"></span>
+++        </div>
+++        <div class="cust-overview__item">
+++          <span class="cust-overview__label">玻璃</span>
+++          <span class="cust-overview__glass" aria-hidden="true"></span>
+++        </div>
+++        <div class="cust-overview__item">
+++          <span class="cust-overview__label">圆角</span>
+++          <span class="cust-overview__radius" aria-hidden="true"></span>
+++        </div>
+++        <div class="cust-overview__item">
+++          <span class="cust-overview__label">图标</span>
+++          <span class="cust-overview__icons" aria-hidden="true">
+++            <span class="cust-overview__icon cust-overview__icon--active"></span>
+++            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
+++            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
+++          </span>
+++        </div>
+++      </div>
+++    </div>`;
+++}
+++
+++/** 把当前 config 写入预览卡 .cust-overview 的 --preview-* 局部变量（只读，不调 applyConfig）。
+++ *  空值守卫：jsdom 单测容器 / 未挂预览卡场景下安全跳过。theme: system 经 prefersDark 解析（jsdom 无 matchMedia 由守卫兜底）。 */
+++function updateOverview(container, cfg) {
+++  const el = container.querySelector('.cust-overview');
+++  if (!el) return;
+++  const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+++  el.style.setProperty('--preview-theme', resolved);
+++  // 主题块底色：与主题色对应 solid 面（themes.css 同值），使色块随 --preview-theme 解析变化
+++  el.style.setProperty('--preview-theme-bg', resolved === 'dark' ? '#16181f' : '#f8f9fb');
+++  el.style.setProperty('--preview-accent', tintHsl(cfg));
+++  el.style.setProperty('--preview-glass-opacity', String(cfg.glass.opacity));
+++  el.style.setProperty('--preview-radius', String(cfg.radiusScale));
+++}
+++
++ /**
++  * 定制器分组（Task 20 重构抽出）：6 组 .cust-group HTML + 事件绑定 + store 双向同步。
++  * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
++  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
++  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
++  * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
++  *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
++  */
++ export function renderCustomizerGroups(container) {
++   const cfg = getConfig();
++-  container.innerHTML = GROUPS.map((g) => `
+++  container.innerHTML = renderOverviewCard(cfg) + GROUPS.map((g) => `
++     <section class="cust-group">
++       <h4 class="cust-group__title">${g.title}</h4>
++       ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
++       ${g.pre ? g.pre(cfg) : ''}
++       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
++     </section>`).join('');
++ 
++   // 风格卡片：点击切换主题色
++   container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
++     const card = e.target.closest('.cust-accent-card');
++@@ -339,26 +392,32 @@ export function renderCustomizerGroups(container) {
++   });
++ 
++   // 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级
++   const glassWrap = container.querySelector('[data-glass-switch]');
++   glassWrap?.addEventListener('click', () => {
++     const sw = glassWrap.querySelector('.c-switch');
++     const next = sw.getAttribute('aria-checked') !== 'true';
++     applyConfig(saveConfig({ glass: { blurEnabled: next } }));
++   });
++ 
++-  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
+++  // store 订阅：本容器控件态 + 预览卡实时同步（面板与设置页各自订阅，双向生效）。
++   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
++-  const unsub = subscribe((next) => syncUI(container, next));
+++  // 订阅回调只读 getConfig()/cfg 并写局部 --preview-* 变量，绝不再调 applyConfig
+++  // （变更发起方已先 saveConfig + applyConfig）。
+++  const unsub = subscribe((next) => {
+++    syncUI(container, next);
+++    updateOverview(container, next);
+++  });
++   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
++   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
++   syncUI(container, cfg);
+++  updateOverview(container, cfg);
++   return unsub;
++ }
++ 
++ /**
++  * 挂载定制器：backdrop + 右侧抽屉（两者都是 body 级常驻元素）。
++  * @param {HTMLElement} root 挂载容器（main.js 传 document.body）
++  * @returns {HTMLElement} 面板元素
++  */
++ export function mountCustomizer(root) {
++   const backdrop = document.createElement('div');
++diff --git a/src/styles/customizer.css b/src/styles/customizer.css
++index 9f2e5df..e2cf70e 100644
++--- a/src/styles/customizer.css
+++++ b/src/styles/customizer.css
++@@ -53,20 +53,81 @@
++   display: flex; align-items: center; gap: var(--space-2);
++ }
++ .cust-group__title::after {
++   content: ''; flex: 1; height: 1px; background: var(--glass-border);
++ }
++ .cust-group__desc {
++   font-size: var(--font-size-xs); color: var(--text-3);
++   margin-bottom: var(--space-3);
++ }
++ 
+++/* ---- 实时整体预览卡（B3-2）：外观分区顶部，缩略当前主题/强调色/玻璃/圆角/图标层级 ----
+++   全部静态背景、无任何动画；玻璃层 backdrop-filter 为静态声明（红线：模糊永不动画）。
+++   值经 --preview-* 局部变量映射当前 config（updateOverview 订阅回调只读写入）。 */
+++.cust-overview {
+++  background: var(--surface-1);
+++  border: 1px solid var(--glass-border);
+++  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+++  padding: var(--space-3) var(--space-4);
+++  margin-bottom: var(--space-5);
+++}
+++.cust-overview__title {
+++  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+++  color: var(--text-2); margin-bottom: var(--space-2);
+++}
+++.cust-overview__items {
+++  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2);
+++}
+++.cust-overview__item {
+++  display: flex; flex-direction: column; align-items: center; gap: var(--space-1); flex: 1; min-width: 0;
+++}
+++.cust-overview__label { font-size: var(--font-size-xs); color: var(--text-3); }
+++.cust-overview__theme {
+++  width: 46px; height: 30px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+++  background: var(--preview-theme-bg, var(--surface-solid, #f8f9fb));
+++  border: 1px solid var(--glass-border);
+++  box-shadow: var(--shadow-inset-highlight);
+++}
+++.cust-overview__accent {
+++  width: 18px; height: 18px; border-radius: 50%;
+++  background: var(--preview-accent);
+++  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+++}
+++.cust-overview__glass {
+++  position: relative; width: 40px; height: 26px; overflow: hidden;
+++  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+++  background: linear-gradient(135deg, var(--preview-accent) 0 34%, #2dd4bf 34% 67%, #f59e0b 67%);
+++}
+++.cust-overview__glass::before {
+++  content: ''; position: absolute; inset: 0;
+++  background: rgba(var(--glass-bg-rgb) / var(--preview-glass-opacity, 0.48));
+++  backdrop-filter: blur(4px) saturate(var(--acrylic-saturate, 1.8)) brightness(var(--acrylic-brightness, 1.1));
+++  border: 1px solid var(--glass-border);
+++}
+++.cust-overview__glass::after {
+++  content: ''; position: absolute; inset: 0;
+++  background-image: var(--acrylic-noise); background-size: 120px 120px;
+++  opacity: var(--noise-opacity, 0.04); /* 噪点层随玻璃噪点强度 */
+++}
+++.cust-overview__radius {
+++  width: 30px; height: 24px;
+++  border-radius: calc(var(--radius-md) * var(--preview-radius, 1));
+++  background: var(--preview-accent); opacity: 0.24;
+++}
+++.cust-overview__icons { display: flex; align-items: center; gap: 5px; }
+++.cust-overview__icon { border-radius: 50%; }
+++.cust-overview__icon--active {
+++  width: 12px; height: 12px; background: var(--preview-accent);
+++  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+++}
+++.cust-overview__icon--inactive { width: 6px; height: 6px; background: var(--text-3); opacity: 0.7; }
+++
++ /* ---- 行：标签 + 控件 ---- */
++ .cust-row { margin-bottom: var(--space-3); }
++ .cust-row__head {
++   display: flex; align-items: baseline; justify-content: space-between;
++   margin-bottom: 6px;
++ }
++ .cust-row__label { font-size: var(--font-size-sm); color: var(--text-1); }
++ .cust-row__hint {
++   font-style: normal; font-size: var(--font-size-xs); color: var(--text-3);
++   margin-left: var(--space-1);
++diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
++index 9a5ee8d..d736762 100644
++--- a/tests/e2e/customizer.spec.js
+++++ b/tests/e2e/customizer.spec.js
++@@ -57,10 +57,31 @@ test('外观分组标题体现全局语义（重命名 + desc）', async ({ page
++   await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
++   await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
++   await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
++   await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
++   await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
++   await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
++   await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
++   await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
++   await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
++ });
+++
+++// B3-2：外观分区顶部实时整体预览卡（.cust-overview）。订阅回调只读 getConfig() 并写容器局部
+++// --preview-* 变量（不调 applyConfig —— 变更发起方已先 saveConfig + applyConfig）。
+++// getComputedStyle 读 .cust-overview 元素 inline 写入的变量；fill 触发 input → saveConfig → 订阅回调 updateOverview。
+++test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动）', async ({ page }) => {
+++  await page.goto('/?mode=app');
+++  await page.locator('.c-titlebar__control--settings').click();
+++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+++  const overview = page.locator('.cust-overview');
+++  await expect(overview).toBeVisible();
+++  // 切强调色 → 预览卡强调色同步变化
+++  const before = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
+++  await page.locator('.cust-accent-card[data-accent="teal"]').click();
+++  const after = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
+++  expect(after).not.toBe(before);
+++  // 圆角滑杆 → 预览卡圆角比例同步变化（全局联动验证）
+++  const rBefore = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
+++  await page.locator('.cust-range[data-key="radiusScale"]').fill('1.5');
+++  const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
+++  expect(rAfter).not.toBe(rBefore);
+++});
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
++index e79eb52..58e29b5 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
++index 900de8f..9eee38e 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
++index 1f9bad6..9b190e5 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
++index ca8ad87..114ddc6 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
++index 2ae5390..12bf31e 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
++diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
++index 79075f9..640052d 100644
++Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/docs/superpowers/sdd/review-B3-P0.diff b/docs/superpowers/sdd/review-B3-P0.diff
+new file mode 100644
+index 0000000..ca2b008
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B3-P0.diff
+@@ -0,0 +1,315 @@
++# Review package: 099c3b9..HEAD
++
++## Commits
++fe3f68c docs: B3-P0 实施报告（含提交哈希回填 71e55cd）
++71e55cd fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）
++
++## Files changed
++ docs/superpowers/sdd/task-B3-P0-brief.md  | 102 ++++++++++++++++++++++++++++++
++ docs/superpowers/sdd/task-B3-P0-report.md |  66 +++++++++++++++++++
++ src/app/app-main.js                       |  18 ++++--
++ tests/e2e/app-shell.spec.js               |   2 +
++ tests/e2e/mobile-nav.spec.js              |  14 ++++
++ 5 files changed, 197 insertions(+), 5 deletions(-)
++
++## Diff
++diff --git a/docs/superpowers/sdd/task-B3-P0-brief.md b/docs/superpowers/sdd/task-B3-P0-brief.md
++new file mode 100644
++index 0000000..adc4e7d
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-P0-brief.md
++@@ -0,0 +1,102 @@
+++# Task B3-P0: 概览「主题状态」卡陈旧修复（交接书 §5 P0，用户可见）
+++
+++## 任务定位
+++
+++应用壳 B3（设置完善）第一个任务。这是 B2 最终评审 Issue 1（parked）——标题栏三态主题快捷按钮（B2-R9 引入）切换主题后，概览页「主题状态」卡中的「当前主题：深/浅色」文本不更新，用户直接可见。桌面与手机两处都要修。
+++
+++## 背景与根因（先理解，再动手）
+++
+++标题栏主题按钮的点击处理链（src/app/app-main.js:143-147）：
+++
+++```js
+++themeBtn.addEventListener('click', () => {
+++  const cur = getConfig().theme;
+++  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+++  applyConfig(saveConfig({ theme: next }));
+++});
+++```
+++
+++`saveConfig` 内部先写 localStorage、再**同步**触发所有 store 订阅回调（store.js:43 `listeners.forEach((fn) => fn(next))`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（apply.js:57）。
+++
+++当前 app-main.js:159-166 的主题 subscribe 回调：
+++
+++```js
+++subscribe(() => {
+++  updateThemeIcon();
+++  syncSettingsThemeModes();
+++  const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+++  if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
+++});
+++```
+++
+++**Bug**：回调执行时 `data-theme` 还是旧值（applyConfig 还没跑），所以 label 读到旧值、不更新。**此修复无效**，必须改读配置本身。
+++
+++## 正确修法（唯一需求，逐字执行）
+++
+++subscribe 回调内改为读 `getConfig().theme` + `prefersDark()` 解析 system（与 app-main.js 已存在的 `updateThemeIcon` 模式一致——`updateThemeIcon` 就只读 `getConfig().theme`）。`getConfig()` 在 saveConfig 内已把新 theme 写进 store，回调同步执行时能读到**新**值。
+++
+++解析逻辑：
+++
+++```js
+++const cfg = getConfig();
+++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
+++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
+++```
+++
+++需要从 `../config/apply.js` 的 import 里补 `prefersDark`（现有 import 是 `import { applyConfig } from '../config/apply.js';`，apply.js 已导出 `prefersDark`，见 apply.js:4-7）。
+++
+++## 要改的两处 label（R8 修复只覆盖了桌面，手机未覆盖）
+++
+++1. **桌面**：`.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（现有选择器保留）
+++2. **手机**：`.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，R8 未覆盖）
+++
+++两处都在同一 subscribe 回调内更新（各用 querySelector + 空值守卫，同现有风格）。桌面守卫 `.app-main__page--active` 保留（仅在概览页激活时更新）；手机卡片无条件更新即可（值始终正确，pop 回概览时即正确）。
+++
+++## 待修改文件
+++
+++- `src/app/app-main.js`：import 补 `prefersDark`；subscribe 回调改读 config + 更新两处 label。
+++- `tests/e2e/app-shell.spec.js`：既有测试 `标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步`（约 456-490 行）补桌面概览 label 断言。
+++- `tests/e2e/mobile-nav.spec.js`：新增手机概览 label 断言测试。
+++
+++## 测试（TDD：先写断言，确认红，再实现，确认绿）
+++
+++**桌面断言**（app-shell.spec.js 该用例内，插在 light→dark 点击与 data-theme=dark 断言之后、进入设置模式之前）：
+++
+++```js
+++// 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
+++await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+++```
+++
+++注意：`.app-main__theme-row span` 匹配 3 个 span（当前主题/色板/强调色），必须 `.first()` 并断言精确文本 `当前主题：深色`（toHaveText 对多元素 locator 会报错）。
+++
+++**手机断言**（mobile-nav.spec.js，viewport 390×844 已由 `test.use` 设定，加在既有 test.use 块内）：
+++
+++```js
+++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
+++  await page.goto(APP_URL);
+++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
+++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
+++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+++});
+++```
+++
+++APP_URL 在 mobile-nav.spec.js 顶部已定义为 `'/?mode=app'`。
+++
+++先跑这两个用例确认红（现实现桌面 label 不更新、手机完全没更新），再实现，复跑确认绿。
+++
+++## 验证要求
+++
+++- `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"`（含新断言）绿
+++- `npx playwright test tests/e2e/mobile-nav.spec.js`（含新用例）绿，且其余移动用例零冲击
+++- `npm test`（单元全量）绿 —— 不触碰任何单测，应零影响
+++- `npm run test:e2e`（全量交互）绿 —— 确认零回归
+++- `npm run build` 通过
+++- **无视觉基线变化**（本次改动只改文本同步，不碰布局/渲染；如视觉回归出现差异，报告但勿 update-snapshots）
+++
+++## 提交
+++
+++一个 commit，message 示例：`fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）`
+++
+++## 报告
+++
+++将完整报告写入 `docs/superpowers/sdd/task-B3-P0-report.md`，内容包括：改动说明、测试命令与输出摘要、self-review 结论、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
++diff --git a/docs/superpowers/sdd/task-B3-P0-report.md b/docs/superpowers/sdd/task-B3-P0-report.md
++new file mode 100644
++index 0000000..5971db8
++--- /dev/null
+++++ b/docs/superpowers/sdd/task-B3-P0-report.md
++@@ -0,0 +1,66 @@
+++# Task B3-P0: 概览「主题状态」卡陈旧修复（桌面+手机） — 实施报告
+++
+++- **状态**：DONE
+++- **提交**：`71e55cd`
+++- **需求源**：docs/superpowers/sdd/task-B3-P0-brief.md（唯一需求源，修复逻辑按 brief「正确修法」逐字执行）
+++- **分支**：feature/b3-settings
+++
+++## 背景与根因（brief §背景与根因，验证成立）
+++
+++标题栏主题按钮点击链 `applyConfig(saveConfig({ theme: next }))`：`saveConfig` 先写 localStorage、再**同步**触发 store 订阅回调（`src/config/store.js:43`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（`src/config/apply.js:57`）。原订阅回调内读 `data-theme` 读到的是**旧值**，故概览「主题状态」卡 label 不更新（B2 最终评审 Issue 1 parked）。手机端 `.app-main__stack-page[data-stack="overview"]` 的 label 在 R8 修复中完全未覆盖。
+++
+++## 变更文件
+++
+++| 文件 | 变更 |
+++|---|---|
+++| `src/app/app-main.js` | import 补 `prefersDark`（`applyConfig, prefersDark` from `../config/apply.js`）；subscribe 回调改读 `getConfig().theme` + `prefersDark()` 解析 system（与既有 `updateThemeIcon` 同模式），回调同步执行时能读到**新** theme；同一回调更新两处 label：桌面 `.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（`--active` 守卫保留）+ 手机 `.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，无条件更新），各用 querySelector + 空值守卫（同现有风格） |
+++| `tests/e2e/app-shell.spec.js` | 既有用例「标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步」在 light→dark 点击与 `data-theme='dark'` 断言之后、进设置模式之前补桌面概览 label 断言（`.first()` + 精确文本 `当前主题：深色`） |
+++| `tests/e2e/mobile-nav.spec.js` | 新增用例「手机形态：概览主题状态卡随主题按钮实时更新」：seed `theme:'light'` + reload → 断言初始 `当前主题：浅色` → 点 `.c-titlebar__control--theme`（light→dark）→ 断言 `当前主题：深色` |
+++
+++## 正确修法（brief §正确修法 逐字执行）
+++
+++```js
+++const cfg = getConfig();
+++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
+++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
+++```
+++
+++- 配置链路：本次只**读** `getConfig()`，不写任何绕过链路的 CSS 变量 ✓
+++- 动画红线：仅文本同步，未触碰任何动画 ✓
+++- 无视觉基线变化：只改文本 label（同文替换），`npm run test:e2e` 中 24 张视觉回归全绿，零漂移 ✓
+++
+++## 与 brief 的唯一偏差（已在代码注释 + 本报告披露）
+++
+++brief 手机断言 snippet 未 seed 主题：默认 `theme:'system'`（`src/config/defaults.js:2`），Playwright fresh context 下首次点击 `THEME_CYCLE['system']→light`（index 2→0），label 保持「浅色」，第二断言恒红——**即便实现正确也无法转绿**（brief 注释「light → dark」与实际 cycle 不符）。
+++
+++**处理**：手机用例补 `localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' }))` + `reload()`（与桌面用例既有 seed 模式完全一致），使点击成为真正的 light → dark。断言文本、选择器、用例意图与 brief 逐字一致。此偏差仅在测试初始化，不改变被测行为。
+++
+++## TDD 证据
+++
+++- **Step 1（红，桌面）**：`npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` → **1 failed**。新断言期望 `当前主题：深色`，实测 `12 × locator resolved to <span>当前主题：浅色</span>`——正是 brief 所述的「订阅先于 applyConfig、读到旧 data-theme」根因。
+++- **Step 1（红，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js -g "手机形态：概览主题状态卡"` → **1 failed**。初始 `当前主题：浅色` 断言通过（seed 生效），点击后期望 `当前主题：深色`，实测仍 `浅色`——手机 label 完全未更新。
+++- **Step 3（绿，桌面）**：同一命令 → **1 passed**。
+++- **Step 4（绿，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js` → **8 passed**（新增用例 + 既有 7 用例零冲击）。
+++
+++## 验证结果
+++
+++| 命令 | 结果 |
+++|---|---|
+++| `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` | 1 passed |
+++| `npx playwright test tests/e2e/mobile-nav.spec.js` | 8 passed（含新用例，其余 7 用例零冲击） |
+++| `npm test` | 60/60 passed（10 files，零单测触碰） |
+++| `npm run test:e2e` | 98 passed（含全部 24 张视觉回归，无基线漂移；未 update-snapshots） |
+++| `npm run build` | 通过（Vite，386ms） |
+++
+++## Self-review 结论
+++
+++- **规格符合**：两处 label（桌面 + 手机）都在同一 subscribe 回调内按 brief 逐字逻辑更新；桌面 `--active` 守卫保留、手机无条件更新；import 只补 `prefersDark`（apply.js 已导出，jsdom 缺 matchMedia 有守卫）；`renderOverview` 初始渲染读 `data-theme` 不受影响（`applyConfig(getConfig())` 在渲染前已跑）。
+++- **配置链路**：仅读不写，无绕过。
+++- **风格**：与既有 `updateThemeIcon` 模式一致；两 label 各用 querySelector + 空值守卫；测试沿用 `.first()` + 精确文本（`.app-main__theme-row span` 匹配 3 个 span：当前主题/色板/强调色）。
+++- **质量**：full e2e + 单测 + build 全绿；视觉基线零漂移（改动纯文本同步）。
+++- **结论**：Ready to merge（DONE），无遗留 Minor。
+++
+++## 备注
+++
+++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**。
+++- 提交内容：`src/app/app-main.js`、`tests/e2e/app-shell.spec.js`、`tests/e2e/mobile-nav.spec.js`、`docs/superpowers/sdd/task-B3-P0-report.md`。
++diff --git a/src/app/app-main.js b/src/app/app-main.js
++index 6184c80..0a2a356 100644
++--- a/src/app/app-main.js
+++++ b/src/app/app-main.js
++@@ -12,21 +12,21 @@ import { icon } from '../components/icon/icon.js';
++ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
++ import { renderEmptyState } from '../components/empty-state/empty-state.js';
++ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
++ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
++ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
++ import { bindWindowControls } from '../demo/window-controls.js';
++ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
++ import { toast } from '../components/toast/toast.js';
++ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
++ import { getConfig, saveConfig, subscribe } from '../config/store.js';
++-import { applyConfig } from '../config/apply.js';
+++import { applyConfig, prefersDark } from '../config/apply.js';
++ import '../components/float-strip/float-strip.css';
++ import './app-main.css';
++ import './partitions.css';
++ 
++ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
++ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
++ const TAP_MAX_MOVE = 10;
++ 
++ // —— MODULES 扩展契约 ——
++ const MODULES = [
++@@ -152,24 +152,32 @@ export function mountAppMode(root) {
++       const on = b.dataset.mode === cfg.theme;
++       b.classList.toggle('csettings__mode--active', on);
++       b.setAttribute('aria-pressed', String(on));
++     });
++   };
++   // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
++   // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
++   subscribe(() => {
++     updateThemeIcon();
++     syncSettingsThemeModes();
++-    // 概览页「主题状态」卡同步：标题栏/设置切主题经 applyConfig 改 html data-theme，概览页不重渲；
++-    // 仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）
++-    const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
++-    if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
+++    // 概览页「主题状态」卡同步（B3-P0）：saveConfig 先同步触发订阅、applyConfig 才写 data-theme，
+++    // 回调内读 data-theme 仍是旧值（桌面/手机 label 均陈旧）—— 改读 getConfig().theme +
+++    // prefersDark() 解析 system（与 updateThemeIcon 同模式），订阅同步执行时能读到新值。
+++    // 桌面仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）；手机卡片无条件
+++    // 更新（值始终正确，pop 回概览时即正确）。
+++    const cfg = getConfig();
+++    const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
+++    const label = `当前主题：${isDark ? '深色' : '浅色'}`;
+++    const desktopLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+++    if (desktopLabel) desktopLabel.textContent = label;
+++    const mobileLabel = document.querySelector('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span');
+++    if (mobileLabel) mobileLabel.textContent = label;
++   });
++ 
++   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
++   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
++   // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
++   // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
++   // 不触发配置链路（与右窗状态同类）。
++   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
++   const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
++   (() => {
++diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
++index 523ce82..b2b216a 100644
++--- a/tests/e2e/app-shell.spec.js
+++++ b/tests/e2e/app-shell.spec.js
++@@ -456,20 +456,22 @@ test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page })
++ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步', async ({ page }) => {
++   await page.goto('/?mode=app');
++   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
++   await page.reload();
++   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++   // 初始图标 = sun（浅色，当前状态语义）
++   await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
++   // light → dark
++   await page.locator('.c-titlebar__control--theme').click();
++   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+++  // 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
+++  await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
++   await page.locator('.c-titlebar__control--settings').click();
++   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
++   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
++   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
++   // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
++   await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
++   const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
++   expect(['light', 'dark']).toContain(systemResolved);
++   await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
++diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
++index b7cb46a..a99884c 100644
++--- a/tests/e2e/mobile-nav.spec.js
+++++ b/tests/e2e/mobile-nav.spec.js
++@@ -144,10 +144,24 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向
++   await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
++   // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
++   await dockList.locator('.c-navwheel__item').nth(3).click();
++   await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
++   await expect(dockList.locator('.c-navwheel__item--active')).toHaveCount(1);
++   const activeBox = await dockList.locator('.c-navwheel__item--active').boundingBox();
++   const listBox = await dockList.boundingBox();
++   const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
++   expect(anchorDelta).toBeLessThan(5);
++ });
+++
+++// —— B3-P0 概览「主题状态」卡陈旧修复：手机形态覆盖（R8 只修了桌面）——
+++// 手机基底页 = .app-main__stack-page[data-stack="overview"]，主题状态卡 label 随标题栏
+++// 三态主题按钮实时更新。先 seed localStorage theme='light' + reload（同桌面用例模式）——
+++// 默认 theme='system'，fresh context 下首次点击会 cycle 到 light 而非 dark，seed 保证点击是
+++// 真正的 light → dark，断言确定性强。
+++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
+++  await page.goto(APP_URL);
+++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+++  await page.reload();
+++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
+++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
+++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+++});
+diff --git a/docs/superpowers/sdd/task-B3-1-brief.md b/docs/superpowers/sdd/task-B3-1-brief.md
+new file mode 100644
+index 0000000..0b5852c
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-1-brief.md
+@@ -0,0 +1,111 @@
++# Task B3-1: 外观分组重命名（全局语义 + desc）
++
++## 任务定位
++
++应用壳 B3 第二个任务。B3 的目标是让设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。**「玻璃材质→表面质感」已在 B2-R5 完成**，本任务只改其余 5 组，并给全部 6 组加 desc。
++
++## 现状（src/demo/customizer-panel.js，GROUPS 常量约 39-81 行）
++
++当前 6 组：`色彩` / `表面质感`（已改）/ `排版` / `圆角` / `动效` / `阴影`。每组结构 `{ title, pre?, sliders }`。唯一既有分组标题断言是 tests/e2e/customizer.spec.js:43 的「表面质感」（保持不动）。
++
++## 需求（唯一需求源）
++
++**1. 重命名 5 组 title**（`表面质感` 不动）：
++
++| 现 title | 新 title |
++|---|---|
++| 色彩 | **整体色调** |
++| 表面质感 | 表面质感（不动） |
++| 排版 | **文字排版** |
++| 圆角 | **边角形状** |
++| 动效 | **动效节奏** |
++| 阴影 | **阴影层次** |
++
++**2. 每组加 `desc` 字段**，渲染在组标题下、pre/sliders 之前：
++
++| title | desc |
++|---|---|
++| 整体色调 | 主题色/色相/饱和度/色温 |
++| 表面质感 | 透明度/模糊/噪点强度/亚克力材质 |
++| 文字排版 | 基准字号/缩放 |
++| 边角形状 | 圆角比例 |
++| 动效节奏 | 时长缩放/弹性强度 |
++| 阴影层次 | 阴影强度 |
++
++**3. 渲染**：`renderCustomizerGroups`（customizer-panel.js:302-310）的组模板改为：
++
++```js
++container.innerHTML = GROUPS.map((g) => `
++  <section class="cust-group">
++    <h4 class="cust-group__title">${g.title}</h4>
++    ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
++    ${g.pre ? g.pre(cfg) : ''}
++    ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
++  </section>`).join('');
++```
++
++**4. 样式**（src/styles/customizer.css）：加 `.cust-group__desc`（次要色小字），并相应收紧 `.cust-group__title` 的下边距使 desc 紧贴标题。样式要点：
++- `color: var(--text-3)`；`font-size: var(--font-size-xs)`
++- 让 desc 贴住标题下方（`.cust-group__title` 现 `margin-bottom: var(--space-3)` 需调小，desc 承担与后续内容的间距），可用负 margin 或改 title margin-bottom 达成，保持组内紧凑
++- **不改组内滑杆布局**；不动 `.cust-group__title` 的 flex 结构与其 `::after` 分隔线
++
++## 待修改文件
++
++- `src/demo/customizer-panel.js`：GROUPS 重命名 + desc；组模板渲染 desc
++- `src/styles/customizer.css`：`.cust-group__desc` 样式 + 标题下边距调整
++- `tests/e2e/customizer.spec.js`：新增用例断言 6 组新标题 + desc
++- `tests/e2e/visual-regression.spec.js-snapshots/`：`appearance-partition-*.png`（6 张）重生成
++
++## 测试（TDD：先写断言确认红，再实现确认绿）
++
++customizer.spec.js 新增用例（放在既有「外观分区：表面质感组标题」用例附近）：
++
++```js
++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const group = page.locator('.cust-group');
++  await expect(group).toHaveCount(6);
++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
++});
++```
++
++既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（customizer.spec.js:39-46）必须继续通过（`toContainText('表面质感')` 在新实现下仍匹配）。
++
++## 视觉基线（重点：必须先解码比对再重生成）
++
++重命名 + desc 会改变 `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）。流程：
++
++1. 先跑 `npm run test:visual`，确认只有 `appearance-partition-*` 失败（app-main/components-partition/motion-partition 应零漂移）。
++2. **解码比对**失败快照，确认差异区域 = 分组标题文字 + desc 行（本次改动引入），无布局位移/无意外区域。
++3. 确认后 `--update-snapshots` 只重生成 appearance-partition 6 张（`npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots`）。
++4. 复跑 `npm run test:visual` 全绿。
++
++如出现 app-main 或其它分区基线漂移，**不要 update-snapshots**，报告给控制器（可能是 no-op 抖动或真实回归）。
++
++## 验证要求
++
++- `npx playwright test tests/e2e/customizer.spec.js`（新旧用例全绿）
++- `npm run test:e2e`（全量交互绿，含视觉基线重生成后）
++- `npm test`（单元全量绿——customizer.test.js 只测订阅退订，应零影响）
++- `npm run build` 通过
++
++## 提交
++
++一个 commit，message：`feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc`
++
++## 报告
++
++完整报告写入 `docs/superpowers/sdd/task-B3-1-report.md`：改动说明、测试命令与输出摘要、**基线重生成的解码比对说明**（差异区域确认）、self-review、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B3-1-report.md b/docs/superpowers/sdd/task-B3-1-report.md
+new file mode 100644
+index 0000000..5411e36
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-1-report.md
+@@ -0,0 +1,67 @@
++# Task B3-1: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc — 实施报告
++
++- **状态**：DONE
++- **提交**：`352398a`
++- **需求源**：docs/superpowers/sdd/task-B3-1-brief.md（唯一需求源，标题/desc/模板/CSS/测试逐字执行）
++- **分支**：feature/b3-settings
++
++## 任务背景
++
++B3 目标：设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。「玻璃材质→表面质感」已在 B2-R5 完成，本任务只改其余 5 组标题，并给全部 6 组加 `desc`。定制器 GROUPS 由 `renderCustomizerGroups`（customizer-panel.js）渲染，抽屉面板与外观设置分区共用同一实现——两侧都获得新标题/desc（设计使然）。
++
++## 改动说明
++
++| 文件 | 变更 |
++|---|---|
++| `src/demo/customizer-panel.js` | GROUPS 常量：5 组 title 重命名（色彩→**整体色调**、排版→**文字排版**、圆角→**边角形状**、动效→**动效节奏**、阴影→**阴影层次**；表面质感不动）+ 全部 6 组加 `desc` 字段；`renderCustomizerGroups` 组模板按 brief 逐字加 `desc` 渲染行（`${g.desc ? ... : ''}` 守卫）；模块 doc 注释同步 6 组新名 + desc 说明 |
++| `src/styles/customizer.css` | 新增 `.cust-group__desc`（`color: var(--text-3)`；`font-size: var(--font-size-xs)`；`margin-bottom: var(--space-3)`，由 desc 承担与后续内容的间距）；`.cust-group__title` 的 `margin-bottom` 从 `var(--space-3)` 收紧为 `var(--space-1)` 使 desc 紧贴标题下方；**未动** `.cust-group__title` 的 flex 结构与 `::after` 分隔线，未改组内滑杆布局 |
++| `tests/e2e/customizer.spec.js` | 新增用例「外观分组标题体现全局语义（重命名 + desc）」（brief 逐字）：断言 6 组新标题 + 6 条 desc；既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（`toContainText('表面质感')`）在新实现下继续通过 |
++| `tests/e2e/visual-regression.spec.js-snapshots/` | `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）按基线流程重生成 |
++
++- **配置链路**：本任务仅重命名分组标签 + 加静态文本 desc，零配置改动（defaults → store → apply 链路未触碰）。
++- **动画红线**：desc 为静态文本，未触碰任何动画；CSS 中唯一 transition 仍是既有 `.cust-group__title` 相关（未改）。仅 transform/opacity 动效规则不受影响。
++
++## TDD 证据
++
++- **Step 1（红）**：先写新用例 → `npx playwright test tests/e2e/customizer.spec.js -g "外观分组标题体现全局语义"` → **1 failed**。`expect(...).toHaveText('整体色调')` 实测收到 `"色彩"`（`<h4 class="cust-group__title">色彩</h4>`）——正是待改的旧标题。
++- **Step 3（绿）**：实现后 `npx playwright test tests/e2e/customizer.spec.js` → **5 passed**（新用例 + 既有 4 用例，含「表面质感」用例零冲击）。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test tests/e2e/customizer.spec.js` | 5 passed（新用例 + 既有 4 用例） |
++| `npm run test:visual`（基线比对前） | 6 failed（**仅** appearance-partition）/ 18 passed（app-main、components-partition、motion-partition 零漂移） |
++| `npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots` | 6 passed（仅重生成 appearance-partition 6 张，git status 确认无其它分区文件变动） |
++| `npm run test:visual`（复跑） | 24 passed 全绿 |
++| `npm run test:e2e` | 99 passed（含 24 张视觉回归 + 新交互用例；B3-P0 为 98，+1 为本任务新增） |
++| `npm test` | 60/60 passed（10 files；customizer.test.js 只测订阅退订，零影响） |
++| `npm run build` | 通过（Vite，435ms） |
++
++## 视觉基线重生成：解码比对说明
++
++**流程执行**：先跑 `npm run test:visual` 确认只有 `appearance-partition-*` 失败（18 张其它分区零漂移）→ 解码比对失败快照 → `--update-snapshots` 只重生成 appearance-partition 6 张 → 复跑全绿。
++
++**解码比对方法**（环境 Read 工具无法直接显示 PNG，改用 numpy/PIL 逐像素解码比对）：
++
++1. **尺寸变化**：expected 720×1493 → actual 720×1613，**+120px 整**。6 组各加一行 desc（约 +20px/组，含字体行高 + margin 调整），120px = 6 行 desc 的精确高度增量。
++2. **差异区域**：逐行 diff 带分析，6 张快照一致——差异带全部落在**分组区顶部 y≈145–679**（6 组标题/desc 所在行）+ **底部 y1493–1612 的 +120px 高度延伸**（86400px = 120×720，正是新增的 6 行 desc 高度）。**y680–1492 整段逐像素一致（maxdiff=0）**：设置页头部、各组下方内容、分区下部均无任何意外改动。
++3. **位移性质**：对 group 2 内容区做垂直位移相关验证，best shift **+20px、匹配率 99.99%**——实际截图内容 = 期望截图同一内容向下平移 20px。证明差异是**纯竖直插入 desc 行**导致的级联下移，非布局重排/重绘/破损。
++4. **暗色主题额外顶部细带**：dark 三张在 y1–143 出现若干 1–3px 细带，合计仅 **184px**（143×720 区域内）——玻璃表面/头部文字的次像素 AA 抖动（SwiftShader 软件栅格化下确定性渲染，与 18 张零漂移其它分区同源）。已随基线重生成确定性固化。
++5. **无意外区域**：app-main（应用壳整窗）、components-partition、motion-partition 三组 18 张**零漂移**，确认无级联污染。
++
++**结论**：差异区域 = 分组标题文字（色彩→整体色调 等 5 组改名）+ 每组新增 desc 行（6 行），为本次改动引入；无布局位移（y680–1492 逐像素一致）、无意外区域。满足 brief「必须先解码比对再重生成」要求。
++
++## Self-review 结论
++
++- **规格符合**：5 组 title 按表逐字重命名、表面质感不动；6 组 desc 逐字；组模板、CSS、测试用例均按 brief 逐字实现；既有「表面质感」断言（customizer.spec.js:43 `toContainText`）在新实现下继续匹配。
++- **配置链路**：零配置改动，无绕过。
++- **动画红线**：仅静态文本 + 既有 title transition（未改），无新增动画。
++- **样式红线**：`.cust-group__title` flex 结构与 `::after` 分隔线原样保留；desc 用令牌变量（`--text-3`/`--font-size-xs`/`--space-3`），无硬编码值。
++- **质量**：customizer.spec 5/5、full e2e 99/99、单测 60/60、build 通过；视觉基线按流程重生成后全绿。
++- **结论**：Ready to merge（DONE），无遗留 Minor。
++
++## 备注
++
++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**（提交前/后 `git status` 均确认）。
++- 提交内容（`352398a`）：`src/demo/customizer-panel.js`、`src/styles/customizer.css`、`tests/e2e/customizer.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-*.png`（6 张）、`docs/superpowers/sdd/task-B3-1-brief.md`。
+diff --git a/docs/superpowers/sdd/task-B3-2-brief.md b/docs/superpowers/sdd/task-B3-2-brief.md
+new file mode 100644
+index 0000000..7f1640f
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-2-brief.md
+@@ -0,0 +1,100 @@
++# Task B3-2: 外观分区实时整体预览卡
++
++## 任务定位
++
++应用壳 B3 第三个（最后一个）任务。B3 目标「让改的是整个 UI 而非字体」从文案和默认效果都明显——外观分区顶部加一张**实时整体预览卡**（缩略展示当前主题/强调色/玻璃/圆角/图标效果），订阅 store 实时刷新。B3-1 已重命名分组。
++
++## 现状（src/demo/customizer-panel.js）
++
++- `renderCustomizerGroups(container)`（约 302-348 行）渲染 6 组 `.cust-group` + 事件 + store 订阅。**实际只有外观分区整页形态使用它**（settings-pages.js appearancePage → app-main.js setSettingsPageActive/activateMobileSettings 惰性挂载）；抽屉 mountCustomizer 已无调用方。
++- store 订阅模式（约 343-347 行）：
++  ```js
++  const unsub = subscribe((next) => syncUI(container, next));
++  syncUI(container, cfg);
++  return unsub;
++  ```
++  订阅**只同步局部控件态，不重渲染整个定制器**。变更发起方（滑杆 input / 强调色卡点击）已先 `saveConfig` + `applyConfig`，订阅回调绝不再调 applyConfig（避免重复应用）。
++- 模块内已有 `tintHsl(cfg)`（约 113-119 行）返回当前强调色经色相/饱和度微调后的 `hsl(...)`——预览卡强调色应复用此函数（与色相 swatch 同源，联动 accent+hue+saturation）。
++
++## 需求（唯一需求源）
++
++**在 `renderCustomizerGroups` 渲染的分组上方加 `.cust-overview` 整体预览卡**（外观分区顶部；抽屉已无调用方，无别处影响）。缩略展示 5 项，全部经 CSS 变量映射当前 config：
++
++1. **主题**（深浅）：一块色块，背景随 `--preview-theme`（'light'|'dark'，system 经 prefersDark 解析）
++2. **强调色**：一个色点，`--preview-accent`（用 `tintHsl(cfg)`）
++3. **玻璃效果**：一个小玻璃面板（backdrop-filter + rgba 底色），`--preview-glass-opacity`（= cfg.glass.opacity）+ 噪点层
++4. **圆角**：一个圆角示例块，`--preview-radius`（= cfg.radiusScale）
++5. **图标层级**：两个尺寸不同的圆点/图标示意（active 大、inactive 小，对应 B2-3 分级）
++
++**`updateOverview(container, cfg)`**：在容器内 `querySelector('.cust-overview')`，把上述变量写到该元素 inline style（`el.style.setProperty('--preview-accent', tintHsl(cfg))` 等；空值守卫）。**不调 applyConfig**。
++
++**接线**：`renderCustomizerGroups` 内
++- 初始渲染：`container.innerHTML = renderOverviewCard(cfg) + GROUPS.map(...).join('')`
++- 订阅回调与初始同步都调 `updateOverview`：
++  ```js
++  const unsub = subscribe((next) => { syncUI(container, next); updateOverview(container, next); });
++  syncUI(container, cfg);
++  updateOverview(container, cfg);
++  return unsub;
++  ```
++
++**样式**（src/styles/customizer.css 新增 `.cust-overview` 等）：小卡布局，视觉语言与既有定制器一致（`--surface-1` 底 / `--glass-border` 边 / `calc(var(--radius-*) * var(--radius-scale))` 圆角）。**全部静态背景，无任何动画**；backdrop-filter 用于玻璃面板是静态声明（红线：模糊永不动画，本卡无动画即合规）。
++
++## 待修改文件
++
++- `src/demo/customizer-panel.js`：`renderOverviewCard(cfg)` + `updateOverview(container, cfg)` + renderCustomizerGroups 接线
++- `src/styles/customizer.css`：`.cust-overview` 预览卡样式
++- `tests/e2e/customizer.spec.js`：新用例
++- `tests/e2e/visual-regression.spec.js-snapshots/`：`appearance-partition-*.png`（6 张）重生成
++
++## 测试（TDD：先写断言确认红——`.cust-overview` 不存在必然红，再实现确认绿）
++
++customizer.spec.js 新增用例（计划书 Step 1 字面 + 补一条圆角联动断言，验证「全局联动」不止强调色）：
++
++```js
++test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const overview = page.locator('.cust-overview');
++  await expect(overview).toBeVisible();
++  // 切强调色 → 预览卡强调色同步变化
++  const before = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
++  await page.locator('.cust-accent-card[data-accent="teal"]').click();
++  const after = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
++  expect(after).not.toBe(before);
++  // 圆角滑杆 → 预览卡圆角比例同步变化（全局联动验证）
++  const rBefore = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
++  await page.locator('.cust-range[data-key="radiusScale"]').fill('1.5');
++  const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
++  expect(rAfter).not.toBe(rBefore);
++});
++```
++
++注意：`getComputedStyle(el).getPropertyValue('--preview-accent')` 读的是 `.cust-overview` 元素 inline 写入的变量；`fill` 触发 input → saveConfig → 订阅回调 updateOverview。`--preview-accent` 用 `tintHsl` 时初始（indigo，hue=-1/sat=100）与 teal 结果必不同。`--preview-radius` 初始 '1'，fill('1.5') 后必不同。
++
++## 视觉基线（重点：必须先解码比对再重生成）
++
++新增预览卡会改变 `appearance-partition-*.png`（6 张）。流程与 B3-1 相同：
++
++1. 先跑 `npm run test:visual`，确认只有 `appearance-partition-*` 失败（其余 18 张零漂移）。
++2. **解码比对**失败快照：差异区域 = 顶部新增预览卡（约 +100-140px 高，分区顶部块状新增），无布局位移/无意外区域。
++3. 确认后 `--update-snapshots` 只重生成 appearance-partition 6 张。
++4. 复跑 `npm run test:visual` 全绿。
++
++如 app-main 或其它分区漂移，**不要 update-snapshots**，报告控制器。
++
++## 验证要求
++
++- `npx playwright test tests/e2e/customizer.spec.js`（新旧用例全绿）
++- `npm test`（单元全绿——customizer.test.js 只测订阅退订，updateOverview 加入订阅回调不破坏其断言；jsdom 无 matchMedia 由 prefersDark 守卫）
++- `npm run test:e2e`（全量交互绿）
++- `npm run build` 通过
++
++## 提交
++
++一个 commit，message：`feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
++
++## 报告
++
++完整报告写入 `docs/superpowers/sdd/task-B3-2-report.md`：改动说明、测试命令与输出摘要、基线重生成的解码比对说明、self-review、提交哈希。回复本会话只需：状态 + 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B3-2-report.md b/docs/superpowers/sdd/task-B3-2-report.md
+new file mode 100644
+index 0000000..e05d449
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-2-report.md
+@@ -0,0 +1,91 @@
++# Task B3-2 实施报告：外观分区实时整体预览卡
++
++- **任务**：B3 收尾任务 —— 外观分区顶部加 `.cust-overview` 实时整体预览卡（缩略展示当前主题/强调色/玻璃/圆角/图标层级），订阅 store 实时刷新
++- **状态**：完成
++- **提交**：`2514d41`
++- **日期**：2026-08-08
++
++## 改动说明
++
++### src/demo/customizer-panel.js
++
++1. **import 增补**：从 `../config/apply.js` 追加 `prefersDark`（解析 `system` 主题到 'light'|'dark'；jsdom 无 `matchMedia` 由该函数守卫兜底 false → light）。
++2. **新增 `renderOverviewCard(cfg)`**：返回 `.cust-overview` 卡片 HTML，5 个缩略项（主题色块 / 强调色点 / 玻璃小面板 / 圆角示例块 / 图标层级两圆点），每项带 `.cust-overview__label` 小字标签，`aria-hidden` 装饰项。
++3. **新增 `updateOverview(container, cfg)`**：在容器内 `querySelector('.cust-overview')`（**空值守卫** `if (!el) return`，jsdom 单测容器安全），把当前 config 写入该元素 inline 的 `--preview-*` 局部变量：
++   - `--preview-theme` = cfg.theme 经 prefersDark 解析的 'light'|'dark'
++   - `--preview-theme-bg` = 解析主题对应的 solid 面底色（'#f8f9fb' / '#16181f'，与 themes.css 的 `--surface-solid` 同值），使色块随 `--preview-theme` 变化
++   - `--preview-accent` = `tintHsl(cfg)`（复用既有函数，与色相 swatch 同源，联动 accent + hue + saturation）
++   - `--preview-glass-opacity` = String(cfg.glass.opacity)
++   - `--preview-radius` = String(cfg.radiusScale)
++   - **不调 applyConfig**（变更发起方已先 saveConfig + applyConfig；订阅只同步局部，与既有 renderCustomizerGroups 模式一致）
++4. **`renderCustomizerGroups` 接线**：
++   - 初始渲染 `container.innerHTML = renderOverviewCard(cfg) + GROUPS.map(...).join('')`
++   - 订阅回调：`subscribe((next) => { syncUI(container, next); updateOverview(container, next); })`
++   - 初始同步：`syncUI(container, cfg); updateOverview(container, cfg);`
++
++### src/styles/customizer.css
++
++新增 `.cust-overview` 卡片样式（置于 `.cust-group__desc` 之后、行样式之前）：
++- 卡片底 `--surface-1`、边 `--glass-border`、圆角 `calc(var(--radius-md) * var(--radius-scale, 1))`、内边距 space-3/space-4、下边距 space-5
++- 标题 `.cust-overview__title`（text-2 小字 semibold）+ `.cust-overview__items` flex 横排 5 项（`.cust-overview__item` 居中 flex 列，`flex: 1`）
++- 主题色块：`background: var(--preview-theme-bg, var(--surface-solid, #f8f9fb))`，`--shadow-inset-highlight` 内高光
++- 强调色点：`background: var(--preview-accent)` 圆点
++- 玻璃小面板：`::before` = 背景三色渐变（preview-accent + teal + amber，供模糊呈现）；`::after` = 玻璃层 `rgba(var(--glass-bg-rgb) / var(--preview-glass-opacity, 0.48))` + `backdrop-filter: blur(4px) saturate/brightness` + 噪点层 `--acrylic-noise`（opacity 随 `--noise-opacity`）
++- 圆角示例块：`border-radius: calc(var(--radius-md) * var(--preview-radius, 1))`，preview-accent 低透明度填充
++- 图标层级：active 12px accent 圆点 + inactive 6px text-3 圆点（对应 B2-3 分级）
++- **全部静态背景、无任何动画**；玻璃层 backdrop-filter 为静态声明（红线：模糊永不动画，本卡无动画即合规）；时长/曲线不经 CSS 变量即不涉及
++
++### tests/e2e/customizer.spec.js
++
++新增用例（计划书 Step 1 字面 + 补圆角联动断言）「外观分区顶部有实时整体预览卡（强调色/圆角实时联动）」：导航进外观分区 → `.cust-overview` 可见 → 点 teal 强调色卡，`--preview-accent` 变化（indigo hsl(234 83.5% 65%) → teal hsl(172 66% 65%) 必不同）→ radiusScale 滑杆 fill('1.5')，`--preview-radius` 由 '1' → '1.5'。
++
++### docs/superpowers/sdd/task-B3-2-brief.md / progress-b3.md
++
++brief 随任务入库；progress-b3.md 追加 B3-2 执行留痕条目。
++
++## 验证命令与输出摘要
++
++**TDD 红 → 绿**：
++- 红：`npx playwright test tests/e2e/customizer.spec.js -g "实时整体预览"` → `expect(locator('.cust-overview')).toBeVisible()` 失败 `element(s) not found`（1 failed）✓
++- 绿：同命令 → `1 passed` ✓
++
++**全量验证**：
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test tests/e2e/customizer.spec.js` | 6/6 passed |
++| `npm test` | 10 文件 60/60 passed（含 customizer.test.js 订阅退订 2 例，updateOverview 加入订阅回调未破坏） |
++| `npm run test:e2e` | 98 passed + 2 failed（见下方 flake 说明；与本任务相关用例全绿） |
++| `npm run build` | ✓ built in 415ms（99 modules） |
++| `npx playwright test tests/e2e/visual-regression.spec.js` | 24/24 passed |
++
++首轮 `npm run test:e2e` 6 failed —— 全部为 `appearance-partition-*`（预览卡预期改变），其余 94 passed；基线重生成后复跑。
++
++**复跑 flake 说明（与本任务无关，非本次改动引起）**：重生成后全量复跑 98 passed + 2 failed —— `app-shell.spec.js:124`（设置模式，`expect(settingsBtn).toHaveCount(1)` 超时）与 `floatstrip.spec.js:83`（右下 FloatBall，`expect(ball).toHaveCount(1)` 超时）。两例均为元素计数超时类 flake：首轮全量运行曾通过；隔离重跑 app-shell + floatstrip 两文件 **33/33 全绿**；均不涉及外观分区（.cust-overview 不参与该两测试路径）。判定为全量负载下既有时序 flake，与本次改动无关。
++
++## 视觉基线重生成：解码比对说明
++
++**流程**（先解码比对确认差异由本次改动引起，再重生成）：
++
++1. **首跑确认范围**：`npm run test:e2e` 仅 `appearance-partition-*` 6 张失败（其余 18 张视觉 + 全部交互零漂移）。失败输出：`Expected an image 720px by 1613px, received 720px by 1737px` —— 元素增高 **+124px**（预览卡 100px + 外边距 24px）。
++2. **解码比对**（Read 工具无法解码 PNG，改用两条证据链）：
++   - **逐像素分析**（System.Drawing LockBits，PowerShell）：期望 vs 实际直接对比，差异集中于顶部 y52-719（dark）/ y142-719（light，新卡位于分区顶部 y142-242），y720-1559 零差异（该带两图为长分区截图既存空白底），y1560+ 为 +124px 底部延伸；下移对比（`expected(y) vs actual(y+124)`）在 y680-1612 逐像素 100% 匹配 → 下方内容为干净 124px 下移，无布局位移、无意外区域。
++   - **当前代码复拍对照（决定性）**：以与视觉测试完全相同的流程（注入 dark/emerald → reload → 进外观 → 设 data-* / 清 style）复拍元素截图，与失败 actual **md5 逐字节一致**（`a99968bb…`）；同流程 `display:none` 隐藏 `.cust-overview` 后复拍，与基线 expected **md5 逐字节一致**（`e08c38b6…`）。即「基线 = 当前代码减去预览卡」—— 差异 100% 由本次改动引入，其余渲染（含空白底、AA 细节）与基线完全一致。
++3. **重生成**：仅 6 张 appearance-partition（`-g "appearance-partition" --update-snapshots`），其余 18 张不触碰（git 确认 diff 只含 6 张）。
++4. **复跑**：`npx playwright test tests/e2e/visual-regression.spec.js` 24/24 全绿。
++
++## Self-Review
++
++- **配置链路合规**：预览卡只**读** config（订阅回调只写容器局部 `--preview-*` 变量），不调 applyConfig —— 与 pre-flight 已裁定模式一致；变更发起方（滑杆 input / 强调色卡 / 亚克力开关）仍先 saveConfig + applyConfig。
++- **动画红线**：`.cust-overview` 全部静态背景、无任何动画；玻璃层 backdrop-filter 为静态声明（无过渡）；无 layout 属性动画；不涉及时长/曲线变量。
++- **零运行时依赖 / 无抽象封装**：纯原生 DOM + CSS 变量；组件直接 render 字符串；遵循既有函数式 helper 风格（readCfg/writePatch/tintHsl 同层）。
++- **与 B3-1 无冲突**：未触碰 GROUPS 重命名与 `.cust-group__desc`；`.cust-overview` 非 `.cust-group`，6 组计数断言不受影响。
++- **单测兼容**：`updateOverview` 空值守卫 + `prefersDark` jsdom 守卫，customizer.test.js 订阅退订断言未破坏（npm test 60/60）。
++- **基线确定性**：复拍 md5 逐字节一致证明渲染确定，非 run-to-shot 抖动。
++- **已知说明**：`--preview-theme` 为机器可读 'light'|'dark'（镜像 apply.js `--glass-enabled` 先例），色块实际底色经同源派生的 `--preview-theme-bg` 消费 —— CSS 无法对字符串变量分支，此为实现 `--preview-theme` 语义的最贴近做法。
++
++## 提交
++
++- `git add`：src/demo/customizer-panel.js、src/styles/customizer.css、tests/e2e/customizer.spec.js、tests/e2e/visual-regression.spec.js-snapshots/（6 张 appearance-partition）、docs/superpowers/sdd/task-B3-2-brief.md、docs/superpowers/sdd/task-B3-2-report.md、docs/superpowers/sdd/progress-b3.md
++- **未 add**：`src-tauri/Cargo.toml`（既有行尾噪声，保持未暂存）
++- message：`feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）`
++- hash：`2514d41`
+diff --git a/docs/superpowers/sdd/task-B3-P0-brief.md b/docs/superpowers/sdd/task-B3-P0-brief.md
+new file mode 100644
+index 0000000..adc4e7d
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-P0-brief.md
+@@ -0,0 +1,102 @@
++# Task B3-P0: 概览「主题状态」卡陈旧修复（交接书 §5 P0，用户可见）
++
++## 任务定位
++
++应用壳 B3（设置完善）第一个任务。这是 B2 最终评审 Issue 1（parked）——标题栏三态主题快捷按钮（B2-R9 引入）切换主题后，概览页「主题状态」卡中的「当前主题：深/浅色」文本不更新，用户直接可见。桌面与手机两处都要修。
++
++## 背景与根因（先理解，再动手）
++
++标题栏主题按钮的点击处理链（src/app/app-main.js:143-147）：
++
++```js
++themeBtn.addEventListener('click', () => {
++  const cur = getConfig().theme;
++  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
++  applyConfig(saveConfig({ theme: next }));
++});
++```
++
++`saveConfig` 内部先写 localStorage、再**同步**触发所有 store 订阅回调（store.js:43 `listeners.forEach((fn) => fn(next))`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（apply.js:57）。
++
++当前 app-main.js:159-166 的主题 subscribe 回调：
++
++```js
++subscribe(() => {
++  updateThemeIcon();
++  syncSettingsThemeModes();
++  const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
++  if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
++});
++```
++
++**Bug**：回调执行时 `data-theme` 还是旧值（applyConfig 还没跑），所以 label 读到旧值、不更新。**此修复无效**，必须改读配置本身。
++
++## 正确修法（唯一需求，逐字执行）
++
++subscribe 回调内改为读 `getConfig().theme` + `prefersDark()` 解析 system（与 app-main.js 已存在的 `updateThemeIcon` 模式一致——`updateThemeIcon` 就只读 `getConfig().theme`）。`getConfig()` 在 saveConfig 内已把新 theme 写进 store，回调同步执行时能读到**新**值。
++
++解析逻辑：
++
++```js
++const cfg = getConfig();
++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++```
++
++需要从 `../config/apply.js` 的 import 里补 `prefersDark`（现有 import 是 `import { applyConfig } from '../config/apply.js';`，apply.js 已导出 `prefersDark`，见 apply.js:4-7）。
++
++## 要改的两处 label（R8 修复只覆盖了桌面，手机未覆盖）
++
++1. **桌面**：`.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（现有选择器保留）
++2. **手机**：`.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，R8 未覆盖）
++
++两处都在同一 subscribe 回调内更新（各用 querySelector + 空值守卫，同现有风格）。桌面守卫 `.app-main__page--active` 保留（仅在概览页激活时更新）；手机卡片无条件更新即可（值始终正确，pop 回概览时即正确）。
++
++## 待修改文件
++
++- `src/app/app-main.js`：import 补 `prefersDark`；subscribe 回调改读 config + 更新两处 label。
++- `tests/e2e/app-shell.spec.js`：既有测试 `标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步`（约 456-490 行）补桌面概览 label 断言。
++- `tests/e2e/mobile-nav.spec.js`：新增手机概览 label 断言测试。
++
++## 测试（TDD：先写断言，确认红，再实现，确认绿）
++
++**桌面断言**（app-shell.spec.js 该用例内，插在 light→dark 点击与 data-theme=dark 断言之后、进入设置模式之前）：
++
++```js
++// 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
++await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++```
++
++注意：`.app-main__theme-row span` 匹配 3 个 span（当前主题/色板/强调色），必须 `.first()` 并断言精确文本 `当前主题：深色`（toHaveText 对多元素 locator 会报错）。
++
++**手机断言**（mobile-nav.spec.js，viewport 390×844 已由 `test.use` 设定，加在既有 test.use 块内）：
++
++```js
++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
++  await page.goto(APP_URL);
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++});
++```
++
++APP_URL 在 mobile-nav.spec.js 顶部已定义为 `'/?mode=app'`。
++
++先跑这两个用例确认红（现实现桌面 label 不更新、手机完全没更新），再实现，复跑确认绿。
++
++## 验证要求
++
++- `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"`（含新断言）绿
++- `npx playwright test tests/e2e/mobile-nav.spec.js`（含新用例）绿，且其余移动用例零冲击
++- `npm test`（单元全量）绿 —— 不触碰任何单测，应零影响
++- `npm run test:e2e`（全量交互）绿 —— 确认零回归
++- `npm run build` 通过
++- **无视觉基线变化**（本次改动只改文本同步，不碰布局/渲染；如视觉回归出现差异，报告但勿 update-snapshots）
++
++## 提交
++
++一个 commit，message 示例：`fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）`
++
++## 报告
++
++将完整报告写入 `docs/superpowers/sdd/task-B3-P0-report.md`，内容包括：改动说明、测试命令与输出摘要、self-review 结论、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B3-P0-report.md b/docs/superpowers/sdd/task-B3-P0-report.md
+new file mode 100644
+index 0000000..5971db8
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-P0-report.md
+@@ -0,0 +1,66 @@
++# Task B3-P0: 概览「主题状态」卡陈旧修复（桌面+手机） — 实施报告
++
++- **状态**：DONE
++- **提交**：`71e55cd`
++- **需求源**：docs/superpowers/sdd/task-B3-P0-brief.md（唯一需求源，修复逻辑按 brief「正确修法」逐字执行）
++- **分支**：feature/b3-settings
++
++## 背景与根因（brief §背景与根因，验证成立）
++
++标题栏主题按钮点击链 `applyConfig(saveConfig({ theme: next }))`：`saveConfig` 先写 localStorage、再**同步**触发 store 订阅回调（`src/config/store.js:43`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（`src/config/apply.js:57`）。原订阅回调内读 `data-theme` 读到的是**旧值**，故概览「主题状态」卡 label 不更新（B2 最终评审 Issue 1 parked）。手机端 `.app-main__stack-page[data-stack="overview"]` 的 label 在 R8 修复中完全未覆盖。
++
++## 变更文件
++
++| 文件 | 变更 |
++|---|---|
++| `src/app/app-main.js` | import 补 `prefersDark`（`applyConfig, prefersDark` from `../config/apply.js`）；subscribe 回调改读 `getConfig().theme` + `prefersDark()` 解析 system（与既有 `updateThemeIcon` 同模式），回调同步执行时能读到**新** theme；同一回调更新两处 label：桌面 `.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（`--active` 守卫保留）+ 手机 `.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，无条件更新），各用 querySelector + 空值守卫（同现有风格） |
++| `tests/e2e/app-shell.spec.js` | 既有用例「标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步」在 light→dark 点击与 `data-theme='dark'` 断言之后、进设置模式之前补桌面概览 label 断言（`.first()` + 精确文本 `当前主题：深色`） |
++| `tests/e2e/mobile-nav.spec.js` | 新增用例「手机形态：概览主题状态卡随主题按钮实时更新」：seed `theme:'light'` + reload → 断言初始 `当前主题：浅色` → 点 `.c-titlebar__control--theme`（light→dark）→ 断言 `当前主题：深色` |
++
++## 正确修法（brief §正确修法 逐字执行）
++
++```js
++const cfg = getConfig();
++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++```
++
++- 配置链路：本次只**读** `getConfig()`，不写任何绕过链路的 CSS 变量 ✓
++- 动画红线：仅文本同步，未触碰任何动画 ✓
++- 无视觉基线变化：只改文本 label（同文替换），`npm run test:e2e` 中 24 张视觉回归全绿，零漂移 ✓
++
++## 与 brief 的唯一偏差（已在代码注释 + 本报告披露）
++
++brief 手机断言 snippet 未 seed 主题：默认 `theme:'system'`（`src/config/defaults.js:2`），Playwright fresh context 下首次点击 `THEME_CYCLE['system']→light`（index 2→0），label 保持「浅色」，第二断言恒红——**即便实现正确也无法转绿**（brief 注释「light → dark」与实际 cycle 不符）。
++
++**处理**：手机用例补 `localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' }))` + `reload()`（与桌面用例既有 seed 模式完全一致），使点击成为真正的 light → dark。断言文本、选择器、用例意图与 brief 逐字一致。此偏差仅在测试初始化，不改变被测行为。
++
++## TDD 证据
++
++- **Step 1（红，桌面）**：`npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` → **1 failed**。新断言期望 `当前主题：深色`，实测 `12 × locator resolved to <span>当前主题：浅色</span>`——正是 brief 所述的「订阅先于 applyConfig、读到旧 data-theme」根因。
++- **Step 1（红，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js -g "手机形态：概览主题状态卡"` → **1 failed**。初始 `当前主题：浅色` 断言通过（seed 生效），点击后期望 `当前主题：深色`，实测仍 `浅色`——手机 label 完全未更新。
++- **Step 3（绿，桌面）**：同一命令 → **1 passed**。
++- **Step 4（绿，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js` → **8 passed**（新增用例 + 既有 7 用例零冲击）。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` | 1 passed |
++| `npx playwright test tests/e2e/mobile-nav.spec.js` | 8 passed（含新用例，其余 7 用例零冲击） |
++| `npm test` | 60/60 passed（10 files，零单测触碰） |
++| `npm run test:e2e` | 98 passed（含全部 24 张视觉回归，无基线漂移；未 update-snapshots） |
++| `npm run build` | 通过（Vite，386ms） |
++
++## Self-review 结论
++
++- **规格符合**：两处 label（桌面 + 手机）都在同一 subscribe 回调内按 brief 逐字逻辑更新；桌面 `--active` 守卫保留、手机无条件更新；import 只补 `prefersDark`（apply.js 已导出，jsdom 缺 matchMedia 有守卫）；`renderOverview` 初始渲染读 `data-theme` 不受影响（`applyConfig(getConfig())` 在渲染前已跑）。
++- **配置链路**：仅读不写，无绕过。
++- **风格**：与既有 `updateThemeIcon` 模式一致；两 label 各用 querySelector + 空值守卫；测试沿用 `.first()` + 精确文本（`.app-main__theme-row span` 匹配 3 个 span：当前主题/色板/强调色）。
++- **质量**：full e2e + 单测 + build 全绿；视觉基线零漂移（改动纯文本同步）。
++- **结论**：Ready to merge（DONE），无遗留 Minor。
++
++## 备注
++
++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**。
++- 提交内容：`src/app/app-main.js`、`tests/e2e/app-shell.spec.js`、`tests/e2e/mobile-nav.spec.js`、`docs/superpowers/sdd/task-B3-P0-report.md`。
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 6184c80..0a2a356 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -12,21 +12,21 @@ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+ import { toast } from '../components/toast/toast.js';
+ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import { getConfig, saveConfig, subscribe } from '../config/store.js';
+-import { applyConfig } from '../config/apply.js';
++import { applyConfig, prefersDark } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+@@ -152,24 +152,32 @@ export function mountAppMode(root) {
+       const on = b.dataset.mode === cfg.theme;
+       b.classList.toggle('csettings__mode--active', on);
+       b.setAttribute('aria-pressed', String(on));
+     });
+   };
+   // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
+   // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
+   subscribe(() => {
+     updateThemeIcon();
+     syncSettingsThemeModes();
+-    // 概览页「主题状态」卡同步：标题栏/设置切主题经 applyConfig 改 html data-theme，概览页不重渲；
+-    // 仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）
+-    const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+-    if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
++    // 概览页「主题状态」卡同步（B3-P0）：saveConfig 先同步触发订阅、applyConfig 才写 data-theme，
++    // 回调内读 data-theme 仍是旧值（桌面/手机 label 均陈旧）—— 改读 getConfig().theme +
++    // prefersDark() 解析 system（与 updateThemeIcon 同模式），订阅同步执行时能读到新值。
++    // 桌面仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）；手机卡片无条件
++    // 更新（值始终正确，pop 回概览时即正确）。
++    const cfg = getConfig();
++    const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++    const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++    const desktopLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
++    if (desktopLabel) desktopLabel.textContent = label;
++    const mobileLabel = document.querySelector('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span');
++    if (mobileLabel) mobileLabel.textContent = label;
+   });
+ 
+   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
+   // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
+   // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
+   // 不触发配置链路（与右窗状态同类）。
+   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+   const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+   (() => {
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index 5745451..38debaa 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -1,26 +1,27 @@
+ import { getConfig, saveConfig, subscribe, notify, KEY } from '../config/store.js';
+-import { applyConfig, hexToHsl } from '../config/apply.js';
++import { applyConfig, hexToHsl, prefersDark } from '../config/apply.js';
+ import { DEFAULTS, RANGES, ACCENTS } from '../config/defaults.js';
+ import { icon } from '../components/icon/icon.js';
+ import { toast } from '../components/toast/toast.js';
+ import { renderSwitch } from '../components/switch/switch.js';
+ import { exportCss } from './customizer-css.js';
+ 
+ /**
+  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
+  *
+  * 契约：
+  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
+  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
+  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
+- * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
++ * - 6 组 .cust-group（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次），每组 .cust-row = 标签 + 控件；
++ *   组标题下渲染 .cust-group__desc 一行描述（全局语义名 + 简述，B3-1）
+  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
+  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
+  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
+  * - 动画红线：抽屉只动 transform + visibility（透明度走 backdrop 的 opacity），模糊不动画
+  */
+ 
+ // 滑杆 data-key → 配置路径（映射关系与 apply.js 写入的变量一一对应）
+ const CFG_PATH = {
+   opacity: ['glass', 'opacity'],
+   blur: ['glass', 'blur'],
+@@ -31,58 +32,64 @@ const CFG_PATH = {
+   durationScale: ['motion', 'durationScale'],
+   springStrength: ['motion', 'springStrength'],
+   shadowIntensity: ['shadow'],
+   hue: ['color', 'hue'],
+   saturation: ['color', 'saturation'],
+   temperature: ['color', 'temperature'],
+ };
+ 
+ const GROUPS = [
+   {
+-    title: '色彩',
++    title: '整体色调',
++    desc: '主题色/色相/饱和度/色温',
+     pre: (cfg) => accentCards(cfg) + semanticBar(),
+     sliders: [
+       { key: 'hue', label: '色相', unit: '°' },
+       { key: 'saturation', label: '饱和度', unit: '%' },
+       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+     ],
+   },
+   {
+     title: '表面质感',
++    desc: '透明度/模糊/噪点强度/亚克力材质',
+     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+       { key: 'noise', label: '噪点强度' },
+     ],
+   },
+   {
+-    title: '排版',
++    title: '文字排版',
++    desc: '基准字号/缩放',
+     sliders: [
+       { key: 'baseSize', label: '基准字号', unit: 'px' },
+       { key: 'scale', label: '缩放', unit: '×' },
+     ],
+   },
+   {
+-    title: '圆角',
++    title: '边角形状',
++    desc: '圆角比例',
+     sliders: [{ key: 'radiusScale', label: '圆角比例', unit: '×' }],
+   },
+   {
+-    title: '动效',
++    title: '动效节奏',
++    desc: '时长缩放/弹性强度',
+     pre: (cfg) => motionSwitchRow(cfg),
+     sliders: [
+       { key: 'durationScale', label: '时长缩放', unit: '×' },
+       { key: 'springStrength', label: '弹性强度' },
+     ],
+   },
+   {
+-    title: '阴影',
++    title: '阴影层次',
++    desc: '阴影强度',
+     sliders: [{ key: 'shadowIntensity', label: '阴影强度' }],
+   },
+ ];
+ 
+ const SEMANTIC = [
+   { key: 'success-500', label: '成功' },
+   { key: 'warning-500', label: '警告' },
+   { key: 'danger-500', label: '危险' },
+   { key: 'info-500', label: '信息' },
+ ];
+@@ -284,33 +291,87 @@ function bindFooter(panel) {
+ 
+   // 保存我的方案：配置经 store 每次变更即自动持久化，此处为确认反馈
+   panel.querySelector('.cust-save').addEventListener('click', () => {
+     toast('我的方案已保存');
+   });
+ 
+   // 重置：清除存储 + 广播默认值 + applyConfig（不写回 localStorage）
+   panel.querySelector('.cust-reset').addEventListener('click', () => resetAll(panel));
+ }
+ 
++/**
++ * 实时整体预览卡（B3-2）：外观分区顶部缩略展示当前主题/强调色/玻璃/圆角/图标层级。
++ * 全部静态背景、无任何动画（红线：布局/几何只动 transform/opacity，模糊永不动画 —— 本卡
++ * 玻璃层 backdrop-filter 为静态声明）。值经 --preview-* 变量映射当前 config，由
++ * updateOverview 在订阅回调里只读写入（不调 applyConfig —— 变更发起方已先 saveConfig+applyConfig）。
++ */
++function renderOverviewCard(cfg) {
++  return `
++    <div class="cust-overview" role="group" aria-label="实时整体预览">
++      <h4 class="cust-overview__title">整体预览</h4>
++      <div class="cust-overview__items">
++        <div class="cust-overview__item">
++          <span class="cust-overview__label">主题</span>
++          <span class="cust-overview__theme" aria-hidden="true"></span>
++        </div>
++        <div class="cust-overview__item">
++          <span class="cust-overview__label">强调色</span>
++          <span class="cust-overview__accent" aria-hidden="true"></span>
++        </div>
++        <div class="cust-overview__item">
++          <span class="cust-overview__label">玻璃</span>
++          <span class="cust-overview__glass" aria-hidden="true"></span>
++        </div>
++        <div class="cust-overview__item">
++          <span class="cust-overview__label">圆角</span>
++          <span class="cust-overview__radius" aria-hidden="true"></span>
++        </div>
++        <div class="cust-overview__item">
++          <span class="cust-overview__label">图标</span>
++          <span class="cust-overview__icons" aria-hidden="true">
++            <span class="cust-overview__icon cust-overview__icon--active"></span>
++            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
++            <span class="cust-overview__icon cust-overview__icon--inactive"></span>
++          </span>
++        </div>
++      </div>
++    </div>`;
++}
++
++/** 把当前 config 写入预览卡 .cust-overview 的 --preview-* 局部变量（只读，不调 applyConfig）。
++ *  空值守卫：jsdom 单测容器 / 未挂预览卡场景下安全跳过。theme: system 经 prefersDark 解析（jsdom 无 matchMedia 由守卫兜底）。 */
++function updateOverview(container, cfg) {
++  const el = container.querySelector('.cust-overview');
++  if (!el) return;
++  const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
++  el.style.setProperty('--preview-theme', resolved);
++  // 主题块底色：与主题色对应 solid 面（themes.css 同值），使色块随 --preview-theme 解析变化
++  el.style.setProperty('--preview-theme-bg', resolved === 'dark' ? '#16181f' : '#f8f9fb');
++  el.style.setProperty('--preview-accent', tintHsl(cfg));
++  el.style.setProperty('--preview-glass-opacity', String(cfg.glass.opacity));
++  el.style.setProperty('--preview-radius', String(cfg.radiusScale));
++}
++
+ /**
+  * 定制器分组（Task 20 重构抽出）：6 组 .cust-group HTML + 事件绑定 + store 双向同步。
+  * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
+  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
+  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
+  * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
+  *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
+  */
+ export function renderCustomizerGroups(container) {
+   const cfg = getConfig();
+-  container.innerHTML = GROUPS.map((g) => `
++  container.innerHTML = renderOverviewCard(cfg) + GROUPS.map((g) => `
+     <section class="cust-group">
+       <h4 class="cust-group__title">${g.title}</h4>
++      ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
+       ${g.pre ? g.pre(cfg) : ''}
+       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
+     </section>`).join('');
+ 
+   // 风格卡片：点击切换主题色
+   container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
+     const card = e.target.closest('.cust-accent-card');
+     if (!card) return;
+     applyConfig(saveConfig({ accent: card.dataset.accent }));
+   });
+@@ -331,26 +392,32 @@ export function renderCustomizerGroups(container) {
+   });
+ 
+   // 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级
+   const glassWrap = container.querySelector('[data-glass-switch]');
+   glassWrap?.addEventListener('click', () => {
+     const sw = glassWrap.querySelector('.c-switch');
+     const next = sw.getAttribute('aria-checked') !== 'true';
+     applyConfig(saveConfig({ glass: { blurEnabled: next } }));
+   });
+ 
+-  // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
++  // store 订阅：本容器控件态 + 预览卡实时同步（面板与设置页各自订阅，双向生效）。
+   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
+-  const unsub = subscribe((next) => syncUI(container, next));
++  // 订阅回调只读 getConfig()/cfg 并写局部 --preview-* 变量，绝不再调 applyConfig
++  // （变更发起方已先 saveConfig + applyConfig）。
++  const unsub = subscribe((next) => {
++    syncUI(container, next);
++    updateOverview(container, next);
++  });
+   // 初始 syncUI：渲染只写 value 属性，--fill（滑杆填充）与动效滑杆 disabled 态
+   // （持久化动效关闭时禁用）依赖 syncUI 首次同步 —— 面板与设置页嵌入两条挂载路径共用
+   syncUI(container, cfg);
++  updateOverview(container, cfg);
+   return unsub;
+ }
+ 
+ /**
+  * 挂载定制器：backdrop + 右侧抽屉（两者都是 body 级常驻元素）。
+  * @param {HTMLElement} root 挂载容器（main.js 传 document.body）
+  * @returns {HTMLElement} 面板元素
+  */
+ export function mountCustomizer(root) {
+   const backdrop = document.createElement('div');
+diff --git a/src/styles/customizer.css b/src/styles/customizer.css
+index a23e57d..e2cf70e 100644
+--- a/src/styles/customizer.css
++++ b/src/styles/customizer.css
+@@ -42,26 +42,91 @@
+   transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out);
+ }
+ .cust-close:hover { color: var(--text-1); background: var(--surface-hover); }
+ .cust-close:active { transform: scale(0.92); }
+ 
+ /* ---- 主体（滚动区） ---- */
+ .cust-body { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5); }
+ .cust-group { margin-bottom: var(--space-5); }
+ .cust-group__title {
+   font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+-  color: var(--text-2); margin-bottom: var(--space-3);
++  color: var(--text-2); margin-bottom: var(--space-1);
+   display: flex; align-items: center; gap: var(--space-2);
+ }
+ .cust-group__title::after {
+   content: ''; flex: 1; height: 1px; background: var(--glass-border);
+ }
++.cust-group__desc {
++  font-size: var(--font-size-xs); color: var(--text-3);
++  margin-bottom: var(--space-3);
++}
++
++/* ---- 实时整体预览卡（B3-2）：外观分区顶部，缩略当前主题/强调色/玻璃/圆角/图标层级 ----
++   全部静态背景、无任何动画；玻璃层 backdrop-filter 为静态声明（红线：模糊永不动画）。
++   值经 --preview-* 局部变量映射当前 config（updateOverview 订阅回调只读写入）。 */
++.cust-overview {
++  background: var(--surface-1);
++  border: 1px solid var(--glass-border);
++  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
++  padding: var(--space-3) var(--space-4);
++  margin-bottom: var(--space-5);
++}
++.cust-overview__title {
++  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
++  color: var(--text-2); margin-bottom: var(--space-2);
++}
++.cust-overview__items {
++  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2);
++}
++.cust-overview__item {
++  display: flex; flex-direction: column; align-items: center; gap: var(--space-1); flex: 1; min-width: 0;
++}
++.cust-overview__label { font-size: var(--font-size-xs); color: var(--text-3); }
++.cust-overview__theme {
++  width: 46px; height: 30px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++  background: var(--preview-theme-bg, var(--surface-solid, #f8f9fb));
++  border: 1px solid var(--glass-border);
++  box-shadow: var(--shadow-inset-highlight);
++}
++.cust-overview__accent {
++  width: 18px; height: 18px; border-radius: 50%;
++  background: var(--preview-accent);
++  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
++}
++.cust-overview__glass {
++  position: relative; width: 40px; height: 26px; overflow: hidden;
++  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++  background: linear-gradient(135deg, var(--preview-accent) 0 34%, #2dd4bf 34% 67%, #f59e0b 67%);
++}
++.cust-overview__glass::before {
++  content: ''; position: absolute; inset: 0;
++  background: rgba(var(--glass-bg-rgb) / var(--preview-glass-opacity, 0.48));
++  backdrop-filter: blur(4px) saturate(var(--acrylic-saturate, 1.8)) brightness(var(--acrylic-brightness, 1.1));
++  border: 1px solid var(--glass-border);
++}
++.cust-overview__glass::after {
++  content: ''; position: absolute; inset: 0;
++  background-image: var(--acrylic-noise); background-size: 120px 120px;
++  opacity: var(--noise-opacity, 0.04); /* 噪点层随玻璃噪点强度 */
++}
++.cust-overview__radius {
++  width: 30px; height: 24px;
++  border-radius: calc(var(--radius-md) * var(--preview-radius, 1));
++  background: var(--preview-accent); opacity: 0.24;
++}
++.cust-overview__icons { display: flex; align-items: center; gap: 5px; }
++.cust-overview__icon { border-radius: 50%; }
++.cust-overview__icon--active {
++  width: 12px; height: 12px; background: var(--preview-accent);
++  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
++}
++.cust-overview__icon--inactive { width: 6px; height: 6px; background: var(--text-3); opacity: 0.7; }
+ 
+ /* ---- 行：标签 + 控件 ---- */
+ .cust-row { margin-bottom: var(--space-3); }
+ .cust-row__head {
+   display: flex; align-items: baseline; justify-content: space-between;
+   margin-bottom: 6px;
+ }
+ .cust-row__label { font-size: var(--font-size-sm); color: var(--text-1); }
+ .cust-row__hint {
+   font-style: normal; font-size: var(--font-size-xs); color: var(--text-3);
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 523ce82..b2b216a 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -456,20 +456,22 @@ test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page })
+ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+   await page.reload();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+   // 初始图标 = sun（浅色，当前状态语义）
+   await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
+   // light → dark
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  // 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
++  await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
+   await page.locator('.c-titlebar__control--settings').click();
+   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+   // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
+   await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
+   const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
+   expect(['light', 'dark']).toContain(systemResolved);
+   await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index 076f35d..d736762 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -37,10 +37,51 @@ test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
+ });
+ 
+ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
+   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
+   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
+ });
++
++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const group = page.locator('.cust-group');
++  await expect(group).toHaveCount(6);
++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
++});
++
++// B3-2：外观分区顶部实时整体预览卡（.cust-overview）。订阅回调只读 getConfig() 并写容器局部
++// --preview-* 变量（不调 applyConfig —— 变更发起方已先 saveConfig + applyConfig）。
++// getComputedStyle 读 .cust-overview 元素 inline 写入的变量；fill 触发 input → saveConfig → 订阅回调 updateOverview。
++test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const overview = page.locator('.cust-overview');
++  await expect(overview).toBeVisible();
++  // 切强调色 → 预览卡强调色同步变化
++  const before = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
++  await page.locator('.cust-accent-card[data-accent="teal"]').click();
++  const after = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-accent'));
++  expect(after).not.toBe(before);
++  // 圆角滑杆 → 预览卡圆角比例同步变化（全局联动验证）
++  const rBefore = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
++  await page.locator('.cust-range[data-key="radiusScale"]').fill('1.5');
++  const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
++  expect(rAfter).not.toBe(rBefore);
++});
+diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
+index b7cb46a..a99884c 100644
+--- a/tests/e2e/mobile-nav.spec.js
++++ b/tests/e2e/mobile-nav.spec.js
+@@ -144,10 +144,24 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向
+   await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
+   // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
+   await dockList.locator('.c-navwheel__item').nth(3).click();
+   await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
+   await expect(dockList.locator('.c-navwheel__item--active')).toHaveCount(1);
+   const activeBox = await dockList.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await dockList.boundingBox();
+   const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
+   expect(anchorDelta).toBeLessThan(5);
+ });
++
++// —— B3-P0 概览「主题状态」卡陈旧修复：手机形态覆盖（R8 只修了桌面）——
++// 手机基底页 = .app-main__stack-page[data-stack="overview"]，主题状态卡 label 随标题栏
++// 三态主题按钮实时更新。先 seed localStorage theme='light' + reload（同桌面用例模式）——
++// 默认 theme='system'，fresh context 下首次点击会 cycle 到 light 而非 dark，seed 保证点击是
++// 真正的 light → dark，断言确定性强。
++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
++  await page.reload();
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index 053fb9a..58e29b5 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 6d50c04..9eee38e 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 67f46f3..9b190e5 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index c3db701..114ddc6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index 19ff93f..12bf31e 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 977fedd..640052d 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ

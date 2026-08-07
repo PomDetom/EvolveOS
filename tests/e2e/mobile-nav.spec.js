@@ -151,3 +151,17 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向�
   const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
   expect(anchorDelta).toBeLessThan(5);
 });
+
+// —— B3-P0 概览「主题状态」卡陈旧修复：手机形态覆盖（R8 只修了桌面）——
+// 手机基底页 = .app-main__stack-page[data-stack="overview"]，主题状态卡 label 随标题栏
+// 三态主题按钮实时更新。先 seed localStorage theme='light' + reload（同桌面用例模式）——
+// 默认 theme='system'，fresh context 下首次点击会 cycle 到 light 而非 dark，seed 保证点击是
+// 真正的 light → dark，断言确定性强。
+test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+  await page.reload();
+  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
+  await page.locator('.c-titlebar__control--theme').click(); // light → dark
+  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+});

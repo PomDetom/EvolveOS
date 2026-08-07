@@ -463,6 +463,8 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
   // light → dark
   await page.locator('.c-titlebar__control--theme').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  // 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
+  await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
   await page.locator('.c-titlebar__control--settings').click();
   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');

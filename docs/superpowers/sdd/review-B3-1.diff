@@ -1,0 +1,420 @@
+# Review package: 6cdfb93..HEAD
+
+## Commits
+115aa4b docs: B3-1 实施报告（含提交哈希 352398a）
+352398a feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc
+
+## Files changed
+ docs/superpowers/sdd/task-B3-1-brief.md            | 111 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B3-1-report.md           |  67 +++++++++++++
+ src/demo/customizer-panel.js                       |  20 ++--
+ src/styles/customizer.css                          |   6 +-
+ tests/e2e/customizer.spec.js                       |  20 ++++
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 323448 -> 372428 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 275435 -> 352322 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 334175 -> 392848 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 213511 -> 243790 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 209478 -> 248162 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 170360 -> 200402 bytes
+ 11 files changed, 217 insertions(+), 7 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B3-1-brief.md b/docs/superpowers/sdd/task-B3-1-brief.md
+new file mode 100644
+index 0000000..0b5852c
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-1-brief.md
+@@ -0,0 +1,111 @@
++# Task B3-1: 外观分组重命名（全局语义 + desc）
++
++## 任务定位
++
++应用壳 B3 第二个任务。B3 的目标是让设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。**「玻璃材质→表面质感」已在 B2-R5 完成**，本任务只改其余 5 组，并给全部 6 组加 desc。
++
++## 现状（src/demo/customizer-panel.js，GROUPS 常量约 39-81 行）
++
++当前 6 组：`色彩` / `表面质感`（已改）/ `排版` / `圆角` / `动效` / `阴影`。每组结构 `{ title, pre?, sliders }`。唯一既有分组标题断言是 tests/e2e/customizer.spec.js:43 的「表面质感」（保持不动）。
++
++## 需求（唯一需求源）
++
++**1. 重命名 5 组 title**（`表面质感` 不动）：
++
++| 现 title | 新 title |
++|---|---|
++| 色彩 | **整体色调** |
++| 表面质感 | 表面质感（不动） |
++| 排版 | **文字排版** |
++| 圆角 | **边角形状** |
++| 动效 | **动效节奏** |
++| 阴影 | **阴影层次** |
++
++**2. 每组加 `desc` 字段**，渲染在组标题下、pre/sliders 之前：
++
++| title | desc |
++|---|---|
++| 整体色调 | 主题色/色相/饱和度/色温 |
++| 表面质感 | 透明度/模糊/噪点强度/亚克力材质 |
++| 文字排版 | 基准字号/缩放 |
++| 边角形状 | 圆角比例 |
++| 动效节奏 | 时长缩放/弹性强度 |
++| 阴影层次 | 阴影强度 |
++
++**3. 渲染**：`renderCustomizerGroups`（customizer-panel.js:302-310）的组模板改为：
++
++```js
++container.innerHTML = GROUPS.map((g) => `
++  <section class="cust-group">
++    <h4 class="cust-group__title">${g.title}</h4>
++    ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
++    ${g.pre ? g.pre(cfg) : ''}
++    ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
++  </section>`).join('');
++```
++
++**4. 样式**（src/styles/customizer.css）：加 `.cust-group__desc`（次要色小字），并相应收紧 `.cust-group__title` 的下边距使 desc 紧贴标题。样式要点：
++- `color: var(--text-3)`；`font-size: var(--font-size-xs)`
++- 让 desc 贴住标题下方（`.cust-group__title` 现 `margin-bottom: var(--space-3)` 需调小，desc 承担与后续内容的间距），可用负 margin 或改 title margin-bottom 达成，保持组内紧凑
++- **不改组内滑杆布局**；不动 `.cust-group__title` 的 flex 结构与其 `::after` 分隔线
++
++## 待修改文件
++
++- `src/demo/customizer-panel.js`：GROUPS 重命名 + desc；组模板渲染 desc
++- `src/styles/customizer.css`：`.cust-group__desc` 样式 + 标题下边距调整
++- `tests/e2e/customizer.spec.js`：新增用例断言 6 组新标题 + desc
++- `tests/e2e/visual-regression.spec.js-snapshots/`：`appearance-partition-*.png`（6 张）重生成
++
++## 测试（TDD：先写断言确认红，再实现确认绿）
++
++customizer.spec.js 新增用例（放在既有「外观分区：表面质感组标题」用例附近）：
++
++```js
++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const group = page.locator('.cust-group');
++  await expect(group).toHaveCount(6);
++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
++});
++```
++
++既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（customizer.spec.js:39-46）必须继续通过（`toContainText('表面质感')` 在新实现下仍匹配）。
++
++## 视觉基线（重点：必须先解码比对再重生成）
++
++重命名 + desc 会改变 `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）。流程：
++
++1. 先跑 `npm run test:visual`，确认只有 `appearance-partition-*` 失败（app-main/components-partition/motion-partition 应零漂移）。
++2. **解码比对**失败快照，确认差异区域 = 分组标题文字 + desc 行（本次改动引入），无布局位移/无意外区域。
++3. 确认后 `--update-snapshots` 只重生成 appearance-partition 6 张（`npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots`）。
++4. 复跑 `npm run test:visual` 全绿。
++
++如出现 app-main 或其它分区基线漂移，**不要 update-snapshots**，报告给控制器（可能是 no-op 抖动或真实回归）。
++
++## 验证要求
++
++- `npx playwright test tests/e2e/customizer.spec.js`（新旧用例全绿）
++- `npm run test:e2e`（全量交互绿，含视觉基线重生成后）
++- `npm test`（单元全量绿——customizer.test.js 只测订阅退订，应零影响）
++- `npm run build` 通过
++
++## 提交
++
++一个 commit，message：`feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc`
++
++## 报告
++
++完整报告写入 `docs/superpowers/sdd/task-B3-1-report.md`：改动说明、测试命令与输出摘要、**基线重生成的解码比对说明**（差异区域确认）、self-review、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B3-1-report.md b/docs/superpowers/sdd/task-B3-1-report.md
+new file mode 100644
+index 0000000..5411e36
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-1-report.md
+@@ -0,0 +1,67 @@
++# Task B3-1: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc — 实施报告
++
++- **状态**：DONE
++- **提交**：`352398a`
++- **需求源**：docs/superpowers/sdd/task-B3-1-brief.md（唯一需求源，标题/desc/模板/CSS/测试逐字执行）
++- **分支**：feature/b3-settings
++
++## 任务背景
++
++B3 目标：设置「外观」分区从「看起来只调字体」升级为「全局 UI 外观调整」——分组标题改全局语义名 + 每组加一行描述。「玻璃材质→表面质感」已在 B2-R5 完成，本任务只改其余 5 组标题，并给全部 6 组加 `desc`。定制器 GROUPS 由 `renderCustomizerGroups`（customizer-panel.js）渲染，抽屉面板与外观设置分区共用同一实现——两侧都获得新标题/desc（设计使然）。
++
++## 改动说明
++
++| 文件 | 变更 |
++|---|---|
++| `src/demo/customizer-panel.js` | GROUPS 常量：5 组 title 重命名（色彩→**整体色调**、排版→**文字排版**、圆角→**边角形状**、动效→**动效节奏**、阴影→**阴影层次**；表面质感不动）+ 全部 6 组加 `desc` 字段；`renderCustomizerGroups` 组模板按 brief 逐字加 `desc` 渲染行（`${g.desc ? ... : ''}` 守卫）；模块 doc 注释同步 6 组新名 + desc 说明 |
++| `src/styles/customizer.css` | 新增 `.cust-group__desc`（`color: var(--text-3)`；`font-size: var(--font-size-xs)`；`margin-bottom: var(--space-3)`，由 desc 承担与后续内容的间距）；`.cust-group__title` 的 `margin-bottom` 从 `var(--space-3)` 收紧为 `var(--space-1)` 使 desc 紧贴标题下方；**未动** `.cust-group__title` 的 flex 结构与 `::after` 分隔线，未改组内滑杆布局 |
++| `tests/e2e/customizer.spec.js` | 新增用例「外观分组标题体现全局语义（重命名 + desc）」（brief 逐字）：断言 6 组新标题 + 6 条 desc；既有用例「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」（`toContainText('表面质感')`）在新实现下继续通过 |
++| `tests/e2e/visual-regression.spec.js-snapshots/` | `appearance-partition-*.png`（6 张：light/dark × indigo/amber/emerald）按基线流程重生成 |
++
++- **配置链路**：本任务仅重命名分组标签 + 加静态文本 desc，零配置改动（defaults → store → apply 链路未触碰）。
++- **动画红线**：desc 为静态文本，未触碰任何动画；CSS 中唯一 transition 仍是既有 `.cust-group__title` 相关（未改）。仅 transform/opacity 动效规则不受影响。
++
++## TDD 证据
++
++- **Step 1（红）**：先写新用例 → `npx playwright test tests/e2e/customizer.spec.js -g "外观分组标题体现全局语义"` → **1 failed**。`expect(...).toHaveText('整体色调')` 实测收到 `"色彩"`（`<h4 class="cust-group__title">色彩</h4>`）——正是待改的旧标题。
++- **Step 3（绿）**：实现后 `npx playwright test tests/e2e/customizer.spec.js` → **5 passed**（新用例 + 既有 4 用例，含「表面质感」用例零冲击）。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test tests/e2e/customizer.spec.js` | 5 passed（新用例 + 既有 4 用例） |
++| `npm run test:visual`（基线比对前） | 6 failed（**仅** appearance-partition）/ 18 passed（app-main、components-partition、motion-partition 零漂移） |
++| `npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots` | 6 passed（仅重生成 appearance-partition 6 张，git status 确认无其它分区文件变动） |
++| `npm run test:visual`（复跑） | 24 passed 全绿 |
++| `npm run test:e2e` | 99 passed（含 24 张视觉回归 + 新交互用例；B3-P0 为 98，+1 为本任务新增） |
++| `npm test` | 60/60 passed（10 files；customizer.test.js 只测订阅退订，零影响） |
++| `npm run build` | 通过（Vite，435ms） |
++
++## 视觉基线重生成：解码比对说明
++
++**流程执行**：先跑 `npm run test:visual` 确认只有 `appearance-partition-*` 失败（18 张其它分区零漂移）→ 解码比对失败快照 → `--update-snapshots` 只重生成 appearance-partition 6 张 → 复跑全绿。
++
++**解码比对方法**（环境 Read 工具无法直接显示 PNG，改用 numpy/PIL 逐像素解码比对）：
++
++1. **尺寸变化**：expected 720×1493 → actual 720×1613，**+120px 整**。6 组各加一行 desc（约 +20px/组，含字体行高 + margin 调整），120px = 6 行 desc 的精确高度增量。
++2. **差异区域**：逐行 diff 带分析，6 张快照一致——差异带全部落在**分组区顶部 y≈145–679**（6 组标题/desc 所在行）+ **底部 y1493–1612 的 +120px 高度延伸**（86400px = 120×720，正是新增的 6 行 desc 高度）。**y680–1492 整段逐像素一致（maxdiff=0）**：设置页头部、各组下方内容、分区下部均无任何意外改动。
++3. **位移性质**：对 group 2 内容区做垂直位移相关验证，best shift **+20px、匹配率 99.99%**——实际截图内容 = 期望截图同一内容向下平移 20px。证明差异是**纯竖直插入 desc 行**导致的级联下移，非布局重排/重绘/破损。
++4. **暗色主题额外顶部细带**：dark 三张在 y1–143 出现若干 1–3px 细带，合计仅 **184px**（143×720 区域内）——玻璃表面/头部文字的次像素 AA 抖动（SwiftShader 软件栅格化下确定性渲染，与 18 张零漂移其它分区同源）。已随基线重生成确定性固化。
++5. **无意外区域**：app-main（应用壳整窗）、components-partition、motion-partition 三组 18 张**零漂移**，确认无级联污染。
++
++**结论**：差异区域 = 分组标题文字（色彩→整体色调 等 5 组改名）+ 每组新增 desc 行（6 行），为本次改动引入；无布局位移（y680–1492 逐像素一致）、无意外区域。满足 brief「必须先解码比对再重生成」要求。
++
++## Self-review 结论
++
++- **规格符合**：5 组 title 按表逐字重命名、表面质感不动；6 组 desc 逐字；组模板、CSS、测试用例均按 brief 逐字实现；既有「表面质感」断言（customizer.spec.js:43 `toContainText`）在新实现下继续匹配。
++- **配置链路**：零配置改动，无绕过。
++- **动画红线**：仅静态文本 + 既有 title transition（未改），无新增动画。
++- **样式红线**：`.cust-group__title` flex 结构与 `::after` 分隔线原样保留；desc 用令牌变量（`--text-3`/`--font-size-xs`/`--space-3`），无硬编码值。
++- **质量**：customizer.spec 5/5、full e2e 99/99、单测 60/60、build 通过；视觉基线按流程重生成后全绿。
++- **结论**：Ready to merge（DONE），无遗留 Minor。
++
++## 备注
++
++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**（提交前/后 `git status` 均确认）。
++- 提交内容（`352398a`）：`src/demo/customizer-panel.js`、`src/styles/customizer.css`、`tests/e2e/customizer.spec.js`、`tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-*.png`（6 张）、`docs/superpowers/sdd/task-B3-1-brief.md`。
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index 5745451..b006716 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -6,21 +6,22 @@ import { toast } from '../components/toast/toast.js';
+ import { renderSwitch } from '../components/switch/switch.js';
+ import { exportCss } from './customizer-css.js';
+ 
+ /**
+  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
+  *
+  * 契约：
+  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
+  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
+  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
+- * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
++ * - 6 组 .cust-group（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次），每组 .cust-row = 标签 + 控件；
++ *   组标题下渲染 .cust-group__desc 一行描述（全局语义名 + 简述，B3-1）
+  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
+  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
+  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
+  * - 动画红线：抽屉只动 transform + visibility（透明度走 backdrop 的 opacity），模糊不动画
+  */
+ 
+ // 滑杆 data-key → 配置路径（映射关系与 apply.js 写入的变量一一对应）
+ const CFG_PATH = {
+   opacity: ['glass', 'opacity'],
+   blur: ['glass', 'blur'],
+@@ -31,58 +32,64 @@ const CFG_PATH = {
+   durationScale: ['motion', 'durationScale'],
+   springStrength: ['motion', 'springStrength'],
+   shadowIntensity: ['shadow'],
+   hue: ['color', 'hue'],
+   saturation: ['color', 'saturation'],
+   temperature: ['color', 'temperature'],
+ };
+ 
+ const GROUPS = [
+   {
+-    title: '色彩',
++    title: '整体色调',
++    desc: '主题色/色相/饱和度/色温',
+     pre: (cfg) => accentCards(cfg) + semanticBar(),
+     sliders: [
+       { key: 'hue', label: '色相', unit: '°' },
+       { key: 'saturation', label: '饱和度', unit: '%' },
+       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+     ],
+   },
+   {
+     title: '表面质感',
++    desc: '透明度/模糊/噪点强度/亚克力材质',
+     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+       { key: 'noise', label: '噪点强度' },
+     ],
+   },
+   {
+-    title: '排版',
++    title: '文字排版',
++    desc: '基准字号/缩放',
+     sliders: [
+       { key: 'baseSize', label: '基准字号', unit: 'px' },
+       { key: 'scale', label: '缩放', unit: '×' },
+     ],
+   },
+   {
+-    title: '圆角',
++    title: '边角形状',
++    desc: '圆角比例',
+     sliders: [{ key: 'radiusScale', label: '圆角比例', unit: '×' }],
+   },
+   {
+-    title: '动效',
++    title: '动效节奏',
++    desc: '时长缩放/弹性强度',
+     pre: (cfg) => motionSwitchRow(cfg),
+     sliders: [
+       { key: 'durationScale', label: '时长缩放', unit: '×' },
+       { key: 'springStrength', label: '弹性强度' },
+     ],
+   },
+   {
+-    title: '阴影',
++    title: '阴影层次',
++    desc: '阴影强度',
+     sliders: [{ key: 'shadowIntensity', label: '阴影强度' }],
+   },
+ ];
+ 
+ const SEMANTIC = [
+   { key: 'success-500', label: '成功' },
+   { key: 'warning-500', label: '警告' },
+   { key: 'danger-500', label: '危险' },
+   { key: 'info-500', label: '信息' },
+ ];
+@@ -297,20 +304,21 @@ function bindFooter(panel) {
+  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
+  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
+  * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
+  *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
+  */
+ export function renderCustomizerGroups(container) {
+   const cfg = getConfig();
+   container.innerHTML = GROUPS.map((g) => `
+     <section class="cust-group">
+       <h4 class="cust-group__title">${g.title}</h4>
++      ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
+       ${g.pre ? g.pre(cfg) : ''}
+       ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
+     </section>`).join('');
+ 
+   // 风格卡片：点击切换主题色
+   container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
+     const card = e.target.closest('.cust-accent-card');
+     if (!card) return;
+     applyConfig(saveConfig({ accent: card.dataset.accent }));
+   });
+diff --git a/src/styles/customizer.css b/src/styles/customizer.css
+index a23e57d..9f2e5df 100644
+--- a/src/styles/customizer.css
++++ b/src/styles/customizer.css
+@@ -42,26 +42,30 @@
+   transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out);
+ }
+ .cust-close:hover { color: var(--text-1); background: var(--surface-hover); }
+ .cust-close:active { transform: scale(0.92); }
+ 
+ /* ---- 主体（滚动区） ---- */
+ .cust-body { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5); }
+ .cust-group { margin-bottom: var(--space-5); }
+ .cust-group__title {
+   font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+-  color: var(--text-2); margin-bottom: var(--space-3);
++  color: var(--text-2); margin-bottom: var(--space-1);
+   display: flex; align-items: center; gap: var(--space-2);
+ }
+ .cust-group__title::after {
+   content: ''; flex: 1; height: 1px; background: var(--glass-border);
+ }
++.cust-group__desc {
++  font-size: var(--font-size-xs); color: var(--text-3);
++  margin-bottom: var(--space-3);
++}
+ 
+ /* ---- 行：标签 + 控件 ---- */
+ .cust-row { margin-bottom: var(--space-3); }
+ .cust-row__head {
+   display: flex; align-items: baseline; justify-content: space-between;
+   margin-bottom: 6px;
+ }
+ .cust-row__label { font-size: var(--font-size-sm); color: var(--text-1); }
+ .cust-row__hint {
+   font-style: normal; font-size: var(--font-size-xs); color: var(--text-3);
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index 076f35d..9a5ee8d 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -37,10 +37,30 @@ test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
+ });
+ 
+ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
+   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
+   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
+ });
++
++test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  const group = page.locator('.cust-group');
++  await expect(group).toHaveCount(6);
++  await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
++  await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
++  await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
++  await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
++  await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
++  await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
++  await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
++  await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
++  await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
++  await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
++  await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index 053fb9a..e79eb52 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 6d50c04..900de8f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 67f46f3..1f9bad6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index c3db701..ca8ad87 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index 19ff93f..2ae5390 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 977fedd..79075f9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
