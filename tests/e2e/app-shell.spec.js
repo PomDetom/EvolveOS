@@ -426,3 +426,35 @@ test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) 
     .evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(bg).not.toBe('rgba(0, 0, 0, 0)'); // accent-100 衬底非透明
 });
+
+// —— B2-R8 导航栏顶部割裂修复（遮罩 → 内容遮罩）——
+// 顶部 48px 渐变叠加层（.c-navwheel__mask，linear-gradient(var(--glass-bg), transparent)）
+// 叠在导航栏自身 48% 半透明背景上 = 双倍着色把顶部洗白，与标题栏割裂成色带。
+// 修法：删除叠加渐变 div，竖向列表改 CSS mask-image 内容遮罩（淡出滚动项但不叠加颜色层）。
+// 先等导航轮挂载（7 项）再断言 count 0 —— 若在挂载前断言，空 DOM 上 toHaveCount(0) 会真空通过
+// （B2-R4 同款门禁：挂载后仍有 mask 时必须失败）。横向 dock 无竖向遮罩需求，不加 mask-image。
+
+test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+  // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
+  await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
+  // 竖向列表有 mask-image 内容遮罩
+  const maskImg = await page.locator('.app-main__nav-l .c-navwheel__list').evaluate((el) => getComputedStyle(el).maskImage);
+  expect(maskImg).toContain('linear-gradient');
+});
+
+// —— B2-R8 标题栏快捷深浅切换按钮 ——
+// 设置按钮左边快捷按钮，点击经配置链路 saveConfig→applyConfig 翻转 data-theme；
+// 图标随当前主题：深色显示 sun（点切浅）、浅色显示 moon（点切深）。
+
+test('标题栏快捷深浅切换按钮：点击翻转 data-theme', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.locator('.c-titlebar__control--theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.locator('.c-titlebar__control--theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});

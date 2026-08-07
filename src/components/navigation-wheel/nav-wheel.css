@@ -75,16 +75,15 @@
   flex: none;
 }
 
-/* 顶部/底部渐变遮罩：挂在 .navwheel（position:relative）内的列表之上、不随列表滚动 */
-.c-navwheel__mask { position: absolute; top: 0; left: 0; right: 0; height: 48px;
-  pointer-events: none;
-  background: linear-gradient(var(--glass-bg), transparent); }
-.c-navwheel__mask--bottom { top: auto; bottom: 56px;
-  background: linear-gradient(transparent, var(--glass-bg)); }
-/* 玻璃降级（data-glass="off"，B2-R2 闭环 M-1）：遮罩渐变底色换纯色实底，
-   避免半透明 --glass-bg 叠在纯色降级表面上的透叠发暗 */
-:root[data-glass="off"] .c-navwheel__mask { background: linear-gradient(var(--surface-solid), transparent); }
-:root[data-glass="off"] .c-navwheel__mask--bottom { background: linear-gradient(transparent, var(--surface-solid)); }
+/* 顶部/底部内容遮罩（B2-R8）：竖向列表淡出滚动项但不叠加颜色层（CSS mask-image）。
+   原实现是叠加渐变 div（linear-gradient(var(--glass-bg), transparent)）挂在列表之上，
+   48% 半透明 --glass-bg 叠在导航栏自身 48% 半透明背景上 = 顶部 48px 双倍着色洗白，
+   与标题栏割裂成色带（用户反馈）。mask-image 只做 alpha 淡出（内容顶/底 48px 渐隐），
+   无色带；mask 是静态遮罩（非动画属性，红线无关）。横向 dock 无竖向遮罩需求，排除。 */
+.c-navwheel__list:not(.c-navwheel__list--horizontal) {
+  -webkit-mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
+  mask-image: linear-gradient(transparent, black 48px, black calc(100% - 48px), transparent);
+}
 
 /* 设置入口：定位/玻璃底条在 layout.css .navwheel__settings（骨架占位），
    此处为组件类（与 .navwheel__settings 同挂一个元素）+ 悬停反馈 */

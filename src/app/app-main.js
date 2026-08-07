@@ -18,8 +18,8 @@ import { bindWindowControls } from '../demo/window-controls.js';
 import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
-import { getConfig } from '../config/store.js';
-import { applyConfig } from '../config/apply.js';
+import { getConfig, saveConfig, subscribe } from '../config/store.js';
+import { applyConfig, prefersDark } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
 import './partitions.css';
@@ -93,7 +93,7 @@ export function mountAppMode(root) {
   root.innerHTML = `
   <div class="app-main" data-backdrop="gradient">
     <div class="app-main__backdrop"></div>
-    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true })}
+    ${renderTitleBar({ title: '概览', iconName: 'box', settings: true, themeToggle: true })}
     <div class="app-main__nav-l">
       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
     </div>
@@ -126,6 +126,25 @@ export function mountAppMode(root) {
   const pages = [...pagesEl.children];
   const stackEl = root.querySelector('.app-main__stack');
   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+
+  // —— 标题栏快捷深浅切换（B2-R8）：设置按钮左边按钮，点击翻转深浅主题 ——
+  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标语义：当前深色显示
+  // sun（点切浅）、当前浅色显示 moon（点切深）。subscribe 令主题从设置分区等源变更时同步图标。
+  const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
+  const updateThemeIcon = () => {
+    const cfg = getConfig();
+    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+    themeBtn.innerHTML = icon(resolved === 'dark' ? 'sun' : 'moon', 16);
+  };
+  updateThemeIcon();
+  themeBtn.addEventListener('click', () => {
+    const cfg = getConfig();
+    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+    applyConfig(saveConfig({ theme: resolved === 'dark' ? 'light' : 'dark' }));
+    updateThemeIcon();
+  });
+  // 主题从设置分区等源变更时同步图标；桌面常驻订阅无需退订（应用壳单次挂载，移动端不重建标题栏）
+  const themeUnsub = subscribe(() => updateThemeIcon());
 
   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见

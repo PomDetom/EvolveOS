@@ -31,14 +31,9 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
       <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
       <span class="c-navwheel__name">${it.name}</span>
     </div>`).join('');
-  // 顶部/底部渐变遮罩：列表 overflow:auto 内绝对定位会随内容滚动，故挂到
-  // .navwheel（position:relative，见 layout.css）下、位于列表之上（vertical 专用，
-  // horizontal 由 A6 接管：横排无竖向遮罩，跳过插入）
-  const holder = root.closest('.navwheel') ?? root.parentElement;
-  if (direction !== 'horizontal' && holder && !holder.querySelector('.c-navwheel__mask')) {
-    holder.insertAdjacentHTML('beforeend',
-      '<div class="c-navwheel__mask"></div><div class="c-navwheel__mask c-navwheel__mask--bottom"></div>');
-  }
+  // B2-R8：顶部/底部内容遮罩改用 CSS mask-image（nav-wheel.css 竖向列表规则），
+  // 不再插入叠加渐变 div —— 叠加层把导航栏自身 48% 半透明背景双倍着色洗白，
+  // 与标题栏割裂成色带。横向 dock 无竖向遮罩需求，列表规则以 :not(--horizontal) 排除。
   const itemEls = [...list.children];
   const itemH = parseFloat(getComputedStyle(itemEls[0])[AXIS.size]);
   // 项上边距（6px = --navwheel-gap/2）：offsetTop 含 margin，pad 须同样扣除，

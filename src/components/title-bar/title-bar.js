@@ -6,13 +6,16 @@ import { icon } from '../icon/icon.js';
 // 拖拽动作立即还原 —— 接入指南 §2 明确此坑；真机验证 I2 实测复现后按指南修正）。
 // settings: 是否渲染 ⚙ 设置按钮（右缘窗口控制之前）。默认 false —— docs 模式/场景模板
 // 输出逐字节不变；应用壳（app-main.js）传 true 并自行接线（共享 mountTitleBar 不感知）。
-export function renderTitleBar({ title = 'UI Design System', iconName = 'palette', settings = false } = {}) {
+// themeToggle: 是否渲染 ⚙ 左边的快捷深浅切换按钮（左缘）。默认 false，其他调用方零改动；
+// 应用壳传 true 并自行接线（图标 sun/moon 随当前主题，点击翻转经 saveConfig→applyConfig）。
+export function renderTitleBar({ title = 'UI Design System', iconName = 'palette', settings = false, themeToggle = false } = {}) {
   return `
   <div class="c-titlebar">
     <div class="c-titlebar__drag" data-tauri-drag-region>
       ${icon(iconName, 16)}<span class="c-titlebar__title">${title}</span>
     </div>
     <div class="c-titlebar__controls">
+      ${themeToggle ? `<button class="c-titlebar__control c-titlebar__control--theme" aria-label="切换深浅主题" title="切换深浅主题">${icon('sun', 16)}</button>` : ''}
       ${settings ? `<button class="c-titlebar__control c-titlebar__control--settings" aria-label="设置" title="设置">${icon('settings', 16)}</button>` : ''}
       <button class="c-titlebar__control c-titlebar__control--min" aria-label="最小化">${icon('minus', 14)}</button>
       <button class="c-titlebar__control c-titlebar__control--max" aria-label="最大化">${icon('maximize', 12)}</button>

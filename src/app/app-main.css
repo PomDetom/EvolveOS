@@ -72,7 +72,6 @@
 .app-main__nav-l .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
   justify-content: center; }
 .app-main__nav-l .c-navwheel__name { display: none; }
-.app-main__nav-l .c-navwheel__mask--bottom { bottom: 0; }
 
 /* —— 右窗（应用内目录，默认收起；展开经 .app-main--dual）——
    面板宽恒 64px（translateX(-100%) 基于自身宽，收起时滑出到左窗之上）——
@@ -97,7 +96,6 @@
 .app-main__nav-r .c-navwheel__item { margin-left: 0; margin-right: 0; padding: 0;
   justify-content: center; }
 .app-main__nav-r .c-navwheel__name { display: none; }
-.app-main__nav-r .c-navwheel__mask--bottom { bottom: 0; }
 .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: var(--space-2);
   color: var(--text-3); font-size: var(--font-size-sm); }
