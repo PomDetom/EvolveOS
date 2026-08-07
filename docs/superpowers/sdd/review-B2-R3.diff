@@ -1,0 +1,177 @@
+# Review package: 19aca73..HEAD
+
+## Commits
+e1cefd5 feat: 背景层预设柔和补色（accent 光晕加 alpha 收窄，暗色不发腻）
+
+## Files changed
+ src/app/app-main.css                               |  18 ++++++++++--------
+ tests/e2e/app-shell.spec.js                        |  15 +++++++++++++++
+ .../app-main-dark-amber-chromium-win32.png         | Bin 611489 -> 432482 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 595604 -> 346020 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 630104 -> 418567 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 314127 -> 179200 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 312406 -> 175576 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 244862 -> 167557 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 618714 -> 421174 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 619605 -> 398560 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 667359 -> 438173 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 368031 -> 283845 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 376971 -> 282275 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 301130 -> 274033 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 390270 -> 288946 bytes
+ ...otion-partition-dark-emerald-chromium-win32.png | Bin 379299 -> 257691 bytes
+ ...motion-partition-dark-indigo-chromium-win32.png | Bin 390183 -> 300558 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 226257 -> 189316 bytes
+ ...tion-partition-light-emerald-chromium-win32.png | Bin 227600 -> 189160 bytes
+ ...otion-partition-light-indigo-chromium-win32.png | Bin 193385 -> 184834 bytes
+ 20 files changed, 25 insertions(+), 8 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index a8bbfe7..64dc276 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -10,39 +10,41 @@
+   grid-template-rows: 40px 1fr;
+   width: 100vw;
+   height: 100vh;
+   overflow: hidden;
+   /* 右窗推入/收起时长 240ms = calc(--dur-base * 1.2)，随 data-motion=off / reduced-motion 一并归零 */
+   --dur-push: calc(var(--dur-base) * 1.2);
+   --app-dock-h: 64px; /* 手机形态（≤900px）底部横滑应用栏高度 */
+ }
+ .app-main--dual { --app-nav-r-w: 64px; }
+ 
+-/* —— 浏览器装饰背景层（Task B2-2）：渐变/几何/网格三预设 ——
++/* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格三预设 ——
+    position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
+    玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
+    transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
+    预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
+-   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。 */
++   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。
++   R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha（≤0.3）、
++   范围收窄 —— 实色 hex 直铺会与近黑 --surface-solid 叠出大面积亮晕，改带透明度后干净。 */
+ .app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+   background: var(--backdrop-bg); }
+ .app-main[data-backdrop="gradient"] { --backdrop-bg:
+-  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
+-  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
++  radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--accent-300) 26%, transparent) 0%, transparent 60%),
++  radial-gradient(100% 100% at 85% 90%, color-mix(in srgb, var(--accent-300) 18%, transparent) 0%, transparent 55%),
+   var(--surface-solid); }
+ .app-main[data-backdrop="geo"] { --backdrop-bg:
+-  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
+-  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
++  radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 20%, transparent) 0%, transparent 32%),
++  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.03) 30% 32%, transparent 32%),
+   var(--surface-solid); }
+ .app-main[data-backdrop="grid"] { --backdrop-bg:
+-  linear-gradient(var(--accent-100) 1px, transparent 1px),
+-  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
++  linear-gradient(color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
++  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
+   var(--surface-solid); background-size: 40px 40px; }
+ /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
+    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
+ .app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+ /* Tauri：背景层透明，模糊真实壁纸（app-main.js 探测 window.__TAURI__ 写 data-tauri） */
+ .app-main[data-tauri="1"] .app-main__backdrop { opacity: 0; }
+ 
+ /* —— 噪点覆盖层（Task B2-R2：亚克力材质表面细纹）——
+    .app-main::after 平铺 SVG fractalNoise（--acrylic-noise，120px 平铺），覆盖整个应用壳
+    （含右窗轮 —— 同为 --z-float、DOM 序靠后故在上）；pointer-events:none 不挡交互；
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 634a005..fa4dd8a 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -372,20 +372,35 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
+   const backdrop = page.locator('.app-main__backdrop');
+   await expect(backdrop).toBeVisible();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
+   // 外观分区切换背景预设
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
+ });
+ 
++// —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
++// 三预设 --backdrop-bg 从 --accent-200/300 实色改 color-mix 加 alpha（≤0.3）、范围收窄；
++// 默认 gradient 实色光晕经 color-mix 后计算值带非零 alpha（Chromium 序列化为
++// color(srgb r g b / alpha)）—— 观感守卫（弱断言），真实 gate 为视觉基线 + 用户验收；
++// 前实现光晕为实色 rgb / rgba(0,0,0,0)（transparent 停靠点），无任何非零 alpha 颜色。
++
++test('背景层预设柔和：accent 光晕层带透明度', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const bd = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
++  expect(bd).toMatch(/radial-gradient\(/);
++  // accent 光晕经 color-mix 加 alpha：计算值须含非零 alpha 的颜色（实色 hex 直铺，前实现不匹配）
++  const hasAlphaColor = /\/\s*0\.0*[1-9]/.test(bd) || /rgba\(\d+,\s*\d+,\s*\d+,\s*0\.0*[1-9]/.test(bd);
++  expect(hasAlphaColor).toBe(true);
++});
++
+ // —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
+ // icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
+ // select 切换时对前后两 item 原地改 .c-navwheel__icon svg 的 width/height/stroke-width 属性（分级）
+ 
+ test('导航图标选中项放大加粗、非选中项常规', async ({ page }) => {
+   await page.goto('/?mode=app');
+   const activeIcon = page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon svg');
+   const inactiveIcon = page.locator('.app-main__nav-l .c-navwheel__item:not(.c-navwheel__item--active) .c-navwheel__icon svg').first();
+   const activeW = await activeIcon.getAttribute('width');
+   const inW = await inactiveIcon.getAttribute('width');
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 0363214..d4aa4be 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index 975bfb7..5185677 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index 0aa4ccb..85c69ce 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index 097629a..3669651 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index 733a8c3..2af4d6c 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index c5343d9..4787dd0 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+index d0c31fe..64595cf 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+index 80e04b6..1967642 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+index 14b0da2..4a11ce1 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+index 70ec785..3d183d9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+index 50b7416..6b5e827 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+index fdca68f..19b7df3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+index 6fa0ae2..e9f6cf6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
+index cc1f26c..4ec5c7b 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
+index 3716b49..f750836 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+index 091bc32..51a4e88 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
+index e835509..f12ca58 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
+index 68205ac..cc9420f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ

@@ -103,6 +103,18 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **视觉基线更正**：初版「重生成=no-op」结论错误——Playwright `--update-snapshots` 只为失败用例重写，亚克力 vs 玻璃像素差（mean≈2-4/通道）低于 toHaveScreenshot 默认容差 → 陈旧基线容差内通过、快照未被重写。评审独立验证 + 实施者复核一致：SwiftShader 会合成 backdrop-filter/噪点层；删除陈旧基线强制重生成 → 18 张全新字节（解码比对 meanΔ 0.16-4.01/通道、>30 级差异 0%、无布局位移）
 - **性能注记（不改动）**：手机 stack/stack-page 嵌套双全屏 blur——spec §3.3 两者均在清单内、合规，冗余留待后续优化
 
+## Task B2-R3: 背景层预设柔和补色
+
+- **状态**：完成（2026-08-06，评审通过；实施子代理两次遭 API 502 中断，控制器补完验证/归因/提交）
+- **提交**：`e1cefd5` `feat: 背景层预设柔和补色（accent 光晕加 alpha 收窄，暗色不发腻）`
+- **验证**：npm test 60/60；npm run test:e2e 87/87（含新「背景层预设柔和」+ 既有「背景层」切换回归）；npm run test:visual 18/18（重生成后逐像素绿）；npm run build 通过
+- **实现**：app-main.css 三预设 `--backdrop-bg` 从 `--accent-200/300` 实色改 `color-mix(in srgb, var(--accent-300) X%, transparent)`（gradient 26%/18%、geo 20%、grid 14%，alpha ≤0.3）+ 范围收窄（停靠点 55%/50%→60%/55%）→ 暗色不再与近黑 `--surface-solid` 叠出大面积亮晕（闭环 B2-2 I-1）；app-shell.spec.js 弱断言「背景层预设柔和」（断言计算值含非零 alpha 颜色，比简报草稿更强；真实 gate 仍为视觉基线 + 用户验收）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R3-brief.md / task-B2-R3-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，4 Minor）
+- **Flake 归因**：首两轮全量视觉各有一两张 shot 失败且失败集合轮间不同 → run-to-run 环境抖动（Windows GPU AA 抖动/陈旧 server）而非真实 diff；控制器隔离复跑视觉 18/18 绿 + 全量 e2e 87/87 绿确认
+- **基线指纹**：18 张尺寸全部下降（光晕收窄→细节减少→压缩率升，与 R2 噪点层引入时上涨方向相反，逻辑自洽）；尺寸一致无布局位移
+- **Minor 留收尾**：① 断言只守卫默认 gradient 预设（geo/grid alpha 未守卫，注释言明真实 gate 为基线+验收）；② 断言隐式耦合 Chromium color-mix 序列化（已实测对 rgb()/rgba()/color(srgb) 三种格式健壮）；③ `--surface-solid` 末层计算值序列化为 none（B2-2 既有行为，非 R3 引入）；④ flake 归因含两个正交环境理论（AA 抖动 vs server 陈旧），观测一致
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
@@ -111,7 +123,7 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
 - Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
 - Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
-- Task R3 背景层预设柔和补色：待执行
+- Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
 - Task R4 图标选中态去光晕：待执行
 - Task R5 自定义器调整 + 措辞同步：待执行
 - R-验收 用户视觉验收 + 最终评审 + 合并：待执行
