@@ -379,6 +379,21 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
 });
 
+// —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
+// 三预设 --backdrop-bg 从 --accent-200/300 实色改 color-mix 加 alpha（≤0.3）、范围收窄；
+// 默认 gradient 实色光晕经 color-mix 后计算值带非零 alpha（Chromium 序列化为
+// color(srgb r g b / alpha)）—— 观感守卫（弱断言），真实 gate 为视觉基线 + 用户验收；
+// 前实现光晕为实色 rgb / rgba(0,0,0,0)（transparent 停靠点），无任何非零 alpha 颜色。
+
+test('背景层预设柔和：accent 光晕层带透明度', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const bd = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(bd).toMatch(/radial-gradient\(/);
+  // accent 光晕经 color-mix 加 alpha：计算值须含非零 alpha 的颜色（实色 hex 直铺，前实现不匹配）
+  const hasAlphaColor = /\/\s*0\.0*[1-9]/.test(bd) || /rgba\(\d+,\s*\d+,\s*\d+,\s*0\.0*[1-9]/.test(bd);
+  expect(hasAlphaColor).toBe(true);
+});
+
 // —— B2-3 导航图标四项增强：active 项 24px/2.2 加粗、非 active 20px/1.8（icon 分级重渲染）——
 // icon(name, size, stroke) 第三参（icon.js）；mountNavWheel 初始渲染 item0 为 active（24/2.2），
 // select 切换时对前后两 item 原地改 .c-navwheel__icon svg 的 width/height/stroke-width 属性（分级）

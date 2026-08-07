@@ -17,25 +17,27 @@
 }
 .app-main--dual { --app-nav-r-w: 64px; }
 
-/* —— 浏览器装饰背景层（Task B2-2）：渐变/几何/网格三预设 ——
+/* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格三预设 ——
    position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
    玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
    transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
    预设切换为静态 --backdrop-bg 变化（非动画属性），不参与 transform/opacity 动画（红线）；
-   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。 */
+   Tauri（[data-tauri="1"]）背景层透明，模糊真实壁纸。
+   R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha（≤0.3）、
+   范围收窄 —— 实色 hex 直铺会与近黑 --surface-solid 叠出大面积亮晕，改带透明度后干净。 */
 .app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: var(--backdrop-bg); }
 .app-main[data-backdrop="gradient"] { --backdrop-bg:
-  radial-gradient(120% 120% at 20% 10%, var(--accent-200) 0%, transparent 55%),
-  radial-gradient(100% 100% at 85% 90%, var(--accent-300) 0%, transparent 50%),
+  radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--accent-300) 26%, transparent) 0%, transparent 60%),
+  radial-gradient(100% 100% at 85% 90%, color-mix(in srgb, var(--accent-300) 18%, transparent) 0%, transparent 55%),
   var(--surface-solid); }
 .app-main[data-backdrop="geo"] { --backdrop-bg:
-  radial-gradient(circle at 30% 30%, var(--accent-200) 0%, transparent 30%),
-  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.04) 30% 32%, transparent 32%),
+  radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 20%, transparent) 0%, transparent 32%),
+  linear-gradient(135deg, transparent 30%, rgba(255,255,255,.03) 30% 32%, transparent 32%),
   var(--surface-solid); }
 .app-main[data-backdrop="grid"] { --backdrop-bg:
-  linear-gradient(var(--accent-100) 1px, transparent 1px),
-  linear-gradient(90deg, var(--accent-100) 1px, transparent 1px),
+  linear-gradient(color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
+  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 14%, transparent) 1px, transparent 1px),
   var(--surface-solid); background-size: 40px 40px; }
 /* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
    写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
