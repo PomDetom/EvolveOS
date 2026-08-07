@@ -1,0 +1,107 @@
+# Review package: 4e4fda5..HEAD
+
+## Commits
+7d9ddfe fix: 标题栏主题按钮冷启动图标未初始化（R8 回归）+ 深色基线重生成
+
+## Files changed
+ src/app/app-main.js                                |   4 +++-
+ tests/e2e/app-shell.spec.js                        |   5 ++++-
+ .../app-main-dark-amber-chromium-win32.png         | Bin 474082 -> 473975 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 381552 -> 381264 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 498689 -> 498532 bytes
+ 5 files changed, 7 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index cb849ea..5404072 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -130,25 +130,27 @@ export function mountAppMode(root) {
+   // —— 标题栏快捷主题按钮（B2-R9）：设置按钮左边按钮，三态循环 light→dark→system→light ——
+   // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标显示当前主题状态：
+   // 浅 sun / 深 moon / 系统 monitor。subscribe 是唯一同步点：主题从标题栏按钮或设置分区
+   // 三态选择器任一入口变更，标题栏图标 + 设置分区 .csettings__mode 高亮/aria-pressed 双向同步。
+   const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
+   const THEME_CYCLE = ['light', 'dark', 'system'];
+   const THEME_ICONS = { light: 'sun', dark: 'moon', system: 'monitor' };
+   const updateThemeIcon = () => {
+     themeBtn.innerHTML = icon(THEME_ICONS[getConfig().theme] ?? 'sun', 16);
+   };
++  // 挂载期初始化（R9 评审 I1 修复，恢复 R8 行为）：title-bar.js 初始静态 sun 在此被覆盖——
++  // 冷启动已存 dark/system 时标题栏图标随配置，否则按钮仍为 sun、与页面 data-theme 和设置分区失同步。
++  updateThemeIcon();
+   themeBtn.addEventListener('click', () => {
+     const cur = getConfig().theme;
+     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+     applyConfig(saveConfig({ theme: next }));
+-    updateThemeIcon();
+   });
+   // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
+   const syncSettingsThemeModes = () => {
+     const cfg = getConfig();
+     document.querySelectorAll('.csettings__mode').forEach((b) => {
+       const on = b.dataset.mode === cfg.theme;
+       b.classList.toggle('csettings__mode--active', on);
+       b.setAttribute('aria-pressed', String(on));
+     });
+   };
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 4072b98..523ce82 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -197,20 +197,23 @@ test('冷启动应用持久化配置：localStorage theme=dark → reload → 
+   // 写入持久化配置（模拟应用壳设置里切深色主题并重启/Tauri 重开）
+   await page.evaluate(() => {
+     localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'dark' }));
+   });
+   await page.reload();
+   // 等 app 壳挂载完成（app-main 为动态 import，reload 的 load 事件不等待其 resolve）
+   await expect(page.locator('.app-main')).toBeVisible();
+   // 冷启动即应用持久化主题：data-theme 由 applyConfig(getConfig()) 写入
+   const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+   expect(theme).toBe('dark');
++  // R9 评审 I1：冷启动深色下标题栏按钮图标须为 moon（非 title-bar.js 静态 sun）——与页面/设置分区同步
++  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(0);
++  await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(0);
+   // 设置「通用」页按持久化配置高亮「深色」——与实际渲染一致，两态不再自相矛盾
+   await page.locator('.app-main .c-titlebar__control--settings').click();
+   await page.waitForTimeout(400);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+ });
+ 
+ test('左窗对已选中项拖拽（位移 >10px）松手不触发收起（拖拽阈值，与 dock 同机制）', async ({ page }) => {
+   await page.goto(APP_URL);
+   // 选中剪贴板（右窗展开）
+@@ -455,21 +458,21 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
+   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+   await page.reload();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+   // 初始图标 = sun（浅色，当前状态语义）
+   await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
+   // light → dark
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
+   await page.locator('.c-titlebar__control--settings').click();
+-  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+   // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
+   await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
+   const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
+   expect(['light', 'dark']).toContain(systemResolved);
+   await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
+   // 设置选择器 → 标题栏图标同步（反向）：点「浅色」→ data-theme light + 图标回 sun（含 circle）
+   await page.locator('.app-main .csettings__mode[data-mode="light"]').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index ca6ef88..986cbcc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index ecf80b8..32095bc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index 394cfe8..0cf1e8f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ

@@ -173,6 +173,16 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **基线说明**：仅 app-main 6 张重生成（标题栏按钮 + 顶部色带消除 + 底部遮罩机制变化 + mask 强制列表入合成层引起图标字形亚像素 AA 位移）；components/motion/appearance 18 张零漂移（组件分区演示实例首项 padTop≈115px > 48px 淡出带、静止帧像素全落在 mask 不透明区 → 与旧叠加在无玻璃叠加上下文像素级等价）
 - **Minor 留收尾**：① app-main.js:147 `themeUnsub` 死变量（声明未退订，桌面单次挂载无泄漏，建议直接 subscribe 或补注释）；② 概览页「主题状态」卡在快捷切换后显示陈旧主题（卡片挂载时按 data-theme 渲染，点按钮不触发重渲——设置分区路径因变更时卡片不可见故此前无此问题，新按钮首次从主页触发，可在 click 内同步或重渲）；③ `subscribe(() => updateThemeIcon())` 每次 saveConfig 都重渲按钮 SVG（成本极小，可短路）
 
+## Task B2-R9: 标题栏主题按钮三态循环 + 设置同步
+
+- **状态**：完成（2026-08-07，评审通过；1 Important 修复闭环）
+- **提交**：`4e4fda5` `feat: 标题栏主题按钮三态循环（浅/深/跟随系统）+ 与设置分区双向同步` + `7d9ddfe` `fix: 标题栏主题按钮冷启动图标未初始化（R8 回归）+ 深色基线重生成`
+- **验证**：npm test 60/60；npm run test:e2e 97/97（含三态+双向同步、dark 冷启动防回归断言、R8 遮罩守卫）；npm run test:visual 24/24（app-main 6 张重生成：light 3 图标 moon→sun + dark 3 图标 sun→moon，解码比对确认=按钮图标）；npm run build 通过
+- **实现**：`THEME_CYCLE = ['light','dark','system']` 循环（indexOf+1 % 3）；`THEME_ICONS = { light:'sun', dark:'moon', system:'monitor' }` 按当前主题显示（与设置 THEME_MODES 图标语义对齐）；`syncSettingsThemeModes` 遍历 `.csettings__mode` 同步 active/aria-pressed；`subscribe(() => { updateThemeIcon(); syncSettingsThemeModes(); })` 双向同步（标题栏↔设置分区三态选择器）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R9-brief.md / task-B2-R9-report.md
+- **评审**：规格 ✅ / Needs changes → 修复轮 R1/5 闭环 → Approved（1 Important：I1 冷启动图标未初始化，R9 按简报字面删了 R8 挂载期 updateThemeIcon + 无启动 notify → 已存 dark/system 冷启动时标题栏静态 sun 与设置失同步，dark 基线恰编码 bug 态；修复=补挂载期调用 + 重生成 dark 3 张 + 防回归断言；4 Minor：M1 冗余 updateThemeIcon 已删、M2 themeUnsub 死变量、M3 报告 dark 零漂移叙事勘误、M4 waitForTimeout→断言）
+- **brief 勘误**：简报 Step 6「R8 light 初始显示 sun」前提与实测不符（R8 浅色态显示 moon，「点切目标」语义），已由实施者正确纠偏
+
 ## 执行状态
 
 - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ 返工 R2 覆盖表面应用
@@ -187,4 +197,5 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R6 亚克力可见性调参：✅ 完成（d1c7166，评审通过）
 - Task R7 Tauri 背景修复 + 关闭背景：✅ 完成（43caf2b，评审通过）
 - Task R8 导航栏割裂修复 + 深浅切换按钮：✅ 完成（556c936，评审通过）
-- R-验收 用户视觉验收（Tauri + 网页复验）+ 最终评审 + 合并：待执行
+- Task R9 标题栏主题按钮三态循环 + 设置同步：✅ 完成（4e4fda5 + 7d9ddfe，评审通过）
+- R-验收 用户视觉验收（最终复验）+ 最终评审 + 合并：待执行

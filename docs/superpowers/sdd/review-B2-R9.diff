@@ -1,0 +1,171 @@
+# Review package: 7f4e92a..4e4fda5
+
+## Commits
+4e4fda5 feat: 标题栏主题按钮三态循环（浅/深/跟随系统）+ 与设置分区双向同步
+
+## Files changed
+ src/app/app-main.js                                |  36 +++++++++++++--------
+ tests/e2e/app-shell.spec.js                        |  35 +++++++++++++++++---
+ .../app-main-light-amber-chromium-win32.png        | Bin 239628 -> 239790 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 226457 -> 226717 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 174881 -> 175166 bytes
+ 5 files changed, 54 insertions(+), 17 deletions(-)
+
+## Diff
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index b981bd9..cb849ea 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -12,21 +12,21 @@ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+ import { toast } from '../components/toast/toast.js';
+ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import { getConfig, saveConfig, subscribe } from '../config/store.js';
+-import { applyConfig, prefersDark } from '../config/apply.js';
++import { applyConfig } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+@@ -120,38 +120,48 @@ export function mountAppMode(root) {
+   ctx.setAttribute('data-ctx', '');
+   const settingsBtn = appMain.querySelector('.c-titlebar__control--settings');
+   const navL = root.querySelector('.app-main__nav-l .c-navwheel__list');
+   const navRRoot = root.querySelector('.app-main__nav-r');
+   const navRBody = root.querySelector('.app-main__nav-r-body');
+   const pagesEl = root.querySelector('.app-main__pages');
+   const pages = [...pagesEl.children];
+   const stackEl = root.querySelector('.app-main__stack');
+   const dockList = root.querySelector('.app-main__dock .c-navwheel__list');
+ 
+-  // —— 标题栏快捷深浅切换（B2-R8）：设置按钮左边按钮，点击翻转深浅主题 ——
+-  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标语义：当前深色显示
+-  // sun（点切浅）、当前浅色显示 moon（点切深）。subscribe 令主题从设置分区等源变更时同步图标。
++  // —— 标题栏快捷主题按钮（B2-R9）：设置按钮左边按钮，三态循环 light→dark→system→light ——
++  // 经配置链路 saveConfig→applyConfig（不绕过直接写 CSS 变量）；图标显示当前主题状态：
++  // 浅 sun / 深 moon / 系统 monitor。subscribe 是唯一同步点：主题从标题栏按钮或设置分区
++  // 三态选择器任一入口变更，标题栏图标 + 设置分区 .csettings__mode 高亮/aria-pressed 双向同步。
+   const themeBtn = appMain.querySelector('.c-titlebar__control--theme');
++  const THEME_CYCLE = ['light', 'dark', 'system'];
++  const THEME_ICONS = { light: 'sun', dark: 'moon', system: 'monitor' };
+   const updateThemeIcon = () => {
+-    const cfg = getConfig();
+-    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+-    themeBtn.innerHTML = icon(resolved === 'dark' ? 'sun' : 'moon', 16);
++    themeBtn.innerHTML = icon(THEME_ICONS[getConfig().theme] ?? 'sun', 16);
+   };
+-  updateThemeIcon();
+   themeBtn.addEventListener('click', () => {
+-    const cfg = getConfig();
+-    const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+-    applyConfig(saveConfig({ theme: resolved === 'dark' ? 'light' : 'dark' }));
++    const cur = getConfig().theme;
++    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
++    applyConfig(saveConfig({ theme: next }));
+     updateThemeIcon();
+   });
+-  // 主题从设置分区等源变更时同步图标；桌面常驻订阅无需退订（应用壳单次挂载，移动端不重建标题栏）
+-  const themeUnsub = subscribe(() => updateThemeIcon());
++  // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
++  const syncSettingsThemeModes = () => {
++    const cfg = getConfig();
++    document.querySelectorAll('.csettings__mode').forEach((b) => {
++      const on = b.dataset.mode === cfg.theme;
++      b.classList.toggle('csettings__mode--active', on);
++      b.setAttribute('aria-pressed', String(on));
++    });
++  };
++  // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
++  // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
++  const themeUnsub = subscribe(() => { updateThemeIcon(); syncSettingsThemeModes(); });
+ 
+   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
+   // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
+   // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
+   // 不触发配置链路（与右窗状态同类）。
+   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+   const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+   (() => {
+     const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index c4bacb1..4072b98 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -437,24 +437,51 @@ test('图标选中态：无光晕层、衬底为选中底色', async ({ page })
+ test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+   // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
+   await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
+   // 竖向列表有 mask-image 内容遮罩
+   const maskImg = await page.locator('.app-main__nav-l .c-navwheel__list').evaluate((el) => getComputedStyle(el).maskImage);
+   expect(maskImg).toContain('linear-gradient');
+ });
+ 
+-// —— B2-R8 标题栏快捷深浅切换按钮 ——
+-// 设置按钮左边快捷按钮，点击经配置链路 saveConfig→applyConfig 翻转 data-theme；
+-// 图标随当前主题：深色显示 sun（点切浅）、浅色显示 moon（点切深）。
++// —— B2-R9 标题栏快捷主题按钮三态循环（浅/深/跟随系统）+ 与设置同步 ——
++// 三态循环 light→dark→system→light，图标显示当前主题状态（浅 sun / 深 moon / 系统 monitor）；
++// 主题从标题栏按钮或设置分区三态选择器任一入口变更，另一处 UI 同步（subscribe 唯一同步点）：
++// 标题栏按钮 → 设置分区 .csettings__mode 高亮/aria-pressed；设置选择器 → 标题栏图标。
++// 图标判别：sun 含 <circle>、moon 无 circle 无 rect、monitor（显示器）含 <rect>。
+ 
+-test('标题栏快捷深浅切换按钮：点击翻转 data-theme', async ({ page }) => {
++test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+   await page.reload();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++  // 初始图标 = sun（浅色，当前状态语义）
++  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
++  // light → dark
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
++  await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
++  // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
++  await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
++  const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
++  expect(['light', 'dark']).toContain(systemResolved);
++  await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
++  // 设置选择器 → 标题栏图标同步（反向）：点「浅色」→ data-theme light + 图标回 sun（含 circle）
++  await page.locator('.app-main .csettings__mode[data-mode="light"]').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
++  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
++  // 从设置切回标题栏入口：light → dark → system → light 完整循环仍正确
++  await page.locator('.c-titlebar__control--theme').click();
++  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  await page.locator('.c-titlebar__control--theme').click();
++  const systemResolved2 = await page.evaluate(() => document.documentElement.dataset.theme);
++  expect(['light', 'dark']).toContain(systemResolved2);
++  await expect(page.locator('.app-main .csettings__mode[data-mode="system"]')).toHaveClass(/csettings__mode--active/);
++  // system → light（回到起点）
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+ });
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index f6de2ed..13863f9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index b8fb9fc..f6c9f8b 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index 869f1c3..5920784 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
