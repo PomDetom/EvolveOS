@@ -1,0 +1,315 @@
+# Review package: 099c3b9..HEAD
+
+## Commits
+fe3f68c docs: B3-P0 实施报告（含提交哈希回填 71e55cd）
+71e55cd fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）
+
+## Files changed
+ docs/superpowers/sdd/task-B3-P0-brief.md  | 102 ++++++++++++++++++++++++++++++
+ docs/superpowers/sdd/task-B3-P0-report.md |  66 +++++++++++++++++++
+ src/app/app-main.js                       |  18 ++++--
+ tests/e2e/app-shell.spec.js               |   2 +
+ tests/e2e/mobile-nav.spec.js              |  14 ++++
+ 5 files changed, 197 insertions(+), 5 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B3-P0-brief.md b/docs/superpowers/sdd/task-B3-P0-brief.md
+new file mode 100644
+index 0000000..adc4e7d
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-P0-brief.md
+@@ -0,0 +1,102 @@
++# Task B3-P0: 概览「主题状态」卡陈旧修复（交接书 §5 P0，用户可见）
++
++## 任务定位
++
++应用壳 B3（设置完善）第一个任务。这是 B2 最终评审 Issue 1（parked）——标题栏三态主题快捷按钮（B2-R9 引入）切换主题后，概览页「主题状态」卡中的「当前主题：深/浅色」文本不更新，用户直接可见。桌面与手机两处都要修。
++
++## 背景与根因（先理解，再动手）
++
++标题栏主题按钮的点击处理链（src/app/app-main.js:143-147）：
++
++```js
++themeBtn.addEventListener('click', () => {
++  const cur = getConfig().theme;
++  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
++  applyConfig(saveConfig({ theme: next }));
++});
++```
++
++`saveConfig` 内部先写 localStorage、再**同步**触发所有 store 订阅回调（store.js:43 `listeners.forEach((fn) => fn(next))`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（apply.js:57）。
++
++当前 app-main.js:159-166 的主题 subscribe 回调：
++
++```js
++subscribe(() => {
++  updateThemeIcon();
++  syncSettingsThemeModes();
++  const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
++  if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
++});
++```
++
++**Bug**：回调执行时 `data-theme` 还是旧值（applyConfig 还没跑），所以 label 读到旧值、不更新。**此修复无效**，必须改读配置本身。
++
++## 正确修法（唯一需求，逐字执行）
++
++subscribe 回调内改为读 `getConfig().theme` + `prefersDark()` 解析 system（与 app-main.js 已存在的 `updateThemeIcon` 模式一致——`updateThemeIcon` 就只读 `getConfig().theme`）。`getConfig()` 在 saveConfig 内已把新 theme 写进 store，回调同步执行时能读到**新**值。
++
++解析逻辑：
++
++```js
++const cfg = getConfig();
++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++```
++
++需要从 `../config/apply.js` 的 import 里补 `prefersDark`（现有 import 是 `import { applyConfig } from '../config/apply.js';`，apply.js 已导出 `prefersDark`，见 apply.js:4-7）。
++
++## 要改的两处 label（R8 修复只覆盖了桌面，手机未覆盖）
++
++1. **桌面**：`.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（现有选择器保留）
++2. **手机**：`.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，R8 未覆盖）
++
++两处都在同一 subscribe 回调内更新（各用 querySelector + 空值守卫，同现有风格）。桌面守卫 `.app-main__page--active` 保留（仅在概览页激活时更新）；手机卡片无条件更新即可（值始终正确，pop 回概览时即正确）。
++
++## 待修改文件
++
++- `src/app/app-main.js`：import 补 `prefersDark`；subscribe 回调改读 config + 更新两处 label。
++- `tests/e2e/app-shell.spec.js`：既有测试 `标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步`（约 456-490 行）补桌面概览 label 断言。
++- `tests/e2e/mobile-nav.spec.js`：新增手机概览 label 断言测试。
++
++## 测试（TDD：先写断言，确认红，再实现，确认绿）
++
++**桌面断言**（app-shell.spec.js 该用例内，插在 light→dark 点击与 data-theme=dark 断言之后、进入设置模式之前）：
++
++```js
++// 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
++await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++```
++
++注意：`.app-main__theme-row span` 匹配 3 个 span（当前主题/色板/强调色），必须 `.first()` 并断言精确文本 `当前主题：深色`（toHaveText 对多元素 locator 会报错）。
++
++**手机断言**（mobile-nav.spec.js，viewport 390×844 已由 `test.use` 设定，加在既有 test.use 块内）：
++
++```js
++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
++  await page.goto(APP_URL);
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++});
++```
++
++APP_URL 在 mobile-nav.spec.js 顶部已定义为 `'/?mode=app'`。
++
++先跑这两个用例确认红（现实现桌面 label 不更新、手机完全没更新），再实现，复跑确认绿。
++
++## 验证要求
++
++- `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"`（含新断言）绿
++- `npx playwright test tests/e2e/mobile-nav.spec.js`（含新用例）绿，且其余移动用例零冲击
++- `npm test`（单元全量）绿 —— 不触碰任何单测，应零影响
++- `npm run test:e2e`（全量交互）绿 —— 确认零回归
++- `npm run build` 通过
++- **无视觉基线变化**（本次改动只改文本同步，不碰布局/渲染；如视觉回归出现差异，报告但勿 update-snapshots）
++
++## 提交
++
++一个 commit，message 示例：`fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）`
++
++## 报告
++
++将完整报告写入 `docs/superpowers/sdd/task-B3-P0-report.md`，内容包括：改动说明、测试命令与输出摘要、self-review 结论、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B3-P0-report.md b/docs/superpowers/sdd/task-B3-P0-report.md
+new file mode 100644
+index 0000000..5971db8
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B3-P0-report.md
+@@ -0,0 +1,66 @@
++# Task B3-P0: 概览「主题状态」卡陈旧修复（桌面+手机） — 实施报告
++
++- **状态**：DONE
++- **提交**：`71e55cd`
++- **需求源**：docs/superpowers/sdd/task-B3-P0-brief.md（唯一需求源，修复逻辑按 brief「正确修法」逐字执行）
++- **分支**：feature/b3-settings
++
++## 背景与根因（brief §背景与根因，验证成立）
++
++标题栏主题按钮点击链 `applyConfig(saveConfig({ theme: next }))`：`saveConfig` 先写 localStorage、再**同步**触发 store 订阅回调（`src/config/store.js:43`），然后 `applyConfig` 才写 `document.documentElement.dataset.theme`（`src/config/apply.js:57`）。原订阅回调内读 `data-theme` 读到的是**旧值**，故概览「主题状态」卡 label 不更新（B2 最终评审 Issue 1 parked）。手机端 `.app-main__stack-page[data-stack="overview"]` 的 label 在 R8 修复中完全未覆盖。
++
++## 变更文件
++
++| 文件 | 变更 |
++|---|---|
++| `src/app/app-main.js` | import 补 `prefersDark`（`applyConfig, prefersDark` from `../config/apply.js`）；subscribe 回调改读 `getConfig().theme` + `prefersDark()` 解析 system（与既有 `updateThemeIcon` 同模式），回调同步执行时能读到**新** theme；同一回调更新两处 label：桌面 `.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span`（`--active` 守卫保留）+ 手机 `.app-main__stack-page[data-stack="overview"] .app-main__theme-row span`（新增，无条件更新），各用 querySelector + 空值守卫（同现有风格） |
++| `tests/e2e/app-shell.spec.js` | 既有用例「标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步」在 light→dark 点击与 `data-theme='dark'` 断言之后、进设置模式之前补桌面概览 label 断言（`.first()` + 精确文本 `当前主题：深色`） |
++| `tests/e2e/mobile-nav.spec.js` | 新增用例「手机形态：概览主题状态卡随主题按钮实时更新」：seed `theme:'light'` + reload → 断言初始 `当前主题：浅色` → 点 `.c-titlebar__control--theme`（light→dark）→ 断言 `当前主题：深色` |
++
++## 正确修法（brief §正确修法 逐字执行）
++
++```js
++const cfg = getConfig();
++const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++```
++
++- 配置链路：本次只**读** `getConfig()`，不写任何绕过链路的 CSS 变量 ✓
++- 动画红线：仅文本同步，未触碰任何动画 ✓
++- 无视觉基线变化：只改文本 label（同文替换），`npm run test:e2e` 中 24 张视觉回归全绿，零漂移 ✓
++
++## 与 brief 的唯一偏差（已在代码注释 + 本报告披露）
++
++brief 手机断言 snippet 未 seed 主题：默认 `theme:'system'`（`src/config/defaults.js:2`），Playwright fresh context 下首次点击 `THEME_CYCLE['system']→light`（index 2→0），label 保持「浅色」，第二断言恒红——**即便实现正确也无法转绿**（brief 注释「light → dark」与实际 cycle 不符）。
++
++**处理**：手机用例补 `localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' }))` + `reload()`（与桌面用例既有 seed 模式完全一致），使点击成为真正的 light → dark。断言文本、选择器、用例意图与 brief 逐字一致。此偏差仅在测试初始化，不改变被测行为。
++
++## TDD 证据
++
++- **Step 1（红，桌面）**：`npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` → **1 failed**。新断言期望 `当前主题：深色`，实测 `12 × locator resolved to <span>当前主题：浅色</span>`——正是 brief 所述的「订阅先于 applyConfig、读到旧 data-theme」根因。
++- **Step 1（红，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js -g "手机形态：概览主题状态卡"` → **1 failed**。初始 `当前主题：浅色` 断言通过（seed 生效），点击后期望 `当前主题：深色`，实测仍 `浅色`——手机 label 完全未更新。
++- **Step 3（绿，桌面）**：同一命令 → **1 passed**。
++- **Step 4（绿，手机）**：`npx playwright test tests/e2e/mobile-nav.spec.js` → **8 passed**（新增用例 + 既有 7 用例零冲击）。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test tests/e2e/app-shell.spec.js -g "三态循环"` | 1 passed |
++| `npx playwright test tests/e2e/mobile-nav.spec.js` | 8 passed（含新用例，其余 7 用例零冲击） |
++| `npm test` | 60/60 passed（10 files，零单测触碰） |
++| `npm run test:e2e` | 98 passed（含全部 24 张视觉回归，无基线漂移；未 update-snapshots） |
++| `npm run build` | 通过（Vite，386ms） |
++
++## Self-review 结论
++
++- **规格符合**：两处 label（桌面 + 手机）都在同一 subscribe 回调内按 brief 逐字逻辑更新；桌面 `--active` 守卫保留、手机无条件更新；import 只补 `prefersDark`（apply.js 已导出，jsdom 缺 matchMedia 有守卫）；`renderOverview` 初始渲染读 `data-theme` 不受影响（`applyConfig(getConfig())` 在渲染前已跑）。
++- **配置链路**：仅读不写，无绕过。
++- **风格**：与既有 `updateThemeIcon` 模式一致；两 label 各用 querySelector + 空值守卫；测试沿用 `.first()` + 精确文本（`.app-main__theme-row span` 匹配 3 个 span：当前主题/色板/强调色）。
++- **质量**：full e2e + 单测 + build 全绿；视觉基线零漂移（改动纯文本同步）。
++- **结论**：Ready to merge（DONE），无遗留 Minor。
++
++## 备注
++
++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**。
++- 提交内容：`src/app/app-main.js`、`tests/e2e/app-shell.spec.js`、`tests/e2e/mobile-nav.spec.js`、`docs/superpowers/sdd/task-B3-P0-report.md`。
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 6184c80..0a2a356 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -12,21 +12,21 @@ import { icon } from '../components/icon/icon.js';
+ import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
+ import { renderEmptyState } from '../components/empty-state/empty-state.js';
+ import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
+ import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import { bindWindowControls } from '../demo/window-controls.js';
+ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
+ import { toast } from '../components/toast/toast.js';
+ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
+ import { getConfig, saveConfig, subscribe } from '../config/store.js';
+-import { applyConfig } from '../config/apply.js';
++import { applyConfig, prefersDark } from '../config/apply.js';
+ import '../components/float-strip/float-strip.css';
+ import './app-main.css';
+ import './partitions.css';
+ 
+ // 点按/拖拽位移阈值（与 dock 同机制，见下）：nav-wheel 不 preventDefault，拖拽松手后浏览器
+ // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
+ const TAP_MAX_MOVE = 10;
+ 
+ // —— MODULES 扩展契约 ——
+ const MODULES = [
+@@ -152,24 +152,32 @@ export function mountAppMode(root) {
+       const on = b.dataset.mode === cfg.theme;
+       b.classList.toggle('csettings__mode--active', on);
+       b.setAttribute('aria-pressed', String(on));
+     });
+   };
+   // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
+   // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
+   subscribe(() => {
+     updateThemeIcon();
+     syncSettingsThemeModes();
+-    // 概览页「主题状态」卡同步：标题栏/设置切主题经 applyConfig 改 html data-theme，概览页不重渲；
+-    // 仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）
+-    const themeLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
+-    if (themeLabel) themeLabel.textContent = `当前主题：${document.documentElement.dataset.theme === 'dark' ? '深色' : '浅色'}`;
++    // 概览页「主题状态」卡同步（B3-P0）：saveConfig 先同步触发订阅、applyConfig 才写 data-theme，
++    // 回调内读 data-theme 仍是旧值（桌面/手机 label 均陈旧）—— 改读 getConfig().theme +
++    // prefersDark() 解析 system（与 updateThemeIcon 同模式），订阅同步执行时能读到新值。
++    // 桌面仅活动概览页更新首 span 文本（不整页重渲，避免破坏动画/性能）；手机卡片无条件
++    // 更新（值始终正确，pop 回概览时即正确）。
++    const cfg = getConfig();
++    const isDark = cfg.theme === 'system' ? prefersDark() : cfg.theme === 'dark';
++    const label = `当前主题：${isDark ? '深色' : '浅色'}`;
++    const desktopLabel = document.querySelector('.app-main__page[data-page="home"].app-main__page--active .app-main__theme-row span');
++    if (desktopLabel) desktopLabel.textContent = label;
++    const mobileLabel = document.querySelector('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span');
++    if (mobileLabel) mobileLabel.textContent = label;
+   });
+ 
+   // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
+   // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
+   // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
+   // 不触发配置链路（与右窗状态同类）。
+   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
+   const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+   (() => {
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 523ce82..b2b216a 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -456,20 +456,22 @@ test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page })
+ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设置同步', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
+   await page.reload();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+   // 初始图标 = sun（浅色，当前状态语义）
+   await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(1);
+   // light → dark
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
++  // 概览「主题状态」卡同步（P0）：桌面概览页当前主题 label 随切换更新
++  await expect(page.locator('.app-main__page[data-page="home"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
+   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
+   await page.locator('.c-titlebar__control--settings').click();
+   await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
+   // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）
+   await page.locator('.app-main .csettings__mode[data-mode="system"]').click();
+   const systemResolved = await page.evaluate(() => document.documentElement.dataset.theme);
+   expect(['light', 'dark']).toContain(systemResolved);
+   await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(1);
+diff --git a/tests/e2e/mobile-nav.spec.js b/tests/e2e/mobile-nav.spec.js
+index b7cb46a..a99884c 100644
+--- a/tests/e2e/mobile-nav.spec.js
++++ b/tests/e2e/mobile-nav.spec.js
+@@ -144,10 +144,24 @@ test('horizontal 渲染层（闭环 A2 Minor ①/④）：底部横滑栏横向
+   await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
+   // 点击项 3 → 锚定动画 → active 中心对齐视口 38.2% 锚线（黄金比例锚点）
+   await dockList.locator('.c-navwheel__item').nth(3).click();
+   await page.waitForTimeout(400); // animateScrollTo --dur-base 200ms + 余量
+   await expect(dockList.locator('.c-navwheel__item--active')).toHaveCount(1);
+   const activeBox = await dockList.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await dockList.boundingBox();
+   const anchorDelta = Math.abs((activeBox.x + activeBox.width / 2) - (listBox.x + listBox.width * 0.382));
+   expect(anchorDelta).toBeLessThan(5);
+ });
++
++// —— B3-P0 概览「主题状态」卡陈旧修复：手机形态覆盖（R8 只修了桌面）——
++// 手机基底页 = .app-main__stack-page[data-stack="overview"]，主题状态卡 label 随标题栏
++// 三态主题按钮实时更新。先 seed localStorage theme='light' + reload（同桌面用例模式）——
++// 默认 theme='system'，fresh context 下首次点击会 cycle 到 light 而非 dark，seed 保证点击是
++// 真正的 light → dark，断言确定性强。
++test('手机形态：概览主题状态卡随主题按钮实时更新', async ({ page }) => {
++  await page.goto(APP_URL);
++  await page.evaluate(() => localStorage.setItem('ui-design-config', JSON.stringify({ theme: 'light' })));
++  await page.reload();
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：浅色');
++  await page.locator('.c-titlebar__control--theme').click(); // light → dark
++  await expect(page.locator('.app-main__stack-page[data-stack="overview"] .app-main__theme-row span').first()).toHaveText('当前主题：深色');
++});
