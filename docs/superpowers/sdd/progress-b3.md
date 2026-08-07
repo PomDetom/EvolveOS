@@ -49,3 +49,11 @@ Base: 099c3b9（branch feature/b3-settings，自 main 检出；工作树 Cargo.t
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① `--preview-theme` 已写但 CSS 未消费（主题色块走 `--preview-theme-bg`，CSS 无法按字符串变量分支，功能等价，已披露）；② 主题色块 JS 硬编码 `#16181f`/`#f8f9fb` 复刻 themes.css `--surface-solid`（若令牌变更会静默发散，报告已加注释钉住来源）
 - **⚠️ 已裁决（控制器）**：评审 ⚠️ 基线 md5 复拍证据为报告声称不可从 diff 复现——实施者用「解码逐像素 + 双向复拍 md5」双法自证，视觉 24 复跑全绿、仅 appearance-partition 重生成，判定可信
 - **执行状态**：Task B3-2：✅ 完成（2514d41，评审通过）
+
+## 最终整体评审（2026-08-08，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-B3-final.diff（099c3b9..28ade38，10 commits，22 文件）
+- **裁决**：Ready to merge: Yes —— 0 Critical / 0 Important / 无必须合并前修项；评审独立复跑 npm test 60/60 绿，逐条核验报告声明（P0 顺序根因、--preview-theme-bg 载荷、基线 md5 复拍、Cargo.toml 纯行尾噪声）
+- **Minors 分诊（5 条，全部免修随合并）**：① customizer-panel.js:307 `renderOverviewCard(cfg)` 参数未用（静态 HTML + updateOverview 承载值，建议删参）；② :346 `--preview-theme` 写了无 CSS 消费（仅 `--preview-theme-bg` 被读，死数据，cosmetic）；③ customizer.css 若干硬编码装饰值（rgba 阴影/渐变停靠点/gap，沿用 glassPreview 既有先例，风格一致）；④ 覆盖广度：B3-2 e2e 未断言主题/玻璃联动、P0 system 分支未断言（同机制，低风险）；⑤ 保真度：玻璃微缩块 blurEnabled=off 仍显示模糊（brief 范围只要求 opacity+噪点，非偏差，下轮补）
+- **评审亮点**：`--preview-theme-bg` 非简单间接——subscribe 回调先于 applyConfig 执行，根 `--surface-solid` 在回调内还是旧主题，JS 计算色使预览反映新配置（正确且必要）；box-shadow: var(--shadow-inset-highlight) 意外「复活」了交接书 §5 R5③ 死令牌清理候选（正向小加分）
+- **执行状态**：全部任务完成 → 待合并 main + 合并后全量回归
