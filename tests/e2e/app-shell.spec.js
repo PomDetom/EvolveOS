@@ -204,6 +204,9 @@ test('冷启动应用持久化配置：localStorage theme=dark → reload → �
   // 冷启动即应用持久化主题：data-theme 由 applyConfig(getConfig()) 写入
   const theme = await page.evaluate(() => document.documentElement.dataset.theme);
   expect(theme).toBe('dark');
+  // R9 评审 I1：冷启动深色下标题栏按钮图标须为 moon（非 title-bar.js 静态 sun）——与页面/设置分区同步
+  await expect(page.locator('.c-titlebar__control--theme svg circle')).toHaveCount(0);
+  await expect(page.locator('.c-titlebar__control--theme svg rect')).toHaveCount(0);
   // 设置「通用」页按持久化配置高亮「深色」——与实际渲染一致，两态不再自相矛盾
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
@@ -462,7 +465,7 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   // 标题栏按钮 → 设置分区三态选择器高亮同步（通用页为预渲染静态 DOM；进设置模式使其可见）
   await page.locator('.c-titlebar__control--settings').click();
-  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
   await expect(page.locator('.app-main .csettings__mode[data-mode="dark"]')).toHaveClass(/csettings__mode--active/);
   await expect(page.locator('.app-main .csettings__mode[data-mode="light"]')).not.toHaveClass(/csettings__mode--active/);
   // 设置选择器 → 标题栏图标同步（反向）：点「跟随系统」→ data-theme 解析为 light|dark + 图标 monitor（含 rect）

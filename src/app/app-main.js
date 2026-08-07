@@ -137,11 +137,13 @@ export function mountAppMode(root) {
   const updateThemeIcon = () => {
     themeBtn.innerHTML = icon(THEME_ICONS[getConfig().theme] ?? 'sun', 16);
   };
+  // 挂载期初始化（R9 评审 I1 修复，恢复 R8 行为）：title-bar.js 初始静态 sun 在此被覆盖——
+  // 冷启动已存 dark/system 时标题栏图标随配置，否则按钮仍为 sun、与页面 data-theme 和设置分区失同步。
+  updateThemeIcon();
   themeBtn.addEventListener('click', () => {
     const cur = getConfig().theme;
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
     applyConfig(saveConfig({ theme: next }));
-    updateThemeIcon();
   });
   // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
   const syncSettingsThemeModes = () => {
