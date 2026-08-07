@@ -124,6 +124,20 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
 - Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
 - Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
-- Task R4 图标选中态去光晕：待执行
+- Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
 - Task R5 自定义器调整 + 措辞同步：待执行
 - R-验收 用户视觉验收 + 最终评审 + 合并：待执行
+
+## Task B2-R4: 图标选中态去光晕
+
+- **状态**：完成（2026-08-06，评审通过）
+- **提交**：`079f9d7` `feat: 图标选中态去光晕（只留衬底 + active:hover 优先）`（含 11 张基线）+ `3853a8b` `docs: R4 执行留痕`
+- **验证**：npm test 60/60；npm run test:e2e 88/88（含新「图标选中态」+ B2-3 分级回归 + 零冲击）；npm run test:visual 18/18（重生成后连跑两遍绿）；npm run build 通过
+- **实现**：nav-wheel.js 模板删 `.c-navwheel__glow` div（唯一改动行）；nav-wheel.css 删全部 glow 规则（radial-gradient/opacity/scale 分层/transition），补 `.c-navwheel__item--active:hover .c-navwheel__icon { background: var(--accent-100); color: var(--accent) }`（闭环 B2-3 M-3，特异性同序取胜）；保留 40px 衬底、尺寸/粗细分级、`--text-2` 提亮；setFocal/renderItemIcons 逐字不动
+- **简报/报告**：docs/superpowers/sdd/task-B2-R4-brief.md / task-B2-R4-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，2 Minor）
+- **必要偏离（简报草稿修正，评审验证必要正确）**：Step 1 测试 `toHaveCount(0)` 在应用壳动态 import 挂载前的空 DOM 上直接通过（形同虚设），改为先等 `.c-navwheel__item` 到 7 项再断言 → 成真门禁
+- **既有基线不稳定（非本次引入，未修，升格已知风险→最终评审）**：components-partition 长截图（720×8626 拼接）run-to-run 抖动（同代码连渲两遍 dark-indigo 差 37501px；stash 证实与本次无关），根因指向 R2 `.app-main::after` feTurbulence 噪点层 × 拼接截图子像素相位；dark ≫ light（light-amber≈0），仅拼接长截图散布。当前基线稳定绿，潜在偶发 flake 风险，R-验收 时统一处理（拼接相位稳定或深色噪点对比收窄）
+- **Minor 留收尾**：① 报告基线解码叙事略欠精确（light-amber「浅色不可见」应限定为左窗衬底光晕 vs 平色演示面）；② 漂移证据为自报（临时备份目录已删，事后无法独立复核像素数字，最终评审如需复算须保留一对基线 A/B）
+
+## 执行状态
