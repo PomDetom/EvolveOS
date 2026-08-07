@@ -1,0 +1,682 @@
+# Review package: 3a3d742..HEAD
+
+## Commits
+2e72da6 docs: R5 自定义器调整 + 措辞同步执行留痕（报告 + 进度台账）
+2c53301 feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步
+
+## Files changed
+ docs/superpowers/sdd/progress-b2.md                |  11 ++-
+ docs/superpowers/sdd/task-B2-R5-brief.md           |  86 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B2-R5-report.md          |  23 ++++++
+ src/demo/component-showcase-full.js                |   4 +-
+ src/demo/customizer-panel.js                       |  14 ++--
+ src/scenes/settings-window/settings-pages.js       |   2 +-
+ src/styles/customizer.css                          |  13 ++--
+ tests/e2e/app-shell.spec.js                        |   8 +-
+ tests/e2e/customizer.spec.js                       |  11 ++-
+ tests/e2e/visual-regression.spec.js                |  10 ++-
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 0 -> 278873 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 0 -> 252768 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 0 -> 287164 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 0 -> 168005 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 0 -> 166444 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 0 -> 159103 bytes
+ tests/unit/apply.test.js                           |   4 +-
+ 17 files changed, 159 insertions(+), 27 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b2.md b/docs/superpowers/sdd/progress-b2.md
+index 1733f5e..954ef42 100644
+--- a/docs/superpowers/sdd/progress-b2.md
++++ b/docs/superpowers/sdd/progress-b2.md
+@@ -118,26 +118,33 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
+ ## 执行状态
+ 
+ - Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ **返工 R2 覆盖表面应用**
+ - Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）→ **返工 R3 重调预设**
+ - Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ **返工 R4 去光晕**
+ - 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
+ - Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
+ - Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
+ - Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
+ - Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
+-- Task R5 自定义器调整 + 措辞同步：待执行
++- Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，待评审）
+ - R-验收 用户视觉验收 + 最终评审 + 合并：待执行
+ 
+ ## Task B2-R4: 图标选中态去光晕
+ 
+ - **状态**：完成（2026-08-06，评审通过）
+ - **提交**：`079f9d7` `feat: 图标选中态去光晕（只留衬底 + active:hover 优先）`（含 11 张基线）+ `3853a8b` `docs: R4 执行留痕`
+ - **验证**：npm test 60/60；npm run test:e2e 88/88（含新「图标选中态」+ B2-3 分级回归 + 零冲击）；npm run test:visual 18/18（重生成后连跑两遍绿）；npm run build 通过
+ - **实现**：nav-wheel.js 模板删 `.c-navwheel__glow` div（唯一改动行）；nav-wheel.css 删全部 glow 规则（radial-gradient/opacity/scale 分层/transition），补 `.c-navwheel__item--active:hover .c-navwheel__icon { background: var(--accent-100); color: var(--accent) }`（闭环 B2-3 M-3，特异性同序取胜）；保留 40px 衬底、尺寸/粗细分级、`--text-2` 提亮；setFocal/renderItemIcons 逐字不动
+ - **简报/报告**：docs/superpowers/sdd/task-B2-R4-brief.md / task-B2-R4-report.md
+ - **评审**：规格 ✅ / Approved（0 Critical/Important，2 Minor）
+ - **必要偏离（简报草稿修正，评审验证必要正确）**：Step 1 测试 `toHaveCount(0)` 在应用壳动态 import 挂载前的空 DOM 上直接通过（形同虚设），改为先等 `.c-navwheel__item` 到 7 项再断言 → 成真门禁
+ - **既有基线不稳定（非本次引入，未修，升格已知风险→最终评审）**：components-partition 长截图（720×8626 拼接）run-to-run 抖动（同代码连渲两遍 dark-indigo 差 37501px；stash 证实与本次无关），根因指向 R2 `.app-main::after` feTurbulence 噪点层 × 拼接截图子像素相位；dark ≫ light（light-amber≈0），仅拼接长截图散布。当前基线稳定绿，潜在偶发 flake 风险，R-验收 时统一处理（拼接相位稳定或深色噪点对比收窄）
+ - **Minor 留收尾**：① 报告基线解码叙事略欠精确（light-amber「浅色不可见」应限定为左窗衬底光晕 vs 平色演示面）；② 漂移证据为自报（临时备份目录已删，事后无法独立复核像素数字，最终评审如需复算须保留一对基线 A/B）
+ 
+-## 执行状态
++## Task B2-R5: 自定义器调整 + 措辞同步
++
++- **状态**：完成（2026-08-07，待评审）
++- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步`
++- **验证**：npm test 60/60；npm run test:e2e 95/95（含新「表面质感」用例 + 「亚克力两档」重命名回归 + 24 张视觉基线）；npm run test:visual 24/24（18 张既有逐像素不变 + 6 张全新外观分区基线）；npm run build 通过
++- **实现**：customizer-panel.js GROUPS 第 2 组「表面质感」+ 开关「亚克力材质」+ glassPreview 注释去「高光」改「噪点强度」（闭环 R1 M1）；customizer.css `.cust-panel`/`.cust-glass-preview__glass` backdrop-filter 统一亚克力配方（saturate(1.4) → `--acrylic-saturate`/`--acrylic-brightness`，闭环 R2 复查范围）+ box-shadow 去 inset-highlight + `::before` 高光层改噪点层（`--acrylic-noise` 120px 平铺 + `opacity: var(--noise-opacity)`，实时反映噪点滑杆）；settings-pages.js / component-showcase-full.js 措辞「玻璃」→「亚克力」；测试名/注释同步（apply「亚克力材质开/关」、app-shell「亚克力两档」、customizer「调整亚克力透明度」）；visual-regression.spec.js SHOTS **新增外观分区截图**（partition 1，挂载守卫断言 `.cust-group` count 6）
++- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
++- **评审**：待评审
+diff --git a/docs/superpowers/sdd/task-B2-R5-brief.md b/docs/superpowers/sdd/task-B2-R5-brief.md
+new file mode 100644
+index 0000000..4c88209
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-R5-brief.md
+@@ -0,0 +1,86 @@
++# Task B2-R5: 自定义器调整 + 措辞同步
++
++（摘自 docs/superpowers/plans/2026-08-06-app-shell-b2-acrylic-rework.md，唯一需求源）
++
++## Global Constraints（约束本任务）
++
++- 测试仅在 Web 环境执行；动画红线（paint-only 豁免）；配置链路经 saveConfig→applyConfig。
++- 零运行时依赖；遵循 src/CLAUDE.md。
++- **命名保留**：`--glass-*` / `data-glass` / `--glass-enabled` / `data-glass-switch` 不改名。
++- `.cust-group` count 6 不得破坏。
++- 视觉基线会变（外观分区预览）→ 确认差异由本次改动引起后 `--update-snapshots`。
++- TDD；`npm test` + `npm run test:e2e` + `npm run test:visual` + `npm run build` 全绿。
++
++## Files
++
++- Modify: `src/demo/customizer-panel.js`（组名「表面质感」、开关「亚克力材质」、glassPreview 去高光、注释同步）
++- Modify: `src/styles/customizer.css`（`.cust-panel`/`.cust-glass-preview__glass` 亚克力配方统一 + 预览去高光改噪点 + 去 inset-highlight）
++- Modify: `src/scenes/settings-window/settings-pages.js`（关于页「克制的亚克力质感」）
++- Modify: `src/demo/component-showcase-full.js`（卡片演示 label「亚克力材质」、关于弹窗文案）
++- Modify: `tests/e2e/customizer.spec.js`、`tests/e2e/app-shell.spec.js`、`tests/unit/apply.test.js`（措辞/测试名）
++- Test: 视觉基线重生成（外观分区）
++
++## Interfaces
++
++- Consumes: `cfg.glass.noise` + `--noise-opacity`（R1）；`data-glass-switch`（B2-1）；滑杆键 `noise`（R1 已换）
++- Produces: 「表面质感」组（透明度/模糊/噪点强度 3 滑杆 + 亚克力材质开关）；预览改噪点视觉；措辞全量「玻璃」→「亚克力/表面质感」
++
++## 当前状态（R1/R2 落地后的实测事实）
++
++- `customizer-panel.js`：GROUPS 第 2 组 `title: '玻璃材质'`（50 行）滑杆已为 `{ key: 'noise', label: '噪点强度' }`（R1 原子换键）；`glassSwitchRow` label「玻璃磨砂」（196-198 行）；`glassPreview()`（166-178 行）注释「透明度/模糊/高光」过时（R1 M1）；`syncUI` 254 行。
++- `customizer.css`：`.cust-panel`（14-19 行）`backdrop-filter: blur(...) saturate(1.4)` + `box-shadow: var(--glass-shadow), var(--shadow-inset-highlight)`；`.cust-glass-preview__glass`（165-168 行）同 + `::before`（172-174 行）`background: var(--glass-highlight)`（高光预览）。这两处是 R2 复查记录的「裸 saturate(1.4) 属 R5 范围」。
++- `settings-pages.js` 172 行 about：「克制的玻璃质感 · 深/浅双主题 · 6 主题色」。
++- `component-showcase-full.js` 165 行卡片 label「玻璃材质」（`renderCard({ glass: true })`，卡片组件本身不变）；248 行 about 弹窗「克制的玻璃质感设计语言」。
++- `apply.test.js` 32/37 行测试名含「玻璃磨砂」；`app-shell.spec.js` 328 行测试名「玻璃两档」+ 323-334 注释；`customizer.spec.js` 10 行测试名「调整玻璃透明度实时生效」。
++
++## Steps
++
++### Step 1: 写失败 e2e（customizer.spec.js）
++
++```js
++test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
++  await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
++  await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npx playwright test tests/e2e/customizer.spec.js -g "表面质感"`
++Expected: FAIL（组名「玻璃材质」、开关「玻璃磨砂」未改）
++
++### Step 3: customizer-panel.js 调整
++
++- GROUPS 第 2 组 `title: '玻璃材质'` → `'表面质感'`。
++- `glassSwitchRow` label「玻璃磨砂」→「亚克力材质」（含 `renderSwitch` 的 aria-label）。
++- `glassPreview()` 注释「透明度/模糊/高光」→「透明度/模糊/噪点强度」（R1 M1 闭环）。
++- 相关行内注释「玻璃磨砂开关」「玻璃材质」→「亚克力材质开关」「表面质感」（文件头 16 行、190 行、333 行等处）。
++- `CFG_PATH` 的 `noise`（R1 已加）不动；确认无 `highlight` 残留。
++
++### Step 4: customizer.css 亚克力统一 + 预览去高光改噪点
++
++- `.cust-panel`（19 行）`backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness))`；`box-shadow` 去掉 `--shadow-inset-highlight`（亚克力无反光）。
++- `.cust-glass-preview__glass`（168 行）backdrop-filter 同上统一；`box-shadow` 去 inset-highlight。
++- `.cust-glass-preview__glass::before`（172-174 行）高光 `background: var(--glass-highlight)` 改为噪点层：`background-image: var(--acrylic-noise); background-size: 120px 120px; opacity: var(--noise-opacity, 0.04)`（预览实时反映噪点强度滑杆）。
++
++### Step 5: 措辞同步
++
++- `settings-pages.js` 172 行：「克制的玻璃质感」→「克制的亚克力质感」。
++- `component-showcase-full.js` 165 行卡片 label「玻璃材质」→「亚克力材质」；248 行「克制的玻璃质感设计语言」→「克制的亚克力质感设计语言」。
++- 测试名/注释：`apply.test.js` 32/37 行「玻璃磨砂开/关」→「亚克力材质开/关」；`app-shell.spec.js` 328 行「玻璃两档」→「亚克力两档」+ 323-334 注释同步；`customizer.spec.js` 10 行「调整玻璃透明度」→「调整亚克力透明度」。
++
++### Step 6: 运行绿 + 基线重生成
++
++Run: `npx playwright test tests/e2e/customizer.spec.js` + `npx playwright test tests/e2e/app-shell.spec.js -g "亚克力两档"` → `npm run test:e2e`（全量）+ `npm test` + `npm run build`；视觉基线重生成（appearance 分区含表面质感组/噪点预览；先解码比对确认差异来源）。
++Expected: 全绿
++
++### Step 7: 提交
++
++```bash
++git add src/demo/customizer-panel.js src/styles/customizer.css src/scenes/settings-window/settings-pages.js src/demo/component-showcase-full.js tests/e2e/customizer.spec.js tests/e2e/app-shell.spec.js tests/unit/apply.test.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots/
++git commit -m "feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步"
++```
+diff --git a/docs/superpowers/sdd/task-B2-R5-report.md b/docs/superpowers/sdd/task-B2-R5-report.md
+new file mode 100644
+index 0000000..082894b
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B2-R5-report.md
+@@ -0,0 +1,23 @@
++# Task B2-R5: 自定义器调整 + 措辞同步 — 执行报告
++
++- **状态**：完成（2026-08-07）
++- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步`
++- **验证**：npm test 60/60（10 文件）；npm run test:e2e 95/95（含新「外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆」+「亚克力两档」重命名回归 + 既有零冲击 + 24 张视觉基线）；npm run test:visual 24/24（18 张既有逐像素不变 + 6 张全新外观分区基线）；npm run build 通过
++- **实现**：
++  - `customizer-panel.js`：GROUPS 第 2 组 `title: '玻璃材质'` → `'表面质感'`；`glassSwitchRow` label + `renderSwitch` aria-label「玻璃磨砂」→「亚克力材质」；`glassPreview()` 注释「透明度/模糊/高光」→「透明度/模糊/噪点强度」（闭环 R1 M1）；文件头/行内注释「玻璃材质/玻璃磨砂」→「表面质感/亚克力材质开关」。`CFG_PATH.noise` 不动；`noise` 键 + `--noise-opacity` 消费链路（R1）未触碰。
++  - `customizer.css`：`.cust-panel` 与 `.cust-glass-preview__glass` 两处 backdrop-filter 从 `saturate(1.4)` 统一为亚克力配方 `blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness))`（闭环 R2 复查记录的「裸 saturate(1.4) 属 R5 范围」）；两处 `box-shadow` 去掉 `--shadow-inset-highlight`（亚克力无反光）；`.cust-glass-preview__glass::before` 高光层 → 噪点层（`background-image: var(--acrylic-noise); background-size: 120px 120px; opacity: var(--noise-opacity, 0.04)`），预览实时反映噪点强度滑杆。
++  - `settings-pages.js` 172 行 about：「克制的玻璃质感」→「克制的亚克力质感」。
++  - `component-showcase-full.js` 165 行卡片 label「玻璃材质」→「亚克力材质」（`renderCard({ glass: true })` 卡片组件本身不变）；248 行 about 弹窗「克制的玻璃质感设计语言」→「克制的亚克力质感设计语言」。
++  - 测试名/注释：`apply.test.js`「玻璃磨砂开/关」→「亚克力材质开/关」；`app-shell.spec.js`「玻璃两档」→「亚克力两档」+ 323-335 注释同步；`customizer.spec.js`「调整玻璃透明度」→「调整亚克力透明度」。
++- **TDD**：Step 1 新 e2e（外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆）→ 实测红（组名仍为「玻璃材质」）→ 实现 → 绿（4/4 customizer）。
++- **视觉基线解码比对**（`--update-snapshots` 前）：
++  - **必要说明**：R1-R4 期间视觉基线固定为 18 张（app-main/components-partition/motion-partition ×6），**外观分区不在基线内**。R5 的观感变更主体（表面质感组标题、亚克力开关、噪点预览、去 inset-highlight）集中在设置页外观分区，既有 18 张不覆盖。按计划 Step 6「视觉基线重生成（appearance 分区含表面质感组/噪点预览）」，本次在 `visual-regression.spec.js` SHOTS **新增外观分区截图**（`['appearance-partition', '.app-main__settings [data-page="appearance"]', 1]`，partition 挂载守卫断言 `.cust-group` count 6——顺带把全局约束「count 6 不破坏」纳入基线门禁）。
++  - **差异来源确认**（新截图逐项解码 + DOM 计算样式验证，非像素盲抄）：
++    - 组标题序列 = 色彩/表面质感/排版/圆角/动效/阴影，count 6（未增删组）；
++    - 开关行文本 = 亚克力材质，`data-glass-switch` 选择器不变（e2e 依赖未破）；
++    - `.cust-glass-preview__glass` backdrop-filter 计算值 `blur(24px) saturate(1.8) brightness(1.1)`（亚克力配方生效，light 档 brightness 1.1）；box-shadow 计算值仅 `--glass-shadow` 两段（inset-highlight 已去除）；
++    - `::before` 噪点层计算值 = SVG data-URI background-image + 120px 120px + opacity 0.04（实时跟随噪点滑杆默认值）。
++  - **零冲击确认**：既有 18 张在 `--update-snapshots` 前先跑一遍全绿（本次改动不触碰 app-main 隐藏抽屉 / components 卡片 label 在折叠线下方 / motion），`--update-snapshots` 后 git status 显示**仅新增 6 张外观分区 PNG**，18 张既有字节未动。
++- **R4 已披露的基线抖动风险（未触发）**：R4 报告记 components-partition 长截图 run-to-run 抖动（R2 噪点层 × 拼接截图子像素相位）。本次全量视觉两遍（重生成前后）+ 全量 e2e 均 24/24、95/95 稳定绿，未再现；该既有风险仍留待 R-验收 统一处理。
++- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
++- **评审**：待评审
+diff --git a/src/demo/component-showcase-full.js b/src/demo/component-showcase-full.js
+index 0a87e68..c4a4a75 100644
+--- a/src/demo/component-showcase-full.js
++++ b/src/demo/component-showcase-full.js
+@@ -155,21 +155,21 @@ export function mountComponentsShowcase(root) {
+   ]);
+   root.appendChild(group('基础表单', 'edit',
+     btnBox, iconBox, inputBox, textareaBox, selectBox,
+     checkboxBox, radioBox, switchBox, sliderBox, kbdBox));
+ 
+   mountSwitch(switchBox);
+ 
+   // ============ 组 3：数据展示（Card / List / Badge / Tag / Progress / Avatar / Skeleton / EmptyState） ============
+   const cardBox = showcase('卡片 Card', [
+     { label: '默认', html: renderCard({ title: '剪贴板历史', content: '最近 20 条复制记录会保存在这里，支持搜索与固定。', footer: renderButton({ label: '查看全部', variant: 'ghost', size: 'sm' }) }) },
+-    { label: '玻璃材质', html: renderCard({ title: '密码条目', content: '为每个网站生成独立的强密码，自动填充登录表单。', glass: true }) },
++    { label: '亚克力材质', html: renderCard({ title: '密码条目', content: '为每个网站生成独立的强密码，自动填充登录表单。', glass: true }) },
+     { label: '徽标页脚', html: renderCard({ title: '同步状态', content: '剪贴板数据将在设备间自动同步。', footer: renderBadge({ label: '已同步', variant: 'success' }) }) },
+   ]);
+   const listBox = showcase('列表 List', [
+     { label: '完整列表', html: renderList({ items: [
+       { title: '复制内容', desc: 'https://example.com', meta: '02:14', iconName: 'copy' },
+       { title: '剪贴板历史', desc: '共 12 条记录', meta: '12:05', iconName: 'clipboard', selected: true },
+       { title: '设置面板', desc: '应用偏好设置', meta: '昨天', iconName: 'settings' },
+     ] }) },
+     { label: '简洁列表', html: renderList({ items: [
+       { title: '显示桌面通知', meta: '开', iconName: 'bell' },
+@@ -238,21 +238,21 @@ export function mountComponentsShowcase(root) {
+     btn.addEventListener('click', () => {
+       const msgs = { success: '操作成功', warning: '请注意', danger: '操作失败', info: '新消息提醒' };
+       toast(msgs[variant], { variant });
+     });
+   });
+   dialogBox.querySelectorAll('[data-dialog]').forEach((btn) => {
+     const danger = btn.dataset.dialog === 'danger';
+     btn.addEventListener('click', () => {
+       openDialog(danger
+         ? { title: '确认删除', content: '删除后无法恢复，确定要继续吗？', confirmLabel: '删除', danger: true }
+-        : { title: '关于', content: 'UI Design System v0.1 — 克制的玻璃质感设计语言。', confirmLabel: '知道了' })
++        : { title: '关于', content: 'UI Design System v0.1 — 克制的亚克力质感设计语言。', confirmLabel: '知道了' })
+         .then((ok) => { if (ok) toast(danger ? '已删除' : '感谢阅读', { variant: danger ? 'danger' : 'success' }); });
+     });
+   });
+   mountPopover(popoverBox);
+   const [stage1, stage2] = menuBox.querySelectorAll('.demo-context-stage');
+   mountContextMenu(stage1, [
+     { label: '复制', iconName: 'copy', action: () => toast('已复制', { variant: 'info' }) },
+     { label: '重命名', iconName: 'edit', action: () => toast('重命名功能演示') },
+     { label: '删除', iconName: 'trash', danger: true, action: () => toast('已删除', { variant: 'danger' }) },
+   ]);
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index 3e255f1..5745451 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -6,21 +6,21 @@ import { toast } from '../components/toast/toast.js';
+ import { renderSwitch } from '../components/switch/switch.js';
+ import { exportCss } from './customizer-css.js';
+ 
+ /**
+  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
+  *
+  * 契约：
+  * - 导出 mountCustomizer(root) / toggleCustomizer(open?) —— open 省略时切换
+  * - 导出 renderCustomizerGroups(container)（Task 20 重构）—— 6 组渲染 + 事件 + store 订阅，
+  *   面板（.cust-body）与设置页外观分区共用同一实现；两侧滑杆操作同一份 store，双向实时
+- * - 6 组 .cust-group（色彩/玻璃材质/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
++ * - 6 组 .cust-group（色彩/表面质感/排版/圆角/动效/阴影），每组 .cust-row = 标签 + 控件
+  * - 滑杆全部来自 RANGES 的 [min, max, step]；input 事件 → saveConfig(patch) → applyConfig → 实时生效
+  * - 预设：「默认深/浅」= saveConfig({ theme })；重置 = removeItem(KEY) + notify(DEFAULTS) + applyConfig
+  * - 导出：navigator.clipboard.writeText(exportCss(getConfig())) + toast
+  * - 动画红线：抽屉只动 transform + visibility（透明度走 backdrop 的 opacity），模糊不动画
+  */
+ 
+ // 滑杆 data-key → 配置路径（映射关系与 apply.js 写入的变量一一对应）
+ const CFG_PATH = {
+   opacity: ['glass', 'opacity'],
+   blur: ['glass', 'blur'],
+@@ -40,21 +40,21 @@ const GROUPS = [
+   {
+     title: '色彩',
+     pre: (cfg) => accentCards(cfg) + semanticBar(),
+     sliders: [
+       { key: 'hue', label: '色相', unit: '°' },
+       { key: 'saturation', label: '饱和度', unit: '%' },
+       { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+     ],
+   },
+   {
+-    title: '玻璃材质',
++    title: '表面质感',
+     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+       { key: 'noise', label: '噪点强度' },
+     ],
+   },
+   {
+     title: '排版',
+     sliders: [
+@@ -156,21 +156,21 @@ function accentCards(cfg) {
+ 
+ function semanticBar() {
+   return `
+     <div class="cust-semantic" role="group" aria-label="语义色预览">
+       <span class="cust-semantic__title">语义色</span>
+       ${SEMANTIC.map((s) => `
+         <span class="cust-semantic__chip" style="--chip: var(--${s.key})">${s.label}</span>`).join('')}
+     </div>`;
+ }
+ 
+-/** 玻璃材质即时预览：色点/线条在玻璃层之后，backdrop-filter 实时呈现透明度/模糊/高光 */
++/** 表面质感即时预览：色点/线条在玻璃层之后，backdrop-filter 实时呈现透明度/模糊/噪点强度 */
+ function glassPreview() {
+   return `
+     <div class="cust-glass-preview" aria-hidden="true">
+       <span class="cust-glass-preview__dot" style="--d: var(--accent-400)"></span>
+       <span class="cust-glass-preview__dot" style="--d: #2dd4bf"></span>
+       <span class="cust-glass-preview__dot" style="--d: #f59e0b"></span>
+       <span class="cust-glass-preview__line" style="width: 70%"></span>
+       <span class="cust-glass-preview__line" style="width: 55%"></span>
+       <span class="cust-glass-preview__line" style="width: 85%"></span>
+       <div class="cust-glass-preview__glass"></div>
+@@ -180,29 +180,29 @@ function glassPreview() {
+ function motionSwitchRow(cfg) {
+   return `
+     <div class="cust-row cust-row--switch">
+       <div class="cust-row__head">
+         <span class="cust-row__label">动效总开关</span>
+       </div>
+       <div class="cust-switch-wrap" data-motion-switch>${renderSwitch({ checked: cfg.motion.enabled, label: '动效总开关' })}</div>
+     </div>`;
+ }
+ 
+-/** 玻璃材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
++/** 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级为纯色不透明。与动效开关同构，
+  *  写 saveConfig + applyConfig，订阅同步 aria-checked；抽屉与设置外观分区共用。 */
+ function glassSwitchRow(cfg) {
+   return `
+     <div class="cust-row cust-row--switch" data-glass-switch>
+       <div class="cust-row__head">
+-        <span class="cust-row__label">玻璃磨砂</span>
++        <span class="cust-row__label">亚克力材质</span>
+       </div>
+-      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '玻璃磨砂' })}
++      ${renderSwitch({ checked: cfg.glass.blurEnabled, label: '亚克力材质' })}
+     </div>`;
+ }
+ 
+ function panelTemplate() {
+   return `
+     <header class="cust-header">
+       <div class="cust-header__text">
+         <h3 class="cust-header__title">主题定制器</h3>
+         <p class="cust-header__sub">所有界面效果 · 即时生效</p>
+       </div>
+@@ -323,21 +323,21 @@ export function renderCustomizerGroups(container) {
+   });
+ 
+   // 动效总开关
+   const swWrap = container.querySelector('[data-motion-switch]');
+   swWrap?.addEventListener('click', () => {
+     const sw = swWrap.querySelector('.c-switch');
+     const next = sw.getAttribute('aria-checked') !== 'true';
+     applyConfig(saveConfig({ motion: { enabled: next } }));
+   });
+ 
+-  // 玻璃磨砂开关（B2-1）：blurEnabled → data-glass 降级
++  // 亚克力材质开关（B2-1）：blurEnabled → data-glass 降级
+   const glassWrap = container.querySelector('[data-glass-switch]');
+   glassWrap?.addEventListener('click', () => {
+     const sw = glassWrap.querySelector('.c-switch');
+     const next = sw.getAttribute('aria-checked') !== 'true';
+     applyConfig(saveConfig({ glass: { blurEnabled: next } }));
+   });
+ 
+   // store 订阅：本容器控件态实时同步（面板与设置页各自订阅，双向生效）。
+   // 返回退订函数 —— 调用方重建 container 前调用，防订阅累积（闭环 M1）。
+   const unsub = subscribe((next) => syncUI(container, next));
+diff --git a/src/scenes/settings-window/settings-pages.js b/src/scenes/settings-window/settings-pages.js
+index 910d961..11addf2 100644
+--- a/src/scenes/settings-window/settings-pages.js
++++ b/src/scenes/settings-window/settings-pages.js
+@@ -162,21 +162,21 @@ function emptyPage(iconName, title, desc) {
+ 
+ function aboutPage() {
+   return `
+     ${pageHead('关于', '应用信息与版本')}
+     <div class="csettings__about">
+       <div class="csettings__logo">${icon('palette', 36)}</div>
+       <div class="csettings__name">UI Design System</div>
+       <div class="csettings__ver">版本 1.0.0</div>
+       <div class="csettings__meta">
+         <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
+-        <div class="csettings__row"><span>设计语言</span><span>克制的玻璃质感 · 深/浅双主题 · 6 主题色</span></div>
++        <div class="csettings__row"><span>设计语言</span><span>克制的亚克力质感 · 深/浅双主题 · 6 主题色</span></div>
+       </div>
+       <button type="button" class="csettings__link" data-open-source>${icon('globe', 16)}开源仓库</button>
+     </div>`;
+ }
+ 
+ // —— 分区 → 页面主体 ——
+ 
+ export function pageBody(id) {
+   switch (id) {
+     case 'general':    return generalPage();
+diff --git a/src/styles/customizer.css b/src/styles/customizer.css
+index 6677542..a23e57d 100644
+--- a/src/styles/customizer.css
++++ b/src/styles/customizer.css
+@@ -9,23 +9,23 @@
+   transition: opacity var(--dur-base) var(--ease-out);
+ }
+ .cust-backdrop--visible { opacity: 1; pointer-events: auto; }
+ 
+ /* ---- 抽屉：translateX(100%) → 0，关闭态 visibility 延迟隐藏（等位移动画结束） ---- */
+ .cust-panel {
+   position: fixed; top: 0; right: 0; bottom: 0; width: 344px; max-width: 92vw;
+   z-index: var(--z-overlay);
+   display: flex; flex-direction: column;
+   background: var(--surface-2);
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   border-left: 1px solid var(--glass-border);
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
++  box-shadow: var(--glass-shadow);
+   transform: translateX(100%);
+   visibility: hidden;
+   transition: transform var(--dur-base) var(--ease-spring), visibility 0s var(--dur-base);
+ }
+ .cust-panel--open {
+   transform: none; visibility: visible;
+   transition: transform var(--dur-base) var(--ease-spring), visibility 0s 0s;
+ }
+ 
+ /* ---- 头部 ---- */
+@@ -137,48 +137,49 @@
+   border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+   background: var(--surface-1); border: 1px dashed var(--glass-border);
+ }
+ .cust-semantic__title { font-size: var(--font-size-xs); color: var(--text-3); margin-right: 2px; }
+ .cust-semantic__chip {
+   font-size: var(--font-size-xs); color: var(--text-1);
+   padding: 2px 8px; border-radius: var(--radius-full);
+   background: var(--chip);
+ }
+ 
+-/* ---- 玻璃材质即时预览 ---- */
++/* ---- 表面质感即时预览 ---- */
+ .cust-glass-preview {
+   position: relative; height: 92px;
+   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+   border: 1px dashed var(--glass-border);
+   overflow: hidden; margin-bottom: var(--space-3);
+ }
+ .cust-glass-preview__dot { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--d); }
+ .cust-glass-preview__dot:nth-of-type(1) { top: 12px; left: 14px; }
+ .cust-glass-preview__dot:nth-of-type(2) { top: 38px; left: 52px; width: 14px; height: 14px; }
+ .cust-glass-preview__dot:nth-of-type(3) { top: 14px; right: 20px; width: 18px; height: 18px; }
+ .cust-glass-preview__line {
+   position: absolute; left: 16px; height: 8px; border-radius: 999px;
+   background: var(--text-2); opacity: 0.22;
+ }
+ .cust-glass-preview__line:nth-of-type(4) { top: 56px; }
+ .cust-glass-preview__line:nth-of-type(5) { top: 70px; }
+ .cust-glass-preview__line:nth-of-type(6) { top: 42px; right: 16px; left: auto; }
+ .cust-glass-preview__glass {
+   position: absolute; inset: 0;
+   background: rgba(var(--glass-bg-rgb) / var(--glass-bg-opacity));
+-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   border: 1px solid var(--glass-border);
+-  box-shadow: var(--glass-shadow), var(--shadow-inset-highlight);
++  box-shadow: var(--glass-shadow);
+ }
+ .cust-glass-preview__glass::before {
+   content: ''; position: absolute; inset: 0;
+-  background: var(--glass-highlight); /* 高光滑杆实时可见 */
++  background-image: var(--acrylic-noise); background-size: 120px 120px;
++  opacity: var(--noise-opacity, 0.04); /* 噪点滑杆实时可见 */
+ }
+ 
+ /* ---- 色彩微调：色相/饱和度组合色预览点 ---- */
+ .cust-tint-swatch {
+   display: inline-block; width: 14px; height: 14px; margin-right: var(--space-2);
+   border-radius: 50%; background: var(--swatch);
+   box-shadow: 0 0 0 1px var(--glass-border), inset 0 0 0 1px rgba(255,255,255,0.15);
+   vertical-align: -2px;
+ }
+ 
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 4dc9853..6686a8c 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -313,32 +313,32 @@ test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% 
+   // 滚动确实发生了（wheel 100px 被消费，吸附位置在初始之上）
+   const scrolled = await list.evaluate(el => el.scrollTop);
+   expect(scrolled).toBeGreaterThan(50);
+   // 最近项被选中且中心对齐视口 38.2% 锚线（黄金比例锚点，非居中；精确吸附，delta < 4px）
+   const activeBox = await list.locator('.c-navwheel__item--active').boundingBox();
+   const listBox = await list.boundingBox();
+   const anchorDelta = Math.abs((activeBox.y + activeBox.height / 2) - (listBox.y + listBox.height * 0.382));
+   expect(anchorDelta).toBeLessThan(4);
+ });
+ 
+-// —— B2-1 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
++// —— B2-1 亚克力材质两档（磨砂 backdrop-filter / 纯色不透明降级）——
+ // 默认 blurEnabled=true → html data-glass="on" + 表面 backdrop-filter 生效；
+-// 外观分区「玻璃磨砂」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
++// 外观分区「亚克力材质」开关（定制器共用实现）关闭 → data-glass="off" + backdrop-filter none；
+ // 开关写 store（saveConfig），reload 冷启动保持关闭 —— 完整配置链路（defaults→store→apply）。
+ 
+-test('玻璃两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
++test('亚克力两档：默认磨砂，关闭后纯色不透明（外观开关 + 持久化）', async ({ page }) => {
+   await page.goto('/?mode=app');
+   // 默认磨砂：html data-glass=on + 导航栏 backdrop-filter 生效
+   await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
+   const blur = await page.locator('.app-main__nav-l').evaluate((el) => getComputedStyle(el).backdropFilter);
+   expect(blur).toContain('blur');
+-  // 设置→外观：玻璃磨砂开关初始为开
++  // 设置→外观：亚克力材质开关初始为开
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.waitForTimeout(400);
+   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+   const glassSwitch = page.locator('.app-main__settings [data-glass-switch] .c-switch');
+   await expect(glassSwitch).toBeVisible();
+   await expect(glassSwitch).toHaveAttribute('aria-checked', 'true');
+   // 关闭 → data-glass 翻转为 off + backdrop-filter none（纯色不透明降级）
+   await glassSwitch.click();
+   await expect(page.locator('html')).toHaveAttribute('data-glass', 'off');
+   await expect(glassSwitch).toHaveAttribute('aria-checked', 'false');
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index d990207..076f35d 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -1,20 +1,20 @@
+ import { test, expect } from '@playwright/test';
+ import { openSettingsPartition } from './helpers.js';
+ 
+ // B1-3 迁移：docs 定制器抽屉（.topbar__customizer → .cust-panel）→ 应用壳「外观」设置分区
+ // （APP_SECTIONS index 1）。外观分区为定制器整页形态（renderCustomizerGroups 惰性挂载，
+ // 6 组 .cust-group 与抽屉面板共用同一实现 + 同一份 store），滑杆实时链路不变。
+ // 取舍：导出（.cust-export）与重置（.cust-reset）在分区整页形态无对应（footer 为抽屉面板
+ // 专属），相应用例删除，保留滑杆 → CSS 变量实时生效的核心行为验证。
+ 
+-test('调整玻璃透明度实时生效', async ({ page }) => {
++test('调整亚克力透明度实时生效', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+   const slider = appr.locator('.cust-row:has-text("透明度") input[type="range"]');
+   await slider.fill('0.8');
+   const bgOpacity = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--glass-bg-opacity').trim());
+   expect(bgOpacity).toBe('0.8');
+ });
+ 
+ test('色相滑杆实时覆盖 --accent 且数值区显示', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+@@ -28,10 +28,19 @@ test('色相滑杆实时覆盖 --accent 且数值区显示', async ({ page }) =>
+ });
+ 
+ test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+   const temp = appr.locator('.cust-row:has-text("色温") input[type="range"]');
+   await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
+   let hue = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
+   expect(hue).toBe('40');
+ });
++
++test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
++  await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
++  await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
++  await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
++});
+diff --git a/tests/e2e/visual-regression.spec.js b/tests/e2e/visual-regression.spec.js
+index 7c2fef2..435cb2b 100644
+--- a/tests/e2e/visual-regression.spec.js
++++ b/tests/e2e/visual-regression.spec.js
+@@ -2,25 +2,28 @@ import { test, expect } from '@playwright/test';
+ 
+ // 视觉回归（Task 21 + Task A7 + Task B1-4 重构）：应用壳 + 设置「组件/动效」分区截图。
+ // docs 渲染已删除（B1-4），基线不再含 docs 展示页 —— 全部走 '?mode=app'（浏览器与 Tauri 一致）。
+ // 稳定性：Windows GPU 文字抗锯齿跨实例抖动会让 toHaveScreenshot 偶发失败，
+ // 已在 playwright.config.js 强制 --use-angle=swiftshader 软件栅格化（像素级确定性）。
+ // 基线须在相同参数下生成（--update-snapshots）。
+ // 首次运行生成基线：npx playwright test tests/e2e/visual-regression.spec.js --update-snapshots
+ // 之后 npm run test:visual 对比基线；界面有意变更（含新组件/令牌）后需重新生成。
+ // accent 抽样取 3 套（默认靛蓝 + 暖色琥珀 + 冷色翡翠）覆盖色相两端，基线不膨胀。
+ // SHOTS：name / selector / settingsPartitionIndex（⚙ 进入设置右窗分区项序号；null = 单窗口态不进设置）。
+-//   应用壳右窗默认收起单窗口态，无入场相位；设置分区惰性挂载展示内容（组件/动效），
++//   应用壳右窗默认收起单窗口态，无入场相位；设置分区惰性挂载展示内容（外观定制器/组件/动效），
+ //   截图稳定化沿用 data-motion=off + animations disabled（入场 stagger 相位无关）。
++//   appearance-partition：B2 返工后外观分区「表面质感」组（亚克力开关 + 噪点强度滑杆 + 噪点预览），
++//   锁定自定义器整页形态的亚克力观感（与 R2 起 surface 配方一致）。
+ 
+ const SHOTS = [
+   ['app-main', '.app-main', null],
++  ['appearance-partition', '.app-main__settings [data-page="appearance"]', 1],
+   ['components-partition', '.app-main__settings [data-page="components"]', 8],
+   ['motion-partition', '.app-main__settings [data-page="motion"]', 9],
+ ];
+ 
+ const THEMES = ['light', 'dark'];
+ const ACCENTS = ['indigo', 'amber', 'emerald'];
+ // 最长入场动效：剪贴板列表 stagger（30ms × 8 + 200ms = 440ms），留余量
+ const SETTLE_MS = 600;
+ 
+ for (const [name, selector, partition] of SHOTS) {
+@@ -35,21 +38,24 @@ for (const [name, selector, partition] of SHOTS) {
+         await page.evaluate(([t, a]) => {
+           localStorage.setItem('ui-design-config', JSON.stringify({ theme: t, accent: a }));
+         }, [theme, accent]);
+         await page.reload();
+         await page.locator('.app-main').first().waitFor();
+         if (partition != null) {
+           // 设置分区基线：⚙ 进入设置 → 点右窗分区项 → 等惰性挂载（动态 import 完成后内容非空）
+           await page.locator('.c-titlebar__control--settings').click();
+           await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+           await page.locator('.app-main__nav-r .c-navwheel__item').nth(partition).click();
+-          if (partition === 8) {
++          if (partition === 1) {
++            // 外观分区：定制器整页形态 6 组（含「表面质感」组 + 噪点预览），锁定 .cust-group 计数
++            await expect(page.locator('.app-main__settings [data-page="appearance"] .cust-group')).toHaveCount(6);
++          } else if (partition === 8) {
+             // 组件分区：6 组矩阵 + 1 个交互悬浮窗实例块（csg count 7）+ 剪贴板悬浮窗组合示例
+             await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
+             await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
+           } else {
+             await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
+           }
+         }
+         await page.evaluate(([t, a]) => {
+           document.documentElement.dataset.theme = t;
+           document.documentElement.dataset.accent = a;
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+new file mode 100644
+index 0000000..fe27e63
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..c984690
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..213675a
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+new file mode 100644
+index 0000000..652c973
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+new file mode 100644
+index 0000000..91ff1d4
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+new file mode 100644
+index 0000000..770403b
+Binary files /dev/null and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index 024b799..e1ca74b 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -22,26 +22,26 @@ describe('applyConfig', () => {
+   });
+   it('玻璃与动效参数写入 CSS 变量覆盖层', () => {
+     applyConfig({ ...DEFAULTS, glass: { opacity: 0.8, blur: 30, noise: 0.06 },
+       motion: { enabled: true, durationScale: 1, springStrength: 0.6 } }, root);
+     const s = root.style;
+     expect(s.getPropertyValue('--glass-bg-opacity')).toBe('0.8');
+     expect(s.getPropertyValue('--glass-blur')).toBe('30px');
+     expect(s.getPropertyValue('--dur-fast')).toBe('120ms');
+     expect(s.getPropertyValue('--ease-spring')).toBe('cubic-bezier(0.34, 1.336, 0.64, 1)');
+   });
+-  it('玻璃磨砂开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
++  it('亚克力材质开（blurEnabled=true）：写 --glass-enabled: 1 与 data-glass="on"', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: true } }, root);
+     expect(root.style.getPropertyValue('--glass-enabled')).toBe('1');
+     expect(root.dataset.glass).toBe('on');
+   });
+-  it('玻璃磨砂关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
++  it('亚克力材质关（blurEnabled=false）：写 --glass-enabled: 0 与 data-glass="off"', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, blurEnabled: false } }, root);
+     expect(root.style.getPropertyValue('--glass-enabled')).toBe('0');
+     expect(root.dataset.glass).toBe('off');
+   });
+   it('噪点强度写入 --noise-opacity 覆盖', () => {
+     applyConfig({ ...DEFAULTS, glass: { ...DEFAULTS.glass, noise: 0.06 } }, root);
+     expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+   });
+   it('默认噪点强度 0.04 写入', () => {
+     applyConfig(DEFAULTS, root);

@@ -148,3 +148,27 @@ Base: 0839414（branch feature/b2-visual，自 main 检出，工作树 Cargo.tom
 - **实现**：customizer-panel.js GROUPS 第 2 组「表面质感」+ 开关「亚克力材质」+ glassPreview 注释去「高光」改「噪点强度」（闭环 R1 M1）；customizer.css `.cust-panel`/`.cust-glass-preview__glass` backdrop-filter 统一亚克力配方（saturate(1.4) → `--acrylic-saturate`/`--acrylic-brightness`，闭环 R2 复查范围）+ box-shadow 去 inset-highlight + `::before` 高光层改噪点层（`--acrylic-noise` 120px 平铺 + `opacity: var(--noise-opacity)`，实时反映噪点滑杆）；settings-pages.js / component-showcase-full.js 措辞「玻璃」→「亚克力」；测试名/注释同步（apply「亚克力材质开/关」、app-shell「亚克力两档」、customizer「调整亚克力透明度」）；visual-regression.spec.js SHOTS **新增外观分区截图**（partition 1，挂载守卫断言 `.cust-group` count 6）
 - **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
 - **评审**：待评审
+
+## Task B2-R5: 自定义器调整 + 措辞同步
+
+- **状态**：完成（2026-08-06，评审通过）
+- **提交**：`2c53301` `feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步` + `2e72da6` `docs: R5 执行留痕`
+- **验证**：npm test 60/60；npm run test:e2e 95/95（含新「表面质感」用例 + 「亚克力两档」重命名回归 + 24 张视觉基线）；npm run test:visual 24/24；npm run build 通过
+- **实现**：customizer-panel.js 组名「玻璃材质」→「表面质感」、开关「玻璃磨砂」→「亚克力材质」（aria-label 同步，`data-glass-switch` 选择器不变）、预览注释去「高光」改「噪点强度」（闭环 R1 M1）；customizer.css `.cust-panel`/`.cust-glass-preview__glass` backdrop-filter 统一亚克力配方（`--acrylic-saturate`/`--acrylic-brightness`）+ box-shadow 去 `--shadow-inset-highlight`（闭环 R2 复查「裸 saturate(1.4) 属 R5」）+ `::before` 高光层改噪点层（120px 平铺 + `--noise-opacity`，实时反映噪点滑杆）；措辞全量同步（settings-pages 关于页 / component-showcase 卡片 + about 弹窗 / apply.test / app-shell.spec / customizer.spec）
+- **简报/报告**：docs/superpowers/sdd/task-B2-R5-brief.md / task-B2-R5-report.md
+- **评审**：规格 ✅ / Approved（0 Critical/Important，4 Minor）
+- **必要偏离（brief 内演进，评审验证与意图一致且必要）**：视觉基线 18→24——为覆盖被改外观分区，visual-regression.spec.js SHOTS 新增外观分区 shot（partition 1，挂载守卫断言 `.cust-group` count 6）；仅新增 6 张 appearance-partition-*，既有 18 张零字节变动（提交文件清单独立证实）；把「count 6 不破坏」固化为基线门禁
+- **Minor 留收尾**：① apply.test.js:23 测试名「玻璃与动效参数…」保留「玻璃」指代 `--glass-*` 变量族（命名保留口径下可辩护）；② customizer-css.js:34 注释「玻璃/排版/…」保留（内部注释非用户可见）；③ themes.css `--glass-highlight-rgb/highlight/--shadow-inset-highlight` 定义已零消费者（spec §6 允许保留或移除，可收尾清理）；④ settings-pages.js:94 外观页头「与右侧抽屉面板共用同一份配置」提及的抽屉为死代码（mountCustomizer 无人调用，前置存在，超 R5 范围）
+
+## 执行状态
+
+- Task B2-1 玻璃材质两档：✅ 完成（55d0bcc，评审通过）→ 返工 R2 覆盖表面应用
+- Task B2-2 浏览器装饰背景层：✅ 完成（20ab435，评审通过）→ 返工 R3 重调预设
+- Task B2-3 导航图标四项增强：✅ 完成（670396c，评审通过）→ 返工 R4 去光晕
+- 最终整体评审（首轮）：✅ Ready to merge → 用户验收否决，进入返工
+- Task R1 亚克力材质令牌 + 噪点链路：✅ 完成（e5b1ed9，评审通过）
+- Task R2 表面应用亚克力 + 去高光 + 闭环 M-1：✅ 完成（1d45bd4 + bbfbe62，评审通过）
+- Task R3 背景层预设柔和补色：✅ 完成（e1cefd5，评审通过）
+- Task R4 图标选中态去光晕：✅ 完成（079f9d7，评审通过）
+- Task R5 自定义器调整 + 措辞同步：✅ 完成（2c53301，评审通过）
+- R-验收 用户视觉验收 + 最终评审 + 合并：待执行
