@@ -66,3 +66,15 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **简报/报告**：docs/superpowers/sdd/task-B4-5-brief.md / task-B4-5-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor）——Minor：① 模块作用域句柄（无害）；② setFocus 未 await（cosmetic）；③ e2e 只断言 5/8 opts（brief 字面，width/height 未守卫，可选加固）
 - **执行状态**：Task B4-5：✅ 完成（f307803，评审通过）
+
+## Task B4-6: 独立悬浮窗 —— strip 窗口行为
+
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，0 Minor）
+- **提交**：`7b3e5a7` `feat: strip 窗口行为（系统拖拽/尺寸贴合/位置持久化/关闭，B4-6）`（amend 自 1df5f19）
+- **验证**：TDD 红→绿（e2e mock 实测 0 调用红 → 实现绿）；floatstrip 7/7（新用例 + 浏览器回归）；npm test 57/57；npm run test:e2e 103 passed（含视觉 24 零漂移，未跑 --update-snapshots）；npm run build 通过
+- **实现**：mountFloatStrip 加 `windowMode`/`onResize`（默认 false/noop 向后兼容）；`startDrag` 窗口分支系统拖拽；`toggleOrientation` 窗口模式 `onResize()`/非窗口 `setPos`，`--rotating` 移除与 `onStateChange` 无条件；strip-main Tauri 分支（`.strip-root--window` 铺满 + 位置恢复 try/catch + fit 贴合 + onMoved 去抖 200ms 保存 + onClose→win.close）；float-strip.css 铺满规则
+- **控制器裁定修复**：brief 原 verbatim `if (windowMode) { onResize(); return; }` 早退跳过 `--rotating` 类移除 → 真 Tauri 旋转后内容 opacity:0 永不可见（实施者披露）→ 裁定改为分支只 gate setPos/onResize、类移除与 onStateChange 无条件（评审验证浏览器路径字节等价）
+- **测试适配（已披露）**：rotate 点击前加 `hover()`（`.c-strip__ctrl` 既有 pointer-events:none 直到 hover；真 Tauri 窗口=内容尺寸指针恒在 strip 上），断言不变
+- **简报/报告**：docs/superpowers/sdd/task-B4-6-brief.md / task-B4-6-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，0 Minor）——评审独立验证 rotate 修复形态 + 浏览器字节等价 + e2e 会红于 pre-task 码
+- **执行状态**：Task B4-6：✅ 完成（7b3e5a7，评审通过）

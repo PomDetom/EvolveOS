@@ -1,0 +1,206 @@
+# Review package: cd5777f..HEAD
+
+## Commits
+7b3e5a7 feat: strip 窗口行为（系统拖拽/尺寸贴合/位置持久化/关闭，B4-6）
+
+## Files changed
+ src/app/strip-main.js                      | 35 +++++++++++++++++++++++-
+ src/components/float-strip/float-strip.css |  6 ++++
+ src/components/float-strip/float-strip.js  |  8 ++++--
+ tests/e2e/floatstrip.spec.js               | 44 ++++++++++++++++++++++++++++++
+ 4 files changed, 90 insertions(+), 3 deletions(-)
+
+## Diff
+diff --git a/src/app/strip-main.js b/src/app/strip-main.js
+index 8b7ae6c..6d78349 100644
+--- a/src/app/strip-main.js
++++ b/src/app/strip-main.js
+@@ -8,12 +8,45 @@ export function mountStripMode() {
+   const root = document.createElement('div');
+   root.className = 'strip-root';
+   root.innerHTML = renderFloatStrip({
+     content: renderTokenMonitor({
+       value: '97.2%',
+       status: 'ok',
+       trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
+     }),
+   });
+   document.body.appendChild(root);
+-  mountFloatStrip(root, { onClose: () => root.remove() });
++  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
++  if (win) {
++    // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
++    root.classList.add('strip-root--window');
++    const strip = root.querySelector('.c-strip');
++    const STORAGE_KEY = 'ui-design-strip-pos';
++    // 位置恢复
++    try {
++      const saved = localStorage.getItem(STORAGE_KEY);
++      if (saved) {
++        const { x, y } = JSON.parse(saved);
++        if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
++      }
++    } catch { /* 损坏存档忽略 */ }
++    // 尺寸贴合内容（初始 + 旋转）
++    const fit = () => {
++      const r = strip.getBoundingClientRect();
++      win.setSize({ width: Math.max(1, Math.ceil(r.width)), height: Math.max(1, Math.ceil(r.height)) }).catch(() => {});
++    };
++    fit();
++    // 位置持久化（去抖 200ms）
++    let saveTimer = null;
++    win.onMoved?.(() => {
++      clearTimeout(saveTimer);
++      saveTimer = setTimeout(() => {
++        win.outerPosition?.().then(({ x, y }) => {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
++        }).catch(() => {});
++      }, 200);
++    });
++    mountFloatStrip(root, { windowMode: true, onResize: fit, onClose: () => win.close().catch(() => {}) });
++  } else {
++    mountFloatStrip(root, { onClose: () => root.remove() });
++  }
+ }
+diff --git a/src/components/float-strip/float-strip.css b/src/components/float-strip/float-strip.css
+index 47deff9..079d260 100644
+--- a/src/components/float-strip/float-strip.css
++++ b/src/components/float-strip/float-strip.css
+@@ -129,10 +129,16 @@
+   padding-left: var(--space-1);
+ }
+ .c-tmon__trend-bar {
+   width: 4px;
+   height: 16px;
+   border-radius: 2px;
+   background: var(--accent-400);
+   transform: scaleY(var(--tbar, 0));
+   transform-origin: bottom;
+ }
++
++/* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位 */
++.strip-root--window .c-strip {
++  position: static; right: auto; bottom: auto;
++  max-width: none; max-height: none;
++}
+diff --git a/src/components/float-strip/float-strip.js b/src/components/float-strip/float-strip.js
+index e791166..0353f2c 100644
+--- a/src/components/float-strip/float-strip.js
++++ b/src/components/float-strip/float-strip.js
+@@ -41,21 +41,21 @@ export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } =
+   const st = TOKEN_STATUSES.includes(status) ? status : 'ok'; // 状态白名单：非法值回落默认
+   const dot = `<span class="c-tmon__dot c-tmon__dot--${st}" role="img" aria-label="状态：${LABEL[st]}"></span>`;
+   const bars = trend.length
+     ? `<span class="c-tmon__trend" role="img" aria-label="趋势">${trend
+         .map((v) => `<i class="c-tmon__trend-bar" style="--tbar:${Math.max(0, Math.min(1, Number(v) || 0))}"></i>`)
+         .join('')}</span>`
+     : '';
+   return `<div class="c-tmon">${dot}<span class="c-tmon__value">${escapeHtml(value)}</span>${bars}</div>`;
+ }
+ 
+-export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}) {
++export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windowMode = false, onResize = () => {} } = {}) {
+   const strip = root.classList.contains('c-strip') ? root : root.querySelector('.c-strip');
+   if (!strip) return null;
+   const content = strip.querySelector('.c-strip__content');
+   const rotateBtn = strip.querySelector('.c-strip__rotate');
+   const closeBtn = strip.querySelector('.c-strip__close');
+   const dragHandle = strip.querySelector('.c-strip__drag');
+ 
+   let orientation = strip.dataset.orientation === 'vertical' ? 'vertical' : 'horizontal';
+ 
+   // —— 定位：transform = pos - 未变换基准位（底右 dock）——
+@@ -111,29 +111,33 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}
+       const vw = window.innerWidth, vh = window.innerHeight;
+       let x = Math.max(0, Math.min(p.x, vw - r.width));
+       let y = Math.max(0, Math.min(p.y, vh - r.height));
+       const edge = strip.dataset.snapped;
+       if (edge) {
+         if (edge.includes('left')) x = 0;
+         if (edge.includes('right')) x = vw - r.width;
+         if (edge.includes('top')) y = 0;
+         if (edge.includes('bottom')) y = vh - r.height;
+       }
+-      setPos(x, y);
++      if (windowMode) { onResize(); } else { setPos(x, y); }
+       strip.classList.remove('c-strip--rotating');
+       onStateChange({ orientation, snapped: strip.dataset.snapped || null });
+     }, dur);
+   }
+ 
+   // —— 拖动（pointer 事件 + setPointerCapture；move/up 挂 window 兜底命中）——
+   function startDrag(e) {
+     if (e.button !== 0) return;
++    if (windowMode) {
++      window.__TAURI__?.window?.getCurrentWindow?.()?.startDragging?.().catch?.(() => {});
++      return;
++    }
+     const el = e.currentTarget;
+     const start = getPos();
+     const sx = e.clientX, sy = e.clientY;
+     let moved = false;
+     strip.classList.add('c-strip--dragging');
+     try { el.setPointerCapture(e.pointerId); } catch { /* noop */ }
+     function onMove(ev) {
+       const nx = start.x + ev.clientX - sx;
+       const ny = start.y + ev.clientY - sy;
+       if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > MOVE_THRESHOLD) moved = true;
+diff --git a/tests/e2e/floatstrip.spec.js b/tests/e2e/floatstrip.spec.js
+index 1f3744d..cadaefd 100644
+--- a/tests/e2e/floatstrip.spec.js
++++ b/tests/e2e/floatstrip.spec.js
+@@ -87,10 +87,54 @@ test('app 壳：右下 FloatBall → 点击展开 FloatStrip 演示（右下贴
+   await ball.click();
+   await page.waitForTimeout(SETTLE_MS);
+   const strip = page.locator('.c-strip');
+   await expect(strip).toHaveCount(1);
+   await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
+   await expect(strip.locator('.c-strip__rotate')).toHaveCount(1);
+   // 演示实例右下贴边（默认吸附位 bottom-right）
+   const box = await strip.boundingBox();
+   expect(box.x + box.width).toBeGreaterThan(700); // 贴右边缘附近
+ });
++
++test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久化、X 关闭窗口', async ({ page }) => {
++  await page.addInitScript(() => {
++    const calls = [];
++    window.__TAURI__ = { window: { getCurrentWindow: () => ({
++      startDragging: () => { calls.push('startDragging'); return Promise.resolve(); },
++      setSize: (s) => { calls.push(['setSize', s]); return Promise.resolve(); },
++      setPosition: (p) => { calls.push(['setPosition', p]); return Promise.resolve(); },
++      outerPosition: () => { calls.push('outerPosition'); return Promise.resolve({ x: 300, y: 200 }); },
++      onMoved: (fn) => { window.__stripMovedFn__ = fn; return Promise.resolve(() => {}); },
++      close: () => { calls.push('close'); return Promise.resolve(); },
++    }) } };
++    window.__stripWinCalls__ = calls;
++    localStorage.setItem('ui-design-strip-pos', JSON.stringify({ x: 120, y: 80 }));
++  });
++  await page.goto('/?mode=strip');
++  await expect(page.locator('.c-strip')).toBeVisible();
++  // 位置恢复：setPosition 被调用且为存档值
++  let calls = await page.evaluate(() => window.__stripWinCalls__);
++  expect(calls).toContainEqual(['setPosition', { x: 120, y: 80 }]);
++  // 位置保存：触发 onMoved → outerPosition → localStorage 更新为 300/200
++  await page.evaluate(() => window.__stripMovedFn__());
++  await page.waitForTimeout(350); // 去抖 200ms
++  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-strip-pos')));
++  expect(saved).toEqual({ x: 300, y: 200 });
++  // 拖动 → startDragging（不跟踪指针/不磁吸）
++  await page.locator('.c-strip__drag').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
++  calls = await page.evaluate(() => window.__stripWinCalls__);
++  expect(calls).toContain('startDragging');
++  // 旋转 → setSize 贴合（先 hover 使控制条浮现可点，与既有用例同模式；
++  // 真实 Tauri 窗口=内容尺寸，指针恒在 strip 上 → hover 恒成立）
++  const before = calls.filter((c) => c[0] === 'setSize').length;
++  const strip = page.locator('.c-strip');
++  await strip.hover();
++  await page.waitForTimeout(SETTLE_MS);
++  await page.locator('.c-strip__rotate').click();
++  await page.waitForTimeout(300); // 交叉淡入淡出 240ms
++  calls = await page.evaluate(() => window.__stripWinCalls__);
++  expect(calls.filter((c) => c[0] === 'setSize').length).toBeGreaterThan(before);
++  // X 关闭 → close
++  await page.locator('.c-strip__close').click();
++  calls = await page.evaluate(() => window.__stripWinCalls__);
++  expect(calls).toContain('close');
++});
