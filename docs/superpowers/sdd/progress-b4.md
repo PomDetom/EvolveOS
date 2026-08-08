@@ -42,4 +42,5 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **实现**：全链删净 —— `defaults.js` 删 `color:{...}` + RANGES hue/saturation/temperature 三行；`apply.js` 删 `applyColorTint`/`temperatureToHue`/`hexToHsl`（grep 确认无残留消费者）/ACCENTS import/两处覆盖调用；`customizer-panel.js` 删 CFG_PATH 三键、整体色调组 sliders、`hueSliderValue`/`tintHsl`/`tintSwatch`、renderSlider/fmtValue/syncUI 的 hue 分支，预览卡 `--preview-accent` 改 `ACCENTS.find(...).color`；`customizer-css.js` 删 tint/temp 导出链；`customizer.css` 删死 CSS `.cust-tint-swatch`；`tokens.css` 注释去色温滑杆引用
 - **verbatim 适配**：① brief 新 e2e 断言 `rgb(45, 212, 191)` —— 实测未注册 CSS 自定义属性保持原始序列化（hex）→ 改 `'#2dd4bf'`（与 tokens.spec 对同一变量既有断言一致，语义不变）；② brief「一个 commit」与报告需含 feat 哈希冲突 → 沿用 B4-1/2 惯例拆 feat + docs 两枚（报告承载哈希）
 - **简报/报告**：docs/superpowers/sdd/task-B4-3-brief.md / task-B4-3-report.md
-- **执行状态**：Task B4-3：✅ 完成（8eb3162，待评审）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① 提交拆 feat + docs 两枚（既有惯例）；② brief Step 1 预期红自相矛盾（既要删 temperatureToHue 又要其报不存在），实施者正确把真实 RED 定位到 customizer.test.js 闭环
+- **执行状态**：Task B4-3：✅ 完成（8eb3162，评审通过）

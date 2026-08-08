@@ -1,0 +1,843 @@
+# Review package: 53ee82c..HEAD
+
+## Commits
+56fd99e docs: B4-3 执行留痕（简报 + 报告 + 台账）
+8eb3162 feat: 删色彩微调组（色相/饱和度/色温），强调色=预设色板直出（B4-3）
+
+## Files changed
+ docs/superpowers/sdd/progress-b4.md                |  10 ++
+ docs/superpowers/sdd/task-B4-3-brief.md            |  81 ++++++++++++++++
+ docs/superpowers/sdd/task-B4-3-report.md           | 102 +++++++++++++++++++++
+ src/config/apply.js                                |  52 -----------
+ src/config/defaults.js                             |   4 -
+ src/demo/customizer-css.js                         |  20 ----
+ src/demo/customizer-panel.js                       |  51 ++---------
+ src/styles/customizer.css                          |   8 --
+ src/styles/tokens.css                              |   3 +-
+ tests/e2e/customizer.spec.js                       |  29 +++---
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 357496 -> 368543 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 341466 -> 352742 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 375543 -> 384091 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 241856 -> 249260 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 243584 -> 251697 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 198311 -> 206660 bytes
+ tests/unit/apply.test.js                           |  37 +-------
+ 17 files changed, 217 insertions(+), 180 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b4.md b/docs/superpowers/sdd/progress-b4.md
+index 9ce12a1..ed7c48d 100644
+--- a/docs/superpowers/sdd/progress-b4.md
++++ b/docs/superpowers/sdd/progress-b4.md
+@@ -26,10 +26,20 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树
+ ## Task B4-2: 文字排版真实生效（baseSize/scale 全局缩放）
+ 
+ - **状态**：完成（2026-08-08，见 task-B4-2-report.md；DONE_WITH_CONCERNS：两处 verbatim 适配）
+ - **提交**：`b6ba3ac` `feat: 文字排版真实生效（字号令牌派生自 --font-size-base，baseSize/scale 全局缩放，闭环 B4-4）`
+ - **验证**：TDD 红→绿（单测先红 `expected '14px' to be 'calc(14px * 1.15)'` → 改三处源 → 绿）；npm test 62/62（+1）；npm run test:e2e 101 passed（含视觉 24 **零漂移**，未跑 --update-snapshots；含新增「文字排版全局缩放字号」e2e）；npm run build 通过
+ - **实现**：`--font-size-base = calc(baseSize px * scale)`（applyConfig + customizer-css 导出对齐）；tokens.css 字号令牌全部派生自 `--font-size-base`（`* 5/7、6/7、8/7、10/7、12/7、*2`，默认 14×1 计算值浮点精确整数 → 零漂移）
+ - **verbatim 适配**：① brief 乘数 0.714/0.857/1.143/1.429/1.714 默认 14×1 下产生 9.996/11.998/16.002/20.006/23.996 子像素值 → 视觉 3/24 漂移（stash 归因确证）→ 改精确有理数以兑现零漂移 MUST；② brief e2e 选择器 `.cust-row:has-text("缩放")` 与「时长缩放」strict 冲突 → 改 `.cust-range[data-key="scale"]`
+ - **简报/报告**：docs/superpowers/sdd/task-B4-2-brief.md / task-B4-2-report.md
+ - **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor：① 单测断言精确字符串（brief 字面契约，可接受）；② e2e 方向断言可补精确值（brief 字面）；③ 提交拆 fix + docs 两枚（既有惯例）
+ - **执行状态**：Task B4-2：✅ 完成（b6ba3ac，评审通过）
++
++## Task B4-3: 删色彩微调组（色相/饱和度/色温），强调色 = 预设色板直出
++
++- **状态**：完成（2026-08-08，见 task-B4-3-report.md；DONE_WITH_CONCERNS：两处 verbatim 适配）
++- **提交**：`8eb3162` `feat: 删色彩微调组（色相/饱和度/色温），强调色=预设色板直出（B4-3）`
++- **验证**：TDD 红→绿（单测层红信号不在 apply.test.js —— 替换用例后即绿，因删 import 也删了唯一红引用；真实红信号在 customizer.test.js 渲染面板 `RANGES['hue']` 变 undefined → 两处 `g.sliders` 未定义兜底修复）；npm test 56/56（11 files）；npm run test:e2e 100 passed（含视觉基线 24；appearance-partition 6 张重生成）；npm run build 通过
++- **实现**：全链删净 —— `defaults.js` 删 `color:{...}` + RANGES hue/saturation/temperature 三行；`apply.js` 删 `applyColorTint`/`temperatureToHue`/`hexToHsl`（grep 确认无残留消费者）/ACCENTS import/两处覆盖调用；`customizer-panel.js` 删 CFG_PATH 三键、整体色调组 sliders、`hueSliderValue`/`tintHsl`/`tintSwatch`、renderSlider/fmtValue/syncUI 的 hue 分支，预览卡 `--preview-accent` 改 `ACCENTS.find(...).color`；`customizer-css.js` 删 tint/temp 导出链；`customizer.css` 删死 CSS `.cust-tint-swatch`；`tokens.css` 注释去色温滑杆引用
++- **verbatim 适配**：① brief 新 e2e 断言 `rgb(45, 212, 191)` —— 实测未注册 CSS 自定义属性保持原始序列化（hex）→ 改 `'#2dd4bf'`（与 tokens.spec 对同一变量既有断言一致，语义不变）；② brief「一个 commit」与报告需含 feat 哈希冲突 → 沿用 B4-1/2 惯例拆 feat + docs 两枚（报告承载哈希）
++- **简报/报告**：docs/superpowers/sdd/task-B4-3-brief.md / task-B4-3-report.md
++- **执行状态**：Task B4-3：✅ 完成（8eb3162，待评审）
+diff --git a/docs/superpowers/sdd/task-B4-3-brief.md b/docs/superpowers/sdd/task-B4-3-brief.md
+new file mode 100644
+index 0000000..1cd5494
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4-3-brief.md
+@@ -0,0 +1,81 @@
++# Task B4-3: 颜色方案 —— 删色彩微调组（整体色调 = 强调色选择）
++
++## 任务定位
++
++应用壳 B4 第三个任务。B4 功能 3 前半：删除会污染主题色的「整体色调」组内 色相/饱和度/色温 三个微调滑杆。色相可把强调色扭到任意色相（`applyColorTint` 覆盖 `--accent` → 整个界面强调色被污染），语义色为固定值（非强调色派生）。**强调色 = 预设色板直出**。删干净全链：config（defaults/RANGES）、apply（applyColorTint/temperatureToHue）、customizer（滑杆 + tint 助手 + 预览卡）、customizer-css 导出。B4-4 在其上扩展 ACCENTS。
++
++## 现状关键文件
++
++- `src/config/defaults.js`：`DEFAULTS.color = { hue:-1, saturation:100, temperature:0 }`；`RANGES` 有 hue/saturation/temperature 三键；`ACCENTS` 6 项
++- `src/config/apply.js`：`applyColorTint`（读 color.hue/saturation 覆盖 `--accent`/`--accent-hover`/`--accent-active`）、`temperatureToHue`（色温→`--neutral-hue`）、`applyConfig` 内调用两处
++- `src/demo/customizer-panel.js`：GROUPS「整体色调」组 `pre: accentCards + semanticBar` + sliders hue/saturation/temperature；`CFG_PATH` 三键；`tintHsl`/`hueSliderValue`/`tintSwatch`；`renderSlider` 的 hue 分支；`fmtValue` 的 hue 分支；`syncUI` 的 hue 分支；B3-2 预览卡 `updateOverview` 的 `--preview-accent: tintHsl(cfg)`
++- `src/demo/customizer-css.js`：`tintHsl` 函数 + `temperatureToHue` import + tint/temp 导出行
++- `tests/unit/apply.test.js`：色彩微调/色温用例（约 54-90 行）
++- `tests/e2e/customizer.spec.js`：「色相滑杆实时覆盖 --accent」「色温滑杆映射 --neutral-hue」两用例
++
++## 需求（唯一需求源，逐字执行）
++
++**1. apply.test.js**：顶部 import 改 `import { applyConfig } from '../../src/config/apply.js';`（去掉 `temperatureToHue`）。把 describe 内全部色彩微调/色温用例（hue 覆盖、饱和度缩放、teal hue、temperatureToHue、--neutral-hue 相关）替换为一条：
++
++```js
++it('不写 --accent/--neutral-hue 覆盖（强调色来自主题色板）', () => {
++  applyConfig(DEFAULTS, root);
++  expect(root.style.getPropertyValue('--accent')).toBe('');
++  expect(root.style.getPropertyValue('--neutral-hue')).toBe('');
++});
++```
++
++**2. defaults.js**：`DEFAULTS` 删 `color: {...}` 行；`RANGES` 删 hue/saturation/temperature 三行。
++
++**3. apply.js**：删 `applyColorTint`、`temperatureToHue`、`applyConfig` 内 `applyColorTint(cfg, root)` 调用与色温覆盖块（`--neutral-hue` 两行）。**先 grep `hexToHsl` 消费点**：applyColorTint 删后若 customizer-panel.js 删 tintSwatch 后无其它消费者，则连 `hexToHsl` 定义一并删；若有保留则保留导出。保留 `prefersDark`。
++
++**4. customizer-panel.js**：
++- `CFG_PATH` 删 hue/saturation/temperature 三键
++- GROUPS「整体色调」组：删 `sliders` 三行；desc 更新为 `预设主题色 / 语义色自动协调`
++- 删 `hueSliderValue`/`tintSwatch`/`tintHsl` 函数；`hexToHsl` import 若无其它消费一并删
++- `fmtValue` 删 hue 分支（`if (key === 'hue') return cfg.color.hue === -1 ? '跟随' : ...`），简化为 `return \`${readCfg(cfg, key)}${unit ?? ''}\``
++- `syncUI` 删 hue 分支（`[data-out="hue"]` swatch 更新、`if (key === 'hue')`）
++- `renderSlider` 删 `spec.key === 'hue'` 的 swatch/value 分支（`const swatch = ...`/`const value = ...` 改直接 `readCfg`）
++- 预览卡 `updateOverview` 的 `--preview-accent` 由 `tintHsl(cfg)` 改为：`ACCENTS.find((a) => a.id === cfg.accent)?.color ?? ACCENTS[0].color`
++
++**5. customizer-css.js**：删 `tintHsl` 函数、`temperatureToHue` import、`tintActive`/`tint`/`tintLine`/`tempLine` 及模板插值（`:root` 段删 `--accent:` 覆盖行与 `--neutral-hue:` 行）。
++
++**6. customizer.spec.js**：删「色相滑杆实时覆盖 --accent 且数值区显示」「色温滑杆映射 --neutral-hue 暖端」两用例；新增：
++
++```js
++test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
++  const appr = await openSettingsPartition(page, 1);
++  await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-accent-card')).toHaveCount(6);
++  // 切强调色 → --accent 直接取色板（无微调覆盖）
++  await appr.locator('.cust-accent-card[data-accent="teal"]').click();
++  const accent = await page.evaluate(() =>
++    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
++  expect(accent).toBe('rgb(45, 212, 191)'); // teal-400 #2dd4bf
++});
++```
++
++## 流程（TDD）
++
++1. 改 apply.test.js（import + 替换用例）→ `npx vitest run tests/unit/apply.test.js` 确认红（temperatureToHue 不存在 / 字段已删）
++2. 改 defaults.js + apply.js → 单测确认绿；`npm test` 全绿（customizer.test.js 只测订阅退订应零影响）
++3. 改 customizer-panel.js + customizer-css.js
++4. 改 customizer.spec.js（删两用例 + 新用例）→ `npx playwright test tests/e2e/customizer.spec.js` 红→绿
++5. **视觉基线重生成**（appearance-partition 6 张）：`npm run test:visual` 确认仅 appearance-partition 失败（微调组删行 + 预览卡强调色点色值微变 hsl65→hex69），其余 18 张零漂移 → 解码比对确认差异区域 → `npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots` → 复跑 24/24 绿
++6. 全量回归：`npm test` + `npm run test:e2e` + `npm run build`
++
++## 注意
++
++- 存量 localStorage `color:{...}` 为死键，不清理。
++- B3-2 预览卡 e2e（teal 点击 → `--preview-accent` 变化）必须继续通过（改后 before=indigo hex、after=teal hex，仍不同）。
++- 工作树 `src-tauri/Cargo.toml` 行尾噪声不动、不提交。
++
++## 提交
++
++一个 commit：`feat: 删色彩微调组（色相/饱和度/色温），强调色=预设色板直出（B4-3）`
++
++## 报告
++
++完整报告写入 `docs/superpowers/sdd/task-B4-3-report.md`。回复本会话只需：状态 + 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B4-3-report.md b/docs/superpowers/sdd/task-B4-3-report.md
+new file mode 100644
+index 0000000..10b1875
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4-3-report.md
+@@ -0,0 +1,102 @@
++# Task B4-3 执行报告：删色彩微调组（色相/饱和度/色温），强调色 = 预设色板直出
++
++- 任务：B4-3（B4 桌面真实化第 3 任务）
++- 状态：DONE_WITH_CONCERNS（两处 verbatim 适配，见「偏差修正」）
++- 提交：`8eb3162`（feat）+ 本文档 docs 提交（docs 留痕）
++- 日期：2026-08-08
++
++## 一、变更总览
++
++删净「整体色调」组内 色相/饱和度/色温 三个微调滑杆的全链路，强调色改为预设色板直出。**删前 grep 确认 `hexToHsl` 消费者**（apply.js applyColorTint、customizer-panel.js hueSliderValue/tintHsl、customizer-css.js tintHsl）——全部随本任务删除，故 `hexToHsl` 定义连删；`ACCENTS` import 仅 applyColorTint 用，一并删。保留 `prefersDark`。
++
++| 文件 | 变更 |
++|---|---|
++| `src/config/defaults.js` | `DEFAULTS` 删 `color:{ hue:-1, saturation:100, temperature:0 }`；`RANGES` 删 hue/saturation/temperature 三行 |
++| `src/config/apply.js` | 删 `applyColorTint`/`temperatureToHue`/`hexToHsl` 三函数、`ACCENTS` import、`applyConfig` 内 `applyColorTint(cfg, root)` 调用与色温覆盖块（`--neutral-hue` 两行）；保留 `prefersDark` |
++| `src/demo/customizer-panel.js` | `CFG_PATH` 删 hue/saturation/temperature 三键；「整体色调」组 desc 改「预设主题色 / 语义色自动协调」、删 sliders；删 `hueSliderValue`/`tintSwatch`/`tintHsl`；`fmtValue` 删 hue 分支简化为 `readCfg` 直取；`renderSlider` 删 hue swatch/value 分支；`syncUI` 删 hue 分支；预览卡 `--preview-accent` 改 `ACCENTS.find((a) => a.id === cfg.accent)?.color ?? ACCENTS[0].color`；`renderCustomizerGroups` 与 `syncUI` 对 `g.sliders` 做 `?? []` 兜底（整体色调组不再有 sliders 键） |
++| `src/demo/customizer-css.js` | 删 `tintHsl`、`temperatureToHue` import、`tintActive`/`tint`/`tintLine`/`tempLine` 及 `:root` 段 `--accent:` 覆盖行与 `--neutral-hue:` 行 |
++| `src/styles/customizer.css` | 删死 CSS `.cust-tint-swatch`（不再有任何元素渲染该 class；brief 清单外的小清理） |
++| `src/styles/tokens.css` | 注释去掉「定制器色温滑杆经 apply.js 写 --neutral-hue 覆盖」过期引用（`--neutral-hue: 235` 本体保留；brief 清单外的小清理） |
++| `tests/unit/apply.test.js` | import 去掉 `temperatureToHue`；色彩微调/色温用例（原 54-90 行）替换为单条「不写 --accent/--neutral-hue 覆盖」 |
++| `tests/e2e/customizer.spec.js` | 删「色相滑杆实时覆盖 --accent 且数值区显示」「色温滑杆映射 --neutral-hue 暖端」两用例；新增「外观分区：色彩微调滑杆已移除，强调色预设保留」；B3-1 用例组 0 desc 断言同步更新为新 desc |
++| 视觉基线 | `tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-{light,dark}-{indigo,amber,emerald}-chromium-win32.png` 6 张重生成 |
++
++## 二、TDD 执行记录
++
++### 1. apply.test.js 重写（预期红 → 实测绿）
++
++改 import + 替换用例后 `npx vitest run tests/unit/apply.test.js`：
++
++```
++Test Files  1 passed (1)
++     Tests  10 passed (10)
++```
++
++**红信号未按 brief 预期在 apply.test.js 落地**：brief 步骤 1 预期红因「temperatureToHue 不存在」，但同一步骤又要求去掉 import 中的 `temperatureToHue` —— 唯一红引用随 import 一并删除，且新用例断言（`--accent`/`--neutral-hue` 均 `''`）对当前实现（默认态 removeProperty）即成立。真实红信号在 customizer.test.js 层：改 defaults.js/apply.js 后 `npm test` 报 `RANGES['hue']` 为 undefined 崩溃（customizer-panel.js 仍渲染 hue 滑杆），修复 `g.sliders` 未定义（`?? []`）后转绿。此为本任务唯一真实 RED→GREEN 循环。
++
++### 2. 单测全量（customizer-panel + customizer-css 改后）
++
++```
++npm test
++Test Files  11 passed (11)
++     Tests  56 passed (56)
++```
++
++### 3. e2e customizer.spec.js（改 spec + 新增用例）
++
++```
++npx playwright test tests/e2e/customizer.spec.js
++6 passed (14.6s)
++```
++
++含：新用例（三滑杆 data-key 计数 0、`.cust-accent-card` 6 张、点击 teal 后 `--accent` = teal 色板直出）；**B3-2 预览卡用例继续通过**（改后 `--preview-accent` = accent.color hex：before=indigo `#6e7bf2`、after=teal `#2dd4bf`，仍不同）；B3-1 组标题用例通过（title 保持「整体色调」，desc 断言同步为新值）。
++
++### 4. 视觉基线重生成
++
++首次 `npm run test:visual`：
++
++```
++6 failed   [chromium] › ... appearance-partition · light/dark × indigo/amber/emerald
++18 passed
++```
++
++**恰为 brief 预期**：仅 appearance-partition 6 张失败，其余 18 张零漂移。随后 `npx playwright test tests/e2e/visual-regression.spec.js -g "appearance-partition" --update-snapshots` 重生成 6 张，复跑 `npm run test:visual` 24/24 绿。
++
++### 5. 全量回归
++
++```
++npm test            → 11 files / 56 tests passed
++npm run test:e2e    → 100 passed (3.6m，含视觉基线 24)
++npm run build       → ✓ built in 405ms
++```
++
++## 三、视觉基线解码比对说明（decode-compare）
++
++对 `appearance-partition-dark-emerald` 做像素级解码比对（canvas 载入基线 PNG 与实际 PNG，逐像素差 > 阈值统计差异带）：
++
++- **基线 720×1737 → 实际 720×1567**：高度收缩 170px = 删除的 3 行微调滑杆（含间距）的总高。
++- **差异带（基线对齐左上角比较）**：
++  - `y 199-216`（约 18 行、~14px 宽）—— 预览卡 `.cust-overview__accent` 色点：色值由 `tintHsl(cfg)`（hsl，65% 明度）变为色板 hex（indigo `#6e7bf2` = hsl 69% 明度；即 brief 所述「hsl65→hex69」）。
++  - `y 292-302`（11 行、~4px 宽）—— 预览卡 `.cust-overview__glass` 渐变首段（34% 起用 `var(--preview-accent)`）与 `.cust-overview__radius`/`__icon--active` 同类色元素，一并随 `--preview-accent` 从 hsl → hex 变化。
++  - `y 534-679`（多段窄带）—— 原「整体色调」组三行微调滑杆所在区域，现为该组滑杆删除后的内容。
++  - `y 1567-1736`（170 行、720px 全宽）—— 高度收缩尾部（实际元素 1567 行之后为白）。
++- **漂移范围确认**：差异全部落在 appearance-partition 元素截图内；其余 18 张（components/motion 分区 × 深浅 × 3 色）零漂移，`npm run test:visual` 全量复跑 24/24 绿，证明无分区外漂移。
++- 实时探针佐证：改后 `getComputedStyle(.cust-overview).getPropertyValue('--preview-accent')` = `#6e7bf2`（indigo 色板 hex，非 hsl）。
++
++## 四、偏差修正（verbatim 适配，Concerns）
++
++1. **brief 新 e2e 断言 `rgb(45, 212, 191)` → 实测改 `'#2dd4bf'`**。实测 Chromium（swiftshader）中未注册 CSS 自定义属性 `getComputedStyle().getPropertyValue('--accent')` 返回**原始序列化 hex**（`#2dd4bf`），非 rgb。与本仓库 `tokens.spec.js` 对同一变量 `--accent` 的既有断言（`'#2dd4bf'`）一致。语义断言不变（强调色 = teal 色板直出），仅在 spec 内注释说明。
++2. **brief「一个 commit」与报告需含 feat 哈希冲突**：按 repo 既有惯例（B4-1/B4-2）拆为 feat + docs 两枚提交，报告与台账在 docs 提交承载 feat 哈希 `8eb3162`。（备选：把报告并入 feat 单提交会令报告无法含自身哈希，须 amend 且违反 git 安全协议。）
++3. **brief 步骤 1 预期红未在 apply.test.js 落地**：见上文 TDD 记录第 1 条 —— 删 import 即删唯一红引用；真实红信号在 customizer.test.js 层，已闭环。
++
++## 五、自评（self-review）
++
++- **规格符合**：需求 1-6 逐条落地；强调色 = 预设色板直出（applyConfig 不再写 `--accent`/`--neutral-hue` 覆盖；预览卡取 `accent.color` hex）；B3-1 组标题保留、desc 按 brief 更新；B3-2 预览卡联动继续通过；存量 localStorage `color:{...}` 死键未清理；`src-tauri/Cargo.toml` 行尾噪声未动、未提交。
++- **质量**：全链删净（含死 CSS `.cust-tint-swatch` 与 tokens.css 过期注释两处 brief 清单外但同属微调链的小清理）；配置链（defaults → store → apply）未绕过；无动画相关改动（红线零触碰）；零运行时依赖未增。
++- **测试**：单测 56/56、e2e 100/100（含视觉 24/24）、build 通过。
++- **遗留（Minor）**：tokens.css `--neutral-hue: 235` 中性色阶参数化本身保留（非微调链、不动）；文档旧 diff/plan 中的历史引用为留痕记录，不改写。
++
++## 六、提交记录
++
++- `8eb3162` `feat: 删色彩微调组（色相/饱和度/色温），强调色=预设色板直出（B4-3）`（14 files，+24/-180）
++- docs 提交（本报告 + 简报 + 台账 progress-b4.md）
+diff --git a/src/config/apply.js b/src/config/apply.js
+index 12f8a5c..3b1115b 100644
+--- a/src/config/apply.js
++++ b/src/config/apply.js
+@@ -1,65 +1,17 @@
+ import { springCurve, scaledDurations } from '../motion/spring.js';
+-import { ACCENTS } from './defaults.js';
+ 
+ export function prefersDark() {
+   if (typeof window.matchMedia !== 'function') return false;
+   return window.matchMedia('(prefers-color-scheme: dark)').matches;
+ }
+ 
+-/** hex (#rrggbb) → HSL（h 整数 / s,l 各保留 1 位小数百分比）。基色取自 ACCENTS 元数据，不依赖 computed style（可单测）。 */
+-export function hexToHsl(hex) {
+-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+-  if (!m) return { h: 0, s: 0, l: 0 };
+-  const n = parseInt(m[1], 16);
+-  const r = ((n >> 16) & 255) / 255;
+-  const g = ((n >> 8) & 255) / 255;
+-  const b = (n & 255) / 255;
+-  const max = Math.max(r, g, b);
+-  const min = Math.min(r, g, b);
+-  const d = max - min;
+-  let h = 0;
+-  if (d !== 0) {
+-    if (max === r) h = 60 * (((g - b) / d) % 6);
+-    else if (max === g) h = 60 * ((b - r) / d + 2);
+-    else h = 60 * ((r - g) / d + 4);
+-    if (h < 0) h += 360;
+-  }
+-  const l = (max + min) / 2;
+-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+-  return { h: Math.round(h), s: Math.round(s * 1000) / 10, l: Math.round(l * 1000) / 10 };
+-}
+-
+-/** 色温 → 中性色相：-1 冷端（210 更冷偏蓝）→ 0 默认（235）→ 1 暖端（40 暖橙灰）。 */
+-export function temperatureToHue(t) {
+-  return Math.round(t <= 0 ? 235 + 25 * t : 235 - 195 * t);
+-}
+-
+-/** 色彩微调覆盖：hue -1 = 跟随主题色；saturation 100 = 原饱和度。默认态不写任何覆盖（主题色原样生效）。 */
+-function applyColorTint(cfg, root) {
+-  const s = root.style;
+-  const { hue, saturation } = cfg.color;
+-  if (hue === -1 && saturation === 100) {
+-    s.removeProperty('--accent');
+-    s.removeProperty('--accent-hover');
+-    s.removeProperty('--accent-active');
+-    return;
+-  }
+-  const base = ACCENTS.find((a) => a.id === cfg.accent)?.color ?? '#6e7bf2';
+-  const { h, s: bs, l } = hexToHsl(base);
+-  const H = hue === -1 ? h : Math.round(hue);
+-  const S = Math.min(100, Math.max(0, Math.round(bs * (saturation / 100) * 10) / 10));
+-  s.setProperty('--accent', `hsl(${H} ${S}% ${l}%)`);
+-  s.setProperty('--accent-hover', `hsl(${H} ${S}% ${Math.min(95, l + 6)}%)`);
+-  s.setProperty('--accent-active', `hsl(${H} ${S}% ${Math.max(5, l - 6)}%)`);
+-}
+-
+ export function applyConfig(cfg, root = document.documentElement) {
+   root.dataset.theme = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+   root.dataset.accent = cfg.accent;
+   root.dataset.motion = cfg.motion.enabled ? 'on' : 'off';
+   // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
+   // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
+   root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
+ 
+   const s = root.style;
+   s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
+@@ -68,15 +20,11 @@ export function applyConfig(cfg, root = document.documentElement) {
+   s.setProperty('--noise-opacity', String(cfg.glass.noise));
+   s.setProperty('--font-size-base', `calc(${cfg.type.baseSize}px * ${cfg.type.scale})`);
+   s.setProperty('--radius-scale', String(cfg.radiusScale));
+   s.setProperty('--shadow-intensity', String(cfg.shadow));
+   s.setProperty('--spring-strength', String(cfg.motion.springStrength));
+   const d = scaledDurations(cfg.motion.durationScale, cfg.motion.enabled);
+   s.setProperty('--dur-fast', `${d.fast}ms`);
+   s.setProperty('--dur-base', `${d.base}ms`);
+   s.setProperty('--dur-slow', `${d.slow}ms`);
+   s.setProperty('--ease-spring', springCurve(cfg.motion.springStrength));
+-  applyColorTint(cfg, root);
+-  // 色温覆盖：temperature === 0（默认）时移除，中性色阶回退 :root 的 --neutral-hue: 235
+-  if (cfg.color.temperature === 0) s.removeProperty('--neutral-hue');
+-  else s.setProperty('--neutral-hue', String(temperatureToHue(cfg.color.temperature)));
+ }
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index a31ace8..ffecf5e 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -1,34 +1,30 @@
+ export const DEFAULTS = {
+   theme: 'system',
+   accent: 'indigo',
+   glass: { opacity: 0.48, blur: 30, noise: 0.06, blurEnabled: true },
+   type: { baseSize: 14, scale: 1, weight: 400 },
+   radiusScale: 1,
+   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
+   shadow: 0.5,
+-  color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
+ };
+ 
+ export const RANGES = {
+   opacity: [0.4, 0.95, 0.01],
+   blur: [8, 48, 1],
+   noise: [0, 0.12, 0.01],
+   baseSize: [12, 16, 0.5],
+   scale: [0.9, 1.15, 0.01],
+   radiusScale: [0.7, 1.6, 0.05],
+   durationScale: [0.5, 2, 0.05],
+   springStrength: [0, 1, 0.05],
+   shadowIntensity: [0, 1, 0.05],
+-  hue: [0, 360, 1],
+-  saturation: [60, 120, 1],
+-  temperature: [-1, 1, 0.05],
+ };
+ 
+ export const ACCENTS = [
+   { id: 'indigo', name: '靛蓝', color: '#6e7bf2', desc: '冷静、专业' },
+   { id: 'teal', name: '青绿', color: '#2dd4bf', desc: '清爽、科技' },
+   { id: 'sky', name: '天蓝', color: '#38bdf8', desc: '明朗、开放' },
+   { id: 'amber', name: '琥珀', color: '#f59e0b', desc: '活力、温暖' },
+   { id: 'violet', name: '紫罗兰', color: '#a78bfa', desc: '优雅、个性' },
+   { id: 'emerald', name: '翡翠', color: '#34d399', desc: '自然、治愈' },
+ ];
+diff --git a/src/demo/customizer-css.js b/src/demo/customizer-css.js
+index 64378d7..2db99a3 100644
+--- a/src/demo/customizer-css.js
++++ b/src/demo/customizer-css.js
+@@ -1,56 +1,36 @@
+ import { springCurve, scaledDurations } from '../motion/spring.js';
+-import { hexToHsl, temperatureToHue } from '../config/apply.js';
+ import { ACCENTS } from '../config/defaults.js';
+ 
+-/** 色相/饱和度覆盖的 HSL（与 apply.js applyColorTint 公式一致） */
+-function tintHsl(cfg) {
+-  const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
+-  const base = hexToHsl(accent.color);
+-  const H = cfg.color.hue === -1 ? base.h : cfg.color.hue;
+-  const S = Math.min(100, Math.max(0, Math.round(base.s * (cfg.color.saturation / 100) * 10) / 10));
+-  return { H, S, L: base.l };
+-}
+-
+ /**
+  * 主题定制器导出（Task 17）：把当前配置生成为可直接粘贴的 CSS 变量代码。
+  * 值全部来自 cfg（经 store/apply 链路）—— :root 段 = apply.js 写入的覆盖层，
+  * theme/accent 段指向 themes.css 中的主题令牌（导出为注释契约，代码段即挂载选择器）。
+  */
+ export function exportCss(cfg) {
+   const { glass, type, radiusScale, motion, shadow } = cfg;
+   const d = scaledDurations(motion.durationScale, motion.enabled);
+   const theme = cfg.theme === 'system' ? 'dark' : cfg.theme;
+   const accent = ACCENTS.find((a) => a.id === cfg.accent);
+   const accentNote = accent ? `${accent.name}（${accent.desc}）` : cfg.accent;
+-  const tintActive = cfg.color.hue !== -1 || cfg.color.saturation !== 100;
+-  const tint = tintActive ? tintHsl(cfg) : null;
+-  const tintLine = tint
+-    ? `  --accent: hsl(${tint.H} ${tint.S}% ${tint.L}%); /* 色彩微调覆盖（色相/饱和度） */`
+-    : `  --accent: var(--accent-500); /* 主题色全阶 --accent-50…950 见 themes.css */`;
+-  const tempLine = cfg.color.temperature !== 0
+-    ? `  --neutral-hue: ${temperatureToHue(cfg.color.temperature)}; /* 色温覆盖（中性色冷暖偏移） */`
+-    : null;
+   return `/* 由主题定制器导出 — ${new Date().toLocaleString('zh-CN')} */
+ /* 定制参数层（玻璃/排版/圆角/动效/阴影）—— 粘贴到应用 :root */
+ :root {
+   --glass-bg-opacity: ${glass.opacity};
+   --glass-blur: ${glass.blur}px;
+   --noise-opacity: ${glass.noise};
+   --font-size-base: calc(${type.baseSize}px * ${type.scale});
+   --radius-scale: ${radiusScale};
+   --shadow-intensity: ${shadow};
+   --dur-fast: ${d.fast}ms;
+   --dur-base: ${d.base}ms;
+   --dur-slow: ${d.slow}ms;
+   --ease-spring: ${springCurve(motion.springStrength)};
+   --spring-strength: ${motion.springStrength};
+-${tintLine}
+-${tempLine ?? ''}
+ }
+ 
+ /* 主题令牌（--text-* / --surface-* / --glass-* / 语义色）见 themes.css — 当前主题：${theme} */
+ html[data-theme="${theme}"] { /* 按需拷贝 themes.css 中对应主题段 */ }
+ 
+ /* 主题色板（${accentNote}）见 themes.css */
+ html[data-accent="${cfg.accent}"] { /* 按需拷贝 themes.css 中对应主题色段 */ }`;
+ }
+diff --git a/src/demo/customizer-panel.js b/src/demo/customizer-panel.js
+index 38debaa..5f976a2 100644
+--- a/src/demo/customizer-panel.js
++++ b/src/demo/customizer-panel.js
+@@ -1,12 +1,12 @@
+ import { getConfig, saveConfig, subscribe, notify, KEY } from '../config/store.js';
+-import { applyConfig, hexToHsl, prefersDark } from '../config/apply.js';
++import { applyConfig, prefersDark } from '../config/apply.js';
+ import { DEFAULTS, RANGES, ACCENTS } from '../config/defaults.js';
+ import { icon } from '../components/icon/icon.js';
+ import { toast } from '../components/toast/toast.js';
+ import { renderSwitch } from '../components/switch/switch.js';
+ import { exportCss } from './customizer-css.js';
+ 
+ /**
+  * 主题定制器面板（Task 17）：右侧抽屉（.cust-panel + .cust-backdrop）。
+  *
+  * 契约：
+@@ -25,35 +25,27 @@ import { exportCss } from './customizer-css.js';
+ const CFG_PATH = {
+   opacity: ['glass', 'opacity'],
+   blur: ['glass', 'blur'],
+   noise: ['glass', 'noise'],
+   baseSize: ['type', 'baseSize'],
+   scale: ['type', 'scale'],
+   radiusScale: ['radiusScale'],
+   durationScale: ['motion', 'durationScale'],
+   springStrength: ['motion', 'springStrength'],
+   shadowIntensity: ['shadow'],
+-  hue: ['color', 'hue'],
+-  saturation: ['color', 'saturation'],
+-  temperature: ['color', 'temperature'],
+ };
+ 
+ const GROUPS = [
+   {
+     title: '整体色调',
+-    desc: '主题色/色相/饱和度/色温',
++    desc: '预设主题色 / 语义色自动协调',
+     pre: (cfg) => accentCards(cfg) + semanticBar(),
+-    sliders: [
+-      { key: 'hue', label: '色相', unit: '°' },
+-      { key: 'saturation', label: '饱和度', unit: '%' },
+-      { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
+-    ],
+   },
+   {
+     title: '表面质感',
+     desc: '透明度/模糊/噪点强度/亚克力材质',
+     pre: (cfg) => glassSwitchRow(cfg) + glassPreview(),
+     sliders: [
+       { key: 'opacity', label: '透明度' },
+       { key: 'blur', label: '模糊', unit: 'px' },
+       { key: 'noise', label: '噪点强度' },
+     ],
+@@ -97,56 +89,33 @@ const SEMANTIC = [
+ function readCfg(cfg, key) {
+   const p = CFG_PATH[key];
+   return p.length === 1 ? cfg[p[0]] : cfg[p[0]][p[1]];
+ }
+ 
+ function writePatch(key, value) {
+   const p = CFG_PATH[key];
+   return p.length === 1 ? { [p[0]]: value } : { [p[0]]: { [p[1]]: value } };
+ }
+ 
+-/** 色相特判：-1 = 跟随主题色（滑杆显示当前主题色色相；数值区显示「跟随」） */
+-function hueSliderValue(cfg) {
+-  if (cfg.color.hue !== -1) return cfg.color.hue;
+-  const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
+-  return hexToHsl(accent.color).h;
+-}
+-
+ function fmtValue(cfg, key, unit) {
+-  if (key === 'hue') return cfg.color.hue === -1 ? '跟随' : `${cfg.color.hue}°`;
+   return `${readCfg(cfg, key)}${unit ?? ''}`;
+ }
+ 
+-/** 色相/饱和度组合色（与 apply.js 覆盖公式一致；hue -1 = 跟随主题色） */
+-function tintHsl(cfg) {
+-  const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
+-  const base = hexToHsl(accent.color);
+-  const H = cfg.color.hue === -1 ? base.h : cfg.color.hue;
+-  const S = Math.min(100, Math.max(0, base.s * (cfg.color.saturation / 100)));
+-  return `hsl(${H} ${S.toFixed(1)}% 65%)`;
+-}
+-
+-/** 色相/饱和度组合色预览点（实时反映当前配置） */
+-function tintSwatch(cfg) {
+-  return `<span class="cust-tint-swatch" style="--swatch: ${tintHsl(cfg)}" aria-hidden="true"></span>`;
+-}
+-
+ function renderSlider(cfg, spec) {
+   const [min, max, step] = RANGES[spec.key];
+-  const value = spec.key === 'hue' ? hueSliderValue(cfg) : readCfg(cfg, spec.key);
+-  const swatch = spec.key === 'hue' ? tintSwatch(cfg) : '';
++  const value = readCfg(cfg, spec.key);
+   return `
+     <div class="cust-row">
+       <div class="cust-row__head">
+         <span class="cust-row__label">${spec.label}${spec.hint ? `<em class="cust-row__hint">${spec.hint}</em>` : ''}</span>
+         <span class="cust-row__value">
+-          ${swatch}<output data-out="${spec.key}">${fmtValue(cfg, spec.key, spec.unit)}</output>
++          <output data-out="${spec.key}">${fmtValue(cfg, spec.key, spec.unit)}</output>
+         </span>
+       </div>
+       <input class="cust-range" type="range" data-key="${spec.key}"
+         min="${min}" max="${max}" step="${step}" value="${value}"
+         aria-label="${spec.label}">
+     </div>`;
+ }
+ 
+ function accentCards(cfg) {
+   return `
+@@ -228,31 +197,27 @@ function panelTemplate() {
+       </div>
+     </footer>`;
+ }
+ 
+ /** 订阅 store 同步容器内控件态：滑杆值/输出/风格卡片高亮/开关/禁用（不重渲染 DOM）。
+  *  container 语义：面板 .cust-body 或设置页外观分区 —— 两者各持一个订阅，
+  *  任一侧改动 store 都会双向实时同步。 */
+ function syncUI(container, cfg) {
+   container.querySelectorAll('.cust-range').forEach((input) => {
+     const key = input.dataset.key;
+-    const value = key === 'hue' ? hueSliderValue(cfg) : readCfg(cfg, key);
++    const value = readCfg(cfg, key);
+     input.value = String(value);
+     const [min, max] = RANGES[key];
+     input.style.setProperty('--fill', `${((value - min) / (max - min)) * 100}%`);
+     const out = container.querySelector(`[data-out="${key}"]`);
+-    const spec = GROUPS.flatMap((g) => g.sliders).find((s) => s.key === key);
++    const spec = GROUPS.flatMap((g) => g.sliders ?? []).find((s) => s.key === key);
+     if (out && spec) out.textContent = fmtValue(cfg, key, spec.unit);
+-    if (key === 'hue') {
+-      const sw = container.querySelector(`[data-out="hue"] .cust-tint-swatch`);
+-      if (sw) sw.style.setProperty('--swatch', tintHsl(cfg));
+-    }
+     if (key === 'durationScale' || key === 'springStrength') {
+       input.disabled = !cfg.motion.enabled;
+     }
+   });
+   container.querySelectorAll('.cust-accent-card').forEach((card) => {
+     const active = card.dataset.accent === cfg.accent;
+     card.classList.toggle('cust-accent-card--active', active);
+     card.setAttribute('aria-pressed', String(active));
+   });
+   const swWrap = container.querySelector('[data-motion-switch]');
+@@ -339,41 +304,41 @@ function renderOverviewCard(cfg) {
+ 
+ /** 把当前 config 写入预览卡 .cust-overview 的 --preview-* 局部变量（只读，不调 applyConfig）。
+  *  空值守卫：jsdom 单测容器 / 未挂预览卡场景下安全跳过。theme: system 经 prefersDark 解析（jsdom 无 matchMedia 由守卫兜底）。 */
+ function updateOverview(container, cfg) {
+   const el = container.querySelector('.cust-overview');
+   if (!el) return;
+   const resolved = cfg.theme === 'system' ? (prefersDark() ? 'dark' : 'light') : cfg.theme;
+   el.style.setProperty('--preview-theme', resolved);
+   // 主题块底色：与主题色对应 solid 面（themes.css 同值），使色块随 --preview-theme 解析变化
+   el.style.setProperty('--preview-theme-bg', resolved === 'dark' ? '#16181f' : '#f8f9fb');
+-  el.style.setProperty('--preview-accent', tintHsl(cfg));
++  el.style.setProperty('--preview-accent', ACCENTS.find((a) => a.id === cfg.accent)?.color ?? ACCENTS[0].color);
+   el.style.setProperty('--preview-glass-opacity', String(cfg.glass.opacity));
+   el.style.setProperty('--preview-radius', String(cfg.radiusScale));
+ }
+ 
+ /**
+  * 定制器分组（Task 20 重构抽出）：6 组 .cust-group HTML + 事件绑定 + store 双向同步。
+  * 面板（mountCustomizer）与设置页外观分区共用同一实现 —— 两侧滑杆操作同一份 store：
+  * 改动实时 saveConfig + applyConfig，订阅回调反向同步对侧控件态。
+  * @param {HTMLElement} container 分组容器（面板 .cust-body / 设置页外观分区）
+  * @returns {() => void} store 订阅退订函数 —— 调用方若重建/销毁 container（如 app 手机形态
+  *   每次重建设置页 DOM），须在重挂前调用旧退订函数，防订阅数随挂载次数线性累积
+  */
+ export function renderCustomizerGroups(container) {
+   const cfg = getConfig();
+   container.innerHTML = renderOverviewCard(cfg) + GROUPS.map((g) => `
+     <section class="cust-group">
+       <h4 class="cust-group__title">${g.title}</h4>
+       ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
+       ${g.pre ? g.pre(cfg) : ''}
+-      ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
++      ${(g.sliders ?? []).map((s) => renderSlider(cfg, s)).join('')}
+     </section>`).join('');
+ 
+   // 风格卡片：点击切换主题色
+   container.querySelector('.cust-accent-grid')?.addEventListener('click', (e) => {
+     const card = e.target.closest('.cust-accent-card');
+     if (!card) return;
+     applyConfig(saveConfig({ accent: card.dataset.accent }));
+   });
+ 
+   // 滑杆：委托 input（不 debounce —— 即时预览是本设计系统核心卖点）
+diff --git a/src/styles/customizer.css b/src/styles/customizer.css
+index e2cf70e..5215a4b 100644
+--- a/src/styles/customizer.css
++++ b/src/styles/customizer.css
+@@ -233,28 +233,20 @@
+   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+   border: 1px solid var(--glass-border);
+   box-shadow: var(--glass-shadow);
+ }
+ .cust-glass-preview__glass::before {
+   content: ''; position: absolute; inset: 0;
+   background-image: var(--acrylic-noise); background-size: 120px 120px;
+   opacity: var(--noise-opacity, 0.04); /* 噪点滑杆实时可见 */
+ }
+ 
+-/* ---- 色彩微调：色相/饱和度组合色预览点 ---- */
+-.cust-tint-swatch {
+-  display: inline-block; width: 14px; height: 14px; margin-right: var(--space-2);
+-  border-radius: 50%; background: var(--swatch);
+-  box-shadow: 0 0 0 1px var(--glass-border), inset 0 0 0 1px rgba(255,255,255,0.15);
+-  vertical-align: -2px;
+-}
+-
+ /* ---- 底部：预设 + 动作 ---- */
+ .cust-footer {
+   padding: var(--space-4) var(--space-5);
+   border-top: 1px solid var(--glass-border);
+   display: flex; flex-direction: column; gap: var(--space-3);
+ }
+ .cust-presets { display: flex; gap: var(--space-2); }
+ .cust-presets .c-btn { flex: 1; }
+ .cust-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+ .cust-actions .c-btn { flex: 1; min-width: 0; }
+diff --git a/src/styles/tokens.css b/src/styles/tokens.css
+index b5e80ab..4d0ff9c 100644
+--- a/src/styles/tokens.css
++++ b/src/styles/tokens.css
+@@ -1,14 +1,13 @@
+ :root {
+   /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css）。
+-     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致；定制器色温滑杆（color.temperature）
+-     经 apply.js 写 --neutral-hue 覆盖实现全局冷暖偏移。sat/light 由原 hex 逐级转换（视觉等效）。 */
++     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致。sat/light 由原 hex 逐级转换（视觉等效）。 */
+   --neutral-hue: 235;
+   --neutral-50: hsl(var(--neutral-hue) 23.1% 97.5%);  --neutral-100: hsl(var(--neutral-hue) 21.4% 94.5%);
+   --neutral-200: hsl(var(--neutral-hue) 18.4% 90.4%);  --neutral-300: hsl(var(--neutral-hue) 16.3% 83.1%);
+   --neutral-400: hsl(var(--neutral-hue) 12.6% 70.4%);  --neutral-500: hsl(var(--neutral-hue) 10.9% 58.6%);
+   --neutral-600: hsl(var(--neutral-hue) 8.9% 46.1%);  --neutral-700: hsl(var(--neutral-hue) 10.9% 36.1%);
+   --neutral-800: hsl(var(--neutral-hue) 11.5% 25.7%);  --neutral-900: hsl(var(--neutral-hue) 12.6% 17.1%);
+   --neutral-950: hsl(var(--neutral-hue) 14.8% 12%);
+ 
+   /* 强调色占位：默认靛蓝（themes.css 的 data-accent 块覆盖） */
+   --accent-50: #eef0ff;  --accent-100: #dfe3ff;  --accent-200: #c3caff;
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index 87b7189..d939853 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -9,57 +9,52 @@ import { openSettingsPartition } from './helpers.js';
+ 
+ test('调整亚克力透明度实时生效', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+   const slider = appr.locator('.cust-row:has-text("透明度") input[type="range"]');
+   await slider.fill('0.8');
+   const bgOpacity = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--glass-bg-opacity').trim());
+   expect(bgOpacity).toBe('0.8');
+ });
+ 
+-test('色相滑杆实时覆盖 --accent 且数值区显示', async ({ page }) => {
++test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+-  const hue = appr.locator('.cust-row:has-text("色相") input[type="range"]');
+-  await hue.fill('200');
+-  let accent = await page.evaluate(() =>
++  await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
++  await expect(appr.locator('.cust-accent-card')).toHaveCount(6);
++  // 切强调色 → --accent 直接取色板（无微调覆盖）
++  await appr.locator('.cust-accent-card[data-accent="teal"]').click();
++  const accent = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+-  expect(accent).toMatch(/^hsl\(200 /);
+-  // 数值区显示自定义色相（非「跟随」）
+-  await expect(appr.locator('[data-out="hue"]')).toContainText('200°');
+-});
+-
+-test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
+-  const appr = await openSettingsPartition(page, 1);
+-  const temp = appr.locator('.cust-row:has-text("色温") input[type="range"]');
+-  await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
+-  let hue = await page.evaluate(() =>
+-    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
+-  expect(hue).toBe('40');
++  // B4-3 偏差修正：未注册 CSS 自定义属性保持原始序列化（hex，非 rgb）—— 与本仓库 tokens.spec
++  // 对同一变量 --accent 的既有断言（'#2dd4bf'）保持一致；语义断言不变（强调色 = teal 色板直出）。
++  expect(accent).toBe('#2dd4bf'); // teal-400 #2dd4bf
+ });
+ 
+ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
+   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
+   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
+ });
+ 
+ test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   const group = page.locator('.cust-group');
+   await expect(group).toHaveCount(6);
+   await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
+-  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
++  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('预设主题色 / 语义色自动协调');
+   await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
+   await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
+   await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');
+   await expect(group.nth(2).locator('.cust-group__desc')).toHaveText('基准字号/缩放');
+   await expect(group.nth(3).locator('.cust-group__title')).toHaveText('边角形状');
+   await expect(group.nth(3).locator('.cust-group__desc')).toHaveText('圆角比例');
+   await expect(group.nth(4).locator('.cust-group__title')).toHaveText('动效节奏');
+   await expect(group.nth(4).locator('.cust-group__desc')).toHaveText('时长缩放/弹性强度');
+   await expect(group.nth(5).locator('.cust-group__title')).toHaveText('阴影层次');
+   await expect(group.nth(5).locator('.cust-group__desc')).toHaveText('阴影强度');
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index 58e29b5..da7a086 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 9eee38e..486d873 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 9b190e5..38fd2bb 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index 114ddc6..45a19f9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index 12bf31e..cdf4434 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 640052d..6d1e656 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/unit/apply.test.js b/tests/unit/apply.test.js
+index c2322ca..b101523 100644
+--- a/tests/unit/apply.test.js
++++ b/tests/unit/apply.test.js
+@@ -1,12 +1,12 @@
+ import { describe, it, expect, beforeEach } from 'vitest';
+-import { applyConfig, temperatureToHue } from '../../src/config/apply.js';
++import { applyConfig } from '../../src/config/apply.js';
+ import { DEFAULTS } from '../../src/config/defaults.js';
+ 
+ describe('applyConfig', () => {
+   let root;
+   beforeEach(() => {
+     root = document.documentElement;
+     root.removeAttribute('data-theme');
+     root.removeAttribute('data-accent');
+     root.removeAttribute('style');
+   });
+@@ -44,52 +44,21 @@ describe('applyConfig', () => {
+     expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.08');
+   });
+   it('默认噪点强度 0.06 写入', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--noise-opacity')).toBe('0.06');
+   });
+   it('动效关闭时时长全部为 0', () => {
+     applyConfig({ ...DEFAULTS, motion: { enabled: false, durationScale: 1, springStrength: 0.6 } }, root);
+     expect(root.style.getPropertyValue('--dur-fast')).toBe('0ms');
+   });
+-  // —— 色彩微调：色相/饱和度覆盖（默认跟随主题色时不写覆盖）——
+-  it('hue 跟随（-1）且饱和度 100 时不写 --accent 覆盖', () => {
++  // —— 色彩微调组已删除（B4-3）：强调色 = 预设色板直出，不写 --accent/--neutral-hue 覆盖 ——
++  it('不写 --accent/--neutral-hue 覆盖（强调色来自主题色板）', () => {
+     applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--accent')).toBe('');
+-  });
+-  it('自定义色相写入 --accent/--accent-hover/--accent-active 覆盖（保持基色明度）', () => {
+-    applyConfig({ ...DEFAULTS, color: { hue: 200, saturation: 100, temperature: 0 } }, root);
+-    const s = root.style;
+-    expect(s.getPropertyValue('--accent')).toBe('hsl(200 83.5% 69%)');
+-    expect(s.getPropertyValue('--accent-hover')).toBe('hsl(200 83.5% 75%)');
+-    expect(s.getPropertyValue('--accent-active')).toBe('hsl(200 83.5% 63%)');
+-  });
+-  it('饱和度缩放基色饱和度（100 = 原值）', () => {
+-    applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 50, temperature: 0 } }, root);
+-    expect(root.style.getPropertyValue('--accent')).toBe('hsl(234 41.8% 69%)');
+-  });
+-  it('teal 主题基色解析正确', () => {
+-    applyConfig({ ...DEFAULTS, accent: 'teal', color: { hue: -1, saturation: 100, temperature: 0 } }, root);
+-    expect(root.style.getPropertyValue('--accent')).toBe('');
+-    applyConfig({ ...DEFAULTS, accent: 'teal', color: { hue: 120, saturation: 100, temperature: 0 } }, root);
+-    expect(root.style.getPropertyValue('--accent')).toBe('hsl(120 66% 50.4%)'); // #2dd4bf 基色 HSL
+-  });
+-  // —— 色温：中性色阶冷暖偏移 ——
+-  it('temperatureToHue 端点与中点映射正确', () => {
+-    expect(temperatureToHue(-1)).toBe(210); // 冷端：更冷偏蓝
+-    expect(temperatureToHue(0)).toBe(235);  // 默认中性
+-    expect(temperatureToHue(0.5)).toBe(138); // 235-97.5=137.5 → round 138
+-    expect(temperatureToHue(1)).toBe(40);    // 暖端：暖橙灰
+-  });
+-  it('temperature 为 0（默认）时不写 --neutral-hue 覆盖', () => {
+-    applyConfig(DEFAULTS, root);
+     expect(root.style.getPropertyValue('--neutral-hue')).toBe('');
+   });
+-  it('temperature 0.5 写入 --neutral-hue: 138 覆盖', () => {
+-    applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 100, temperature: 0.5 } }, root);
+-    expect(root.style.getPropertyValue('--neutral-hue')).toBe('138');
+-  });
+   it('--font-size-base = calc(baseSize px * scale)（两滑杆共同驱动）', () => {
+     applyConfig({ ...DEFAULTS, type: { baseSize: 14, scale: 1.15, weight: 400 } }, root);
+     expect(root.style.getPropertyValue('--font-size-base')).toBe('calc(14px * 1.15)');
+   });
+ });
