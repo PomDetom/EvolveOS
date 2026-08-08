@@ -526,3 +526,22 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；主窗关闭连
   const after = await page.evaluate(() => window.__stripShown__);
   expect(after).toContain('close');
 });
+
+// —— B4 收尾（Task B4F-2）：主窗关闭行为可配置（closeBehavior）——
+// 配置链路完整（defaults→store→apply）：通用分区「关闭主窗口时」两态选择器，
+// 默认 exit 高亮，切换写 store（localStorage ui-design-config.closeBehavior）；
+// 后续 B4F-3（Rust 消费）/ B4F-4（JS 同步 Rust）依赖本用例锁定的 cfg.closeBehavior。
+
+test('通用分区：关闭主窗口时选择器存在且可切换（写 store）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
+  const group = page.locator('[data-close-behavior-group]');
+  await expect(group).toBeVisible();
+  await expect(group.locator('.csettings__mode')).toHaveCount(2);
+  // 默认 exit 高亮
+  await expect(group.locator('[data-close-behavior="exit"]')).toHaveClass(/csettings__mode--active/);
+  await group.locator('[data-close-behavior="background"]').click();
+  const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
+  expect(cfg).toBe('background');
+});

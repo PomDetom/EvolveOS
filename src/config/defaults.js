@@ -6,6 +6,7 @@ export const DEFAULTS = {
   radiusScale: 1,
   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
   shadow: 0.5,
+  closeBehavior: 'exit', // 主窗关闭：exit=退出应用 / background=保留后台（悬浮窗常驻）
 };
 
 export const RANGES = {

@@ -146,9 +146,11 @@ export function mountAppMode(root) {
     applyConfig(saveConfig({ theme: next }));
   });
   // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
+  // 控制器裁定（Task B4F-2）：主题同步循环限定 [data-mode]，只作用于主题按钮 ——
+  // 否则新 close-behavior 按钮（同用 .csettings__mode 类）的 active 高亮会被本循环误清。
   const syncSettingsThemeModes = () => {
     const cfg = getConfig();
-    document.querySelectorAll('.csettings__mode').forEach((b) => {
+    document.querySelectorAll('.csettings__mode[data-mode]').forEach((b) => {
       const on = b.dataset.mode === cfg.theme;
       b.classList.toggle('csettings__mode--active', on);
       b.setAttribute('aria-pressed', String(on));

@@ -49,6 +49,14 @@ const THEME_MODES = [
   { id: 'system', label: '跟随系统', icon: 'monitor' },
 ];
 
+// 主窗关闭行为（Task B4F-2）：两态选择器 → cfg.closeBehavior（defaults → store → apply 链路，
+// 后续 B4F-3 Rust 消费 / B4F-4 JS 同步 Rust 依赖此值）。类名复用 .csettings__mode（样式复用），
+// 高亮管理用独立 [data-close-behavior-group]/[data-close-behavior]，不受主题循环（[data-mode]）影响。
+const CLOSE_BEHAVIORS = [
+  { id: 'exit', label: '退出应用' },
+  { id: 'background', label: '保留后台' },
+];
+
 function pageHead(title, desc = '') {
   return `<div class="csettings__page-head"><h4>${title}</h4>${desc ? `<p>${desc}</p>` : ''}</div>`;
 }
@@ -66,6 +74,15 @@ function generalPage() {
             data-mode="${m.id}" aria-pressed="${cfg.theme === m.id}">
             ${icon(m.icon, 16)}<span>${m.label}</span>
           </button>`).join('')}
+      </div>
+    </div>
+    <div class="csettings__field">
+      <span class="csettings__field-label">关闭主窗口时</span>
+      <p class="csettings__field-desc">点主窗关闭按钮：退出整个应用，或隐藏到后台保留悬浮窗</p>
+      <div class="csettings__modes csettings__modes--close" data-close-behavior-group role="group" aria-label="关闭行为">
+        ${CLOSE_BEHAVIORS.map((b) => `
+          <button type="button" class="csettings__mode${cfg.closeBehavior === b.id ? ' csettings__mode--active' : ''}"
+            data-close-behavior="${b.id}" aria-pressed="${cfg.closeBehavior === b.id}">${b.label}</button>`).join('')}
       </div>
     </div>
     <div class="csettings__field csettings__field--row">
@@ -213,13 +230,27 @@ export function renderSettingsPages(sections = SECTIONS) {
  */
 export function mountSettingsInteractions(root) {
   // 通用分区：主题三态 → store 即时生效；动效开关 → store；保存 → toast
+  // 控制器裁定（Task B4F-2）：主题同步循环限定 [data-mode]，只作用于主题按钮 ——
+  // 否则新 close-behavior 按钮（同用 .csettings__mode 类）的 active 高亮会被主题循环误清。
   root.querySelector('.csettings__modes')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.csettings__mode');
     if (!btn) return;
     const next = saveConfig({ theme: btn.dataset.mode });
     applyConfig(next);
-    root.querySelectorAll('.csettings__mode').forEach((b) => {
+    root.querySelectorAll('.csettings__mode[data-mode]').forEach((b) => {
       const on = b.dataset.mode === next.theme;
+      b.classList.toggle('csettings__mode--active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  });
+  // 关闭主窗口时（B4 收尾）：两态选择器 → store
+  root.querySelector('[data-close-behavior-group]')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-close-behavior]');
+    if (!btn) return;
+    const next = saveConfig({ closeBehavior: btn.dataset.closeBehavior });
+    applyConfig(next);
+    root.querySelectorAll('[data-close-behavior]').forEach((b) => {
+      const on = b.dataset.closeBehavior === next.closeBehavior;
       b.classList.toggle('csettings__mode--active', on);
       b.setAttribute('aria-pressed', String(on));
     });
