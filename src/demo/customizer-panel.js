@@ -111,7 +111,7 @@ function renderSlider(cfg, spec) {
           <output data-out="${spec.key}">${fmtValue(cfg, spec.key, spec.unit)}</output>
         </span>
       </div>
-      <input class="cust-range" type="range" data-key="${spec.key}"
+      <input class="c-slider" type="range" data-key="${spec.key}"
         min="${min}" max="${max}" step="${step}" value="${value}"
         aria-label="${spec.label}">
     </div>`;
@@ -202,7 +202,7 @@ function panelTemplate() {
  *  container 语义：面板 .cust-body 或设置页外观分区 —— 两者各持一个订阅，
  *  任一侧改动 store 都会双向实时同步。 */
 function syncUI(container, cfg) {
-  container.querySelectorAll('.cust-range').forEach((input) => {
+  container.querySelectorAll('.c-slider').forEach((input) => {
     const key = input.dataset.key;
     const value = readCfg(cfg, key);
     input.value = String(value);
@@ -343,7 +343,7 @@ export function renderCustomizerGroups(container) {
 
   // 滑杆：委托 input（不 debounce —— 即时预览是本设计系统核心卖点）
   container.addEventListener('input', (e) => {
-    const input = e.target.closest('.cust-range');
+    const input = e.target.closest('.c-slider');
     if (!input) return;
     applyConfig(saveConfig(writePatch(input.dataset.key, Number(input.value))));
   });

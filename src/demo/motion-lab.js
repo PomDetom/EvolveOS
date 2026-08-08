@@ -81,13 +81,13 @@ function controls(cfg, liftDefault) {
       </div>
       <label class="ml-control">
         <span class="ml-control__label">弹性</span>
-        <input class="ml-slider" type="range" min="0" max="1" step="0.05"
+        <input class="c-slider ml-slider" type="range" min="0" max="1" step="0.05"
           value="${cfg.motion.springStrength}" aria-label="弹性强度">
         <output class="ml-out" data-out="spring"></output>
       </label>
       <label class="ml-control">
         <span class="ml-control__label">位移</span>
-        <input class="ml-slider" type="range" min="0" max="24" step="1"
+        <input class="c-slider ml-slider" type="range" min="0" max="24" step="1"
           value="${liftDefault}" data-lift aria-label="位移距离">
         <output class="ml-out" data-out="lift"></output><span class="ml-unit">px</span>
       </label>

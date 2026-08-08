@@ -11,7 +11,7 @@ test('动效实验室渲染 5 个演示', async ({ page }) => {
 
 test('弹性滑杆影响局部曲线', async ({ page }) => {
   const motion = await openSettingsPartition(page, 9);
-  const slider = motion.locator('.ml-slider').first();
+  const slider = motion.locator('.c-slider').first();
   await slider.fill('1'); // 触发 input
   await expect(motion.locator('.ml-card').first())
     .toHaveCSS('--ease-spring', /cubic-bezier/);

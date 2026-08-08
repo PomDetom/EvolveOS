@@ -18,9 +18,9 @@ test('调整亚克力透明度实时生效', async ({ page }) => {
 
 test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
   const appr = await openSettingsPartition(page, 1);
-  await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
-  await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
-  await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
+  await expect(appr.locator('.c-slider[data-key="hue"]')).toHaveCount(0);
+  await expect(appr.locator('.c-slider[data-key="saturation"]')).toHaveCount(0);
+  await expect(appr.locator('.c-slider[data-key="temperature"]')).toHaveCount(0);
   await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
   // 切强调色 → --accent 直接取色板（无微调覆盖）
   await appr.locator('.cust-accent-card[data-accent="teal"]').click();
@@ -49,7 +49,7 @@ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', as
   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
-  await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
+  await expect(page.locator('.c-slider[data-key="noise"]')).toBeVisible();
 });
 
 test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
@@ -88,7 +88,7 @@ test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动�
   expect(after).not.toBe(before);
   // 圆角滑杆 → 预览卡圆角比例同步变化（全局联动验证）
   const rBefore = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
-  await page.locator('.cust-range[data-key="radiusScale"]').fill('1.5');
+  await page.locator('.c-slider[data-key="radiusScale"]').fill('1.5');
   const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
   expect(rAfter).not.toBe(rBefore);
 });
@@ -105,11 +105,11 @@ test('文字排版：baseSize/scale 滑杆真实全局缩放字号', async ({ pa
   expect(before.sm).toBeCloseTo(12, 1);   // --font-size-sm = 14 × 6/7
   // 注：brief 原始 `.cust-row:has-text("缩放")` 与「时长缩放」行（durationScale）子串冲突 → 改按
   // data-key 精确定位（与同文件 radiusScale/noise 用例同款约定）
-  await appr.locator('.cust-range[data-key="scale"]').fill('1.15');
+  await appr.locator('.c-slider[data-key="scale"]').fill('1.15');
   const scaled = await readFont();
   expect(scaled.body).toBeGreaterThan(before.body);
   expect(scaled.sm).toBeGreaterThan(before.sm);
-  await appr.locator('.cust-range[data-key="baseSize"]').fill('12');
+  await appr.locator('.c-slider[data-key="baseSize"]').fill('12');
   const based = await readFont();
   expect(based.body).toBeLessThan(scaled.body);
   expect(based.sm).toBeLessThan(scaled.sm);
