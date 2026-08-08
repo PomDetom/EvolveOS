@@ -79,11 +79,13 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 - **fix 波评审（scoped）**：4 findings 全 ADDRESSED，无新破坏；diff 严格 3 文件
 - **执行状态**：全部任务完成 + 修复波闭环 → 待合并 main + 合并后全量回归
 
-## 合并 main + 合并后全量回归（待执行）
+## 合并 main + 合并后全量回归（2026-08-08）
 
-- 合并：`git merge --no-ff`（合并前先跑最终全量回归：unit + e2e worktree 配置 + build + cargo check）
-- 合并后全量回归（注意环境告警：5173 陈旧 server 污染默认 npm run test:e2e，须 worktree 配置或重启）
-- 合并后按项目惯例：删除已合并分支？fix/b4-strip-open 与 worktree-b4-close-sizing 的处置由控制器/用户决定
+- **合并**：`git merge --no-ff worktree-b4-close-sizing`（09ba6bc，在 worktree 检出 main 后合并，ort 无冲突）；18 commits 全入 main（fix/b4-strip-open 历轮悬浮窗修复 + B4F-1..5）
+- **合并后全量回归**：npm test 58/58；e2e（worktree 配置 5174）106/106（含视觉基线 24 零漂移）；npm run build 通过；cargo check 通过
+- **B4 收尾完成**：① 悬浮窗尺寸显式 LogicalSize 贴合（DPI 下竖排底部不再被裁）+ computeFitSize 单测 ② 主窗关闭可配置（closeBehavior 退出应用/保留后台，设置通用分区选择器）③ 关闭逻辑移 Rust on_window_event（exit→app.exit / background→prevent_close+hide，修 JS onCloseRequested 卡死 bug）④ JS syncCloseBehavior 同步 ⑤ strip 恢复主窗按钮 全部落地 main
+- **环境遗留（用户需处理）**：共享 checkout 陈旧 Vite dev server（PID 2528，端口 5173）serve 旧代码，Playwright 默认 `reuseExistingServer:true` 会误连导致 `npm run test:e2e` 失真——建议 `Stop-Process -Id 2528 -Force` 或重启；worktree 的 `playwright.config.worktree.js`（5174 新鲜 server）为本会话 e2e workaround，未提交。
+- **分支处置**：worktree-b4-close-sizing 已合并可删；fix/b4-strip-open（共享 checkout，1d35504）内容已全入 main，留待用户决定快进/删除。
 
 ## 环境告警（本会话，用户需知悉）
 
