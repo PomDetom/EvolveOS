@@ -65,3 +65,14 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **偏离**：无 verbatim 适配（CSS/JS/e2e 全逐字按 brief）。Step 5 分区内限宽**不加**（默认），2560×1440 视口截图确认表单 420px 自限宽观感克制；若超大窗口后续判定松散可按 brief 补加。
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor：① e2e 标题「表单限宽居中」仅由概览页断言覆盖，设置页表单分区（fluid 容器 + `.csettings__field` 420px 自限宽）的克制仅手动 2560 截图守卫（brief 逐字测试，计划既定）；② `data-layout="center"` 功能冗余（无 `[data-layout="center"]` CSS 规则，默认 max-width 即居中——brief 为 e2e 稳定性显式要求）；③ app-main.css:110 注释「表单/概览保持限宽居中」措辞略不精确（表单实为 fluid 容器 + field 自限宽）。⚠️ 项已核实：24 张基线全量重生成与 720→1080 成因自洽（报告尺寸变化：components/motion 变宽变矮=栅格扩列、appearance 仅变宽=拉伸）；Step 5 决策有代码级证据（`.csettings__field { max-width:420px }` settings-window.css:64-65 确认存在）。
 - **执行状态**：Task B5-4：✅ 完成（9321aaa + 542cfe0，评审通过）
+
+## Task B5-5: 控件语言收尾（外观页密度/对齐统一）
+
+- **状态**：DONE（2026-08-09，含 1 Minor 观察项）
+- **简报**：docs/superpowers/sdd/task-B5-5-brief.md
+- **报告**：docs/superpowers/sdd/task-B5-5-report.md
+- **提交**：feat（外观页控件行对齐统一）+ docs 一枚（本台账/简报/报告）
+- **内容**：外观页控件行对齐/密度统一——customizer.css 按 verbatim 加 `.cust-row__head { min-height:20px }`、`.cust-row--switch { min-height:40px }`（两处 switch 行 20→40px 密度下限，元素增高恰 +33px）、`.cust-row--switch .cust-row__head { min-height:auto }`、`.cust-accent-grid { align-items:stretch }`；标签基线/行距/accent 网格等高实测既有规则已满足（brief Step 3 兜底条款）。e2e 追加 B5-5 用例（基线 + 行距 + switch 密度三段断言）。视觉基线恰 6 张 appearance-partition 重生成，其余 18 张零变化。
+- **偏离**：**verbatim e2e 断言与真实 DOM 结构性不匹配，需适配**（probe 实测佐证）：①「前 3 行 label top 一致 <2px」对纵向堆叠行结构性不可能（实测差 204px，含 switch 行）→ 适配为「slider 行内 label/value 同基线」；②「前 4 行间距差 <4px」中首 switch 行与下一行间隔玻璃预览卡（非 .cust-row，gap 136px 由卡片高度主导）→ 适配为「连续 slider 段行距一致」（差 0px）；③ RED 驱动改「switch 行高 ≥40px」（verbatim CSS 唯一实际渲染变化点，20→40 红→绿完整闭环）。settings-window.css 零改动（Step 4 要求现状已满足，无观感偏差）。
+- **评审**：待最终评审。
+- **执行状态**：Task B5-5：✅ 完成（feat 提交 + docs 提交，报告已留痕）
