@@ -14,6 +14,7 @@
   - `background` / `background-color`：按钮 hover（`.c-btn`）、列表行 hover、switch 开关等；
   - `border-color` / `box-shadow`：表单 focus 态（input/select/search-bar 的 focus 边框与阴影过渡）；
   - `color`：文本色 hover / 激活态。
+  - `filter`：按钮 hover/active 的 brightness 微调（paint-only，与 background 同型）。
   - 豁免边界：这些属性只用于**短暂状态切换过渡**（hover/focus/active/选中），不用作入场/离场动效主体；不使用 `left/top/width/height/margin/padding` 等 layout 属性做动画；性能关键路径（列表 stagger 等）仍只走 transform/opacity。
 - 若新实现需要超出上述范围的过渡，先在此节固化口径再落地。
 

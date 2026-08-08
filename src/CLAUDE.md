@@ -29,7 +29,7 @@
 - **模糊（backdrop-filter）永不动画**。
 - 超过 6 项同时动画必须 stagger。
 - 动效降级（reduced-motion / 动效关闭）时，时长与 animation-delay **一并归零**。
-- **paint-only 过渡豁免**：`background`/`border-color`/`box-shadow`/`color` 允许用于 hover/focus/active 等短暂状态切换的过渡（不做入场/离场动效主体）；完整口径见 `docs/CLAUDE.md`「动画红线口径」。
+- **paint-only 过渡豁免**：`background`/`border-color`/`box-shadow`/`color`/`filter` 允许用于 hover/focus/active 等短暂状态切换的过渡（不做入场/离场动效主体）；完整口径见 `docs/CLAUDE.md`「动画红线口径」。
 
 ## 验证要求
 
