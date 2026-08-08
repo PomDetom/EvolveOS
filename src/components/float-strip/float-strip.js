@@ -48,7 +48,7 @@ export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } =
   return `<div class="c-tmon">${dot}<span class="c-tmon__value">${escapeHtml(value)}</span>${bars}</div>`;
 }
 
-export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}) {
+export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windowMode = false, onResize = () => {} } = {}) {
   const strip = root.classList.contains('c-strip') ? root : root.querySelector('.c-strip');
   if (!strip) return null;
   const content = strip.querySelector('.c-strip__content');
@@ -118,7 +118,7 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}
         if (edge.includes('top')) y = 0;
         if (edge.includes('bottom')) y = vh - r.height;
       }
-      setPos(x, y);
+      if (windowMode) { onResize(); } else { setPos(x, y); }
       strip.classList.remove('c-strip--rotating');
       onStateChange({ orientation, snapped: strip.dataset.snapped || null });
     }, dur);
@@ -127,6 +127,10 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose } = {}
   // —— 拖动（pointer 事件 + setPointerCapture；move/up 挂 window 兜底命中）——
   function startDrag(e) {
     if (e.button !== 0) return;
+    if (windowMode) {
+      window.__TAURI__?.window?.getCurrentWindow?.()?.startDragging?.().catch?.(() => {});
+      return;
+    }
     const el = e.currentTarget;
     const start = getPos();
     const sx = e.clientX, sy = e.clientY;

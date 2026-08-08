@@ -94,3 +94,47 @@ test('app 壳：右下 FloatBall → 点击展开 FloatStrip 演示（右下贴�
   const box = await strip.boundingBox();
   expect(box.x + box.width).toBeGreaterThan(700); // 贴右边缘附近
 });
+
+test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久化、X 关闭窗口', async ({ page }) => {
+  await page.addInitScript(() => {
+    const calls = [];
+    window.__TAURI__ = { window: { getCurrentWindow: () => ({
+      startDragging: () => { calls.push('startDragging'); return Promise.resolve(); },
+      setSize: (s) => { calls.push(['setSize', s]); return Promise.resolve(); },
+      setPosition: (p) => { calls.push(['setPosition', p]); return Promise.resolve(); },
+      outerPosition: () => { calls.push('outerPosition'); return Promise.resolve({ x: 300, y: 200 }); },
+      onMoved: (fn) => { window.__stripMovedFn__ = fn; return Promise.resolve(() => {}); },
+      close: () => { calls.push('close'); return Promise.resolve(); },
+    }) } };
+    window.__stripWinCalls__ = calls;
+    localStorage.setItem('ui-design-strip-pos', JSON.stringify({ x: 120, y: 80 }));
+  });
+  await page.goto('/?mode=strip');
+  await expect(page.locator('.c-strip')).toBeVisible();
+  // 位置恢复：setPosition 被调用且为存档值
+  let calls = await page.evaluate(() => window.__stripWinCalls__);
+  expect(calls).toContainEqual(['setPosition', { x: 120, y: 80 }]);
+  // 位置保存：触发 onMoved → outerPosition → localStorage 更新为 300/200
+  await page.evaluate(() => window.__stripMovedFn__());
+  await page.waitForTimeout(350); // 去抖 200ms
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-strip-pos')));
+  expect(saved).toEqual({ x: 300, y: 200 });
+  // 拖动 → startDragging（不跟踪指针/不磁吸）
+  await page.locator('.c-strip__drag').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
+  calls = await page.evaluate(() => window.__stripWinCalls__);
+  expect(calls).toContain('startDragging');
+  // 旋转 → setSize 贴合（先 hover 使控制条浮现可点，与既有用例同模式；
+  // 真实 Tauri 窗口=内容尺寸，指针恒在 strip 上 → hover 恒成立）
+  const before = calls.filter((c) => c[0] === 'setSize').length;
+  const strip = page.locator('.c-strip');
+  await strip.hover();
+  await page.waitForTimeout(SETTLE_MS);
+  await page.locator('.c-strip__rotate').click();
+  await page.waitForTimeout(300); // 交叉淡入淡出 240ms
+  calls = await page.evaluate(() => window.__stripWinCalls__);
+  expect(calls.filter((c) => c[0] === 'setSize').length).toBeGreaterThan(before);
+  // X 关闭 → close
+  await page.locator('.c-strip__close').click();
+  calls = await page.evaluate(() => window.__stripWinCalls__);
+  expect(calls).toContain('close');
+});
