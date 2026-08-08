@@ -21,7 +21,7 @@ test('外观分区：色彩微调滑杆已移除，强调色预设保留', async
   await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
   await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
   await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
-  await expect(appr.locator('.cust-accent-card')).toHaveCount(6);
+  await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
   // 切强调色 → --accent 直接取色板（无微调覆盖）
   await appr.locator('.cust-accent-card[data-accent="teal"]').click();
   const accent = await page.evaluate(() =>
@@ -29,6 +29,18 @@ test('外观分区：色彩微调滑杆已移除，强调色预设保留', async
   // B4-3 偏差修正：未注册 CSS 自定义属性保持原始序列化（hex，非 rgb）—— 与本仓库 tokens.spec
   // 对同一变量 --accent 的既有断言（'#2dd4bf'）保持一致；语义断言不变（强调色 = teal 色板直出）。
   expect(accent).toBe('#2dd4bf'); // teal-400 #2dd4bf
+});
+
+test('强调色预设扩至 12 套，新预设可切换', async ({ page }) => {
+  const appr = await openSettingsPartition(page, 1);
+  await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
+  await appr.locator('.cust-accent-card[data-accent="rose"]').click();
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+  expect(accent).toBe('#fb7185'); // rose-400（--accent 取色板 400）
+  const preview = await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.cust-overview')).getPropertyValue('--preview-accent').trim());
+  expect(preview).toBe('#f43f5e'); // ACCENTS rose.color（设计规格 500 值）
 });
 
 test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {

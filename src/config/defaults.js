@@ -27,6 +27,12 @@ export const ACCENTS = [
   { id: 'amber', name: '琥珀', color: '#f59e0b', desc: '活力、温暖' },
   { id: 'violet', name: '紫罗兰', color: '#a78bfa', desc: '优雅、个性' },
   { id: 'emerald', name: '翡翠', color: '#34d399', desc: '自然、治愈' },
+  { id: 'rose', name: '玫红', color: '#f43f5e', desc: '热情、张力' },
+  { id: 'orange', name: '橙', color: '#f97316', desc: '活力、明亮' },
+  { id: 'lime', name: '青柠', color: '#84cc16', desc: '清新、能量' },
+  { id: 'cyan', name: '青', color: '#06b6d4', desc: '通透、清爽' },
+  { id: 'blue', name: '蓝', color: '#3b82f6', desc: '稳重、可靠' },
+  { id: 'fuchsia', name: '品红', color: '#d946ef', desc: '时尚、鲜明' },
 ];
 
 export const THEME_MODES = ['system', 'light', 'dark'];
