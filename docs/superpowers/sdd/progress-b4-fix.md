@@ -67,9 +67,23 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 - **执行状态**：Task B4F-5：✅ 完成（70f3c1f，评审通过）
 - **Minor (deferred)**：① 桌面 rotate→close 的 re-hover 摩擦（布局固有，用户目检时知晓）；② 浏览器 strip 无恢复按钮的显式负断言（可选加 toHaveCount(0)）
 
-## 全部任务完成 → 最终整体评审
+## 全部任务完成 → 最终整体评审（2026-08-08，合并前）
 
-（待执行：全量回归 + 最强大模型 review-package MERGE_BASE HEAD → 修复波 → merge main → 合并后全量回归）
+- **审查包**：docs/superpowers/sdd/review-B4F-final.diff（5b4d73f..HEAD，18 commits = fix/b4-strip-open 历轮修复 + B4F-1..5）
+- **裁决**：Ready to merge: With fixes —— 2 Important + Minor triage；评审独立验证 closeBehavior 全链闭环（defaults→store→subscribe→invoke→Rust AppState→on_window_event）、ACL 无缺（set_close_behavior 自定义命令默认允许；allow-outer-size/scale-factor 在 core:window:default）、浏览器三路径零回归
+- **修复波**：`a13413d` `fix: 最终评审修复（删死 onShow re-fit + 补 closeBehavior 变更 invoke 测试锁，B4 收尾）`
+  - **Important ①**：删 `win.onShow?.(() => fit())` 死代码（Tauri 2 Window 无 onShow，re-fit 兜底从未运行）——删行 + 诚实注释
+  - **Important ②**：补配置变更→Rust invoke 路径测试锁（新 e2e 注入 core.invoke mock，点「保留后台」断言 invoke behavior:'background' + 锁挂载默认 exit）
+  - **Minor ①（顺手）**：`[data-mode]` 裁定回归测试（点主题后 close-behavior 高亮保持）
+  - **Minor ②（顺手）**：浏览器 strip 无 `.c-strip__restore` 负断言（toHaveCount(0)）
+- **fix 波评审（scoped）**：4 findings 全 ADDRESSED，无新破坏；diff 严格 3 文件
+- **执行状态**：全部任务完成 + 修复波闭环 → 待合并 main + 合并后全量回归
+
+## 合并 main + 合并后全量回归（待执行）
+
+- 合并：`git merge --no-ff`（合并前先跑最终全量回归：unit + e2e worktree 配置 + build + cargo check）
+- 合并后全量回归（注意环境告警：5173 陈旧 server 污染默认 npm run test:e2e，须 worktree 配置或重启）
+- 合并后按项目惯例：删除已合并分支？fix/b4-strip-open 与 worktree-b4-close-sizing 的处置由控制器/用户决定
 
 ## 环境告警（本会话，用户需知悉）
 
