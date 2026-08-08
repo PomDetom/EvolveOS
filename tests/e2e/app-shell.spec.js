@@ -491,31 +491,30 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
-// —— B4-5 独立悬浮窗：主窗 FloatBall 在 Tauri 环境创建独立 strip 窗口 ——
-// mock `__TAURI__` 注入 WebviewWindow 记录调用；无 `__TAURI__` 时仍走窗口内 strip 演示
-// （floatstrip.spec.js 的浏览器分支用例回归覆盖，此处只测 Tauri 分支）。
+// —— B4-5 独立悬浮窗：主窗 FloatBall 在 Tauri 环境显示/聚焦预注册的隐藏 strip 窗口 ——
+// mock `__TAURI__` 注入 getAllWindows 返回 strip 窗口记录 show/setFocus 调用；
+// 无 `__TAURI__` 时仍走窗口内 strip 演示（floatstrip.spec.js 的浏览器分支用例回归覆盖，
+// 此处只测 Tauri 分支）。真实 Tauri 全局未暴露 WebviewWindow 构造函数（修复 B4-5），
+// 故改用预注册窗口 + getAllWindows→show，避免运行时创建。
 
-test('Tauri：FloatBall 展开创建独立 strip 窗口（透明置顶）', async ({ page }) => {
+test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口', async ({ page }) => {
   await page.addInitScript(() => {
-    const created = [];
+    const shown = [];
     window.__TAURI__ = {
       window: {
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
-        WebviewWindow: class {
-          constructor(label, opts) { created.push({ label, opts }); }
-          setFocus() { return Promise.resolve(); } once() {}
-        },
+        getAllWindows: () => Promise.resolve([{
+          label: 'strip',
+          show: () => { shown.push('show'); return Promise.resolve(); },
+          setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
+        }]),
       },
     };
-    window.__stripWinCalls__ = created;
+    window.__stripShown__ = shown;
   });
   await page.goto('/?mode=app');
   await page.locator('.app-main__float-ball').click();
-  const calls = await page.evaluate(() => window.__stripWinCalls__);
-  expect(calls).toHaveLength(1);
-  expect(calls[0].label).toBe('strip');
-  expect(calls[0].opts.transparent).toBe(true);
-  expect(calls[0].opts.decorations).toBe(false);
-  expect(calls[0].opts.alwaysOnTop).toBe(true);
-  expect(calls[0].opts.url).toContain('mode=strip');
+  const shown = await page.evaluate(() => window.__stripShown__);
+  expect(shown).toContain('show');
+  expect(shown).toContain('setFocus');
 });

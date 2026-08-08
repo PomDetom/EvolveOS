@@ -85,8 +85,6 @@ const MODULES = [
   },
 ];
 
-let stripWindow = null; // B4-5：Tauri 独立 strip 窗口句柄（销毁后置空，重开可再建）
-
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
@@ -706,34 +704,20 @@ export function mountAppMode(root) {
   let stripHost = null;
   mountFloatBall(ballHost, {
     onExpand: () => {
-      // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
+      // Tauri：显示/聚焦独立 strip 窗口（tauri.conf.json 预注册隐藏窗口「strip」；
+      //   不用运行时 WebviewWindow —— 真实 Tauri 全局未暴露该构造函数，改用 getAllWindows→show）
       if (typeof window.__TAURI__ !== 'undefined') {
-        const { WebviewWindow } = window.__TAURI__.window;
-        if (stripWindow) { stripWindow.setFocus().catch(() => {}); return; }
-        try {
-          stripWindow = new WebviewWindow('strip', {
-            url: '/?mode=strip',
-            width: 320,
-            height: 64,
-            transparent: true,
-            decorations: false,
-            alwaysOnTop: true,
-            resizable: false,
+        window.__TAURI__.window.getAllWindows()
+          .then((wins) => {
+            const strip = wins.find((w) => w.label === 'strip');
+            if (!strip) { console.warn('[strip] 未找到 strip 窗口'); return; }
+            strip.show().catch(() => {});
+            strip.setFocus().catch(() => {});
+          })
+          .catch((err) => {
+            console.error('[strip] 获取窗口失败：', err);
+            toast(`悬浮窗获取失败：${String(err?.message ?? err).slice(0, 120)}`, { variant: 'danger' });
           });
-          stripWindow.once('tauri://created', () => {
-            console.log('[strip] 窗口创建成功');
-          });
-          stripWindow.once('tauri://error', (e) => {
-            console.error('[strip] 窗口创建失败（tauri://error）：', e?.payload ?? e);
-            stripWindow = null;
-            toast(`悬浮窗创建失败：${String(e?.payload ?? e).slice(0, 120)}`, { variant: 'danger' });
-          });
-          stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
-        } catch (err) {
-          console.error('[strip] 创建异常（try/catch）：', err);
-          stripWindow = null;
-          toast(`悬浮窗创建异常：${String(err?.message ?? err).slice(0, 120)}`, { variant: 'danger' });
-        }
         return;
       }
       if (stripHost) return; // 已展开则不重复创建

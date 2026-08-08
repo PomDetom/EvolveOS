@@ -95,7 +95,7 @@ test('app 壳：右下 FloatBall → 点击展开 FloatStrip 演示（右下贴�
   expect(box.x + box.width).toBeGreaterThan(700); // 贴右边缘附近
 });
 
-test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久化、X 关闭窗口', async ({ page }) => {
+test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久化、X 隐藏窗口', async ({ page }) => {
   await page.addInitScript(() => {
     const calls = [];
     window.__TAURI__ = { window: { getCurrentWindow: () => ({
@@ -104,7 +104,7 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
       setPosition: (p) => { calls.push(['setPosition', p]); return Promise.resolve(); },
       outerPosition: () => { calls.push('outerPosition'); return Promise.resolve({ x: 300, y: 200 }); },
       onMoved: (fn) => { window.__stripMovedFn__ = fn; return Promise.resolve(() => {}); },
-      close: () => { calls.push('close'); return Promise.resolve(); },
+      hide: () => { calls.push('hide'); return Promise.resolve(); },
     }) } };
     window.__stripWinCalls__ = calls;
     localStorage.setItem('ui-design-strip-pos', JSON.stringify({ x: 120, y: 80 }));
@@ -133,8 +133,8 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
   await page.waitForTimeout(300); // 交叉淡入淡出 240ms
   calls = await page.evaluate(() => window.__stripWinCalls__);
   expect(calls.filter((c) => c[0] === 'setSize').length).toBeGreaterThan(before);
-  // X 关闭 → close
+  // X 关闭 → hide（预注册窗口隐藏可重开，不销毁）
   await page.locator('.c-strip__close').click();
   calls = await page.evaluate(() => window.__stripWinCalls__);
-  expect(calls).toContain('close');
+  expect(calls).toContain('hide');
 });
