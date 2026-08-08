@@ -22,3 +22,14 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **简报/报告**：docs/superpowers/sdd/task-B4-1-brief.md / task-B4-1-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① 单测断言包含而非精确集（brief 字面，后续可收紧）；② 提交拆为 fix + docs 两枚（B3 既有惯例，非偏差）
 - **执行状态**：Task B4-1：✅ 完成（f5a16dc，评审通过）
+
+## Task B4-2: 文字排版真实生效（baseSize/scale 全局缩放）
+
+- **状态**：完成（2026-08-08，见 task-B4-2-report.md；DONE_WITH_CONCERNS：两处 verbatim 适配）
+- **提交**：`b6ba3ac` `feat: 文字排版真实生效（字号令牌派生自 --font-size-base，baseSize/scale 全局缩放，闭环 B4-4）`
+- **验证**：TDD 红→绿（单测先红 `expected '14px' to be 'calc(14px * 1.15)'` → 改三处源 → 绿）；npm test 62/62（+1）；npm run test:e2e 101 passed（含视觉 24 **零漂移**，未跑 --update-snapshots；含新增「文字排版全局缩放字号」e2e）；npm run build 通过
+- **实现**：`--font-size-base = calc(baseSize px * scale)`（applyConfig + customizer-css 导出对齐）；tokens.css 字号令牌全部派生自 `--font-size-base`（`* 5/7、6/7、8/7、10/7、12/7、*2`，默认 14×1 计算值浮点精确整数 → 零漂移）
+- **verbatim 适配**：① brief 乘数 0.714/0.857/1.143/1.429/1.714 默认 14×1 下产生 9.996/11.998/16.002/20.006/23.996 子像素值 → 视觉 3/24 漂移（stash 归因确证）→ 改精确有理数以兑现零漂移 MUST；② brief e2e 选择器 `.cust-row:has-text("缩放")` 与「时长缩放」strict 冲突 → 改 `.cust-range[data-key="scale"]`
+- **简报/报告**：docs/superpowers/sdd/task-B4-2-brief.md / task-B4-2-report.md
+- **评审**：待独立评审（规格符合 + 质量）
+- **执行状态**：Task B4-2：✅ 完成（b6ba3ac，待评审）
