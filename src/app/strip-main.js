@@ -6,6 +6,14 @@ import '../components/float-strip/float-strip.css';
 import { getConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
 
+/** 悬浮窗窗口尺寸（纯函数，可单测）：CSS 像素 → {width,height}（ceil + 至少 1px） */
+export function computeFitSize(rect) {
+  return {
+    width: Math.max(1, Math.ceil(rect.width)),
+    height: Math.max(1, Math.ceil(rect.height)),
+  };
+}
+
 export function mountStripMode() {
   applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
   const root = document.createElement('div');
@@ -36,7 +44,15 @@ export function mountStripMode() {
     // 尺寸贴合内容（初始 + 旋转）
     const fit = () => {
       const r = strip.getBoundingClientRect();
-      win.setSize({ width: Math.max(1, Math.ceil(r.width)), height: Math.max(1, Math.ceil(r.height)) }).catch(() => {});
+      const { LogicalSize } = window.__TAURI__.window;
+      const size = computeFitSize(r);
+      win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});
+      // 诊断（B4 收尾）：确认窗口尺寸与内容一致 + DPI 缩放
+      win.outerSize?.().then((os) => {
+        win.scaleFactor?.().then((sf) => {
+          console.log('[strip] fit', JSON.stringify(size), 'outer', JSON.stringify(os), 'scaleFactor', sf);
+        }).catch(() => {});
+      }).catch(() => {});
     };
     fit();
     win.onShow?.(() => fit()); // 隐藏窗口可能尚未完成布局，显示后再贴合一次（B4 桌面缺陷修复）

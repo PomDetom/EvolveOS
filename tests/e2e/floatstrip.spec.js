@@ -98,7 +98,7 @@ test('app 壳：右下 FloatBall → 点击展开 FloatStrip 演示（右下贴�
 test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久化、X 隐藏窗口', async ({ page }) => {
   await page.addInitScript(() => {
     const calls = [];
-    window.__TAURI__ = { window: { getCurrentWindow: () => ({
+    window.__TAURI__ = { window: { LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } }, getCurrentWindow: () => ({
       startDragging: () => { calls.push('startDragging'); return Promise.resolve(); },
       setSize: (s) => { calls.push(['setSize', s]); return Promise.resolve(); },
       setPosition: (p) => { calls.push(['setPosition', p]); return Promise.resolve(); },
