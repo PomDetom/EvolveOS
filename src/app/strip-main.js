@@ -22,6 +22,7 @@ export function mountStripMode() {
   if (win) {
     // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
     root.classList.add('strip-root--window');
+    document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底（base.css body 背景），避免整窗半透明遮罩
     const strip = root.querySelector('.c-strip');
     const STORAGE_KEY = 'ui-design-strip-pos';
     // 位置恢复
@@ -38,6 +39,7 @@ export function mountStripMode() {
       win.setSize({ width: Math.max(1, Math.ceil(r.width)), height: Math.max(1, Math.ceil(r.height)) }).catch(() => {});
     };
     fit();
+    win.onShow?.(() => fit()); // 隐藏窗口可能尚未完成布局，显示后再贴合一次（B4 桌面缺陷修复）
     // 位置持久化（去抖 200ms）
     let saveTimer = null;
     win.onMoved?.(() => {

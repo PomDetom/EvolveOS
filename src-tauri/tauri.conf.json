@@ -31,7 +31,6 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "resizable": false,
         "visible": false,
         "shadow": false
       }
