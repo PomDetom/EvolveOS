@@ -54,3 +54,14 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **偏离**：① brief 测试「回概览」home 选择器 `.app-main__nav-r`→`.app-main__nav-l`（右窗设置目录无 home 项，home 是左窗应用模块）；② 既有「主按钮 hover 阴影 --shadow-md 令牌」测试重写（brief 新 CSS 刻意移除 --shadow-md，改 `0 4px 14px color-mix` 柔和彩影，blur 16→14 断言随之更新）；③ 基线仅 app-main 6 张重生成（components 徽标/按钮矩阵在设置窗捕获 fold 之下 y1056+/y3453+ 字节不变，与 B5-2 滑杆同型；appearance/motion 零变化符合预期）。
 - **评审**：规格 ✅ / Approved（0 Critical，1 Important plan-mandated 延期，3 Minor 免修）——**Important（plan-mandated，延期最终评审）**：primary hover 阴影丢弃 `--shadow-md` 令牌、硬编码 `0 4px 14px color-mix(...)` blur/alpha（违反 src/CLAUDE.md「禁止硬编码值」，primary hover 阴影不再随 shadow-intensity 定制器缩放）——brief 逐字 CSS 既定后果，评审裁定**上游分诊（B5-5/最终评审）非任务内修复**（偏离 brief verbatim 更糟）。与 B5-2 静态 50% 填充 Minor 同型（plan-mandated 静态值），严重度分类有分歧（B5-2 Minor vs B5-3 Important），一并留最终评审裁定。Minor：① `.c-btn` transition 未含 filter（primary hover brightness 跳变，brief verbatim + 既有 danger 先例）；② 重写 hover 测试不再守卫令牌/定制器契约（设计变更后果）；③ 徽标/按钮无像素基线覆盖（fold 局限，e2e 样式断言为唯一守卫）。⚠️ 项已核实：基线集合与 diff 一致（恰 6 张 app-main）、解码比对以报告方法学接受。
 - **执行状态**：Task B5-3：✅ 完成（b7c54ec + 490706d，评审通过）
+
+## Task B5-4: 自适应布局（限宽居中 + 分区撑满）
+
+- **状态**：DONE（2026-08-09）
+- **简报**：docs/superpowers/sdd/task-B5-4-brief.md
+- **报告**：docs/superpowers/sdd/task-B5-4-report.md
+- **提交**：feat（内容区自适应布局）+ docs 一枚（本台账/简报/报告）
+- **内容**：内容区自适应窗口宽度——`.app-main__page` max-width 720→1080 限宽居中（`margin-inline:auto`），新增 `.app-main__page[data-layout="fluid"] { max-width:none; margin-inline:0 }` 撑满；MODULES 渲染 section 加 `data-layout="center"`（含 home 概览页）、settings section 加 `data-layout="fluid"`（设置页整体 fluid，含表单分区——表单靠 `.csettings__field` 420px 自限宽克制观感，组件/动效分区铺满）。字号间距恒定（无窗口比例缩放）。e2e 追加 B5-4 data-layout 断言；视觉基线 24 张全量重生成（内容区 720→1080 栅格扩列，计划预期）。
+- **偏离**：无 verbatim 适配（CSS/JS/e2e 全逐字按 brief）。Step 5 分区内限宽**不加**（默认），2560×1440 视口截图确认表单 420px 自限宽观感克制；若超大窗口后续判定松散可按 brief 补加。
+- **评审**：（待评审，0 提交前自审结论：DONE——TDD RED/GREEN 完整、解码比对确认纯布局宽度差异、单测 64/64 + 全量 e2e 109 并集 + build 全绿）
+- **执行状态**：Task B5-4：✅ 完成（feat + docs，待评审）
