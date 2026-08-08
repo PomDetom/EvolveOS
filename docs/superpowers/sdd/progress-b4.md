@@ -78,3 +78,15 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **简报/报告**：docs/superpowers/sdd/task-B4-6-brief.md / task-B4-6-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，0 Minor）——评审独立验证 rotate 修复形态 + 浏览器字节等价 + e2e 会红于 pre-task 码
 - **执行状态**：Task B4-6：✅ 完成（7b3e5a7，评审通过）
+
+## 最终整体评审（2026-08-08，合并前）
+
+- **审查包**：docs/superpowers/sdd/review-B4-final.diff（79d866f..2072c39，15 commits）
+- **裁决**：Ready to merge: With fixes —— 1 Important + 3 Minor；评审独立复跑 npm test 57/57 绿、逐项核对 Tauri ACL 权限标识
+- **修复波**：`562ab24` `fix: B4 最终评审修复（set-focus 权限 + 过期文案 + strip 跟随主题，闭环最终评审）` + `1dfd5cc` docs
+  - **Important**：B4-5 的 `stripWindow.setFocus()` 缺 `core:window:allow-set-focus` 权限（不在 core:window:default）→ 真桌面二次点击 FloatBall 触发 ACL 拒绝 + 未聚焦。修：capability 追加权限 + 单测守卫 + `setFocus().catch(()=>{})` + e2e mock 返回 Promise
+  - **Minor ②（合并前修）**：README「6 套主题色→12」「11 条滑杆→9（删色相/色温/饱和度后 RANGES 实为 9 键）」+ src/CLAUDE.md「6→12」
+  - **Minor ③（顺手修）**：strip-main 顶部 `applyConfig(getConfig())`，独立 strip 跟随已存主题/强调色（空/损坏 localStorage 由 getConfig 兜底，fresh headless 默认=原渲染 → 视觉零漂移）
+  - **Minor ①（免修/park）**：新预设 ACCENTS.color=500 品牌色 vs 应用 `--accent`=400 —— 与设计规格字面一致 + amber 既有先例，规格符合，park 随收尾
+- **fix 波评审（scoped）**：3 findings 全 ADDRESSED，无新破坏；out-of-scope 观察：根 CLAUDE.md:5 与 docs/tauri-integration.md:246 仍「6 套主题色」留收尾
+- **执行状态**：全部任务完成 + 修复波闭环 → 待合并 main + 合并后全量回归
