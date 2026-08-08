@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openSettingsPartition } from './helpers.js';
+import { openSettingsPartition, measureSliderFill } from './helpers.js';
 
 // B1-3 迁移：docs 定制器抽屉（.topbar__customizer → .cust-panel）→ 应用壳「外观」设置分区
 // （APP_SECTIONS index 1）。外观分区为定制器整页形态（renderCustomizerGroups 惰性挂载，
@@ -133,6 +133,8 @@ test('B5-5：外观页控件行对齐统一（标签基线 + 行距一致）', a
   //    首 switch 行与下一行间隔着玻璃预览卡（非 .cust-row），其 gap 由卡片高度主导，非行距可比）
   const rows = await appr.locator('.cust-row').evaluateAll((els) => els.slice(1, 4).map((el) => el.getBoundingClientRect().top));
   const gaps = rows.slice(1).map((t, i) => t - rows[i]);
+  // B5-final：断言②补 gap 空数组守卫（评审 Minor ① —— 空数组时 Math.max/min 为 ±Infinity，差 < 4 真空通过）
+  expect(gaps.length).toBeGreaterThan(0);
   expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(4);
   // ③ switch 行：标签垂直居中于行（align-items:center 兜底）+ 行高 ≥ 40px（min-height 密度统一）。
   //    以「标签中心 vs 行中心」度量（.c-switch 在动效行有 .cust-switch-wrap 嵌套，行中心才是 flex 保证）
@@ -150,4 +152,26 @@ test('B5-5：外观页控件行对齐统一（标签基线 + 行距一致）', a
     expect(cent).toBeLessThan(1);
     expect(h).toBeGreaterThanOrEqual(40);
   }
+});
+
+// B5-final（find 1）：滑杆 --fill → track 渲染路径像素级验证。此前唯一像素探针用的是值=50 的滑杆
+// （恰与 `var(--fill, 50%)` 兜底重合，无法判别接线与否）；customizer syncUI 是最薄弱链路 ——
+// 本测试把 noise 推到非 50% 值，实测渲染填充比例随值变化（若 --fill 未接线则恒 50%，断言必红）。
+test('B5-final：滑杆 --fill 按值渲染（非 50% 兜底，像素级）', async ({ page }) => {
+  test.setTimeout(60000);
+  const appr = await openSettingsPartition(page, 1);
+  // noise RANGES [0, 0.12]，默认 0.06 = 恰 50%（与兜底重合，不能用于判别）→ 推到 25% / 75%
+  const slider = appr.locator('.c-slider[data-key="noise"]');
+  await slider.fill('0.03'); // 25% 填充
+  const r25 = await measureSliderFill(page, slider);
+  await slider.fill('0.09'); // 75% 填充
+  const r75 = await measureSliderFill(page, slider);
+  // 渲染填充比例应跟踪值（±0.13 容差覆盖轨道圆角/AA 边界），而非静止在 0.5
+  expect(r25).toBeGreaterThan(0.15);
+  expect(r25).toBeLessThan(0.38);
+  expect(r75).toBeGreaterThan(0.62);
+  expect(r75).toBeLessThan(0.85);
+  // 判别力：非 50% 值必须渲染非 50% 填充（--fill 全接线前恒 50% → 本断言红）
+  expect(Math.abs(r25 - 0.5)).toBeGreaterThan(0.1);
+  expect(Math.abs(r75 - 0.5)).toBeGreaterThan(0.1);
 });
