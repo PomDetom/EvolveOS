@@ -1,5 +1,5 @@
 import { getConfig, saveConfig, subscribe, notify, KEY } from '../config/store.js';
-import { applyConfig, hexToHsl, prefersDark } from '../config/apply.js';
+import { applyConfig, prefersDark } from '../config/apply.js';
 import { DEFAULTS, RANGES, ACCENTS } from '../config/defaults.js';
 import { icon } from '../components/icon/icon.js';
 import { toast } from '../components/toast/toast.js';
@@ -32,21 +32,13 @@ const CFG_PATH = {
   durationScale: ['motion', 'durationScale'],
   springStrength: ['motion', 'springStrength'],
   shadowIntensity: ['shadow'],
-  hue: ['color', 'hue'],
-  saturation: ['color', 'saturation'],
-  temperature: ['color', 'temperature'],
 };
 
 const GROUPS = [
   {
     title: '整体色调',
-    desc: '主题色/色相/饱和度/色温',
+    desc: '预设主题色 / 语义色自动协调',
     pre: (cfg) => accentCards(cfg) + semanticBar(),
-    sliders: [
-      { key: 'hue', label: '色相', unit: '°' },
-      { key: 'saturation', label: '饱和度', unit: '%' },
-      { key: 'temperature', label: '色温', hint: '冷 ↔ 暖' },
-    ],
   },
   {
     title: '表面质感',
@@ -104,42 +96,19 @@ function writePatch(key, value) {
   return p.length === 1 ? { [p[0]]: value } : { [p[0]]: { [p[1]]: value } };
 }
 
-/** 色相特判：-1 = 跟随主题色（滑杆显示当前主题色色相；数值区显示「跟随」） */
-function hueSliderValue(cfg) {
-  if (cfg.color.hue !== -1) return cfg.color.hue;
-  const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
-  return hexToHsl(accent.color).h;
-}
-
 function fmtValue(cfg, key, unit) {
-  if (key === 'hue') return cfg.color.hue === -1 ? '跟随' : `${cfg.color.hue}°`;
   return `${readCfg(cfg, key)}${unit ?? ''}`;
-}
-
-/** 色相/饱和度组合色（与 apply.js 覆盖公式一致；hue -1 = 跟随主题色） */
-function tintHsl(cfg) {
-  const accent = ACCENTS.find((a) => a.id === cfg.accent) ?? ACCENTS[0];
-  const base = hexToHsl(accent.color);
-  const H = cfg.color.hue === -1 ? base.h : cfg.color.hue;
-  const S = Math.min(100, Math.max(0, base.s * (cfg.color.saturation / 100)));
-  return `hsl(${H} ${S.toFixed(1)}% 65%)`;
-}
-
-/** 色相/饱和度组合色预览点（实时反映当前配置） */
-function tintSwatch(cfg) {
-  return `<span class="cust-tint-swatch" style="--swatch: ${tintHsl(cfg)}" aria-hidden="true"></span>`;
 }
 
 function renderSlider(cfg, spec) {
   const [min, max, step] = RANGES[spec.key];
-  const value = spec.key === 'hue' ? hueSliderValue(cfg) : readCfg(cfg, spec.key);
-  const swatch = spec.key === 'hue' ? tintSwatch(cfg) : '';
+  const value = readCfg(cfg, spec.key);
   return `
     <div class="cust-row">
       <div class="cust-row__head">
         <span class="cust-row__label">${spec.label}${spec.hint ? `<em class="cust-row__hint">${spec.hint}</em>` : ''}</span>
         <span class="cust-row__value">
-          ${swatch}<output data-out="${spec.key}">${fmtValue(cfg, spec.key, spec.unit)}</output>
+          <output data-out="${spec.key}">${fmtValue(cfg, spec.key, spec.unit)}</output>
         </span>
       </div>
       <input class="cust-range" type="range" data-key="${spec.key}"
@@ -235,17 +204,13 @@ function panelTemplate() {
 function syncUI(container, cfg) {
   container.querySelectorAll('.cust-range').forEach((input) => {
     const key = input.dataset.key;
-    const value = key === 'hue' ? hueSliderValue(cfg) : readCfg(cfg, key);
+    const value = readCfg(cfg, key);
     input.value = String(value);
     const [min, max] = RANGES[key];
     input.style.setProperty('--fill', `${((value - min) / (max - min)) * 100}%`);
     const out = container.querySelector(`[data-out="${key}"]`);
-    const spec = GROUPS.flatMap((g) => g.sliders).find((s) => s.key === key);
+    const spec = GROUPS.flatMap((g) => g.sliders ?? []).find((s) => s.key === key);
     if (out && spec) out.textContent = fmtValue(cfg, key, spec.unit);
-    if (key === 'hue') {
-      const sw = container.querySelector(`[data-out="hue"] .cust-tint-swatch`);
-      if (sw) sw.style.setProperty('--swatch', tintHsl(cfg));
-    }
     if (key === 'durationScale' || key === 'springStrength') {
       input.disabled = !cfg.motion.enabled;
     }
@@ -346,7 +311,7 @@ function updateOverview(container, cfg) {
   el.style.setProperty('--preview-theme', resolved);
   // 主题块底色：与主题色对应 solid 面（themes.css 同值），使色块随 --preview-theme 解析变化
   el.style.setProperty('--preview-theme-bg', resolved === 'dark' ? '#16181f' : '#f8f9fb');
-  el.style.setProperty('--preview-accent', tintHsl(cfg));
+  el.style.setProperty('--preview-accent', ACCENTS.find((a) => a.id === cfg.accent)?.color ?? ACCENTS[0].color);
   el.style.setProperty('--preview-glass-opacity', String(cfg.glass.opacity));
   el.style.setProperty('--preview-radius', String(cfg.radiusScale));
 }
@@ -366,7 +331,7 @@ export function renderCustomizerGroups(container) {
       <h4 class="cust-group__title">${g.title}</h4>
       ${g.desc ? `<p class="cust-group__desc">${g.desc}</p>` : ''}
       ${g.pre ? g.pre(cfg) : ''}
-      ${g.sliders.map((s) => renderSlider(cfg, s)).join('')}
+      ${(g.sliders ?? []).map((s) => renderSlider(cfg, s)).join('')}
     </section>`).join('');
 
   // 风格卡片：点击切换主题色

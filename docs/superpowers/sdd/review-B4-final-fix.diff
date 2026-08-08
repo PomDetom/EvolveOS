@@ -1,0 +1,248 @@
+# Review package: 2072c39..HEAD
+
+## Commits
+1dfd5cc docs: B4 最终评审修复留痕（fix 562ab24 报告）
+562ab24 fix: B4 最终评审修复（set-focus 权限 + 过期文案 + strip 跟随主题，闭环最终评审）
+
+## Files changed
+ README.md                                          |  4 +-
+ docs/superpowers/sdd/review-B4-final-fix-report.md | 48 ++++++++++++++++++++++
+ src-tauri/capabilities/default.json                |  3 +-
+ src/CLAUDE.md                                      |  2 +-
+ src/app/app-main.js                                |  2 +-
+ src/app/strip-main.js                              |  3 ++
+ tests/e2e/app-shell.spec.js                        |  2 +-
+ tests/unit/window-capabilities.test.js             |  1 +
+ 8 files changed, 59 insertions(+), 6 deletions(-)
+
+## Diff
+diff --git a/README.md b/README.md
+index 85ceb8a..43a1b81 100644
+--- a/README.md
++++ b/README.md
+@@ -6,23 +6,23 @@
+ ## 两种形态
+ 
+ | 形态 | 入口 | 说明 |
+ |---|---|---|
+ | **应用壳**（主体） | 浏览器 `/`（默认，与 Tauri 一致）；`?mode=app` 显式 | 一体式标题栏 + 级联双滑动窗口（左=应用列表 / 右=应用目录或设置目录，纯图标栏）+ 黄金比例锚点（38.2%）+ 右下 FloatBall 悬浮条演示；手机（≤900px）底部横滑应用轮 + 全屏页面栈；模块占位，逐个填充真实小应用；设计系统展示已内化为设置「组件」「动效」分区 |
+ | **FloatStrip 悬浮条** | 浏览器 `?mode=strip` | 独立悬浮条形态：横竖双形态 + 四边磁吸 + 无边框内容优先（与 app 互斥渲染），供独立透明窗口接入 |
+ 
+ ## 特性
+ 
+ - **克制的玻璃质感**：rgba 层叠 + `backdrop-filter` 模糊 + 高光描边，深/浅双主题
+-- **6 套主题色**：靛蓝 / 青绿 / 天蓝 / 琥珀 / 紫罗兰 / 翡翠，`data-accent` 一键切换
++- **12 套主题色**：靛蓝 / 青绿 / 天蓝 / 琥珀 / 紫罗兰 / 翡翠 / 玫红 / 橙 / 青柠 / 青 / 蓝 / 品红，`data-accent` 一键切换
+ - **滑动选择导航（NavigationWheel）**：黄金比例锚点（38.2%）、滚动 focal 变形、拖拽惯性、居中吸附、横竖方向参数化
+-- **主题定制器**：11 条滑杆实时预览（含色相/色温/饱和度微调）+ 导出 CSS 变量 + 设置页整页嵌入
++- **主题定制器**：9 条滑杆实时预览 + 导出 CSS 变量 + 设置页整页嵌入
+ - **Tauri 壳**：无边框透明窗口（960×560）、窗口控制桥、拖拽 region
+ - **FloatStrip 悬浮条**：横竖双形态 + 四边磁吸 + 无边框内容优先（`?mode=strip` 独立入口 + 应用壳右下 FloatBall 演示）
+ - **手机形态**：≤900px 底部横滑应用轮 + 全屏页面栈（与桌面级联双窗经媒体查询切换）
+ 
+ ## 快速开始
+ 
+ ```bash
+ npm install        # 安装依赖（要求 Node ^20.19.0 || >=22.12.0）
+ npm run dev        # 开发服务器 (localhost:5173) → 浏览器打开应用壳模式
+ npm run tauri:dev  # 桌面窗口运行（应用壳模式）
+diff --git a/docs/superpowers/sdd/review-B4-final-fix-report.md b/docs/superpowers/sdd/review-B4-final-fix-report.md
+new file mode 100644
+index 0000000..bcaab60
+--- /dev/null
++++ b/docs/superpowers/sdd/review-B4-final-fix-report.md
+@@ -0,0 +1,48 @@
++# B4 最终评审修复留痕（review-B4-final-fix）
++
++- 分支：`feature/b4-desktop-realism`
++- 修复提交：`562ab24503df888a3fa9a2eee7a6695651681bf1`
++- 触发：整分支最终评审发现 1 Important（合并阻断）+ 2 merge-recommended Minor，本波全部闭环。
++
++## Fix 1 [Important] 缺失 `core:window:allow-set-focus` 权限
++
++`src/app/app-main.js` 的 B4-5 再聚焦路径在真机桌面静默失效：第二次点击 FloatBall（strip 已开）调用 `stripWindow.setFocus()`，但 `src-tauri/capabilities/default.json` 从未授权 `core:window:allow-set-focus`（不在 `core:window:default` 内）→ 真机构建下 ACL 拒绝 → unhandled promise rejection + strip 不聚焦。与 B4-1 修复的静默权限失败同类。
++
++- `src-tauri/capabilities/default.json`：`permissions` 数组新增 `"core:window:allow-set-focus"`。
++- `tests/unit/window-capabilities.test.js`：strip 窗口 `it` 块的 `required` 数组新增 `'core:window:allow-set-focus'`（守卫该权限常驻）。
++- `src/app/app-main.js`：`stripWindow.setFocus()` → `stripWindow.setFocus().catch(() => {})`，未来任何失败保持静默。
++- `tests/e2e/app-shell.spec.js`：Tauri strip 测试的 mock `setFocus()` 改为 `setFocus() { return Promise.resolve(); }`，使 `.catch` 分支被真实执行。
++
++## Fix 2 [Minor] 过期用户文档文案
++
++B4-3（删色相/色温/饱和度滑杆）与 B4-4（扩 12 预设）后，README 与 src/CLAUDE.md 的计数过期。
++
++- `README.md`：「6 套主题色：靛蓝 / 青绿 / 天蓝 / 琥珀 / 紫罗兰 / 翡翠」→「12 套主题色：靛蓝 / 青绿 / 天蓝 / 琥珀 / 紫罗兰 / 翡翠 / 玫红 / 橙 / 青柠 / 青 / 蓝 / 品红」。
++- `README.md`：「11 条滑杆实时预览（含色相/色温/饱和度微调）」→「9 条滑杆实时预览」（删去 B4-3 移除的三条微调描述）。
++- `src/CLAUDE.md`：「`data-accent`（6 套主题色）」→「`data-accent`（12 套主题色）」。
++
++**滑杆数核验**：`src/config/defaults.js` 的 `RANGES` 共 9 个 key —— `opacity / blur / noise / baseSize / scale / radiusScale / durationScale / springStrength / shadowIntensity`；定制器滑杆全部来自 `RANGES`（customizer-panel.js：滑杆均取自 `RANGES` 的 `[min, max, step]`）。9 条核验成立。
++
++## Fix 3 [Minor] strip 页/窗口跟随保存的主题与强调色
++
++`src/app/strip-main.js` 的 `mountStripMode()` 从不应用配置 → 独立 strip（`?mode=strip`，真实 strip 窗口用）在深色主题用户处仍渲染硬编码的默认浅色/靛蓝。
++
++- 新增 import：`getConfig`（`../config/store.js`）、`applyConfig`（`../config/apply.js`）。
++- `mountStripMode()` 顶部、渲染前调用 `applyConfig(getConfig())`。
++- Tauri strip 窗口与浏览器 `?mode=strip` 均生效；headless 浏览器默认浅色 → 既有 e2e 不受影响。
++
++## 验证输出（全部实际运行）
++
++1. `npx vitest run tests/unit/window-capabilities.test.js` → **2 passed**（新 set-focus 断言绿）。
++2. `npx playwright test tests/e2e/app-shell.spec.js -g "独立 strip 窗口"` → **1 passed**。
++   `npx playwright test tests/e2e/floatstrip.spec.js` → **7 passed**。
++3. 全量：
++   - `npm test` → **57 passed（11 文件）**。
++   - `npm run test:e2e` → **103 passed（含全部 24 张视觉基线）**，未运行 `--update-snapshots`，视觉基线零漂移。
++   - `npm run build` → **✓ built**。
++4. 过期文案 grep：`README.md` 与 `src/CLAUDE.md` 已无「6 套主题色」「11 条滑杆」。
++
++## 遗留观察（未改，超出本次命名文件范围）
++
++- 根 `CLAUDE.md:5` 项目说明含「6 套主题色」；`docs/tauri-integration.md:246` 含「6 套主题色（ACCENTS）」——同为过期计数，本次按「只改命名文件」未动，建议后续收尾。
++- 其余命中均为历史文档（`docs/superpowers/plans/`、`specs/`、`sdd/*.diff`、`progress-b4.md`）或 `src/styles/base.css:25` 焦点环注释（评审留痕明示「历史文案，不动」），不属本次范围。
+diff --git a/src-tauri/capabilities/default.json b/src-tauri/capabilities/default.json
+index c285fa9..fb4fb9f 100644
+--- a/src-tauri/capabilities/default.json
++++ b/src-tauri/capabilities/default.json
+@@ -11,13 +11,14 @@
+     "core:window:allow-minimize",
+     "core:window:allow-maximize",
+     "core:window:allow-unmaximize",
+     "core:window:allow-toggle-maximize",
+     "core:window:allow-close",
+     "core:window:allow-is-maximized",
+     "core:window:allow-start-dragging",
+     "core:webview:allow-create-webview-window",
+     "core:window:allow-set-position",
+     "core:window:allow-outer-position",
+-    "core:window:allow-set-size"
++    "core:window:allow-set-size",
++    "core:window:allow-set-focus"
+   ]
+ }
+diff --git a/src/CLAUDE.md b/src/CLAUDE.md
+index 0049bbc..a6ebc6c 100644
+--- a/src/CLAUDE.md
++++ b/src/CLAUDE.md
+@@ -4,21 +4,21 @@
+ 
+ - 每组件 `src/components/<name>/` = `<name>.css` + `<name>.js`。
+ - JS 导出 `render(opts): string`（HTML 字符串）+ 可选 `mount(root)`（交互挂载）。
+ - 类名 BEM 风格、`c-` 前缀（`c-btn__icon`、`c-btn--primary`）。
+ - 图标：全部内联 SVG（24×24、stroke 1.8、Lucide 风格、currentColor、aria-hidden），统一经 `icon(name, size)`。
+ 
+ ## 样式与令牌
+ 
+ - 禁止硬编码值：颜色/间距/圆角/时长/缓动全部引用 CSS 变量。
+ - 圆角一律 `calc(var(--radius-*) * var(--radius-scale, 1))`。
+-- 主题约定：`data-theme`（深浅）、`data-accent`（6 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
++- 主题约定：`data-theme`（深浅）、`data-accent`（12 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
+ - 配置链路：defaults（默认值 + RANGES）→ store（持久化）→ apply（写入 CSS 变量覆盖层）。**新增可配置参数必须三件套齐**，不绕过直接写 CSS 变量。
+ - 场景/展示区新增组件实例用**局部类名**，避免打破全页严格计数断言。
+ 
+ ## 应用壳规范
+ 
+ - **滑动导航选中锚点为黄金比例 0.382**（非居中）：几何参数 `anchorRatio`，垂直/水平方向经 `direction` 参数化；新导航实例禁止硬编码中心语义。
+ - **滑动窗口纯图标**：栏内不显示文字名称，上下文由标题栏「应用名 › 页面名」承担。
+ - 双窗口级联：左栏恒为全局目录（应用列表），右栏为当前域目录（应用内/设置）；右窗状态为纯 UI 态（会话内），不进配置存储。
+ - 模式入口：`resolveMode` 只返回 `'app'|'strip'`（`?mode=app|strip` 显式优先；无参数/非法值/`?mode=docs` → `'app'`）；应用壳/悬浮条代码在 `src/app/`，docs 渲染已删除（B1-4 起浏览器与 Tauri 一致直进应用壳）。
+ - FloatStrip 悬浮条：常态无边框内容优先，hover 浮现控制；横竖形态经 `--strip-orientation`；四边磁吸（transform 定位，不触发 layout 动画）。
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index da34e38..09248f6 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -702,21 +702,21 @@ export function mountAppMode(root) {
+   const ballHost = document.createElement('div');
+   ballHost.className = 'app-main__float-ball';
+   ballHost.innerHTML = renderFloatBall({ iconName: 'bolt', tooltip: '悬浮监测条' });
+   document.body.appendChild(ballHost);
+   let stripHost = null;
+   mountFloatBall(ballHost, {
+     onExpand: () => {
+       // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
+       if (typeof window.__TAURI__ !== 'undefined') {
+         const { WebviewWindow } = window.__TAURI__.window;
+-        if (stripWindow) { stripWindow.setFocus(); return; }
++        if (stripWindow) { stripWindow.setFocus().catch(() => {}); return; }
+         stripWindow = new WebviewWindow('strip', {
+           url: '/?mode=strip',
+           width: 320,
+           height: 64,
+           transparent: true,
+           decorations: false,
+           alwaysOnTop: true,
+           resizable: false,
+         });
+         stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
+diff --git a/src/app/strip-main.js b/src/app/strip-main.js
+index 6d78349..b622ebc 100644
+--- a/src/app/strip-main.js
++++ b/src/app/strip-main.js
+@@ -1,17 +1,20 @@
+ // FloatStrip 悬浮条入口（Task A5，规格 §5）：body 级独立渲染一个悬浮条实例（token 监测内容），
+ // 供 Tauri 独立透明窗口接入。main.js 在 ?mode=strip 时动态 import 本模块并调用 mountStripMode()。
+ // 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
+ import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
+ import '../components/float-strip/float-strip.css';
++import { getConfig } from '../config/store.js';
++import { applyConfig } from '../config/apply.js';
+ 
+ export function mountStripMode() {
++  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
+   const root = document.createElement('div');
+   root.className = 'strip-root';
+   root.innerHTML = renderFloatStrip({
+     content: renderTokenMonitor({
+       value: '97.2%',
+       status: 'ok',
+       trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
+     }),
+   });
+   document.body.appendChild(root);
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 6a17de7..08d4d44 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -496,21 +496,21 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
+ // （floatstrip.spec.js 的浏览器分支用例回归覆盖，此处只测 Tauri 分支）。
+ 
+ test('Tauri：FloatBall 展开创建独立 strip 窗口（透明置顶）', async ({ page }) => {
+   await page.addInitScript(() => {
+     const created = [];
+     window.__TAURI__ = {
+       window: {
+         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+         WebviewWindow: class {
+           constructor(label, opts) { created.push({ label, opts }); }
+-          setFocus() {} once() {}
++          setFocus() { return Promise.resolve(); } once() {}
+         },
+       },
+     };
+     window.__stripWinCalls__ = created;
+   });
+   await page.goto('/?mode=app');
+   await page.locator('.app-main__float-ball').click();
+   const calls = await page.evaluate(() => window.__stripWinCalls__);
+   expect(calls).toHaveLength(1);
+   expect(calls[0].label).toBe('strip');
+diff --git a/tests/unit/window-capabilities.test.js b/tests/unit/window-capabilities.test.js
+index f4e17cf..fb0af82 100644
+--- a/tests/unit/window-capabilities.test.js
++++ b/tests/unit/window-capabilities.test.js
+@@ -21,14 +21,15 @@ describe('Tauri 窗口能力（B4-1）', () => {
+     ];
+     for (const p of required) expect(caps.permissions).toContain(p);
+   });
+   it('授权 strip 悬浮窗（创建 + 自定位/自缩放）', () => {
+     expect(caps.windows).toContain('strip');
+     const required = [
+       'core:webview:allow-create-webview-window',
+       'core:window:allow-set-position',
+       'core:window:allow-outer-position',
+       'core:window:allow-set-size',
++      'core:window:allow-set-focus',
+     ];
+     for (const p of required) expect(caps.permissions).toContain(p);
+   });
+ });

@@ -1,7 +1,6 @@
 :root {
   /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css）。
-     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致；定制器色温滑杆（color.temperature）
-     经 apply.js 写 --neutral-hue 覆盖实现全局冷暖偏移。sat/light 由原 hex 逐级转换（视觉等效）。 */
+     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致。sat/light 由原 hex 逐级转换（视觉等效）。 */
   --neutral-hue: 235;
   --neutral-50: hsl(var(--neutral-hue) 23.1% 97.5%);  --neutral-100: hsl(var(--neutral-hue) 21.4% 94.5%);
   --neutral-200: hsl(var(--neutral-hue) 18.4% 90.4%);  --neutral-300: hsl(var(--neutral-hue) 16.3% 83.1%);
@@ -23,8 +22,13 @@
   /* 字体 */
   --font-sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-  --font-size-xs: 10px;  --font-size-sm: 12px;  --font-size-base: 14px;
-  --font-size-lg: 16px;  --font-size-xl: 20px;  --font-size-2xl: 24px;  --font-size-3xl: 28px;
+  --font-size-xs: calc(var(--font-size-base) * 5 / 7);    /* 14→10 */
+  --font-size-sm: calc(var(--font-size-base) * 6 / 7);    /* 14→12 */
+  --font-size-base: 14px;                                 /* 默认；applyConfig 覆盖 */
+  --font-size-lg: calc(var(--font-size-base) * 8 / 7);    /* 14→16 */
+  --font-size-xl: calc(var(--font-size-base) * 10 / 7);   /* 14→20 */
+  --font-size-2xl: calc(var(--font-size-base) * 12 / 7);  /* 14→24 */
+  --font-size-3xl: calc(var(--font-size-base) * 2);       /* 14→28 */
   --font-weight-regular: 400;  --font-weight-medium: 500;
   --font-weight-semibold: 600;  --font-weight-bold: 700;
   --line-height-tight: 1.4;  --line-height-base: 1.6;

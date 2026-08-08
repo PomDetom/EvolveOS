@@ -1,0 +1,244 @@
+# Review package: 79d866f..HEAD
+
+## Commits
+172cd21 docs: B4-1 执行留痕（评审包：单测守卫 + capability 授权 + 全量回归）
+f5a16dc fix: Tauri 窗口控制权限（min/max/close/拖拽 capability 授权，闭环 B4-1）
+
+## Files changed
+ docs/superpowers/sdd/progress-b4.md      | 24 +++++++++++
+ docs/superpowers/sdd/task-B4-1-brief.md  | 69 ++++++++++++++++++++++++++++++++
+ docs/superpowers/sdd/task-B4-1-report.md | 64 +++++++++++++++++++++++++++++
+ src-tauri/capabilities/default.json      |  9 ++++-
+ tests/unit/window-capabilities.test.js   | 24 +++++++++++
+ 5 files changed, 189 insertions(+), 1 deletion(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b4.md b/docs/superpowers/sdd/progress-b4.md
+new file mode 100644
+index 0000000..832535f
+--- /dev/null
++++ b/docs/superpowers/sdd/progress-b4.md
+@@ -0,0 +1,24 @@
++# SDD ledger — plan: docs/superpowers/plans/2026-08-08-app-shell-b4-desktop-realism.md
++
++Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 Cargo.toml 行尾噪声未动）
++交接：无（本迭代由 brainstorming 产出）
++规格：docs/superpowers/specs/2026-08-08-app-shell-b4-desktop-realism-design.md（唯一需求源）
++计划书：docs/superpowers/plans/2026-08-08-app-shell-b4-desktop-realism.md（唯一实施需求源）
++
++## Pre-flight 扫描（2026-08-08，干净，无阻塞冲突）
++
++- 无任务间矛盾；无「测试断言空洞/逻辑块逐字重复」的计划强制造缺陷。
++- B4-2 默认 14×1 计算值不变 → 视觉零漂移；B4-3/4 各重生成 appearance-partition 6 张（删滑杆 + 网格 6→12）。
++- B4-3 删色彩微调链：先 grep `hexToHsl`/`temperatureToHue` 消费点再删导出；存量 localStorage `color:{...}` 死键不清理。
++- B4-5/6 e2e 用 `page.addInitScript` 注入 mock `__TAURI__`；浏览器路径必须零回归。capability `windows` 须含 `"strip"` 否则 strip 窗口自身权限被拒。
++- B4-2 e2e 断言读真实元素解析 `fontSize`（getComputedStyle 自定义属性返回未解析 calc 字符串）。
++
++## Task B4-1: 窗口控制权限修复
++
++- **状态**：完成（2026-08-08，见 task-B4-1-report.md）
++- **提交**：`f5a16dc` `fix: Tauri 窗口控制权限（min/max/close/拖拽 capability 授权，闭环 B4-1）`
++- **验证**：TDD 红→绿（单测断言 7 项窗口权限，纯配置改动）；npm test 61/61（11 files，+1 新增）；npm run test:e2e 100 passed（含视觉基线 24，纯配置零漂移，未跑 --update-snapshots）；npm run build 通过
++- **实现**：`src-tauri/capabilities/default.json` permissions 追加 7 项 `core:window:allow-*`（minimize/maximize/unmaximize/toggle-maximize/close/is-maximized/start-dragging）；新增 `tests/unit/window-capabilities.test.js` 作配置守卫
++- **简报/报告**：docs/superpowers/sdd/task-B4-1-brief.md / task-B4-1-report.md
++- **评审**：待独立评审
++- **执行状态**：Task B4-1：✅ 完成（f5a16dc）
+diff --git a/docs/superpowers/sdd/task-B4-1-brief.md b/docs/superpowers/sdd/task-B4-1-brief.md
+new file mode 100644
+index 0000000..d246068
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4-1-brief.md
+@@ -0,0 +1,69 @@
++# Task B4-1: 窗口控制权限修复
++
++## 任务定位
++
++应用壳 B4（桌面真实化）第一个任务。Tauri 桌面模式下标题栏三按钮（最小化/最大化/关闭）"完全没反应"、窗口无法拖动。**根因**：`src-tauri/capabilities/default.json` 只授权 `core:default`，Tauri 2 的窗口**变更**操作（minimize/maximize/toggle_maximize/close/start_dragging）不在默认集内，被权限层拒绝；JS `bindWindowControls`（src/demo/window-controls.js）的 `.catch(()=>{})` 静默吞掉拒绝 → 无现象；`data-tauri-drag-region` 内部走 `start_dragging` 命令同样被拒 → 拖不动。**代码接线本身正确，本任务只改 capability 配置。**
++
++## 需求（唯一需求源，逐字执行）
++
++**1. 新建单测** `tests/unit/window-capabilities.test.js`：
++
++```js
++import { describe, it, expect } from 'vitest';
++import { readFileSync } from 'node:fs';
++
++describe('Tauri 窗口能力（B4-1）', () => {
++  const caps = JSON.parse(
++    readFileSync(new URL('../../src-tauri/capabilities/default.json', import.meta.url), 'utf8'),
++  );
++  it('授权窗口变更操作（min/max/close/拖拽）', () => {
++    const required = [
++      'core:window:allow-minimize',
++      'core:window:allow-maximize',
++      'core:window:allow-unmaximize',
++      'core:window:allow-toggle-maximize',
++      'core:window:allow-close',
++      'core:window:allow-is-maximized',
++      'core:window:allow-start-dragging',
++    ];
++    for (const p of required) expect(caps.permissions).toContain(p);
++  });
++});
++```
++
++**2. `src-tauri/capabilities/default.json`** 的 `permissions` 数组改为：
++
++```json
++  "permissions": [
++    "core:default",
++    "core:window:allow-minimize",
++    "core:window:allow-maximize",
++    "core:window:allow-unmaximize",
++    "core:window:allow-toggle-maximize",
++    "core:window:allow-close",
++    "core:window:allow-is-maximized",
++    "core:window:allow-start-dragging"
++  ]
++```
++
++其余字段（`$schema`/`identifier`/`description`/`windows`）不动。
++
++## 流程（TDD）
++
++1. 先写单测 → `npx vitest run tests/unit/window-capabilities.test.js` 确认红（现仅 `core:default`，7 项均缺）
++2. 改 capabilities → 复跑确认绿
++3. 全量回归：`npm test` + `npm run test:e2e`（含视觉 24，应零漂移——纯配置）+ `npm run build`
++
++## 注意
++
++- 不改任何 JS（`bindWindowControls` 接线已验证正确）。
++- 工作树 `src-tauri/Cargo.toml` 行尾噪声不动、不提交。
++- 桌面真机由用户目检（改配置后需重新 build）。
++
++## 提交
++
++一个 commit：`fix: Tauri 窗口控制权限（min/max/close/拖拽 capability 授权，闭环 B4-1）`
++
++## 报告
++
++完整报告写入 `docs/superpowers/sdd/task-B4-1-report.md`：改动说明、测试命令与输出摘要、self-review、提交哈希。回复本会话只需：状态（DONE/DONE_WITH_CONCERNS/BLOCKED）+ 提交哈希 + 一行测试摘要 + 疑虑（如有）。
+diff --git a/docs/superpowers/sdd/task-B4-1-report.md b/docs/superpowers/sdd/task-B4-1-report.md
+new file mode 100644
+index 0000000..21c5a0c
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4-1-report.md
+@@ -0,0 +1,64 @@
++# Task B4-1: 窗口控制权限修复 — 实施报告
++
++- **状态**：DONE
++- **提交**：`f5a16dc`
++- **需求源**：docs/superpowers/sdd/task-B4-1-brief.md（唯一需求源）
++- **分支**：feature/b4-desktop-realism
++
++## 任务背景
++
++应用壳 B4（桌面真实化）第一个任务。Tauri 桌面模式下标题栏三按钮（最小化/最大化/关闭）"完全没反应"、窗口无法拖动。**根因**：`src-tauri/capabilities/default.json` 只授权 `core:default`，Tauri 2 的窗口**变更**操作（minimize/maximize/toggle_maximize/close/start_dragging）不在默认集内，被权限层拒绝；JS `bindWindowControls`（src/demo/window-controls.js）的 `.catch(()=>{})` 静默吞掉拒绝 → 无现象；`data-tauri-drag-region` 内部走 `start_dragging` 命令同样被拒 → 拖不动。代码接线本身正确，本任务只改 capability 配置 + 加单测守卫。
++
++## 改动说明
++
++| 文件 | 变更 |
++|---|---|
++| `src-tauri/capabilities/default.json` | `permissions` 数组由 `["core:default"]` 改为 brief 逐字给定的 8 项列表：`core:default` + `core:window:allow-minimize` / `allow-maximize` / `allow-unmaximize` / `allow-toggle-maximize` / `allow-close` / `allow-is-maximized` / `allow-start-dragging`。其余字段（`$schema`/`identifier`/`description`/`windows`）零改动 |
++| `tests/unit/window-capabilities.test.js`（新增） | 单测守卫：读 `src-tauri/capabilities/default.json`，断言 7 项窗口变更权限均在 `permissions` 内。**断言逻辑与 required 列表逐字取自 brief**；仅文件读取方式做了最小适配（见下方「verbatim 适配说明」） |
++
++- **未改任何 JS 源**（`bindWindowControls` 接线已验证正确，本任务纯配置）。
++- **配置链路**：本任务只改 Tauri capability（运行期权限配置），不触碰前端 defaults → store → apply 配置链路。
++- **动画红线**：纯配置 + 单测，零动画相关改动。
++
++### verbatim 适配说明（重要披露）
++
++Brief 给定的单测原文使用 `new URL('../../src-tauri/capabilities/default.json', import.meta.url)` 读取文件。实测在 Vitest 3.2.7 + jsdom 环境下**该字面量模式被 Vite 的 asset-URL 转换改写**：`import.meta.url` 在 `new URL(path, import.meta.url)` 两参字面量中被替换为 dev server URL（`http://localhost:3000/...`），`readFileSync` 随即抛 `TypeError: The URL must be of scheme file`，测试在加载阶段即崩溃，**无法到达断言**（即无法以预期「7 项缺失」的方式红）。
++
++排查证据（临时调试单测，已删除）：
++- `console.log(import.meta.url)` → `file:///C:/Repository/ui-design/tests/unit/…`
++- `new URL('./x', import.meta.url).href` → `http://localhost:3000/tests/unit/x`（被改写）
++- `const m = import.meta.url; new URL('./x', m).href` → `file:///C:/.../tests/unit/x`（正确）
++
++**适配**：仅把 base 先取到局部变量再作 `new URL` 第二参（避免触发 Vite 两参字面量特殊转换），并加一行注释钉住原因。**断言循环、required 列表、describe/it 文案均逐字保留**。该适配只影响文件定位方式，不影响测试语义，且使 RED 态回到 brief 预期的「7 项权限缺失」断言失败。备选方案（改 vitest 配置 / define 覆盖 import.meta.url）改动面更大、风险更高，故取最小适配。
++
++## TDD 证据
++
++- **Step 1（红）**：先写单测 → `npx vitest run tests/unit/window-capabilities.test.js` → **1 failed**。
++  `AssertionError: expected [ 'core:default' ] to include 'core:window:allow-minimize'` —— 正是 brief 预期红态（现仅 `core:default`，7 项均缺）。
++- **Step 2（改配置）**：`src-tauri/capabilities/default.json` permissions 追加 7 项。
++- **Step 3（绿）**：复跑同命令 → **1 passed**（`✓ tests/unit/window-capabilities.test.js (1 test)`）。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx vitest run tests/unit/window-capabilities.test.js`（改前） | 1 failed（`expected [ 'core:default' ] to include 'core:window:allow-minimize'`，RED 符合 brief 预期） |
++| `npx vitest run tests/unit/window-capabilities.test.js`（改后） | 1 passed（GREEN） |
++| `npm test` | 11 files / **61 passed**（+1 为本任务新增 window-capabilities.test.js） |
++| `npm run test:e2e` | **100 passed**（5.2m；含视觉回归 24 张 app-main/appearance/components/motion 分区，**零漂移**，未跑 `--update-snapshots`；交互用例全绿） |
++| `npm run build` | 通过（Vite，`✓ built in 388ms`） |
++
++**视觉基线说明**：本任务为纯 capability 配置改动，不触及任何前端渲染路径。`npm run test:e2e` 内 24 张视觉回归快照全部通过，**零漂移**——按 brief 要求**未运行 `--update-snapshots`**。
++
++## Self-review 结论
++
++- **规格符合**：capability permissions 按 brief 逐字 8 项；其余字段不动；未改任何 JS；未碰 `src-tauri/Cargo.toml` 行尾噪声；未跑 `--update-snapshots`。
++- **单测守卫**：断言逻辑逐字取自 brief。唯一偏离是文件读取的 verbatim 适配（`new URL` 两参字面量被 Vite 改写导致加载崩溃），已在上文充分披露并论证必要性；适配后 RED 态与 brief 描述一致。
++- **质量**：单测 61/61、e2e 100/100（含视觉 24 零漂移）、build 通过。
++- **结论**：Ready to merge（DONE）。桌面真机（min/max/close 生效、窗口可拖拽）由用户改配置后重新 `npm run tauri:build` 目检。
++
++## 备注
++
++- `src-tauri/Cargo.toml` 为本会话前已有的行尾（LF→CRLF）噪声改动，**未碰、未提交、保持 unstaged**（提交前/后 `git status` 均确认）。
++- 提交内容：`src-tauri/capabilities/default.json`、`tests/unit/window-capabilities.test.js`、`docs/superpowers/sdd/task-B4-1-brief.md`。
++- 本报告与 `docs/superpowers/sdd/progress-b4.md` 的 Task B4-1 台账随代码另立 docs 提交（含本提交哈希）。
+diff --git a/src-tauri/capabilities/default.json b/src-tauri/capabilities/default.json
+index c135d7f..3f2ebf5 100644
+--- a/src-tauri/capabilities/default.json
++++ b/src-tauri/capabilities/default.json
+@@ -1,11 +1,18 @@
+ {
+   "$schema": "../gen/schemas/desktop-schema.json",
+   "identifier": "default",
+   "description": "enables the default permissions",
+   "windows": [
+     "main"
+   ],
+   "permissions": [
+-    "core:default"
++    "core:default",
++    "core:window:allow-minimize",
++    "core:window:allow-maximize",
++    "core:window:allow-unmaximize",
++    "core:window:allow-toggle-maximize",
++    "core:window:allow-close",
++    "core:window:allow-is-maximized",
++    "core:window:allow-start-dragging"
+   ]
+ }
+diff --git a/tests/unit/window-capabilities.test.js b/tests/unit/window-capabilities.test.js
+new file mode 100644
+index 0000000..6a6111c
+--- /dev/null
++++ b/tests/unit/window-capabilities.test.js
+@@ -0,0 +1,24 @@
++import { describe, it, expect } from 'vitest';
++import { readFileSync } from 'node:fs';
++
++describe('Tauri 窗口能力（B4-1）', () => {
++  // Vitest 3.2 + Vite 会将 `new URL(path, import.meta.url)` 字面量按 dev asset URL 解析
++  // （import.meta.url 被改写为 dev server URL，导致 readFileSync 报非 file scheme）。
++  // 先取到变量再作 base，命中磁盘上真实的 capability 文件。
++  const moduleURL = import.meta.url;
++  const caps = JSON.parse(
++    readFileSync(new URL('../../src-tauri/capabilities/default.json', moduleURL), 'utf8'),
++  );
++  it('授权窗口变更操作（min/max/close/拖拽）', () => {
++    const required = [
++      'core:window:allow-minimize',
++      'core:window:allow-maximize',
++      'core:window:allow-unmaximize',
++      'core:window:allow-toggle-maximize',
++      'core:window:allow-close',
++      'core:window:allow-is-maximized',
++      'core:window:allow-start-dragging',
++    ];
++    for (const p of required) expect(caps.permissions).toContain(p);
++  });
++});

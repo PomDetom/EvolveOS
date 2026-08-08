@@ -3,8 +3,11 @@
 // 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
 import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
 import '../components/float-strip/float-strip.css';
+import { getConfig } from '../config/store.js';
+import { applyConfig } from '../config/apply.js';
 
 export function mountStripMode() {
+  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
   const root = document.createElement('div');
   root.className = 'strip-root';
   root.innerHTML = renderFloatStrip({
@@ -15,5 +18,38 @@ export function mountStripMode() {
     }),
   });
   document.body.appendChild(root);
-  mountFloatStrip(root, { onClose: () => root.remove() });
+  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
+  if (win) {
+    // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
+    root.classList.add('strip-root--window');
+    const strip = root.querySelector('.c-strip');
+    const STORAGE_KEY = 'ui-design-strip-pos';
+    // 位置恢复
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const { x, y } = JSON.parse(saved);
+        if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
+      }
+    } catch { /* 损坏存档忽略 */ }
+    // 尺寸贴合内容（初始 + 旋转）
+    const fit = () => {
+      const r = strip.getBoundingClientRect();
+      win.setSize({ width: Math.max(1, Math.ceil(r.width)), height: Math.max(1, Math.ceil(r.height)) }).catch(() => {});
+    };
+    fit();
+    // 位置持久化（去抖 200ms）
+    let saveTimer = null;
+    win.onMoved?.(() => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        win.outerPosition?.().then(({ x, y }) => {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+        }).catch(() => {});
+      }, 200);
+    });
+    mountFloatStrip(root, { windowMode: true, onResize: fit, onClose: () => win.close().catch(() => {}) });
+  } else {
+    mountFloatStrip(root, { onClose: () => root.remove() });
+  }
 }

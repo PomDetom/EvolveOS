@@ -11,7 +11,7 @@
 
 - 禁止硬编码值：颜色/间距/圆角/时长/缓动全部引用 CSS 变量。
 - 圆角一律 `calc(var(--radius-*) * var(--radius-scale, 1))`。
-- 主题约定：`data-theme`（深浅）、`data-accent`（6 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
+- 主题约定：`data-theme`（深浅）、`data-accent`（12 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
 - 配置链路：defaults（默认值 + RANGES）→ store（持久化）→ apply（写入 CSS 变量覆盖层）。**新增可配置参数必须三件套齐**，不绕过直接写 CSS 变量。
 - 场景/展示区新增组件实例用**局部类名**，避免打破全页严格计数断言。
 
