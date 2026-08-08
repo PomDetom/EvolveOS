@@ -8,6 +8,7 @@ import { applyConfig } from '../config/apply.js';
 
 export function mountStripMode() {
   applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
+  console.log('[strip] mountStripMode 开始挂载', window.__TAURI__ ? 'Tauri 窗口' : '浏览器');
   const root = document.createElement('div');
   root.className = 'strip-root';
   root.innerHTML = renderFloatStrip({

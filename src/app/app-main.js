@@ -710,16 +710,30 @@ export function mountAppMode(root) {
       if (typeof window.__TAURI__ !== 'undefined') {
         const { WebviewWindow } = window.__TAURI__.window;
         if (stripWindow) { stripWindow.setFocus().catch(() => {}); return; }
-        stripWindow = new WebviewWindow('strip', {
-          url: '/?mode=strip',
-          width: 320,
-          height: 64,
-          transparent: true,
-          decorations: false,
-          alwaysOnTop: true,
-          resizable: false,
-        });
-        stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
+        try {
+          stripWindow = new WebviewWindow('strip', {
+            url: '/?mode=strip',
+            width: 320,
+            height: 64,
+            transparent: true,
+            decorations: false,
+            alwaysOnTop: true,
+            resizable: false,
+          });
+          stripWindow.once('tauri://created', () => {
+            console.log('[strip] 窗口创建成功');
+          });
+          stripWindow.once('tauri://error', (e) => {
+            console.error('[strip] 窗口创建失败（tauri://error）：', e?.payload ?? e);
+            stripWindow = null;
+            toast(`悬浮窗创建失败：${String(e?.payload ?? e).slice(0, 120)}`, { variant: 'danger' });
+          });
+          stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
+        } catch (err) {
+          console.error('[strip] 创建异常（try/catch）：', err);
+          stripWindow = null;
+          toast(`悬浮窗创建异常：${String(err?.message ?? err).slice(0, 120)}`, { variant: 'danger' });
+        }
         return;
       }
       if (stripHost) return; // 已展开则不重复创建
