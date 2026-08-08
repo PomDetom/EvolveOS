@@ -102,8 +102,8 @@ export function mountAppMode(root) {
       <div class="app-main__nav-r-body"></div>
     </div>
     <main class="app-main__pages">
-      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
-      <section class="app-main__page" data-page="settings">
+      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
+      <section class="app-main__page" data-page="settings" data-layout="fluid">
         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
       </section>
     </main>

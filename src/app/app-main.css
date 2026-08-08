@@ -105,8 +105,10 @@
   padding: var(--space-6);
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
-.app-main__page { display: none; max-width: 720px; }
+.app-main__page { display: none; max-width: 1080px; margin-inline: auto; }
 .app-main__page--active { display: block; }
+/* B5-4：展示分区撑满（组件/动效），表单/概览保持限宽居中（data-layout 由 app-main.js 设置） */
+.app-main__page[data-layout="fluid"] { max-width: none; margin-inline: 0; }
 .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
   margin-bottom: var(--space-5); }
 .app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
