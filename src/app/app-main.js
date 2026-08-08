@@ -739,15 +739,14 @@ export function mountAppMode(root) {
     },
   });
 
-  // 主窗关闭 → 连带关闭 strip 悬浮窗：应用在所有窗口关闭后自然退出（B4 桌面真实化——
-  //   否则 strip 窗口存在会让进程驻留，主窗关了悬浮窗仍存活）
-  if (typeof window.__TAURI__ !== 'undefined') {
-    window.__TAURI__.window.getCurrentWindow().onCloseRequested?.(() => {
-      window.__TAURI__.window.getAllWindows()
-        .then((wins) => wins.forEach((w) => { if (w.label !== 'main') w.close().catch(() => {}); }))
-        .catch(() => {});
-    })?.catch?.(() => {});
-  }
+  // 主窗关闭行为同步到 Rust（B4 收尾）：exit/background 由 Rust on_window_event 消费；
+  //   移除 JS onCloseRequested 异步关 strip 的脆弱逻辑（曾导致主窗关不掉）
+  const syncCloseBehavior = (cfg) => {
+    if (typeof window.__TAURI__ === 'undefined') return;
+    window.__TAURI__.core?.invoke?.('set_close_behavior', { behavior: cfg.closeBehavior ?? 'exit' }).catch(() => {});
+  };
+  syncCloseBehavior(getConfig());
+  subscribe((cfg) => { syncCloseBehavior(cfg); });
 }
 
 // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
