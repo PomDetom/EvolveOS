@@ -74,5 +74,20 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **提交**：feat（外观页控件行对齐统一）+ docs 一枚（本台账/简报/报告）
 - **内容**：外观页控件行对齐/密度统一——customizer.css 按 verbatim 加 `.cust-row__head { min-height:20px }`、`.cust-row--switch { min-height:40px }`（两处 switch 行 20→40px 密度下限，元素增高恰 +33px）、`.cust-row--switch .cust-row__head { min-height:auto }`、`.cust-accent-grid { align-items:stretch }`；标签基线/行距/accent 网格等高实测既有规则已满足（brief Step 3 兜底条款）。e2e 追加 B5-5 用例（基线 + 行距 + switch 密度三段断言）。视觉基线恰 6 张 appearance-partition 重生成，其余 18 张零变化。
 - **偏离**：**verbatim e2e 断言与真实 DOM 结构性不匹配，需适配**（probe 实测佐证）：①「前 3 行 label top 一致 <2px」对纵向堆叠行结构性不可能（实测差 204px，含 switch 行）→ 适配为「slider 行内 label/value 同基线」；②「前 4 行间距差 <4px」中首 switch 行与下一行间隔玻璃预览卡（非 .cust-row，gap 136px 由卡片高度主导）→ 适配为「连续 slider 段行距一致」（差 0px）；③ RED 驱动改「switch 行高 ≥40px」（verbatim CSS 唯一实际渲染变化点，20→40 红→绿完整闭环）。settings-window.css 零改动（Step 4 要求现状已满足，无观感偏差）。
-- **评审**：待最终评审。
-- **执行状态**：Task B5-5：✅ 完成（feat 提交 + docs 提交，报告已留痕）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，4 Minor 免修）——评审独立验证：断言①②适配结构性成立（对照 customizer-panel.js:46 glassPreview 在 switch 行与 slider 段之间、纵向堆叠行 label top 不可能 <2px）；RED 驱动③真实（min-height:40px 是 verbatim CSS 唯一可观测渲染变化，20→40 闭环）；settings-window.css 零改动正确（Step 4 三项要求现状已满足：field margin-bottom :65、field-label sm/medium :68、modes align-self :76）。Minor：① 断言②空 gap 数组时真空通过（可补 `gaps.length>0` 守卫）；② 断言①基线判别弱（label/value 框近等高，flex-start 也可能过，仅粗对齐守卫）；③ `.cust-accent-grid { align-items:stretch }` 是 CSS grid 默认 no-op（brief verbatim 计划强制，无动作）；④ 行距覆盖仅 2 个 gap、switch 行 vs slider 行密度差未断言（设计意图，观察项）+ 既有 `.cust-switch-wrap` 3.2px 中轴偏移非本 diff（延最终评审分诊）。
+- **执行状态**：Task B5-5：✅ 完成（a6982db + 96e2fb6，评审通过）
+
+## 延期项汇总（供最终整体评审分诊）
+
+**plan-mandated 静态值（brief 逐字 CSS 既定后果，需用户/最终评审裁定）：**
+1. **B5-2 Minor**：非 customizer 滑杆（动效/组件）track 填充退化为静态 50%（`var(--fill, 50%)` 兜底；仅 customizer syncUI 设 `--fill`），旧原生 accent-color 三处都按值填充。评审建议 B5-5 确认或给 motion-lab input 补 `--fill` 同步——未纳入 B5-5（范围外）。修法：motion-lab.js 或组件渲染时按值 setProperty `--fill`。
+2. **B5-3 Important**：primary hover 阴影丢弃 `--shadow-md` 令牌、硬编码 `0 4px 14px color-mix(...)` blur/alpha（违反 src/CLAUDE.md「禁止硬编码值」，不再随 shadow-intensity 定制器缩放）。修法：将 blur 值令牌化（如 `--shadow-blur` 派生自 shadow-intensity）或接受静态。与 #1 同型（plan-mandated 静态值），严重度分类有分歧（B5-2 Minor vs B5-3 Important）。
+
+**Minor 免修（记录）：**
+- B5-1：font-assets 单测 weight↔file 配对未断言；tokens e2e 仅断言 400 face；字体资产 10.4MB 大。
+- B5-2：moz 端保真低；focus outline-offset 丢失；`.ml-slider` flex:1;min-width:0 移除；form-controls 断言间接性。
+- B5-3：`.c-btn` transition 未含 filter；重写 hover 测试不守卫令牌契约；徽标/按钮无像素基线覆盖。
+- B5-4：e2e「表单限宽居中」仅概览页覆盖；`data-layout="center"` 冗余；注释措辞。
+- B5-5：断言②空数组真空通过；断言①基线判别弱；accent-grid stretch no-op；行距覆盖窄；`.cust-switch-wrap` 3.2px 中轴偏移（既有）。
+
+**评审观察（非缺陷）：** 视觉基线 fold 局限（components 徽标/按钮/滑杆在设置窗捕获 fold 之下，部分分区无像素基线覆盖，e2e 样式断言为唯一守卫）。
