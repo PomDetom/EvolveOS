@@ -20,7 +20,7 @@
   --accent-contrast: #ffffff;
 
   /* 字体 */
-  --font-sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-sans: "Alibaba PuHuiTi", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
   --font-size-xs: calc(var(--font-size-base) * 5 / 7);    /* 14→10 */
   --font-size-sm: calc(var(--font-size-base) * 6 / 7);    /* 14→12 */
