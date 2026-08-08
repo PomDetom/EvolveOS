@@ -44,3 +44,14 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **简报/报告**：docs/superpowers/sdd/task-B4-3-brief.md / task-B4-3-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① 提交拆 feat + docs 两枚（既有惯例）；② brief Step 1 预期红自相矛盾（既要删 temperatureToHue 又要其报不存在），实施者正确把真实 RED 定位到 customizer.test.js 闭环
 - **执行状态**：Task B4-3：✅ 完成（8eb3162，评审通过）
+
+## Task B4-4: 强调色预设扩至 12 套
+
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，2 Minor 免修）
+- **提交**：`2fb1f72` `feat: 强调色预设扩至 12 套（玫红/橙/青柠/青/蓝/品红），B4-4`
+- **验证**：TDD 红→绿（新用例实测 6 卡红 → 实现后绿）；npm test 56/56；npm run test:e2e 101 passed（含视觉基线 24，appearance-partition 6 张重生成）；npm run build 通过
+- **实现**：defaults.js ACCENTS 6→12（rose #f43f5e/orange #f97316/lime #84cc16/cyan #06b6d4/blue #3b82f6/fuchsia #d946ef，color=设计规格 500 值，与 amber/emerald 既有惯例同构）；themes.css 6 个 `:root[data-accent]` 全阶色板（50–950 + 4 语义令牌，--accent 取 400、--accent-contrast 取 950）；e2e 断言 12 卡 + rose 点击 → `--accent`=#fb7185（rose-400）、`--preview-accent`=#f43f5e（ACCENTS color）
+- **视觉基线**：仅 appearance-partition 6 张重生成（解码比对：色卡网格 3×2→3×4 多两行，内容下移 175px 均匀位移，其余 18 张零漂移）；复跑 24 全绿
+- **简报/报告**：docs/superpowers/sdd/task-B4-4-brief.md / task-B4-4-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor）——Minor：① README/CLAUDE.md「6 套主题色」与 README「11 条滑杆」过期文案留收尾（非本 diff，收尾任务改）；② 新 CSS 块用单空格分号（brief 字面格式，非错误）
+- **执行状态**：Task B4-4：✅ 完成（2fb1f72，评审通过）

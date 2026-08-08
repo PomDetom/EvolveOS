@@ -1,0 +1,204 @@
+# Review package: 16fcbaa..HEAD
+
+## Commits
+2fb1f72 feat: 强调色预设扩至 12 套（玫红/橙/青柠/青/蓝/品红），B4-4
+
+## Files changed
+ src/config/defaults.js                             |   6 +++
+ src/styles/themes.css                              |  50 ++++++++++++++++++++-
+ tests/e2e/customizer.spec.js                       |  14 +++++-
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 368543 -> 342236 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 352742 -> 326643 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 384091 -> 354753 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 249260 -> 239899 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 251697 -> 241582 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 206660 -> 201174 bytes
+ 9 files changed, 68 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index ffecf5e..c316f67 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -20,13 +20,19 @@ export const RANGES = {
+   shadowIntensity: [0, 1, 0.05],
+ };
+ 
+ export const ACCENTS = [
+   { id: 'indigo', name: '靛蓝', color: '#6e7bf2', desc: '冷静、专业' },
+   { id: 'teal', name: '青绿', color: '#2dd4bf', desc: '清爽、科技' },
+   { id: 'sky', name: '天蓝', color: '#38bdf8', desc: '明朗、开放' },
+   { id: 'amber', name: '琥珀', color: '#f59e0b', desc: '活力、温暖' },
+   { id: 'violet', name: '紫罗兰', color: '#a78bfa', desc: '优雅、个性' },
+   { id: 'emerald', name: '翡翠', color: '#34d399', desc: '自然、治愈' },
++  { id: 'rose', name: '玫红', color: '#f43f5e', desc: '热情、张力' },
++  { id: 'orange', name: '橙', color: '#f97316', desc: '活力、明亮' },
++  { id: 'lime', name: '青柠', color: '#84cc16', desc: '清新、能量' },
++  { id: 'cyan', name: '青', color: '#06b6d4', desc: '通透、清爽' },
++  { id: 'blue', name: '蓝', color: '#3b82f6', desc: '稳重、可靠' },
++  { id: 'fuchsia', name: '品红', color: '#d946ef', desc: '时尚、鲜明' },
+ ];
+ 
+ export const THEME_MODES = ['system', 'light', 'dark'];
+diff --git a/src/styles/themes.css b/src/styles/themes.css
+index 3b5a725..3aa3de9 100644
+--- a/src/styles/themes.css
++++ b/src/styles/themes.css
+@@ -29,21 +29,21 @@
+   --glass-border: rgba(255 255 255 / var(--glass-border-opacity, 0.07));  --glass-border-opacity: 0.07;
+   --glass-shadow: 0 8px 32px rgba(0,0,0,calc(0.5 * var(--shadow-intensity, 0.5))),
+                   0 2px 8px rgba(0,0,0,calc(0.3 * var(--shadow-intensity, 0.5)));
+   --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
+   --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
+   --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
+   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.06);
+   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(255,255,255,0.16);
+ }
+ 
+-/* 6 套主题色：仅覆盖强调色系（靛蓝已在 tokens.css 中，其余 5 套在这里定义） */
++/* 12 套主题色：仅覆盖强调色系（靛蓝已在 tokens.css 中，其余 11 套在这里定义） */
+ :root[data-accent="teal"] {
+   --accent-50: #e8fbf5;  --accent-100: #ccf6ea;  --accent-200: #9bead7;
+   --accent-300: #5fdcc0;  --accent-400: #2dd4bf;  --accent-500: #14b8a6;
+   --accent-600: #0d9488;  --accent-700: #0f766e;  --accent-800: #115e59;
+   --accent-900: #134e4a;  --accent-950: #042f2e;
+   --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+   --accent-active: var(--accent-500);  --accent-contrast: #042f2e;
+ }
+ :root[data-accent="sky"] {
+   --accent-50: #f0f9ff;  --accent-100: #e0f2fe;  --accent-200: #bae6fd;
+@@ -70,20 +70,68 @@
+   --accent-active: var(--accent-500);  --accent-contrast: #2e1065;
+ }
+ :root[data-accent="emerald"] {
+   --accent-50: #ecfdf5;  --accent-100: #d1fae5;  --accent-200: #a7f3d0;
+   --accent-300: #6ee7b7;  --accent-400: #34d399;  --accent-500: #10b981;
+   --accent-600: #059669;  --accent-700: #047857;  --accent-800: #065f46;
+   --accent-900: #064e3b;  --accent-950: #022c22;
+   --accent: var(--accent-400);  --accent-hover: var(--accent-300);
+   --accent-active: var(--accent-500);  --accent-contrast: #022c22;
+ }
++:root[data-accent="rose"] {
++  --accent-50: #fff1f2; --accent-100: #ffe4e6; --accent-200: #fecdd3;
++  --accent-300: #fda4af; --accent-400: #fb7185; --accent-500: #f43f5e;
++  --accent-600: #e11d48; --accent-700: #be123c; --accent-800: #9f1239;
++  --accent-900: #881337; --accent-950: #4c0519;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #4c0519;
++}
++:root[data-accent="orange"] {
++  --accent-50: #fff7ed; --accent-100: #ffedd5; --accent-200: #fed7aa;
++  --accent-300: #fdba74; --accent-400: #fb923c; --accent-500: #f97316;
++  --accent-600: #ea580c; --accent-700: #c2410c; --accent-800: #9a3412;
++  --accent-900: #7c2d12; --accent-950: #431407;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #431407;
++}
++:root[data-accent="lime"] {
++  --accent-50: #f7fee7; --accent-100: #ecfccb; --accent-200: #d9f99d;
++  --accent-300: #bef264; --accent-400: #a3e635; --accent-500: #84cc16;
++  --accent-600: #65a30d; --accent-700: #4d7c0f; --accent-800: #3f6212;
++  --accent-900: #365314; --accent-950: #1a2e05;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #1a2e05;
++}
++:root[data-accent="cyan"] {
++  --accent-50: #ecfeff; --accent-100: #cffafe; --accent-200: #a5f3fc;
++  --accent-300: #67e8f9; --accent-400: #22d3ee; --accent-500: #06b6d4;
++  --accent-600: #0891b2; --accent-700: #0e7490; --accent-800: #155e75;
++  --accent-900: #164e63; --accent-950: #083344;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #083344;
++}
++:root[data-accent="blue"] {
++  --accent-50: #eff6ff; --accent-100: #dbeafe; --accent-200: #bfdbfe;
++  --accent-300: #93c5fd; --accent-400: #60a5fa; --accent-500: #3b82f6;
++  --accent-600: #2563eb; --accent-700: #1d4ed8; --accent-800: #1e40af;
++  --accent-900: #1e3a8a; --accent-950: #172554;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #172554;
++}
++:root[data-accent="fuchsia"] {
++  --accent-50: #fdf4ff; --accent-100: #fae8ff; --accent-200: #f5d0fe;
++  --accent-300: #f0abfc; --accent-400: #e879f9; --accent-500: #d946ef;
++  --accent-600: #c026d3; --accent-700: #a21caf; --accent-800: #86198f;
++  --accent-900: #701a75; --accent-950: #4a044e;
++  --accent: var(--accent-400); --accent-hover: var(--accent-300);
++  --accent-active: var(--accent-500); --accent-contrast: #4a044e;
++}
+ 
+ /* 语义色（两种主题通用基准；深色下自动使用浅档） */
+ :root {
+   --success-50: #ecfdf5;  --success-500: #10b981;  --success-600: #059669;
+   --warning-50: #fffbeb;  --warning-500: #f59e0b;  --warning-600: #d97706;
+   --danger-50: #fef2f2;  --danger-500: #ef4444;  --danger-600: #dc2626;
+   --info-50: #eff6ff;  --info-500: #3b82f6;  --info-600: #2563eb;
+ }
+ :root[data-theme="dark"] {
+   --success-500: #34d399;  --success-600: #10b981;
+diff --git a/tests/e2e/customizer.spec.js b/tests/e2e/customizer.spec.js
+index d939853..0e4813f 100644
+--- a/tests/e2e/customizer.spec.js
++++ b/tests/e2e/customizer.spec.js
+@@ -14,30 +14,42 @@ test('调整亚克力透明度实时生效', async ({ page }) => {
+   const bgOpacity = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--glass-bg-opacity').trim());
+   expect(bgOpacity).toBe('0.8');
+ });
+ 
+ test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
+   const appr = await openSettingsPartition(page, 1);
+   await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
+   await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
+   await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
+-  await expect(appr.locator('.cust-accent-card')).toHaveCount(6);
++  await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
+   // 切强调色 → --accent 直接取色板（无微调覆盖）
+   await appr.locator('.cust-accent-card[data-accent="teal"]').click();
+   const accent = await page.evaluate(() =>
+     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+   // B4-3 偏差修正：未注册 CSS 自定义属性保持原始序列化（hex，非 rgb）—— 与本仓库 tokens.spec
+   // 对同一变量 --accent 的既有断言（'#2dd4bf'）保持一致；语义断言不变（强调色 = teal 色板直出）。
+   expect(accent).toBe('#2dd4bf'); // teal-400 #2dd4bf
+ });
+ 
++test('强调色预设扩至 12 套，新预设可切换', async ({ page }) => {
++  const appr = await openSettingsPartition(page, 1);
++  await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
++  await appr.locator('.cust-accent-card[data-accent="rose"]').click();
++  const accent = await page.evaluate(() =>
++    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
++  expect(accent).toBe('#fb7185'); // rose-400（--accent 取色板 400）
++  const preview = await page.evaluate(() =>
++    getComputedStyle(document.querySelector('.cust-overview')).getPropertyValue('--preview-accent').trim());
++  expect(preview).toBe('#f43f5e'); // ACCENTS rose.color（设计规格 500 值）
++});
++
+ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
+   await page.goto('/?mode=app');
+   await page.locator('.c-titlebar__control--settings').click();
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
+   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
+   await expect(page.locator('.cust-range[data-key="noise"]')).toBeVisible();
+ });
+ 
+ test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index da7a086..d715586 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 486d873..16fb03c 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 38fd2bb..6403bbd 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index 45a19f9..6273513 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index cdf4434..39218dd 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 6d1e656..980f3a1 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
