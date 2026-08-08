@@ -13,6 +13,9 @@ test('渲染：.c-strip 存在 + token 监测内容（数值/状态点/趋势条
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
   await expect(strip).toHaveCount(1);
+  // 浏览器 ?mode=strip 路径不渲染「恢复主窗」按钮（showRestore 仅 Tauri 独立窗口为 true）——
+  // 在 .c-strip 已确认存在后断言，避免空 DOM 上 toHaveCount(0) 真空通过
+  await expect(page.locator('.c-strip__restore')).toHaveCount(0);
   await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
   await expect(strip.locator('.c-tmon__dot.c-tmon__dot--ok')).toHaveCount(1);
   await expect(strip.locator('.c-tmon__trend-bar')).toHaveCount(7);

@@ -543,3 +543,42 @@ test('通用分区：关闭主窗口时选择器存在且可切换（写 store�
   const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
   expect(cfg).toBe('background');
 });
+
+// —— B4 收尾（最终整体评审修复）：配置变更 → Rust invoke 的 subscribe 路径测试锁 ——
+// 前用例只断言 store 写入；本用例锁核心动态路径：点「保留后台」→ saveConfig → subscribe →
+// invoke('set_close_behavior', {behavior:'background'})。mock 参照上方 FloatBall 用例结构
+// （getCurrentWindow 供 bindWindowControls 用 minimize/toggleMaximize/isMaximized/close；
+// getAllWindows 与 FloatBall onExpand 探测路径同构，返回空数组安全）。
+// 并锁 [data-mode] 控制器裁定（Minor）：主题同步循环收敛 .csettings__mode[data-mode] 后，
+// 点主题模式不得误清 close-behavior 高亮。
+
+test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；点主题模式不清 close-behavior 高亮', async ({ page }) => {
+  await page.addInitScript(() => {
+    const invokes = [];
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
+    };
+    window.__closeBehaviorInvokes__ = invokes;
+  });
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
+  const group = page.locator('[data-close-behavior-group]');
+  await expect(group).toBeVisible();
+  // 挂载同步已 invoke 默认 exit（B4F-4 挂载 + subscribe 各同步一次）
+  let invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
+  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'exit' } });
+  // 切「保留后台」→ subscribe 触发 → invoke behavior:'background'
+  await group.locator('[data-close-behavior="background"]').click();
+  invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
+  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'background' } });
+  // [data-mode] 控制器裁定：点主题模式（dark）后 close-behavior 高亮仍保持（不被主题循环误清）
+  await page.locator('.app-main .csettings__mode[data-mode="dark"]').click();
+  await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
+  await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
+});

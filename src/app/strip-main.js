@@ -65,8 +65,7 @@ export function mountStripMode() {
         }).catch(() => {});
       }).catch(() => {});
     };
-    fit();
-    win.onShow?.(() => fit()); // 隐藏窗口可能尚未完成布局，显示后再贴合一次（B4 桌面缺陷修复）
+    fit(); // 首次显示尺寸由挂载时 fit() 确定，桌面目检通过 [strip] fit 诊断 log 确认
     // 位置持久化（去抖 200ms）
     let saveTimer = null;
     win.onMoved?.(() => {
