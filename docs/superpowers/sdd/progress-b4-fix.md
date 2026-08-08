@@ -57,7 +57,19 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 
 ## Task B4F-5: strip 悬浮窗「恢复主窗」按钮（后台模式出路）
 
-（待派发实施者）
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，2 Minor 免修）
+- **提交**：`70f3c1f` `feat: strip 悬浮窗恢复主窗按钮（后台模式下唤回主窗，B4 收尾）`（amend 自 7ebd7e1，控制器并入 brief；报告哈希已修正）
+- **验证**：TDD 红→绿（新用例红 `.c-strip__restore` 不存在 → 绿）；npm test 58/58；e2e（worktree 配置 5174）105/105（含视觉 24 零漂移）；floatstrip 8/8 零回归；npm run build 通过
+- **实现**：float-strip.js `renderFloatStrip({content, showRestore=false})` ctrl 内 rotate 前渲染 `.c-strip__restore`（icon('layout',14)，零新增 CSS）；strip-main.js `const win` 提前、`showRestore: !!win`、恢复按钮接线（`getAllWindows().find(label==='main') → show()+setFocus()` 全 catch）置 `if (win)` 外；e2e mock 含控制器裁定必补的 LogicalSize
+- **verbatim 适配（已披露）**：简报 verbatim 按钮位置使横向控制条多一按钮，既有窗口用例「旋转后点 X 关闭」hover 假设被打破（旋转后 strip 缩 34px 鼠标落出 → ctrl pointer-events:none）——close 点击前补一次 re-hover（最小改动，close→hide 断言语义不变，注释诚实说明桌面同场景亦有此摩擦）
+- **简报/报告**：docs/superpowers/sdd/task-B4F-5-brief.md / task-B4F-5-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor ① 报告「纯测试环境产物」叙述不及测试注释准确（桌面旋转→close 亦有 re-hover 摩擦，测试注释为诚实记录，非代码缺陷）；Minor ② 浏览器 strip 路径无显式 `.c-strip__restore` toHaveCount(0)（既有用例 + 视觉 24 零漂移已覆盖，可选加）
+- **执行状态**：Task B4F-5：✅ 完成（70f3c1f，评审通过）
+- **Minor (deferred)**：① 桌面 rotate→close 的 re-hover 摩擦（布局固有，用户目检时知晓）；② 浏览器 strip 无恢复按钮的显式负断言（可选加 toHaveCount(0)）
+
+## 全部任务完成 → 最终整体评审
+
+（待执行：全量回归 + 最强大模型 review-package MERGE_BASE HEAD → 修复波 → merge main → 合并后全量回归）
 
 ## 环境告警（本会话，用户需知悉）
 
