@@ -1,0 +1,177 @@
+# Review package: d28c07e..HEAD
+
+## Commits
+f307803 feat: 主窗 FloatBall 创建独立 strip 窗口（透明置顶，B4-5）
+
+## Files changed
+ src-tauri/capabilities/default.json    |  9 +++++++--
+ src/app/app-main.js                    | 18 ++++++++++++++++++
+ tests/e2e/app-shell.spec.js            | 29 +++++++++++++++++++++++++++++
+ tests/unit/window-capabilities.test.js | 10 ++++++++++
+ 4 files changed, 64 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/src-tauri/capabilities/default.json b/src-tauri/capabilities/default.json
+index 3f2ebf5..c285fa9 100644
+--- a/src-tauri/capabilities/default.json
++++ b/src-tauri/capabilities/default.json
+@@ -1,18 +1,23 @@
+ {
+   "$schema": "../gen/schemas/desktop-schema.json",
+   "identifier": "default",
+   "description": "enables the default permissions",
+   "windows": [
+-    "main"
++    "main",
++    "strip"
+   ],
+   "permissions": [
+     "core:default",
+     "core:window:allow-minimize",
+     "core:window:allow-maximize",
+     "core:window:allow-unmaximize",
+     "core:window:allow-toggle-maximize",
+     "core:window:allow-close",
+     "core:window:allow-is-maximized",
+-    "core:window:allow-start-dragging"
++    "core:window:allow-start-dragging",
++    "core:webview:allow-create-webview-window",
++    "core:window:allow-set-position",
++    "core:window:allow-outer-position",
++    "core:window:allow-set-size"
+   ]
+ }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 0a2a356..da34e38 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -78,20 +78,22 @@ const MODULES = [
+   {
+     id: 'info', name: '关于', icon: 'info',
+     dir: [
+       { id: 'version', name: '版本', icon: 'box' },
+       { id: 'license', name: '许可', icon: 'shield' },
+     ],
+     render: placeholderPage,
+   },
+ ];
+ 
++let stripWindow = null; // B4-5：Tauri 独立 strip 窗口句柄（销毁后置空，重开可再建）
++
+ export function mountAppMode(root) {
+   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
+   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
+   applyConfig(getConfig());
+   const settingsPagesHtml = renderSettingsPages(APP_SECTIONS);
+   root.innerHTML = `
+   <div class="app-main" data-backdrop="gradient">
+     <div class="app-main__backdrop"></div>
+     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true, themeToggle: true })}
+     <div class="app-main__nav-l">
+@@ -697,20 +699,36 @@ export function mountAppMode(root) {
+ 
+   // —— FloatStrip 模拟演示（Task A5，规格 §5，仅 app 模式）：右下 FloatBall →
+   //    点击展开一个 FloatStrip 实例（右下贴边可拖）。docs 互斥不并存，零冲击。 ——
+   const ballHost = document.createElement('div');
+   ballHost.className = 'app-main__float-ball';
+   ballHost.innerHTML = renderFloatBall({ iconName: 'bolt', tooltip: '悬浮监测条' });
+   document.body.appendChild(ballHost);
+   let stripHost = null;
+   mountFloatBall(ballHost, {
+     onExpand: () => {
++      // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
++      if (typeof window.__TAURI__ !== 'undefined') {
++        const { WebviewWindow } = window.__TAURI__.window;
++        if (stripWindow) { stripWindow.setFocus(); return; }
++        stripWindow = new WebviewWindow('strip', {
++          url: '/?mode=strip',
++          width: 320,
++          height: 64,
++          transparent: true,
++          decorations: false,
++          alwaysOnTop: true,
++          resizable: false,
++        });
++        stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
++        return;
++      }
+       if (stripHost) return; // 已展开则不重复创建
+       stripHost = document.createElement('div');
+       stripHost.className = 'app-main__strip';
+       stripHost.innerHTML = renderFloatStrip({
+         content: renderTokenMonitor({
+           value: '97.2%',
+           status: 'ok',
+           trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
+         }),
+       });
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index b2b216a..6a17de7 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -483,10 +483,39 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+   await page.locator('.c-titlebar__control--theme').click();
+   const systemResolved2 = await page.evaluate(() => document.documentElement.dataset.theme);
+   expect(['light', 'dark']).toContain(systemResolved2);
+   await expect(page.locator('.app-main .csettings__mode[data-mode="system"]')).toHaveClass(/csettings__mode--active/);
+   // system → light（回到起点）
+   await page.locator('.c-titlebar__control--theme').click();
+   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+ });
++
++// —— B4-5 独立悬浮窗：主窗 FloatBall 在 Tauri 环境创建独立 strip 窗口 ——
++// mock `__TAURI__` 注入 WebviewWindow 记录调用；无 `__TAURI__` 时仍走窗口内 strip 演示
++// （floatstrip.spec.js 的浏览器分支用例回归覆盖，此处只测 Tauri 分支）。
++
++test('Tauri：FloatBall 展开创建独立 strip 窗口（透明置顶）', async ({ page }) => {
++  await page.addInitScript(() => {
++    const created = [];
++    window.__TAURI__ = {
++      window: {
++        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
++        WebviewWindow: class {
++          constructor(label, opts) { created.push({ label, opts }); }
++          setFocus() {} once() {}
++        },
++      },
++    };
++    window.__stripWinCalls__ = created;
++  });
++  await page.goto('/?mode=app');
++  await page.locator('.app-main__float-ball').click();
++  const calls = await page.evaluate(() => window.__stripWinCalls__);
++  expect(calls).toHaveLength(1);
++  expect(calls[0].label).toBe('strip');
++  expect(calls[0].opts.transparent).toBe(true);
++  expect(calls[0].opts.decorations).toBe(false);
++  expect(calls[0].opts.alwaysOnTop).toBe(true);
++  expect(calls[0].opts.url).toContain('mode=strip');
++});
+diff --git a/tests/unit/window-capabilities.test.js b/tests/unit/window-capabilities.test.js
+index 6a6111c..f4e17cf 100644
+--- a/tests/unit/window-capabilities.test.js
++++ b/tests/unit/window-capabilities.test.js
+@@ -14,11 +14,21 @@ describe('Tauri 窗口能力（B4-1）', () => {
+       'core:window:allow-minimize',
+       'core:window:allow-maximize',
+       'core:window:allow-unmaximize',
+       'core:window:allow-toggle-maximize',
+       'core:window:allow-close',
+       'core:window:allow-is-maximized',
+       'core:window:allow-start-dragging',
+     ];
+     for (const p of required) expect(caps.permissions).toContain(p);
+   });
++  it('授权 strip 悬浮窗（创建 + 自定位/自缩放）', () => {
++    expect(caps.windows).toContain('strip');
++    const required = [
++      'core:webview:allow-create-webview-window',
++      'core:window:allow-set-position',
++      'core:window:allow-outer-position',
++      'core:window:allow-set-size',
++    ];
++    for (const p of required) expect(caps.permissions).toContain(p);
++  });
+ });

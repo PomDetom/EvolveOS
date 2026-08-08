@@ -55,3 +55,14 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **简报/报告**：docs/superpowers/sdd/task-B4-4-brief.md / task-B4-4-report.md
 - **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor）——Minor：① README/CLAUDE.md「6 套主题色」与 README「11 条滑杆」过期文案留收尾（非本 diff，收尾任务改）；② 新 CSS 块用单空格分号（brief 字面格式，非错误）
 - **执行状态**：Task B4-4：✅ 完成（2fb1f72，评审通过）
+
+## Task B4-5: 独立悬浮窗 —— 主窗创建 strip 窗口
+
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，3 Minor 免修）
+- **提交**：`f307803` `feat: 主窗 FloatBall 创建独立 strip 窗口（透明置顶，B4-5）`
+- **验证**：TDD 红→绿（单测 windows 无 strip 红 → 实现绿；e2e mock 实测 0 调用红 → 实现绿）；npm test 57/57（+1）；npm run test:e2e 102 passed（含视觉 24 零漂移，未跑 --update-snapshots；首轮 2 例 smoke/toast 冷启动 flake 复跑绿非因果）；floatstrip 浏览器回归 6/6；npm run build 通过
+- **实现**：capability `windows` 加 `"strip"` + permissions 追加 4 项（create-webview-window/set-position/outer-position/set-size）；app-main.js `mountFloatBall` onExpand Tauri 分支——`WebviewWindow('strip', { url:'/?mode=strip', transparent, decorations:false, alwaysOnTop, resizable:false })`，已存在 → setFocus，`tauri://destroyed` 置空句柄，`return` 保证浏览器分支零改动；window-capabilities.test 追加 strip 断言；e2e mock `__TAURI__` 验证创建 opts
+- **备注**：`stripWindow` 句柄放模块作用域（brief 字面「模块变量」；评审裁定与函数作用域功能等价，Playwright 每测试重载页面无跨测泄漏）
+- **简报/报告**：docs/superpowers/sdd/task-B4-5-brief.md / task-B4-5-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor）——Minor：① 模块作用域句柄（无害）；② setFocus 未 await（cosmetic）；③ e2e 只断言 5/8 opts（brief 字面，width/height 未守卫，可选加固）
+- **执行状态**：Task B4-5：✅ 完成（f307803，评审通过）
