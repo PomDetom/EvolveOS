@@ -85,3 +85,25 @@ test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动�
   const rAfter = await overview.evaluate((el) => getComputedStyle(el).getPropertyValue('--preview-radius'));
   expect(rAfter).not.toBe(rBefore);
 });
+
+test('文字排版：baseSize/scale 滑杆真实全局缩放字号', async ({ page }) => {
+  const appr = await openSettingsPartition(page, 1);
+  const readFont = () => page.evaluate(() => {
+    const body = parseFloat(getComputedStyle(document.body).fontSize);
+    const sm = parseFloat(getComputedStyle(document.querySelector('.c-titlebar__title')).fontSize);
+    return { body, sm };
+  });
+  const before = await readFont();
+  expect(before.body).toBeCloseTo(14, 1); // 默认 baseSize=14, scale=1
+  expect(before.sm).toBeCloseTo(12, 1);   // --font-size-sm = 14 × 6/7
+  // 注：brief 原始 `.cust-row:has-text("缩放")` 与「时长缩放」行（durationScale）子串冲突 → 改按
+  // data-key 精确定位（与同文件 radiusScale/noise 用例同款约定）
+  await appr.locator('.cust-range[data-key="scale"]').fill('1.15');
+  const scaled = await readFont();
+  expect(scaled.body).toBeGreaterThan(before.body);
+  expect(scaled.sm).toBeGreaterThan(before.sm);
+  await appr.locator('.cust-range[data-key="baseSize"]').fill('12');
+  const based = await readFont();
+  expect(based.body).toBeLessThan(scaled.body);
+  expect(based.sm).toBeLessThan(scaled.sm);
+});

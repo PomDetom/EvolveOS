@@ -66,7 +66,7 @@ export function applyConfig(cfg, root = document.documentElement) {
   s.setProperty('--glass-bg-opacity', String(cfg.glass.opacity));
   s.setProperty('--glass-blur', `${cfg.glass.blur}px`);
   s.setProperty('--noise-opacity', String(cfg.glass.noise));
-  s.setProperty('--font-size-base', `${cfg.type.baseSize}px`);
+  s.setProperty('--font-size-base', `calc(${cfg.type.baseSize}px * ${cfg.type.scale})`);
   s.setProperty('--radius-scale', String(cfg.radiusScale));
   s.setProperty('--shadow-intensity', String(cfg.shadow));
   s.setProperty('--spring-strength', String(cfg.motion.springStrength));

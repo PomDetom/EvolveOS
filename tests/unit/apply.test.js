@@ -88,4 +88,8 @@ describe('applyConfig', () => {
     applyConfig({ ...DEFAULTS, color: { hue: -1, saturation: 100, temperature: 0.5 } }, root);
     expect(root.style.getPropertyValue('--neutral-hue')).toBe('138');
   });
+  it('--font-size-base = calc(baseSize px * scale)（两滑杆共同驱动）', () => {
+    applyConfig({ ...DEFAULTS, type: { baseSize: 14, scale: 1.15, weight: 400 } }, root);
+    expect(root.style.getPropertyValue('--font-size-base')).toBe('calc(14px * 1.15)');
+  });
 });
