@@ -1,7 +1,6 @@
 :root {
   /* 中性色阶（冷调灰，供 themes.css 映射使用 —— 注意：本文件只放「数值」，主题映射放 themes.css）。
-     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致；定制器色温滑杆（color.temperature）
-     经 apply.js 写 --neutral-hue 覆盖实现全局冷暖偏移。sat/light 由原 hex 逐级转换（视觉等效）。 */
+     色相参数化（--neutral-hue）：默认 235 冷调与历史视觉一致。sat/light 由原 hex 逐级转换（视觉等效）。 */
   --neutral-hue: 235;
   --neutral-50: hsl(var(--neutral-hue) 23.1% 97.5%);  --neutral-100: hsl(var(--neutral-hue) 21.4% 94.5%);
   --neutral-200: hsl(var(--neutral-hue) 18.4% 90.4%);  --neutral-300: hsl(var(--neutral-hue) 16.3% 83.1%);

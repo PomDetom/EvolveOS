@@ -16,24 +16,19 @@ test('调整亚克力透明度实时生效', async ({ page }) => {
   expect(bgOpacity).toBe('0.8');
 });
 
-test('色相滑杆实时覆盖 --accent 且数值区显示', async ({ page }) => {
+test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
   const appr = await openSettingsPartition(page, 1);
-  const hue = appr.locator('.cust-row:has-text("色相") input[type="range"]');
-  await hue.fill('200');
-  let accent = await page.evaluate(() =>
+  await expect(appr.locator('.cust-range[data-key="hue"]')).toHaveCount(0);
+  await expect(appr.locator('.cust-range[data-key="saturation"]')).toHaveCount(0);
+  await expect(appr.locator('.cust-range[data-key="temperature"]')).toHaveCount(0);
+  await expect(appr.locator('.cust-accent-card')).toHaveCount(6);
+  // 切强调色 → --accent 直接取色板（无微调覆盖）
+  await appr.locator('.cust-accent-card[data-accent="teal"]').click();
+  const accent = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
-  expect(accent).toMatch(/^hsl\(200 /);
-  // 数值区显示自定义色相（非「跟随」）
-  await expect(appr.locator('[data-out="hue"]')).toContainText('200°');
-});
-
-test('色温滑杆映射 --neutral-hue 暖端', async ({ page }) => {
-  const appr = await openSettingsPartition(page, 1);
-  const temp = appr.locator('.cust-row:has-text("色温") input[type="range"]');
-  await temp.fill('1'); // 暖端 → 中性色相 40（暖橙灰）
-  let hue = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--neutral-hue').trim());
-  expect(hue).toBe('40');
+  // B4-3 偏差修正：未注册 CSS 自定义属性保持原始序列化（hex，非 rgb）—— 与本仓库 tokens.spec
+  // 对同一变量 --accent 的既有断言（'#2dd4bf'）保持一致；语义断言不变（强调色 = teal 色板直出）。
+  expect(accent).toBe('#2dd4bf'); // teal-400 #2dd4bf
 });
 
 test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
@@ -52,7 +47,7 @@ test('外观分组标题体现全局语义（重命名 + desc）', async ({ page
   const group = page.locator('.cust-group');
   await expect(group).toHaveCount(6);
   await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
-  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('主题色/色相/饱和度/色温');
+  await expect(group.nth(0).locator('.cust-group__desc')).toHaveText('预设主题色 / 语义色自动协调');
   await expect(group.nth(1).locator('.cust-group__title')).toHaveText('表面质感');
   await expect(group.nth(1).locator('.cust-group__desc')).toHaveText('透明度/模糊/噪点强度/亚克力材质');
   await expect(group.nth(2).locator('.cust-group__title')).toHaveText('文字排版');

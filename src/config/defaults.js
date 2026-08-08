@@ -6,7 +6,6 @@ export const DEFAULTS = {
   radiusScale: 1,
   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
   shadow: 0.5,
-  color: { hue: -1, saturation: 100, temperature: 0 }, // hue: -1 = 跟随当前主题色
 };
 
 export const RANGES = {
@@ -19,9 +18,6 @@ export const RANGES = {
   durationScale: [0.5, 2, 0.05],
   springStrength: [0, 1, 0.05],
   shadowIntensity: [0, 1, 0.05],
-  hue: [0, 360, 1],
-  saturation: [60, 120, 1],
-  temperature: [-1, 1, 0.05],
 };
 
 export const ACCENTS = [
