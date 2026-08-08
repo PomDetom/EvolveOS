@@ -63,5 +63,5 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **提交**：feat（内容区自适应布局）+ docs 一枚（本台账/简报/报告）
 - **内容**：内容区自适应窗口宽度——`.app-main__page` max-width 720→1080 限宽居中（`margin-inline:auto`），新增 `.app-main__page[data-layout="fluid"] { max-width:none; margin-inline:0 }` 撑满；MODULES 渲染 section 加 `data-layout="center"`（含 home 概览页）、settings section 加 `data-layout="fluid"`（设置页整体 fluid，含表单分区——表单靠 `.csettings__field` 420px 自限宽克制观感，组件/动效分区铺满）。字号间距恒定（无窗口比例缩放）。e2e 追加 B5-4 data-layout 断言；视觉基线 24 张全量重生成（内容区 720→1080 栅格扩列，计划预期）。
 - **偏离**：无 verbatim 适配（CSS/JS/e2e 全逐字按 brief）。Step 5 分区内限宽**不加**（默认），2560×1440 视口截图确认表单 420px 自限宽观感克制；若超大窗口后续判定松散可按 brief 补加。
-- **评审**：（待评审，0 提交前自审结论：DONE——TDD RED/GREEN 完整、解码比对确认纯布局宽度差异、单测 64/64 + 全量 e2e 109 并集 + build 全绿）
-- **执行状态**：Task B5-4：✅ 完成（feat + docs，待评审）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor：① e2e 标题「表单限宽居中」仅由概览页断言覆盖，设置页表单分区（fluid 容器 + `.csettings__field` 420px 自限宽）的克制仅手动 2560 截图守卫（brief 逐字测试，计划既定）；② `data-layout="center"` 功能冗余（无 `[data-layout="center"]` CSS 规则，默认 max-width 即居中——brief 为 e2e 稳定性显式要求）；③ app-main.css:110 注释「表单/概览保持限宽居中」措辞略不精确（表单实为 fluid 容器 + field 自限宽）。⚠️ 项已核实：24 张基线全量重生成与 720→1080 成因自洽（报告尺寸变化：components/motion 变宽变矮=栅格扩列、appearance 仅变宽=拉伸）；Step 5 决策有代码级证据（`.csettings__field { max-width:420px }` settings-window.css:64-65 确认存在）。
+- **执行状态**：Task B5-4：✅ 完成（9321aaa + 542cfe0，评审通过）
