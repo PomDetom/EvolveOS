@@ -1,8 +1,22 @@
-.c-badge { display: inline-flex; align-items: center; padding: 1px 8px; font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium); border-radius: 999px; }
-.c-badge--accent { background: var(--accent-100); color: var(--accent-700); }
-.c-badge--success { background: var(--success-50); color: var(--success-600); }
-.c-badge--warning { background: var(--warning-50); color: var(--warning-600); }
-.c-badge--danger { background: var(--danger-50); color: var(--danger-600); }
-.c-badge--info { background: var(--info-50); color: var(--info-600); }
-.c-badge--default { background: var(--neutral-100); color: var(--neutral-600); }
+/* iOS 风格徽标（B5-3）：浅 tint 底（accent/semantic 12% 透明混色）+ 细描边 + 语义色文字。
+   半透明混色让徽标「坐」在玻璃表面上而非实色「贴」上去；细描边 1px 界定轮廓。 */
+.c-badge { display: inline-flex; align-items: center; padding: 2px 9px; font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium); border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.c-badge--accent { color: var(--accent-700); }
+.c-badge--success { color: var(--success-600);
+  background: color-mix(in srgb, var(--success-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success-500) 22%, transparent); }
+.c-badge--warning { color: var(--warning-600);
+  background: color-mix(in srgb, var(--warning-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning-500) 22%, transparent); }
+.c-badge--danger { color: var(--danger-600);
+  background: color-mix(in srgb, var(--danger-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger-500) 22%, transparent); }
+.c-badge--info { color: var(--info-600);
+  background: color-mix(in srgb, var(--info-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--info-500) 22%, transparent); }
+.c-badge--default { color: var(--neutral-600);
+  background: color-mix(in srgb, var(--neutral-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--neutral-500) 22%, transparent); }

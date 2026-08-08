@@ -7,11 +7,20 @@
   user-select: none; white-space: nowrap;
 }
 .c-btn:active { transform: scale(0.97); }
-.c-btn--primary { background: var(--accent); color: var(--accent-contrast); }
-.c-btn--primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-md); }
-.c-btn--primary:active { background: var(--accent-active); }
-.c-btn--secondary { background: var(--surface-2); color: var(--text-1);
-  border: 1px solid var(--glass-border); }
+/* iOS 层次按钮（B5-3）：primary 顶部内高光 + 柔和彩影（有厚度不扁平）；secondary 玻璃底呼应壳材质 */
+.c-btn--primary {
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  color: var(--accent-contrast);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 8px color-mix(in srgb, var(--accent-400) 30%, transparent);
+}
+.c-btn--primary:hover { filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px color-mix(in srgb, var(--accent-400) 40%, transparent); }
+.c-btn--primary:active { filter: brightness(0.96); }
+.c-btn--secondary {
+  background: var(--glass-bg);
+  color: var(--text-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
 .c-btn--secondary:hover { background: var(--surface-hover); }
 .c-btn--ghost { color: var(--text-2); }
 .c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
