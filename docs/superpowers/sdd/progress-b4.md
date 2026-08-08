@@ -90,3 +90,10 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
   - **Minor ①（免修/park）**：新预设 ACCENTS.color=500 品牌色 vs 应用 `--accent`=400 —— 与设计规格字面一致 + amber 既有先例，规格符合，park 随收尾
 - **fix 波评审（scoped）**：3 findings 全 ADDRESSED，无新破坏；out-of-scope 观察：根 CLAUDE.md:5 与 docs/tauri-integration.md:246 仍「6 套主题色」留收尾
 - **执行状态**：全部任务完成 + 修复波闭环 → 待合并 main + 合并后全量回归
+
+## 合并 main + 合并后全量回归（2026-08-08）
+
+- **合并**：`git merge --no-ff feature/b4-desktop-realism`（ecc9045，ort 无冲突）；feature/b4-desktop-realism 已删除（merged）
+- **合并后全量回归**：npm test 57/57；npm run test:e2e 103 passed（含视觉基线 24，仅 appearance-partition 12 张随 B4-3/B4-4 重生成后零漂移）；npm run build 通过
+- **B4 完成**：① 窗口控制权限（capability 7 项 + set-focus）② 独立置顶悬浮窗（WebviewWindow 创建 + 系统拖拽/贴合/位置持久化/关闭）③ 颜色方案（删微调组 + 12 套预设）④ 文字排版真实生效 全部落地 main
+- **留收尾**（记录，未阻塞合并）：根 CLAUDE.md:5 与 docs/tauri-integration.md:246 仍「6 套主题色」过期文案；新预设 ACCENTS.color=500 vs 应用 400 的 WYSIWYG 差异（设计规格字面 + amber 先例，park）
