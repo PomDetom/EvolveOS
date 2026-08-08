@@ -46,6 +46,17 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 
 ## Task B4F-4: JS 同步与清理（移除脆弱 onCloseRequested handler + set_close_behavior 同步）
 
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，2 Minor 免修）
+- **提交**：`1d49280` `fix: 移除 JS onCloseRequested 异步关 strip（主窗关不掉根因），配置经 set_close_behavior 同步 Rust（B4 收尾）`（amend 自 22e27be，控制器并入 brief；报告哈希已修正）
+- **验证**：TDD 红→绿（e2e 单用例红 `invokes=[]` → 绿）；npm test 58/58；e2e（worktree 配置 5174）104/104 + 视觉 24 零漂移；npm run build 通过
+- **实现**：app-main.js 移除 JS `onCloseRequested` 块（无残留引用）+ 加 `syncCloseBehavior`（Tauri `core?.invoke?.('set_close_behavior', {behavior: cfg.closeBehavior ?? 'exit'})`，浏览器 no-op），挂载 + subscribe 各调一次；app-shell.spec.js strip 用例替换为 set_close_behavior 同步断言（mock 去 onCloseRequested/close、加 core.invoke）
+- **简报/报告**：docs/superpowers/sdd/task-B4F-4-brief.md / task-B4F-4-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor ① 报告哈希 amend 前值（已修正为 1d49280）；Minor ② 配置变更 sync 路径（subscribe→invoke）无 e2e 覆盖（brief-mandated 范围，final wrap 可补）
+- **执行状态**：Task B4F-4：✅ 完成（1d49280，评审通过）
+- **Minor (deferred)**：配置变更（切 closeBehavior）→ Rust invoke 的 subscribe 路径无 e2e 断言（brief 只断言挂载默认 exit；最终整体评审 triage 是否补「切 background → invoke behavior:'background'」用例）
+
+## Task B4F-5: strip 悬浮窗「恢复主窗」按钮（后台模式出路）
+
 （待派发实施者）
 
 ## 环境告警（本会话，用户需知悉）
