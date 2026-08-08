@@ -114,3 +114,40 @@ test('文字排版：baseSize/scale 滑杆真实全局缩放字号', async ({ pa
   expect(based.body).toBeLessThan(scaled.body);
   expect(based.sm).toBeLessThan(scaled.sm);
 });
+
+test('B5-5：外观页控件行对齐统一（标签基线 + 行距一致）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+  const appr = page.locator('.app-main__settings [data-page="appearance"]');
+  // ① 标签基线对齐：slider 行内 label 与 value 同基线（bottom 差 < 2px，.cust-row__head align-items:baseline）
+  const bases = await appr.locator('.cust-row:not(.cust-row--switch) .cust-row__head').evaluateAll(
+    (heads) => heads.slice(0, 4).map((h) => {
+      const l = h.querySelector('.cust-row__label');
+      const v = h.querySelector('.cust-row__value');
+      return l && v ? Math.abs(l.getBoundingClientRect().bottom - v.getBoundingClientRect().bottom) : null;
+    }).filter((d) => d !== null));
+  expect(bases.length).toBeGreaterThan(0);
+  for (const d of bases) expect(d).toBeLessThan(2);
+  // ② 行距一致：连续 slider 行间距差 < 4px（表面质感组 透明度/模糊/噪点 连续段，跳过首行 switch 行——
+  //    首 switch 行与下一行间隔着玻璃预览卡（非 .cust-row），其 gap 由卡片高度主导，非行距可比）
+  const rows = await appr.locator('.cust-row').evaluateAll((els) => els.slice(1, 4).map((el) => el.getBoundingClientRect().top));
+  const gaps = rows.slice(1).map((t, i) => t - rows[i]);
+  expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(4);
+  // ③ switch 行：标签垂直居中于行（align-items:center 兜底）+ 行高 ≥ 40px（min-height 密度统一）。
+  //    以「标签中心 vs 行中心」度量（.c-switch 在动效行有 .cust-switch-wrap 嵌套，行中心才是 flex 保证）
+  const sws = await appr.locator('.cust-row--switch').evaluateAll((els) => els.slice(0, 2).map((r) => {
+    const l = r.querySelector('.cust-row__label');
+    if (!l) return null;
+    const rr = r.getBoundingClientRect();
+    const lr = l.getBoundingClientRect();
+    const lc = lr.top + lr.height / 2;
+    const rc = rr.top + rr.height / 2;
+    return { cent: Math.abs(lc - rc), h: rr.height };
+  }).filter((v) => v !== null));
+  expect(sws.length).toBeGreaterThan(0);
+  for (const { cent, h } of sws) {
+    expect(cent).toBeLessThan(1);
+    expect(h).toBeGreaterThanOrEqual(40);
+  }
+});
