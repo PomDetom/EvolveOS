@@ -36,6 +36,16 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 
 ## Task B4F-3: Rust 关闭行为（AppState + set_close_behavior + on_window_event）
 
+- **状态**：完成（2026-08-08，评审通过，0 Critical/Important，3 Minor 免修）
+- **提交**：`7be2c59` `feat: 主窗关闭行为 Rust 侧（exit→app.exit / background→prevent_close+hide，set_close_behavior 命令，B4 收尾）`（amend 自 1498bba，控制器并入 brief；报告哈希已修正）
+- **验证**：cargo check 零错误零警告；npm test 58/58；e2e（worktree 配置 5174）104/104 + 视觉 24 零漂移；npm run build 通过
+- **实现**：lib.rs 完整替换（brief verbatim）——`AppState { close_behavior: Mutex<String> }` + `#[tauri::command] set_close_behavior` + `.manage/.invoke_handler` + `.on_window_event` 主窗 CloseRequested（exit→`app.exit(0)` / background→`prevent_close`+`hide`）；`use tauri::Manager;` 引入；`.setup()` 插件逻辑保留；主窗 label "main" 经 tauri.conf.json 核对（无显式 label 默认 "main"）
+- **简报/报告**：docs/superpowers/sdd/task-B4F-3-brief.md / task-B4F-3-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor ① 报告哈希 amend 前值（已修正为 7be2c59）；Minor ② `let _ = window.hide()` 吞错（plan-mandated，hide 失败窗口不消失可接受）；Minor ③ `lock().unwrap()` poison 理论性（唯一 writer 纯赋值不可能 panic，安全）
+- **执行状态**：Task B4F-3：✅ 完成（7be2c59，评审通过）
+
+## Task B4F-4: JS 同步与清理（移除脆弱 onCloseRequested handler + set_close_behavior 同步）
+
 （待派发实施者）
 
 ## 环境告警（本会话，用户需知悉）
