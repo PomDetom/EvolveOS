@@ -736,6 +736,16 @@ export function mountAppMode(root) {
       });
     },
   });
+
+  // 主窗关闭 → 连带关闭 strip 悬浮窗：应用在所有窗口关闭后自然退出（B4 桌面真实化——
+  //   否则 strip 窗口存在会让进程驻留，主窗关了悬浮窗仍存活）
+  if (typeof window.__TAURI__ !== 'undefined') {
+    window.__TAURI__.window.getCurrentWindow().onCloseRequested?.(() => {
+      window.__TAURI__.window.getAllWindows()
+        .then((wins) => wins.forEach((w) => { if (w.label !== 'main') w.close().catch(() => {}); }))
+        .catch(() => {});
+    })?.catch?.(() => {});
+  }
 }
 
 // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——

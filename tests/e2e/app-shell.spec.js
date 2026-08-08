@@ -497,16 +497,20 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
 // 此处只测 Tauri 分支）。真实 Tauri 全局未暴露 WebviewWindow 构造函数（修复 B4-5），
 // 故改用预注册窗口 + getAllWindows→show，避免运行时创建。
 
-test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口', async ({ page }) => {
+test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；主窗关闭连带关 strip', async ({ page }) => {
   await page.addInitScript(() => {
     const shown = [];
     window.__TAURI__ = {
       window: {
-        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getCurrentWindow: () => ({
+          minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {},
+          onCloseRequested: (fn) => { window.__mainCloseFn__ = fn; return Promise.resolve(() => {}); },
+        }),
         getAllWindows: () => Promise.resolve([{
           label: 'strip',
           show: () => { shown.push('show'); return Promise.resolve(); },
           setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
+          close: () => { shown.push('close'); return Promise.resolve(); },
         }]),
       },
     };
@@ -517,4 +521,8 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口', async ({ page }
   const shown = await page.evaluate(() => window.__stripShown__);
   expect(shown).toContain('show');
   expect(shown).toContain('setFocus');
+  // 主窗关闭 → 连带关闭 strip 窗口（否则 strip 让进程驻留）
+  await page.evaluate(() => window.__mainCloseFn__());
+  const after = await page.evaluate(() => window.__stripShown__);
+  expect(after).toContain('close');
 });

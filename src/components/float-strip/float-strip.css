@@ -145,3 +145,6 @@
   max-width: none; max-height: none;
   backdrop-filter: none;
 }
+/* 窗口模式下竖排也必须内容宽度（width:auto + position:static 会填满窗口，把控制条裁掉、
+   并破坏底部圆角）—— 与横向 width:max-content 一致 */
+.strip-root--window .c-strip--vertical { width: max-content; }
