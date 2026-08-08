@@ -20,5 +20,5 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **验证**：TDD 红→绿（单测断言 7 项窗口权限，纯配置改动）；npm test 61/61（11 files，+1 新增）；npm run test:e2e 100 passed（含视觉基线 24，纯配置零漂移，未跑 --update-snapshots）；npm run build 通过
 - **实现**：`src-tauri/capabilities/default.json` permissions 追加 7 项 `core:window:allow-*`（minimize/maximize/unmaximize/toggle-maximize/close/is-maximized/start-dragging）；新增 `tests/unit/window-capabilities.test.js` 作配置守卫
 - **简报/报告**：docs/superpowers/sdd/task-B4-1-brief.md / task-B4-1-report.md
-- **评审**：待独立评审
-- **执行状态**：Task B4-1：✅ 完成（f5a16dc）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，2 Minor 免修）——Minor：① 单测断言包含而非精确集（brief 字面，后续可收紧）；② 提交拆为 fix + docs 两枚（B3 既有惯例，非偏差）
+- **执行状态**：Task B4-1：✅ 完成（f5a16dc，评审通过）
