@@ -104,4 +104,6 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **验证**：customizer 像素级 `--fill` 测试（noise 推到 25%/75% 实测填充比例，判别力 `|ratio−0.5|>0.1`；Chromium 151 伪元素反射失效 → 截图 + 页内 canvas 解码 + accent 色列占比）+ motion-lab 弹性 `--fill` 断言 + slider 单测。视觉基线**恰 6 张 motion-partition 重生成**（解码比对确认纯滑杆 track 填充变化；app-main/appearance/components 字节不变——find 2 无基线影响、components 滑杆在 fold 下）。
 - **全量回归**：单测 65/65、全量 e2e 并集 112/112（2 例 mount/惰性挂载 flake 复跑确认）、build 通过。
 - **顺手捆绑 Minor**：B5-5 断言②补 `gaps.length>0` 空数组守卫（评审 Minor ①，同文件一行）。
-- **执行状态**：Task B5-final：✅ 完成（fix + docs，评审闭环）
+- **再评审（scoped，8e06211..HEAD）**：**All findings addressed，无新 Critical/Important 破坏**——find 1 ADDRESSED（slider.js:5-9 内联 --fill clamp+除零、motion-lab.js:113-120 setSliderFill 于 applyParams 覆盖 mount/input/subscribe、customizer syncUI 不动、showcase 80%/20% 生效）、find 2 ADDRESSED（themes.css:147-148 --shadow-glow 默认观感逐字不变、button.css:15,17 消费 + inset 独立、calc 乘法既有先例）、--fill 验证建议 ADDRESSED（customizer 像素级 25%/75% + motion-lab 弹性 60/100/50 + slider 单测三层）。新破坏 Minor：① `.c-btn` transition 加 `filter` 不在文档 paint-only 豁免清单（docs/CLAUDE.md「先固化口径再落地」要求）；② 报告 prose 像素描述近似值不精确（非功能）。
+- **口径固化**：`0a3e8f8` docs：动画红线豁免清单补 `filter`（paint-only，docs/CLAUDE.md 加 bullet「filter：按钮 hover/active 的 brightness 微调」+ src/CLAUDE.md 豁免列表加 `/filter`）——再评审 Minor ① 闭环。
+- **执行状态**：Task B5-final：✅ 完成（8e06211 + 1374957 + 0a3e8f8，修复波评审闭环）
