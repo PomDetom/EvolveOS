@@ -709,7 +709,7 @@ export function mountAppMode(root) {
       // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
       if (typeof window.__TAURI__ !== 'undefined') {
         const { WebviewWindow } = window.__TAURI__.window;
-        if (stripWindow) { stripWindow.setFocus(); return; }
+        if (stripWindow) { stripWindow.setFocus().catch(() => {}); return; }
         stripWindow = new WebviewWindow('strip', {
           url: '/?mode=strip',
           width: 320,

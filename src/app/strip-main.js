@@ -3,8 +3,11 @@
 // 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
 import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
 import '../components/float-strip/float-strip.css';
+import { getConfig } from '../config/store.js';
+import { applyConfig } from '../config/apply.js';
 
 export function mountStripMode() {
+  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
   const root = document.createElement('div');
   root.className = 'strip-root';
   root.innerHTML = renderFloatStrip({

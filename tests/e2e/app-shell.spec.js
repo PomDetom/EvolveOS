@@ -503,7 +503,7 @@ test('Tauri：FloatBall 展开创建独立 strip 窗口（透明置顶）', asyn
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
         WebviewWindow: class {
           constructor(label, opts) { created.push({ label, opts }); }
-          setFocus() {} once() {}
+          setFocus() { return Promise.resolve(); } once() {}
         },
       },
     };
