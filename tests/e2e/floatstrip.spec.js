@@ -134,7 +134,39 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
   calls = await page.evaluate(() => window.__stripWinCalls__);
   expect(calls.filter((c) => c[0] === 'setSize').length).toBeGreaterThan(before);
   // X 关闭 → hide（预注册窗口隐藏可重开，不销毁）
+  // 注：B4F-5 控制条多一个恢复按钮 → 旋转后窗口高度缩小，鼠标可能落出 strip
+  // （真实 Tauri 窗口同样如此：窗口=内容尺寸，指针在按钮位可能超出新窗口）——
+  // 点击前重新 hover，确保控制条浮现可点
+  await page.locator('.c-strip').hover();
+  await page.waitForTimeout(SETTLE_MS);
   await page.locator('.c-strip__close').click();
   calls = await page.evaluate(() => window.__stripWinCalls__);
   expect(calls).toContain('hide');
+});
+
+test('strip 窗口：恢复主窗按钮 → main show+setFocus', async ({ page }) => {
+  await page.addInitScript(() => {
+    const calls = [];
+    window.__TAURI__ = { window: {
+      LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
+      getCurrentWindow: () => ({
+        setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
+        onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+      }),
+      getAllWindows: () => Promise.resolve([{
+        label: 'main',
+        show: () => { calls.push('main.show'); return Promise.resolve(); },
+        setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
+      }]),
+    } };
+    window.__restoreCalls__ = calls;
+  });
+  await page.goto('/?mode=strip');
+  await expect(page.locator('.c-strip__restore')).toBeVisible();
+  await page.locator('.c-strip').hover();
+  await page.waitForTimeout(300);
+  await page.locator('.c-strip__restore').click();
+  const calls = await page.evaluate(() => window.__restoreCalls__);
+  expect(calls).toContain('main.show');
+  expect(calls).toContain('main.setFocus');
 });

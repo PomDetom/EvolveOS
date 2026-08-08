@@ -12,10 +12,11 @@ import { icon } from '../icon/icon.js';
 const SNAP_DIST = 24; // 距屏幕边缘 < 24px 吸附（贴边）
 const MOVE_THRESHOLD = 2; // 像素级移动判定：双击/点击不触发吸附
 
-export function renderFloatStrip({ content = '' } = {}) {
+export function renderFloatStrip({ content = '', showRestore = false } = {}) {
   return `<div class="c-strip c-strip--horizontal" data-orientation="horizontal">
     <div class="c-strip__content">${content}</div>
     <div class="c-strip__ctrl" role="toolbar" aria-label="悬浮条控制">
+      ${showRestore ? `<button class="c-strip__restore" type="button" title="恢复主窗" aria-label="恢复主窗">${icon('layout', 14)}</button>` : ''}
       <button class="c-strip__rotate" type="button" title="旋转" aria-label="旋转">${icon('refresh', 14)}</button>
       <div class="c-strip__drag" role="button" title="拖动" aria-label="拖动">${icon('drag', 14)}</div>
       <button class="c-strip__close" type="button" title="关闭" aria-label="关闭">${icon('close', 14)}</button>

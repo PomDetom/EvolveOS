@@ -16,6 +16,7 @@ export function computeFitSize(rect) {
 
 export function mountStripMode() {
   applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
+  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
   const root = document.createElement('div');
   root.className = 'strip-root';
   root.innerHTML = renderFloatStrip({
@@ -24,9 +25,19 @@ export function mountStripMode() {
       status: 'ok',
       trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
     }),
+    showRestore: !!win, // 仅 Tauri 独立窗口渲染「恢复主窗」按钮
   });
   document.body.appendChild(root);
-  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
+  // 恢复主窗按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main show+setFocus）
+  const restoreBtn = root.querySelector('.c-strip__restore');
+  restoreBtn?.addEventListener('click', () => {
+    window.__TAURI__.window.getAllWindows()
+      .then((wins) => {
+        const main = wins.find((w) => w.label === 'main');
+        if (main) { main.show().catch(() => {}); main.setFocus().catch(() => {}); }
+      })
+      .catch(() => {});
+  });
   if (win) {
     // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
     root.classList.add('strip-root--window');
