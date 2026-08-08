@@ -31,5 +31,5 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **实现**：`--font-size-base = calc(baseSize px * scale)`（applyConfig + customizer-css 导出对齐）；tokens.css 字号令牌全部派生自 `--font-size-base`（`* 5/7、6/7、8/7、10/7、12/7、*2`，默认 14×1 计算值浮点精确整数 → 零漂移）
 - **verbatim 适配**：① brief 乘数 0.714/0.857/1.143/1.429/1.714 默认 14×1 下产生 9.996/11.998/16.002/20.006/23.996 子像素值 → 视觉 3/24 漂移（stash 归因确证）→ 改精确有理数以兑现零漂移 MUST；② brief e2e 选择器 `.cust-row:has-text("缩放")` 与「时长缩放」strict 冲突 → 改 `.cust-range[data-key="scale"]`
 - **简报/报告**：docs/superpowers/sdd/task-B4-2-brief.md / task-B4-2-report.md
-- **评审**：待独立评审（规格符合 + 质量）
-- **执行状态**：Task B4-2：✅ 完成（b6ba3ac，待评审）
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor：① 单测断言精确字符串（brief 字面契约，可接受）；② e2e 方向断言可补精确值（brief 字面）；③ 提交拆 fix + docs 两枚（既有惯例）
+- **执行状态**：Task B4-2：✅ 完成（b6ba3ac，评审通过）
