@@ -91,3 +91,17 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - B5-5：断言②空数组真空通过；断言①基线判别弱；accent-grid stretch no-op；行距覆盖窄；`.cust-switch-wrap` 3.2px 中轴偏移（既有）。
 
 **评审观察（非缺陷）：** 视觉基线 fold 局限（components 徽标/按钮/滑杆在设置窗捕获 fold 之下，部分分区无像素基线覆盖，e2e 样式断言为唯一守卫）。
+
+## Task B5-final: 最终评审修复（find 1 + find 2 闭环）
+
+- **状态**：DONE（2026-08-09）
+- **需求源**：最终整体评审「With fixes」2 个 Important（即上节延期项 #1/#2）
+- **报告**：docs/superpowers/sdd/final-fix-report.md
+- **提交**：fix + docs 两枚提交
+- **内容**：
+  - **find 1（滑杆 --fill 全接线）**：`slider.js` `renderSlider` 内联 `--fill`（按 value/min/max 计算，clamp + 除零兜底，签名不变）；`motion-lab.js` `setSliderFill` 于 `applyParams` 末尾对弹性/位移两滑杆调用（覆盖初始渲染 / input / subscribe 三路径）。customizer syncUI `--fill`（customizer-panel.js:210）保留，覆盖内联默认。
+  - **find 2（primary 彩影令牌化）**：themes.css 新增 `--shadow-glow` / `--shadow-glow-hover`（alpha = 60%/80% × `--shadow-intensity`，默认 0.5 → 30%/40%，与既有 iOS 彩影逐字一致，默认观感零变化）；button.css primary 基类/hover 消费令牌，`inset` 内高光独立；`.c-btn` transition 补 `filter`（Minor ① 顺手）。
+- **验证**：customizer 像素级 `--fill` 测试（noise 推到 25%/75% 实测填充比例，判别力 `|ratio−0.5|>0.1`；Chromium 151 伪元素反射失效 → 截图 + 页内 canvas 解码 + accent 色列占比）+ motion-lab 弹性 `--fill` 断言 + slider 单测。视觉基线**恰 6 张 motion-partition 重生成**（解码比对确认纯滑杆 track 填充变化；app-main/appearance/components 字节不变——find 2 无基线影响、components 滑杆在 fold 下）。
+- **全量回归**：单测 65/65、全量 e2e 并集 112/112（2 例 mount/惰性挂载 flake 复跑确认）、build 通过。
+- **顺手捆绑 Minor**：B5-5 断言②补 `gaps.length>0` 空数组守卫（评审 Minor ①，同文件一行）。
+- **执行状态**：Task B5-final：✅ 完成（fix + docs，评审闭环）
