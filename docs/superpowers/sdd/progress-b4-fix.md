@@ -25,5 +25,24 @@ Base: 1d35504（branch fix/b4-strip-open HEAD，工作树在 .claude/worktrees/b
 
 ## Task B4F-2: closeBehavior 配置 + 设置「通用」分区选择器
 
+- **状态**：完成（2026-08-08，评审通过）
+- **提交**：`69c032b` `feat: 主窗关闭行为可配置（closeBehavior 退出应用/保留后台，通用分区选择器，B4 收尾）`（amend 自 6ac9afc，控制器并入 brief）
+- **验证**：TDD 红→绿（stash 回退 3 源文件复测红 → pop 绿）；npm test 58/58；e2e 104/104（含新增 closeBehavior 用例 + 视觉基线 12 张零漂移）；npm run build 通过。**注意**：e2e 在 5174 新鲜 server 上跑（见下方环境告警）
+- **实现**：defaults.js `DEFAULTS` 加 `closeBehavior: 'exit'`；settings-pages.js `CLOSE_BEHAVIORS` + 通用页「关闭主窗口时」两态选择器（`[data-close-behavior-group]`）+ 接线（saveConfig→applyConfig）；**控制器裁定修复**：settings-pages.js 主题三态 handler + app-main.js `syncSettingsThemeModes` 两处主题同步循环收敛 `.csettings__mode[data-mode]`（防误清 close-behavior 高亮）；app-shell.spec.js 新用例
+- **简报/报告**：docs/superpowers/sdd/task-B4F-2-brief.md / task-B4F-2-report.md
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor ① 报告哈希 amend 前值（已修正为 69c032b）；Minor ② 无回归测试锁 `[data-mode]` 裁定（点主题后断言 close-behavior 高亮仍在，可选加）；Minor ③ `.csettings__modes--close` 无 CSS 规则（brief verbatim 死钩，无害）
+- **执行状态**：Task B4F-2：✅ 完成（69c032b，评审通过）
+- **Minor (deferred)**：① `[data-mode]` 裁定无回归测试（最终评审 triage 是否补一行「点主题→断言 close-behavior 高亮仍在」）；② `.csettings__modes--close` 死 CSS 钩（brief verbatim，B4F-3/4 可沿用）
+
+## Task B4F-3: Rust 关闭行为（AppState + set_close_behavior + on_window_event）
+
 （待派发实施者）
+
+## 环境告警（本会话，用户需知悉）
+
+- **共享 checkout `C:\Repository\ui-design` 有陈旧 Vite dev server（PID 2528，端口 5173，2026-08-08 19:47 启动）**，serve 的是共享 checkout 的旧代码（无 computeFitSize/closeBehavior）。Playwright `playwright.config.js` 的 `reuseExistingServer: true` 会误连它 → `npm run test:e2e` 会测到旧代码，结果失真。
+- **处置**：控制器已自建 `playwright.config.worktree.js`（端口 5174，`reuseExistingServer: false`）作为 e2e 跑法，验证 B4F-1+B4F-2 全量 104/104 真绿。后续 B4F-3/4/5 e2e 用此配置。
+- **建议用户**：手动终止 PID 2528（`Stop-Process -Id 2528 -Force`），或重启共享 checkout 的 dev server，否则 `npm run test:e2e` 默认命令持续失真。
+
+
 

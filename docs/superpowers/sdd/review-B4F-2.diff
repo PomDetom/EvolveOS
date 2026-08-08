@@ -1,0 +1,356 @@
+# Review package: 9f6535a..69c032b
+
+## Commits
+69c032b feat: 主窗关闭行为可配置（closeBehavior 退出应用/保留后台，通用分区选择器，B4 收尾）
+
+## Files changed
+ docs/superpowers/sdd/task-B4F-2-brief.md     | 139 +++++++++++++++++++++++++++
+ src/app/app-main.js                          |   4 +-
+ src/config/defaults.js                       |   1 +
+ src/scenes/settings-window/settings-pages.js |  33 ++++++-
+ tests/e2e/app-shell.spec.js                  |  19 ++++
+ 5 files changed, 194 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B4F-2-brief.md b/docs/superpowers/sdd/task-B4F-2-brief.md
+new file mode 100644
+index 0000000..6d99804
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4F-2-brief.md
+@@ -0,0 +1,139 @@
++# Task B4F-2 简报 — closeBehavior 配置 + 设置「通用」分区选择器
++
++- **计划**：docs/superpowers/plans/2026-08-08-app-shell-b4-close-and-sizing.md（唯一实施需求源）
++- **规格**：docs/superpowers/specs/2026-08-08-app-shell-b4-close-and-sizing-design.md（唯一需求源，§4.3）
++- **Branch**：worktree-b4-close-sizing
++- **任务定位**：B4 收尾修复第二个任务。为「主窗关闭行为可配置」（退出应用 / 保留后台）铺配置层 + 设置页 UI。后续 B4F-3（Rust 消费 cfg.closeBehavior）、B4F-4（JS 同步 Rust）依赖本任务产出的 `cfg.closeBehavior`。
++
++## 背景
++
++主窗关闭行为需可配置：`exit` = 点主窗关闭直接退出整个应用；`background` = 主窗隐藏、应用常驻、strip 悬浮窗继续工作。本任务只做**配置链路 + 设置页选择器**（defaults → store → apply），Rust 侧消费在 B4F-3。
++
++## Files
++
++- Modify: `src/config/defaults.js`（DEFAULTS 加 `closeBehavior: 'exit'`）
++- Modify: `src/scenes/settings-window/settings-pages.js`（通用分区加「关闭主窗口时」两态选择器 + 接线）
++- Modify: `src/app/app-main.js`（**控制器裁定修复**：`syncSettingsThemeModes` 主题同步循环收敛到 `[data-mode]` 按钮 —— 见下方「控制器裁定」）
++- Test: `tests/e2e/app-shell.spec.js`（新用例）
++
++## Interfaces
++
++- Produces: `cfg.closeBehavior: 'exit' | 'background'`（defaults 默认 `'exit'`）；设置页 `.csettings__modes[data-close-behavior-group]` 两态选择器 + `[data-close-behavior]` 按钮 —— Task B4F-3/4 消费 `cfg.closeBehavior` 与 Rust 同步
++
++## 控制器裁定（用户批准，本任务必须执行）
++
++**Pre-flight 冲突 ②**：settings-pages.js 主题三态 click handler 与 app-main.js `syncSettingsThemeModes` 均用 `querySelectorAll('.csettings__mode')` 按 `b.dataset.mode === next.theme` 清 active；本任务新增的 close-behavior 按钮同用 `.csettings__mode` 类 → 主题变更/任何 subscribe 会把 close-behavior 按钮 active 高亮误清。
++
++**修法（两处）**：主题同步循环选择器加 `[data-mode]` 限定，只作用于主题按钮：
++- `src/scenes/settings-window/settings-pages.js` 主题三态 click handler 内 `root.querySelectorAll('.csettings__mode')` → `root.querySelectorAll('.csettings__mode[data-mode]')`
++- `src/app/app-main.js` `syncSettingsThemeModes` 内 `document.querySelectorAll('.csettings__mode')` → `document.querySelectorAll('.csettings__mode[data-mode]')`
++
++close-behavior 按钮自身的高亮管理用独立 `[data-close-behavior-group]`/`[data-close-behavior]` 选择器（下述 Step 4），不受主题循环影响。
++
++## Step 1: 写失败 e2e（app-shell.spec.js 追加）
++
++```js
++test('通用分区：关闭主窗口时选择器存在且可切换（写 store）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
++  const group = page.locator('[data-close-behavior-group]');
++  await expect(group).toBeVisible();
++  await expect(group.locator('.csettings__mode')).toHaveCount(2);
++  // 默认 exit 高亮
++  await expect(group.locator('[data-close-behavior="exit"]')).toHaveClass(/csettings__mode--active/);
++  await group.locator('[data-close-behavior="background"]').click();
++  const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
++  expect(cfg).toBe('background');
++});
++```
++
++> 注：e2e 里 `.app-main__nav-r .c-navwheel__item` 第 0 项为「通用」（APP_SECTIONS[0]）。**不可用 `hasText`**（nav-wheel 纯图标，栏内文字隐藏——见 src/CLAUDE.md 常见坑）。若有元素选择障碍，用 `[data-id="general"]` 定位。
++
++## Step 2: 运行确认红
++
++`npx playwright test tests/e2e/app-shell.spec.js -g "关闭主窗口时"`
++Expected: FAIL（`[data-close-behavior-group]` 不存在）
++
++## Step 3: defaults.js 加 closeBehavior
++
++`DEFAULTS` 末尾追加：
++
++```js
++  closeBehavior: 'exit', // 主窗关闭：exit=退出应用 / background=保留后台（悬浮窗常驻）
++```
++
++## Step 4: settings-pages.js 通用分区加选择器
++
++文件顶部加常量：
++
++```js
++const CLOSE_BEHAVIORS = [
++  { id: 'exit', label: '退出应用' },
++  { id: 'background', label: '保留后台' },
++];
++```
++
++`generalPage()` 主题字段后追加：
++
++```js
++    <div class="csettings__field">
++      <span class="csettings__field-label">关闭主窗口时</span>
++      <p class="csettings__field-desc">点主窗关闭按钮：退出整个应用，或隐藏到后台保留悬浮窗</p>
++      <div class="csettings__modes csettings__modes--close" data-close-behavior-group role="group" aria-label="关闭行为">
++        ${CLOSE_BEHAVIORS.map((b) => `
++          <button type="button" class="csettings__mode${cfg.closeBehavior === b.id ? ' csettings__mode--active' : ''}"
++            data-close-behavior="${b.id}" aria-pressed="${cfg.closeBehavior === b.id}">${b.label}</button>`).join('')}
++      </div>
++    </div>
++```
++
++`mountSettingsInteractions(root)` 内（主题三态 handler 之后）加接线：
++
++```js
++  // 关闭主窗口时（B4 收尾）：两态选择器 → store
++  root.querySelector('[data-close-behavior-group]')?.addEventListener('click', (e) => {
++    const btn = e.target.closest('[data-close-behavior]');
++    if (!btn) return;
++    const next = saveConfig({ closeBehavior: btn.dataset.closeBehavior });
++    applyConfig(next);
++    root.querySelectorAll('[data-close-behavior]').forEach((b) => {
++      const on = b.dataset.closeBehavior === next.closeBehavior;
++      b.classList.toggle('csettings__mode--active', on);
++      b.setAttribute('aria-pressed', String(on));
++    });
++  });
++```
++
++> 注意：用 `[data-close-behavior-group]` 独立选择器，避免与主题 `.csettings__modes`（`querySelector('.csettings__modes')` 取首个）冲突。close-behavior 按钮 class 复用 `.csettings__mode`（样式复用），但主题循环已按控制器裁定收敛到 `[data-mode]`，互不干扰。
++
++## Step 5: 控制器裁定修复（两处主题循环收敛 [data-mode]）
++
++见上「控制器裁定」——把 settings-pages.js 与 app-main.js 两处主题同步循环的选择器从 `.csettings__mode` 改为 `.csettings__mode[data-mode]`。此为防误清 close-behavior 高亮的必要修复，随本任务提交。
++
++## Step 6: e2e 红→绿
++
++`npx playwright test tests/e2e/app-shell.spec.js -g "关闭主窗口时"` → 红 → 实现 → 绿；再跑全文件零回归
++
++## Step 7: 全量回归 + 提交
++
++Run: `npm test` + `npm run test:e2e` + `npm run build`
++Expected: 全绿
++
++```bash
++git add src/config/defaults.js src/scenes/settings-window/settings-pages.js src/app/app-main.js tests/e2e/app-shell.spec.js
++git commit -m "feat: 主窗关闭行为可配置（closeBehavior 退出应用/保留后台，通用分区选择器，B4 收尾）"
++```
++
++> 注：本任务 commit 含 app-main.js 的主题循环收敛修复（控制器裁定），git add 清单已含该文件。
++
++## 全局约束（本任务绑定）
++
++- 测试仅在 Web 环境执行（Vitest + Playwright）；不跑 tauri dev；Tauri 桌面行为由用户目检。
++- 动画红线：布局/几何动画只允许 transform/opacity；模糊永不动画；时长/曲线经 CSS 变量。
++- 配置链路：界面参数修改必须经 defaults → store → apply，不绕过直接写 CSS 变量（本任务 saveConfig/applyConfig 链路即此）。
++- 零运行时依赖；组件无抽象封装；遵循 src/CLAUDE.md 风格。
++- 禁止升级核心依赖。
++- 视觉基线零漂移（本任务不改变浏览器路径渲染；若漂移先解码比对再 update-snapshots）。
++- 工作树 `src-tauri/Cargo.toml` 行尾噪声不动、不提交。
++- 提交前检查 `git status`/`git diff --stat`，防 Cargo.toml 等被构建触碰文件的行尾噪声混入提交。
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 4a2b2d3..acc0295 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -139,23 +139,25 @@ export function mountAppMode(root) {
+   };
+   // 挂载期初始化（R9 评审 I1 修复，恢复 R8 行为）：title-bar.js 初始静态 sun 在此被覆盖——
+   // 冷启动已存 dark/system 时标题栏图标随配置，否则按钮仍为 sun、与页面 data-theme 和设置分区失同步。
+   updateThemeIcon();
+   themeBtn.addEventListener('click', () => {
+     const cur = getConfig().theme;
+     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+     applyConfig(saveConfig({ theme: next }));
+   });
+   // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
++  // 控制器裁定（Task B4F-2）：主题同步循环限定 [data-mode]，只作用于主题按钮 ——
++  // 否则新 close-behavior 按钮（同用 .csettings__mode 类）的 active 高亮会被本循环误清。
+   const syncSettingsThemeModes = () => {
+     const cfg = getConfig();
+-    document.querySelectorAll('.csettings__mode').forEach((b) => {
++    document.querySelectorAll('.csettings__mode[data-mode]').forEach((b) => {
+       const on = b.dataset.mode === cfg.theme;
+       b.classList.toggle('csettings__mode--active', on);
+       b.setAttribute('aria-pressed', String(on));
+     });
+   };
+   // 主题从任何入口变更（标题栏快捷按钮 / 设置分区选择器）都双向同步；桌面常驻订阅无需退订
+   // （应用壳单次挂载，移动端不重建标题栏；.csettings__mode 选择器对桌面/手机两套实例均生效）
+   subscribe(() => {
+     updateThemeIcon();
+     syncSettingsThemeModes();
+diff --git a/src/config/defaults.js b/src/config/defaults.js
+index c316f67..244bd41 100644
+--- a/src/config/defaults.js
++++ b/src/config/defaults.js
+@@ -1,18 +1,19 @@
+ export const DEFAULTS = {
+   theme: 'system',
+   accent: 'indigo',
+   glass: { opacity: 0.48, blur: 30, noise: 0.06, blurEnabled: true },
+   type: { baseSize: 14, scale: 1, weight: 400 },
+   radiusScale: 1,
+   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
+   shadow: 0.5,
++  closeBehavior: 'exit', // 主窗关闭：exit=退出应用 / background=保留后台（悬浮窗常驻）
+ };
+ 
+ export const RANGES = {
+   opacity: [0.4, 0.95, 0.01],
+   blur: [8, 48, 1],
+   noise: [0, 0.12, 0.01],
+   baseSize: [12, 16, 0.5],
+   scale: [0.9, 1.15, 0.01],
+   radiusScale: [0.7, 1.6, 0.05],
+   durationScale: [0.5, 2, 0.05],
+diff --git a/src/scenes/settings-window/settings-pages.js b/src/scenes/settings-window/settings-pages.js
+index 11addf2..9ef16ab 100644
+--- a/src/scenes/settings-window/settings-pages.js
++++ b/src/scenes/settings-window/settings-pages.js
+@@ -42,39 +42,56 @@ export const APP_SECTIONS = [
+ 
+ // —— 通用分区 ——
+ 
+ // 主题三态：与顶栏 tsw 同语义（浅/深/跟随系统），类名场景局部（.csettings__mode）
+ const THEME_MODES = [
+   { id: 'light',  label: '浅色',   icon: 'sun' },
+   { id: 'dark',   label: '深色',   icon: 'moon' },
+   { id: 'system', label: '跟随系统', icon: 'monitor' },
+ ];
+ 
++// 主窗关闭行为（Task B4F-2）：两态选择器 → cfg.closeBehavior（defaults → store → apply 链路，
++// 后续 B4F-3 Rust 消费 / B4F-4 JS 同步 Rust 依赖此值）。类名复用 .csettings__mode（样式复用），
++// 高亮管理用独立 [data-close-behavior-group]/[data-close-behavior]，不受主题循环（[data-mode]）影响。
++const CLOSE_BEHAVIORS = [
++  { id: 'exit', label: '退出应用' },
++  { id: 'background', label: '保留后台' },
++];
++
+ function pageHead(title, desc = '') {
+   return `<div class="csettings__page-head"><h4>${title}</h4>${desc ? `<p>${desc}</p>` : ''}</div>`;
+ }
+ 
+ function generalPage() {
+   const cfg = getConfig();
+   return `
+     ${pageHead('通用', '应用基础偏好，保存后即时生效')}
+     <div class="csettings__field">
+       <span class="csettings__field-label">主题</span>
+       <p class="csettings__field-desc">跟随系统或固定深/浅主题</p>
+       <div class="csettings__modes" role="group" aria-label="主题模式">
+         ${THEME_MODES.map((m) => `
+           <button type="button" class="csettings__mode${cfg.theme === m.id ? ' csettings__mode--active' : ''}"
+             data-mode="${m.id}" aria-pressed="${cfg.theme === m.id}">
+             ${icon(m.icon, 16)}<span>${m.label}</span>
+           </button>`).join('')}
+       </div>
+     </div>
++    <div class="csettings__field">
++      <span class="csettings__field-label">关闭主窗口时</span>
++      <p class="csettings__field-desc">点主窗关闭按钮：退出整个应用，或隐藏到后台保留悬浮窗</p>
++      <div class="csettings__modes csettings__modes--close" data-close-behavior-group role="group" aria-label="关闭行为">
++        ${CLOSE_BEHAVIORS.map((b) => `
++          <button type="button" class="csettings__mode${cfg.closeBehavior === b.id ? ' csettings__mode--active' : ''}"
++            data-close-behavior="${b.id}" aria-pressed="${cfg.closeBehavior === b.id}">${b.label}</button>`).join('')}
++      </div>
++    </div>
+     <div class="csettings__field csettings__field--row">
+       <div>
+         <span class="csettings__field-label">动效</span>
+         <p class="csettings__field-desc">界面过渡与微动效开关</p>
+       </div>
+       ${renderSwitch({ checked: cfg.motion.enabled, label: '动效' })}
+     </div>
+     <div class="csettings__field">
+       <span class="csettings__field-label">启动行为</span>
+       <p class="csettings__field-desc">应用启动时的窗口状态</p>
+@@ -206,31 +223,45 @@ export function renderSettingsPages(sections = SECTIONS) {
+       ${pageBody(s.id)}
+     </div>`).join('');
+ }
+ 
+ /**
+  * 设置页交互接线（场景模板与应用壳共用，行为一致）。
+  * @param {HTMLElement} root 含 8 个分区页的容器（scene 传 .csettings；应用壳传设置页 section）
+  */
+ export function mountSettingsInteractions(root) {
+   // 通用分区：主题三态 → store 即时生效；动效开关 → store；保存 → toast
++  // 控制器裁定（Task B4F-2）：主题同步循环限定 [data-mode]，只作用于主题按钮 ——
++  // 否则新 close-behavior 按钮（同用 .csettings__mode 类）的 active 高亮会被主题循环误清。
+   root.querySelector('.csettings__modes')?.addEventListener('click', (e) => {
+     const btn = e.target.closest('.csettings__mode');
+     if (!btn) return;
+     const next = saveConfig({ theme: btn.dataset.mode });
+     applyConfig(next);
+-    root.querySelectorAll('.csettings__mode').forEach((b) => {
++    root.querySelectorAll('.csettings__mode[data-mode]').forEach((b) => {
+       const on = b.dataset.mode === next.theme;
+       b.classList.toggle('csettings__mode--active', on);
+       b.setAttribute('aria-pressed', String(on));
+     });
+   });
++  // 关闭主窗口时（B4 收尾）：两态选择器 → store
++  root.querySelector('[data-close-behavior-group]')?.addEventListener('click', (e) => {
++    const btn = e.target.closest('[data-close-behavior]');
++    if (!btn) return;
++    const next = saveConfig({ closeBehavior: btn.dataset.closeBehavior });
++    applyConfig(next);
++    root.querySelectorAll('[data-close-behavior]').forEach((b) => {
++      const on = b.dataset.closeBehavior === next.closeBehavior;
++      b.classList.toggle('csettings__mode--active', on);
++      b.setAttribute('aria-pressed', String(on));
++    });
++  });
+   root.querySelector('.csettings__field--row .c-switch')?.addEventListener('click', (e) => {
+     const sw = e.currentTarget;
+     const next = saveConfig({ motion: { enabled: sw.getAttribute('aria-checked') !== 'true' } });
+     applyConfig(next);
+   });
+   root.querySelector('[data-save-general]')?.addEventListener('click', () => {
+     toast('设置已保存', { variant: 'success' });
+   });
+ 
+   // 快捷键分区：每行独立 mount，onChange → sessionStorage
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 372ba79..b96be19 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -519,10 +519,29 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；主窗关闭连
+   await page.goto('/?mode=app');
+   await page.locator('.app-main__float-ball').click();
+   const shown = await page.evaluate(() => window.__stripShown__);
+   expect(shown).toContain('show');
+   expect(shown).toContain('setFocus');
+   // 主窗关闭 → 连带关闭 strip 窗口（否则 strip 让进程驻留）
+   await page.evaluate(() => window.__mainCloseFn__());
+   const after = await page.evaluate(() => window.__stripShown__);
+   expect(after).toContain('close');
+ });
++
++// —— B4 收尾（Task B4F-2）：主窗关闭行为可配置（closeBehavior）——
++// 配置链路完整（defaults→store→apply）：通用分区「关闭主窗口时」两态选择器，
++// 默认 exit 高亮，切换写 store（localStorage ui-design-config.closeBehavior）；
++// 后续 B4F-3（Rust 消费）/ B4F-4（JS 同步 Rust）依赖本用例锁定的 cfg.closeBehavior。
++
++test('通用分区：关闭主窗口时选择器存在且可切换（写 store）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
++  const group = page.locator('[data-close-behavior-group]');
++  await expect(group).toBeVisible();
++  await expect(group.locator('.csettings__mode')).toHaveCount(2);
++  // 默认 exit 高亮
++  await expect(group.locator('[data-close-behavior="exit"]')).toHaveClass(/csettings__mode--active/);
++  await group.locator('[data-close-behavior="background"]').click();
++  const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
++  expect(cfg).toBe('background');
++});
