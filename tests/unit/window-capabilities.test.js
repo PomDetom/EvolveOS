@@ -21,4 +21,14 @@ describe('Tauri 窗口能力（B4-1）', () => {
     ];
     for (const p of required) expect(caps.permissions).toContain(p);
   });
+  it('授权 strip 悬浮窗（创建 + 自定位/自缩放）', () => {
+    expect(caps.windows).toContain('strip');
+    const required = [
+      'core:webview:allow-create-webview-window',
+      'core:window:allow-set-position',
+      'core:window:allow-outer-position',
+      'core:window:allow-set-size',
+    ];
+    for (const p of required) expect(caps.permissions).toContain(p);
+  });
 });

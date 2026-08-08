@@ -85,6 +85,8 @@ const MODULES = [
   },
 ];
 
+let stripWindow = null; // B4-5：Tauri 独立 strip 窗口句柄（销毁后置空，重开可再建）
+
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
@@ -704,6 +706,22 @@ export function mountAppMode(root) {
   let stripHost = null;
   mountFloatBall(ballHost, {
     onExpand: () => {
+      // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
+      if (typeof window.__TAURI__ !== 'undefined') {
+        const { WebviewWindow } = window.__TAURI__.window;
+        if (stripWindow) { stripWindow.setFocus(); return; }
+        stripWindow = new WebviewWindow('strip', {
+          url: '/?mode=strip',
+          width: 320,
+          height: 64,
+          transparent: true,
+          decorations: false,
+          alwaysOnTop: true,
+          resizable: false,
+        });
+        stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
+        return;
+      }
       if (stripHost) return; // 已展开则不重复创建
       stripHost = document.createElement('div');
       stripHost.className = 'app-main__strip';
