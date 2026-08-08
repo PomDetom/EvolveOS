@@ -30,3 +30,5 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **提交**：feat `b07e603`（阿里普惠体全局替换）+ docs 一枚（本台账/简报/报告）
 - **内容**：`src/styles/fonts.css` 两档 @font-face（55 Regular 400 / 85 Bold 700，font-display swap）+ `--font-sans` 加 `"Alibaba PuHuiTi"` 前缀 + base.css 顶部 @import + 两 WOFF2 入 `src/assets/fonts/` + 单测/e2e/视觉 24 基线重生成。`--font-mono` 不动。
 - **偏离**：brief 的 `document.fonts.ready`+`check` e2e 序列实测竞态（ready 先 settle、字体未触发加载），适配为 `document.fonts.load()` 显式强制加载（断言原样）。详见报告「verbatim 适配说明」。
+- **评审**：规格 ✅ / Approved（0 Critical，0 Important，3 Minor 免修）——Minor：① font-assets 单测 weight↔file 配对未断言（brief 逐字，可接受）；② tokens e2e 仅断言 400 face 加载（brief 逐字）；③ 字体资产 10.4MB 大（计划强制官方包）。⚠️ 项已核实：e2e 计数（106+flake 重跑 30/30 并集 107）控制器从实施者前台输出确认；PIL 解码比对以报告方法学（0.17-1.65% 稀疏变化 + 色板 top 色集合不变 + 大 delta 全为文字 AA 中间色 → 纯字形替换）接受。
+- **执行状态**：Task B5-1：✅ 完成（b07e603 + 1104492，评审通过）
