@@ -39,6 +39,14 @@ import './scenes/settings-window/settings-window.css';
 import './styles/customizer.css';
 import { resolveMode } from './app/mode.js';
 
+// 屏蔽浏览器默认右键菜单（桌面真实化）：Tauri 桌面无系统菜单，浏览器默认菜单是干扰；
+// 悬浮窗与主应用窗口共用本入口，两窗都生效。保留可编辑区（input/textarea/contenteditable）
+// 的原生右键（复制/粘贴），其余一律拦截。
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest?.('input, textarea, [contenteditable="true"]')) e.preventDefault();
+});
+
+
 // 模式入口（Task B1-4，模式简化）：resolveMode 纯函数决定当前形态 ——
 // ?mode=app|strip 显式优先；无参数/非法值 → 'app'（浏览器与 Tauri 一致，docs 渲染已删除）。
 // hasTauri 由本处探测 window.__TAURI__（withGlobalTauri 全局通道，与 window-controls.js 同模式）。

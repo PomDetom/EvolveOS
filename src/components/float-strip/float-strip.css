@@ -137,8 +137,14 @@
   transform-origin: bottom;
 }
 
-/* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位 */
+/* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位；
+   同时禁用 backdrop-filter：透明窗口内无可模糊对象，且 WebView2 下 backdrop-filter 会渲染成
+   未按 border-radius 裁剪的方形图层（竖排时底部圆角被遮成直角），禁用后仅留玻璃底色 + 圆角 */
 .strip-root--window .c-strip {
   position: static; right: auto; bottom: auto;
   max-width: none; max-height: none;
+  backdrop-filter: none;
 }
+/* 窗口模式下竖排也必须内容宽度（width:auto + position:static 会填满窗口，把控制条裁掉、
+   并破坏底部圆角）—— 与横向 width:max-content 一致 */
+.strip-root--window .c-strip--vertical { width: max-content; }

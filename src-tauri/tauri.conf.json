@@ -21,6 +21,20 @@
         "decorations": false,
         "transparent": false,
         "shadow": true
+      },
+      {
+        "label": "strip",
+        "title": "UI Design System - 悬浮条",
+        "url": "index.html?mode=strip",
+        "width": 320,
+        "height": 64,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
       }
     ],
     "security": {

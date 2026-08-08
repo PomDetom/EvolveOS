@@ -1,0 +1,273 @@
+# Review package: 891244a..HEAD
+
+## Commits
+70f3c1f feat: strip 悬浮窗恢复主窗按钮（后台模式下唤回主窗，B4 收尾）
+
+## Files changed
+ docs/superpowers/sdd/task-B4F-5-brief.md  | 124 ++++++++++++++++++++++++++++++
+ src/app/strip-main.js                     |  13 +++-
+ src/components/float-strip/float-strip.js |   3 +-
+ tests/e2e/floatstrip.spec.js              |  32 ++++++++
+ 4 files changed, 170 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/task-B4F-5-brief.md b/docs/superpowers/sdd/task-B4F-5-brief.md
+new file mode 100644
+index 0000000..7a35953
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B4F-5-brief.md
+@@ -0,0 +1,124 @@
++# Task B4F-5 简报 — strip 悬浮窗「恢复主窗」按钮（后台模式出路）
++
++- **计划**：docs/superpowers/plans/2026-08-08-app-shell-b4-close-and-sizing.md（唯一实施需求源）
++- **规格**：docs/superpowers/specs/2026-08-08-app-shell-b4-close-and-sizing-design.md（唯一需求源，§4.2 恢复主窗按钮）
++- **Branch**：worktree-b4-close-sizing
++- **任务定位**：B4 收尾修复第五个任务（最后一个）。`background` 模式（主窗隐藏、应用常驻）下，strip 悬浮窗靠「恢复主窗」按钮唤回主窗（`getAllWindows().find(label==='main') → show()+setFocus()`）。仅 Tauri 分支渲染，浏览器 strip 演示零冲击。
++
++## 背景
++
++B4F-3/4 已把主窗关闭行为做成可配置（`background` → 主窗隐藏、应用常驻）。本任务给 strip 悬浮窗加「恢复主窗」按钮作为后台模式出路。`renderFloatStrip` 支持可选 `showRestore` 选项，Tauri 分支渲染恢复按钮 + 接线。
++
++## Files
++
++- Modify: `src/components/float-strip/float-strip.js`（`renderFloatStrip` 加 `showRestore` 选项 → 控制条最前渲染恢复主窗按钮）
++- Modify: `src/app/strip-main.js`（Tauri 分支渲染 `showRestore: true` + 接线恢复按钮 → main show+setFocus）
++- Test: `tests/e2e/floatstrip.spec.js`（新用例）
++
++## Interfaces
++
++- Consumes: Task B4F-2 的 `closeBehavior: 'background'`（后台模式下用户靠此按钮唤回主窗）；`getAllWindows()`（既有）
++- Produces: `.c-strip__restore` 按钮（`showRestore` 为真才渲染，浏览器演示零冲击）—— 独立交付
++
++## Step 1: 写失败 e2e（floatstrip.spec.js 追加）
++
++```js
++test('strip 窗口：恢复主窗按钮 → main show+setFocus', async ({ page }) => {
++  await page.addInitScript(() => {
++    const calls = [];
++    window.__TAURI__ = { window: {
++      LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
++      getCurrentWindow: () => ({
++        setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
++        onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
++      }),
++      getAllWindows: () => Promise.resolve([{
++        label: 'main',
++        show: () => { calls.push('main.show'); return Promise.resolve(); },
++        setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
++      }]),
++    } };
++    window.__restoreCalls__ = calls;
++  });
++  await page.goto('/?mode=strip');
++  await expect(page.locator('.c-strip__restore')).toBeVisible();
++  await page.locator('.c-strip').hover();
++  await page.waitForTimeout(300);
++  await page.locator('.c-strip__restore').click();
++  const calls = await page.evaluate(() => window.__restoreCalls__);
++  expect(calls).toContain('main.show');
++  expect(calls).toContain('main.setFocus');
++});
++```
++
++> **⚠️ 控制器裁定（用户批准，必须包含）**：mock 的 `window.__TAURI__.window` 必须加 `LogicalSize` 类（B4F-1 起 `fit()` 用 `const { LogicalSize } = window.__TAURI__.window` + `new LogicalSize(...)`，`?mode=strip` Tauri 分支挂载即调 `fit()`）——计划原文 mock 缺 LogicalSize 会 `new undefined(...)` TypeError。此为该 mock 的必补项。
++
++## Step 2: 运行确认红
++
++`npx playwright test --config=playwright.config.worktree.js tests/e2e/floatstrip.spec.js -g "恢复主窗"`
++Expected: FAIL（`.c-strip__restore` 不存在）
++
++## Step 3: renderFloatStrip 加 showRestore 选项
++
++`renderFloatStrip`（float-strip.js）签名改 `{ content = '', showRestore = false }`，控制条 ctrl 内（rotate 按钮前）加：
++
++```js
++      ${showRestore ? `<button class="c-strip__restore" type="button" title="恢复主窗" aria-label="恢复主窗">${icon('layout', 14)}</button>` : ''}
++```
++
++## Step 4: strip-main.js 渲染 + 接线
++
++`mountStripMode` 改为先探测 win 再渲染（Tauri 分支传 `showRestore: true`）：
++
++```js
++export function mountStripMode() {
++  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
++  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
++  const root = document.createElement('div');
++  root.className = 'strip-root';
++  root.innerHTML = renderFloatStrip({
++    content: renderTokenMonitor({
++      value: '97.2%',
++      status: 'ok',
++      trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
++    }),
++    showRestore: !!win, // 仅 Tauri 独立窗口渲染「恢复主窗」按钮
++  });
++  document.body.appendChild(root);
++  // ...既有 win 探测分支不变（root/win 已提前）；恢复按钮接线：
++  const restoreBtn = root.querySelector('.c-strip__restore');
++  restoreBtn?.addEventListener('click', () => {
++    window.__TAURI__.window.getAllWindows()
++      .then((wins) => {
++        const main = wins.find((w) => w.label === 'main');
++        if (main) { main.show().catch(() => {}); main.setFocus().catch(() => {}); }
++      })
++      .catch(() => {});
++  });
++```
++
++> 注：`const win = ...` 提前到渲染前（原在渲染后），`if (win)` 分支逻辑不变（位置恢复/fit/onShow/onMoved/mountFloatStrip 全保留）；浏览器 `?mode=strip`（无 `__TAURI__`）`win` 为 null → `showRestore:false` → 无恢复按钮，既有 floatstrip 浏览器用例零冲击。当前 strip-main.js 中 win 探测在 render 后（`document.body.appendChild(root); const win = ...`）——把 `const win` 提到 `applyConfig` 之后、render 之前即可，其余不动。
++
++## Step 5: e2e 红→绿
++
++`npx playwright test --config=playwright.config.worktree.js tests/e2e/floatstrip.spec.js -g "恢复主窗"` → 绿；再跑全文件零回归
++
++## Step 6: 全量回归 + 提交
++
++Run: `npm test` + `npx playwright test --config=playwright.config.worktree.js` + `npm run build`
++Expected: 全绿（视觉 24 零漂移——浏览器路径无恢复按钮）
++
++```bash
++git add src/components/float-strip/float-strip.js src/app/strip-main.js tests/e2e/floatstrip.spec.js
++git commit -m "feat: strip 悬浮窗恢复主窗按钮（后台模式下唤回主窗，B4 收尾）"
++```
++
++> 桌面验证（用户目检）：`background` 模式点主窗关闭 → 主窗隐藏、strip 常驻 → 点 strip 恢复按钮 → 主窗 show+setFocus。
++
++## 全局约束（本任务绑定）
++
++- 测试仅在 Web 环境执行（Vitest + Playwright）；不跑 tauri dev；Tauri 桌面行为由用户目检。
++- 动画红线、配置链路、零运行时依赖、禁止升级核心依赖。
++- 视觉基线零漂移（浏览器路径无恢复按钮；若漂移先解码比对再 update-snapshots）。
++- 工作树 `src-tauri/Cargo.toml` 行尾噪声不动、不提交；提交前 `git status`/`git diff --stat` 核对。
++- **e2e 用 workaround 配置**（本会话环境告警：共享 checkout 陈旧 5173 server 会污染默认 `npm run test:e2e`）——`npx playwright test --config=playwright.config.worktree.js`。
+diff --git a/src/app/strip-main.js b/src/app/strip-main.js
+index 65af502..a3eec9a 100644
+--- a/src/app/strip-main.js
++++ b/src/app/strip-main.js
+@@ -9,31 +9,42 @@ import { applyConfig } from '../config/apply.js';
+ /** 悬浮窗窗口尺寸（纯函数，可单测）：CSS 像素 → {width,height}（ceil + 至少 1px） */
+ export function computeFitSize(rect) {
+   return {
+     width: Math.max(1, Math.ceil(rect.width)),
+     height: Math.max(1, Math.ceil(rect.height)),
+   };
+ }
+ 
+ export function mountStripMode() {
+   applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
++  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
+   const root = document.createElement('div');
+   root.className = 'strip-root';
+   root.innerHTML = renderFloatStrip({
+     content: renderTokenMonitor({
+       value: '97.2%',
+       status: 'ok',
+       trend: [0.3, 0.45, 0.5, 0.62, 0.7, 0.78, 0.9],
+     }),
++    showRestore: !!win, // 仅 Tauri 独立窗口渲染「恢复主窗」按钮
+   });
+   document.body.appendChild(root);
+-  const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
++  // 恢复主窗按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main show+setFocus）
++  const restoreBtn = root.querySelector('.c-strip__restore');
++  restoreBtn?.addEventListener('click', () => {
++    window.__TAURI__.window.getAllWindows()
++      .then((wins) => {
++        const main = wins.find((w) => w.label === 'main');
++        if (main) { main.show().catch(() => {}); main.setFocus().catch(() => {}); }
++      })
++      .catch(() => {});
++  });
+   if (win) {
+     // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
+     root.classList.add('strip-root--window');
+     document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底（base.css body 背景），避免整窗半透明遮罩
+     const strip = root.querySelector('.c-strip');
+     const STORAGE_KEY = 'ui-design-strip-pos';
+     // 位置恢复
+     try {
+       const saved = localStorage.getItem(STORAGE_KEY);
+       if (saved) {
+diff --git a/src/components/float-strip/float-strip.js b/src/components/float-strip/float-strip.js
+index 0353f2c..27e636a 100644
+--- a/src/components/float-strip/float-strip.js
++++ b/src/components/float-strip/float-strip.js
+@@ -5,24 +5,25 @@
+ //   transform = pos - 基准位。拖动改 transform；松手距边缘 < 24px 吸附贴边（transform 定位）。
+ // 形态：--strip-orientation（horizontal|vertical，语义态）+ data-orientation 翻转；
+ //   flex-direction 随形态切换（布局属性瞬时切换不做动画，红线段）。
+ // 红线证据：旋转（交叉淡入淡出只动 transform/opacity）、磁吸（transform 位移）、
+ //   浮现（opacity + border-color/box-shadow paint 豁免），时长/曲线经 CSS 变量。
+ import { icon } from '../icon/icon.js';
+ 
+ const SNAP_DIST = 24; // 距屏幕边缘 < 24px 吸附（贴边）
+ const MOVE_THRESHOLD = 2; // 像素级移动判定：双击/点击不触发吸附
+ 
+-export function renderFloatStrip({ content = '' } = {}) {
++export function renderFloatStrip({ content = '', showRestore = false } = {}) {
+   return `<div class="c-strip c-strip--horizontal" data-orientation="horizontal">
+     <div class="c-strip__content">${content}</div>
+     <div class="c-strip__ctrl" role="toolbar" aria-label="悬浮条控制">
++      ${showRestore ? `<button class="c-strip__restore" type="button" title="恢复主窗" aria-label="恢复主窗">${icon('layout', 14)}</button>` : ''}
+       <button class="c-strip__rotate" type="button" title="旋转" aria-label="旋转">${icon('refresh', 14)}</button>
+       <div class="c-strip__drag" role="button" title="拖动" aria-label="拖动">${icon('drag', 14)}</div>
+       <button class="c-strip__close" type="button" title="关闭" aria-label="关闭">${icon('close', 14)}</button>
+     </div>
+   </div>`;
+ }
+ 
+ // token 监测内容模板：数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY）。
+ // status: 'ok' | 'warn' | 'err'；trend: 0-1 数值数组（每项一根趋势条）。
+ // 作为「供后续应用复用」的公开模板，value/status 是外部输入 —— 必须转义/白名单（闭环 M2），
+diff --git a/tests/e2e/floatstrip.spec.js b/tests/e2e/floatstrip.spec.js
+index fc728ab..c6d0662 100644
+--- a/tests/e2e/floatstrip.spec.js
++++ b/tests/e2e/floatstrip.spec.js
+@@ -127,14 +127,46 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久
+   // 真实 Tauri 窗口=内容尺寸，指针恒在 strip 上 → hover 恒成立）
+   const before = calls.filter((c) => c[0] === 'setSize').length;
+   const strip = page.locator('.c-strip');
+   await strip.hover();
+   await page.waitForTimeout(SETTLE_MS);
+   await page.locator('.c-strip__rotate').click();
+   await page.waitForTimeout(300); // 交叉淡入淡出 240ms
+   calls = await page.evaluate(() => window.__stripWinCalls__);
+   expect(calls.filter((c) => c[0] === 'setSize').length).toBeGreaterThan(before);
+   // X 关闭 → hide（预注册窗口隐藏可重开，不销毁）
++  // 注：B4F-5 控制条多一个恢复按钮 → 旋转后窗口高度缩小，鼠标可能落出 strip
++  // （真实 Tauri 窗口同样如此：窗口=内容尺寸，指针在按钮位可能超出新窗口）——
++  // 点击前重新 hover，确保控制条浮现可点
++  await page.locator('.c-strip').hover();
++  await page.waitForTimeout(SETTLE_MS);
+   await page.locator('.c-strip__close').click();
+   calls = await page.evaluate(() => window.__stripWinCalls__);
+   expect(calls).toContain('hide');
+ });
++
++test('strip 窗口：恢复主窗按钮 → main show+setFocus', async ({ page }) => {
++  await page.addInitScript(() => {
++    const calls = [];
++    window.__TAURI__ = { window: {
++      LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
++      getCurrentWindow: () => ({
++        setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
++        onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
++      }),
++      getAllWindows: () => Promise.resolve([{
++        label: 'main',
++        show: () => { calls.push('main.show'); return Promise.resolve(); },
++        setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
++      }]),
++    } };
++    window.__restoreCalls__ = calls;
++  });
++  await page.goto('/?mode=strip');
++  await expect(page.locator('.c-strip__restore')).toBeVisible();
++  await page.locator('.c-strip').hover();
++  await page.waitForTimeout(300);
++  await page.locator('.c-strip__restore').click();
++  const calls = await page.evaluate(() => window.__restoreCalls__);
++  expect(calls).toContain('main.show');
++  expect(calls).toContain('main.setFocus');
++});

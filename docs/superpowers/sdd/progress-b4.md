@@ -97,3 +97,9 @@ Base: 79d866f（branch feature/b4-desktop-realism，自 main 检出；工作树 
 - **合并后全量回归**：npm test 57/57；npm run test:e2e 103 passed（含视觉基线 24，仅 appearance-partition 12 张随 B4-3/B4-4 重生成后零漂移）；npm run build 通过
 - **B4 完成**：① 窗口控制权限（capability 7 项 + set-focus）② 独立置顶悬浮窗（WebviewWindow 创建 + 系统拖拽/贴合/位置持久化/关闭）③ 颜色方案（删微调组 + 12 套预设）④ 文字排版真实生效 全部落地 main
 - **留收尾**（记录，未阻塞合并）：根 CLAUDE.md:5 与 docs/tauri-integration.md:246 仍「6 套主题色」过期文案；新预设 ACCENTS.color=500 vs 应用 400 的 WYSIWYG 差异（设计规格字面 + amber 先例，park）
+
+## B4-5 缺陷修复（2026-08-08，桌面真机确认后）
+
+- **缺陷**：桌面端悬浮窗无法打开（网页端正常）。根因：真实 Tauri 全局 `window.__TAURI__.window.WebviewWindow` 不是构造函数（`WebviewWindow is not a constructor`）——B4-5 的 mock e2e 只测 JS 调用形态，测不到真实全局 API 缺失。
+- **修复**（架构调整，不依赖运行时 `WebviewWindow`）：tauri.conf.json 预注册隐藏 strip 窗口（`label:"strip"`、`url:"index.html?mode=strip"`、`transparent`/`decorations:false`/`alwaysOnTop`/`resizable:false`/`visible:false`）；主窗 FloatBall 改 `getAllWindows()→find('strip')→show()+setFocus()`；strip X 改 `hide()`（保留窗口可重开，位置天然保留）；capability 删 `core:webview:allow-create-webview-window`、加 `core:window:allow-show`/`allow-hide`/`allow-get-all-windows`（set-focus 保留）
+- **验证**：unit 57/57、e2e 103/103（视觉 24 零漂移）、build 通过；桌面真机由用户验证

@@ -491,31 +491,94 @@ test('标题栏快捷主题按钮：三态循环 light→dark→system 且与设
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
-// —— B4-5 独立悬浮窗：主窗 FloatBall 在 Tauri 环境创建独立 strip 窗口 ——
-// mock `__TAURI__` 注入 WebviewWindow 记录调用；无 `__TAURI__` 时仍走窗口内 strip 演示
-// （floatstrip.spec.js 的浏览器分支用例回归覆盖，此处只测 Tauri 分支）。
+// —— B4-5 独立悬浮窗：主窗 FloatBall 在 Tauri 环境显示/聚焦预注册的隐藏 strip 窗口 ——
+// mock `__TAURI__` 注入 getAllWindows 返回 strip 窗口记录 show/setFocus 调用 + core.invoke
+// 记录 set_close_behavior 同步（B4F-4）；无 `__TAURI__` 时仍走窗口内 strip 演示
+// （floatstrip.spec.js 的浏览器分支用例回归覆盖，此处只测 Tauri 分支）。真实 Tauri 全局
+// 未暴露 WebviewWindow 构造函数（修复 B4-5），故改用预注册窗口 + getAllWindows→show。
 
-test('Tauri：FloatBall 展开创建独立 strip 窗口（透明置顶）', async ({ page }) => {
+test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；配置同步 set_close_behavior', async ({ page }) => {
   await page.addInitScript(() => {
-    const created = [];
+    const shown = [];
+    const invokes = [];
     window.__TAURI__ = {
       window: {
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
-        WebviewWindow: class {
-          constructor(label, opts) { created.push({ label, opts }); }
-          setFocus() { return Promise.resolve(); } once() {}
-        },
+        getAllWindows: () => Promise.resolve([{
+          label: 'strip',
+          show: () => { shown.push('show'); return Promise.resolve(); },
+          setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
+        }]),
       },
+      core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
-    window.__stripWinCalls__ = created;
+    window.__stripShown__ = shown;
+    window.__stripInvokes__ = invokes;
   });
   await page.goto('/?mode=app');
   await page.locator('.app-main__float-ball').click();
-  const calls = await page.evaluate(() => window.__stripWinCalls__);
-  expect(calls).toHaveLength(1);
-  expect(calls[0].label).toBe('strip');
-  expect(calls[0].opts.transparent).toBe(true);
-  expect(calls[0].opts.decorations).toBe(false);
-  expect(calls[0].opts.alwaysOnTop).toBe(true);
-  expect(calls[0].opts.url).toContain('mode=strip');
+  const shown = await page.evaluate(() => window.__stripShown__);
+  expect(shown).toContain('show');
+  expect(shown).toContain('setFocus');
+  // 配置同步到 Rust（默认 exit）
+  const invokes = await page.evaluate(() => window.__stripInvokes__);
+  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'exit' } });
+});
+
+// —— B4 收尾（Task B4F-2）：主窗关闭行为可配置（closeBehavior）——
+// 配置链路完整（defaults→store→apply）：通用分区「关闭主窗口时」两态选择器，
+// 默认 exit 高亮，切换写 store（localStorage ui-design-config.closeBehavior）；
+// 后续 B4F-3（Rust 消费）/ B4F-4（JS 同步 Rust）依赖本用例锁定的 cfg.closeBehavior。
+
+test('通用分区：关闭主窗口时选择器存在且可切换（写 store）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
+  const group = page.locator('[data-close-behavior-group]');
+  await expect(group).toBeVisible();
+  await expect(group.locator('.csettings__mode')).toHaveCount(2);
+  // 默认 exit 高亮
+  await expect(group.locator('[data-close-behavior="exit"]')).toHaveClass(/csettings__mode--active/);
+  await group.locator('[data-close-behavior="background"]').click();
+  const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
+  expect(cfg).toBe('background');
+});
+
+// —— B4 收尾（最终整体评审修复）：配置变更 → Rust invoke 的 subscribe 路径测试锁 ——
+// 前用例只断言 store 写入；本用例锁核心动态路径：点「保留后台」→ saveConfig → subscribe →
+// invoke('set_close_behavior', {behavior:'background'})。mock 参照上方 FloatBall 用例结构
+// （getCurrentWindow 供 bindWindowControls 用 minimize/toggleMaximize/isMaximized/close；
+// getAllWindows 与 FloatBall onExpand 探测路径同构，返回空数组安全）。
+// 并锁 [data-mode] 控制器裁定（Minor）：主题同步循环收敛 .csettings__mode[data-mode] 后，
+// 点主题模式不得误清 close-behavior 高亮。
+
+test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；点主题模式不清 close-behavior 高亮', async ({ page }) => {
+  await page.addInitScript(() => {
+    const invokes = [];
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
+    };
+    window.__closeBehaviorInvokes__ = invokes;
+  });
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
+  const group = page.locator('[data-close-behavior-group]');
+  await expect(group).toBeVisible();
+  // 挂载同步已 invoke 默认 exit（B4F-4 挂载 + subscribe 各同步一次）
+  let invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
+  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'exit' } });
+  // 切「保留后台」→ subscribe 触发 → invoke behavior:'background'
+  await group.locator('[data-close-behavior="background"]').click();
+  invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
+  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'background' } });
+  // [data-mode] 控制器裁定：点主题模式（dark）后 close-behavior 高亮仍保持（不被主题循环误清）
+  await page.locator('.app-main .csettings__mode[data-mode="dark"]').click();
+  await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
+  await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
 });

@@ -1,0 +1,122 @@
+# Review package: 17f958f..a13413d
+
+## Commits
+a13413d fix: 最终评审修复（删死 onShow re-fit + 补 closeBehavior 变更 invoke 测试锁，B4 收尾）
+
+## Files changed
+ src/app/strip-main.js        |  3 +--
+ tests/e2e/app-shell.spec.js  | 39 +++++++++++++++++++++++++++++++++++++++
+ tests/e2e/floatstrip.spec.js |  3 +++
+ 3 files changed, 43 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/src/app/strip-main.js b/src/app/strip-main.js
+index a3eec9a..2b35219 100644
+--- a/src/app/strip-main.js
++++ b/src/app/strip-main.js
+@@ -58,22 +58,21 @@ export function mountStripMode() {
+       const { LogicalSize } = window.__TAURI__.window;
+       const size = computeFitSize(r);
+       win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});
+       // 诊断（B4 收尾）：确认窗口尺寸与内容一致 + DPI 缩放
+       win.outerSize?.().then((os) => {
+         win.scaleFactor?.().then((sf) => {
+           console.log('[strip] fit', JSON.stringify(size), 'outer', JSON.stringify(os), 'scaleFactor', sf);
+         }).catch(() => {});
+       }).catch(() => {});
+     };
+-    fit();
+-    win.onShow?.(() => fit()); // 隐藏窗口可能尚未完成布局，显示后再贴合一次（B4 桌面缺陷修复）
++    fit(); // 首次显示尺寸由挂载时 fit() 确定，桌面目检通过 [strip] fit 诊断 log 确认
+     // 位置持久化（去抖 200ms）
+     let saveTimer = null;
+     win.onMoved?.(() => {
+       clearTimeout(saveTimer);
+       saveTimer = setTimeout(() => {
+         win.outerPosition?.().then(({ x, y }) => {
+           localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+         }).catch(() => {});
+       }, 200);
+     });
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index a156c7b..21f838f 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -536,10 +536,49 @@ test('通用分区：关闭主窗口时选择器存在且可切换（写 store
+   await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
+   const group = page.locator('[data-close-behavior-group]');
+   await expect(group).toBeVisible();
+   await expect(group.locator('.csettings__mode')).toHaveCount(2);
+   // 默认 exit 高亮
+   await expect(group.locator('[data-close-behavior="exit"]')).toHaveClass(/csettings__mode--active/);
+   await group.locator('[data-close-behavior="background"]').click();
+   const cfg = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-config')).closeBehavior);
+   expect(cfg).toBe('background');
+ });
++
++// —— B4 收尾（最终整体评审修复）：配置变更 → Rust invoke 的 subscribe 路径测试锁 ——
++// 前用例只断言 store 写入；本用例锁核心动态路径：点「保留后台」→ saveConfig → subscribe →
++// invoke('set_close_behavior', {behavior:'background'})。mock 参照上方 FloatBall 用例结构
++// （getCurrentWindow 供 bindWindowControls 用 minimize/toggleMaximize/isMaximized/close；
++// getAllWindows 与 FloatBall onExpand 探测路径同构，返回空数组安全）。
++// 并锁 [data-mode] 控制器裁定（Minor）：主题同步循环收敛 .csettings__mode[data-mode] 后，
++// 点主题模式不得误清 close-behavior 高亮。
++
++test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；点主题模式不清 close-behavior 高亮', async ({ page }) => {
++  await page.addInitScript(() => {
++    const invokes = [];
++    window.__TAURI__ = {
++      window: {
++        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
++        getAllWindows: () => Promise.resolve([]),
++      },
++      core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
++    };
++    window.__closeBehaviorInvokes__ = invokes;
++  });
++  await page.goto('/?mode=app');
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.waitForTimeout(400);
++  await page.locator('.app-main__nav-r .c-navwheel__item').nth(0).click(); // 通用
++  const group = page.locator('[data-close-behavior-group]');
++  await expect(group).toBeVisible();
++  // 挂载同步已 invoke 默认 exit（B4F-4 挂载 + subscribe 各同步一次）
++  let invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
++  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'exit' } });
++  // 切「保留后台」→ subscribe 触发 → invoke behavior:'background'
++  await group.locator('[data-close-behavior="background"]').click();
++  invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
++  expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'background' } });
++  // [data-mode] 控制器裁定：点主题模式（dark）后 close-behavior 高亮仍保持（不被主题循环误清）
++  await page.locator('.app-main .csettings__mode[data-mode="dark"]').click();
++  await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
++  await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
++});
+diff --git a/tests/e2e/floatstrip.spec.js b/tests/e2e/floatstrip.spec.js
+index c6d0662..fd1d6c4 100644
+--- a/tests/e2e/floatstrip.spec.js
++++ b/tests/e2e/floatstrip.spec.js
+@@ -6,20 +6,23 @@ import { test, expect } from '@playwright/test';
+ // 红线：旋转/磁吸/浮现只动 transform/opacity —— 断言走 data-orientation 类翻转 +
+ // flex-direction（transform 计算值恒为 matrix，见 src/CLAUDE.md 常见坑）。
+ 
+ const STRIP_URL = '/?mode=strip';
+ const SETTLE_MS = 400; // 覆盖 300ms 磁吸 + 200ms 浮现/旋转相位
+ 
+ test('渲染：.c-strip 存在 + token 监测内容（数值/状态点/趋势条）', async ({ page }) => {
+   await page.goto(STRIP_URL);
+   const strip = page.locator('.c-strip');
+   await expect(strip).toHaveCount(1);
++  // 浏览器 ?mode=strip 路径不渲染「恢复主窗」按钮（showRestore 仅 Tauri 独立窗口为 true）——
++  // 在 .c-strip 已确认存在后断言，避免空 DOM 上 toHaveCount(0) 真空通过
++  await expect(page.locator('.c-strip__restore')).toHaveCount(0);
+   await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
+   await expect(strip.locator('.c-tmon__dot.c-tmon__dot--ok')).toHaveCount(1);
+   await expect(strip.locator('.c-tmon__trend-bar')).toHaveCount(7);
+   await expect(strip.locator('.c-tmon__trend-bar').first()).toBeVisible();
+ });
+ 
+ test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类翻转 + 内容布局变化', async ({ page }) => {
+   await page.goto(STRIP_URL);
+   const strip = page.locator('.c-strip');
+   await expect(strip).toHaveClass(/c-strip--horizontal/);

@@ -85,8 +85,6 @@ const MODULES = [
   },
 ];
 
-let stripWindow = null; // B4-5：Tauri 独立 strip 窗口句柄（销毁后置空，重开可再建）
-
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
   // 上次保存的主题/强调色/定制器参数，与设置页高亮两态一致。
@@ -148,9 +146,11 @@ export function mountAppMode(root) {
     applyConfig(saveConfig({ theme: next }));
   });
   // 设置分区三态选择器高亮同步：cfg.theme === data-mode → active + aria-pressed
+  // 控制器裁定（Task B4F-2）：主题同步循环限定 [data-mode]，只作用于主题按钮 ——
+  // 否则新 close-behavior 按钮（同用 .csettings__mode 类）的 active 高亮会被本循环误清。
   const syncSettingsThemeModes = () => {
     const cfg = getConfig();
-    document.querySelectorAll('.csettings__mode').forEach((b) => {
+    document.querySelectorAll('.csettings__mode[data-mode]').forEach((b) => {
       const on = b.dataset.mode === cfg.theme;
       b.classList.toggle('csettings__mode--active', on);
       b.setAttribute('aria-pressed', String(on));
@@ -706,20 +706,20 @@ export function mountAppMode(root) {
   let stripHost = null;
   mountFloatBall(ballHost, {
     onExpand: () => {
-      // Tauri：创建/聚焦独立 strip 窗口（B4-5）；浏览器：窗口内 strip 演示（既有）
+      // Tauri：显示/聚焦独立 strip 窗口（tauri.conf.json 预注册隐藏窗口「strip」；
+      //   不用运行时 WebviewWindow —— 真实 Tauri 全局未暴露该构造函数，改用 getAllWindows→show）
       if (typeof window.__TAURI__ !== 'undefined') {
-        const { WebviewWindow } = window.__TAURI__.window;
-        if (stripWindow) { stripWindow.setFocus().catch(() => {}); return; }
-        stripWindow = new WebviewWindow('strip', {
-          url: '/?mode=strip',
-          width: 320,
-          height: 64,
-          transparent: true,
-          decorations: false,
-          alwaysOnTop: true,
-          resizable: false,
-        });
-        stripWindow.once('tauri://destroyed', () => { stripWindow = null; });
+        window.__TAURI__.window.getAllWindows()
+          .then((wins) => {
+            const strip = wins.find((w) => w.label === 'strip');
+            if (!strip) { console.warn('[strip] 未找到 strip 窗口'); return; }
+            strip.show().catch(() => {});
+            strip.setFocus().catch(() => {});
+          })
+          .catch((err) => {
+            console.error('[strip] 获取窗口失败：', err);
+            toast(`悬浮窗获取失败：${String(err?.message ?? err).slice(0, 120)}`, { variant: 'danger' });
+          });
         return;
       }
       if (stripHost) return; // 已展开则不重复创建
@@ -738,6 +738,15 @@ export function mountAppMode(root) {
       });
     },
   });
+
+  // 主窗关闭行为同步到 Rust（B4 收尾）：exit/background 由 Rust on_window_event 消费；
+  //   移除 JS onCloseRequested 异步关 strip 的脆弱逻辑（曾导致主窗关不掉）
+  const syncCloseBehavior = (cfg) => {
+    if (typeof window.__TAURI__ === 'undefined') return;
+    window.__TAURI__.core?.invoke?.('set_close_behavior', { behavior: cfg.closeBehavior ?? 'exit' }).catch(() => {});
+  };
+  syncCloseBehavior(getConfig());
+  subscribe((cfg) => { syncCloseBehavior(cfg); });
 }
 
 // —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
