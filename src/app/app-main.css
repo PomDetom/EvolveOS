@@ -17,7 +17,7 @@
 }
 .app-main--dual { --app-nav-r-w: 64px; }
 
-/* —— 浏览器装饰背景层（Task B2-2 + B2-R3）：渐变/几何/网格/关闭四预设 ——
+/* —— 浏览器装饰背景层（Task B2-2 + B2-R3 + B6-1）：8 预设（渐变/几何/网格/圆点/斜线/波纹/极光/关闭）——
    position:fixed + z-index:-1：画在 canvas（body 半透明 --glass-bg）之上、壳内容之下，
    玻璃表面（backdrop-filter 磨砂）模糊到它 —— 这正是浏览器侧模糊对象。.app-main 无
    transform，不建立 fixed 子元素的 containing block，overflow:hidden 不裁剪背景层。
@@ -26,7 +26,10 @@
    R3 柔和补色（闭环 B2-2 I-1 暗色光晕过广）：accent 光晕经 color-mix 加 alpha、范围收窄。
    R6 可见性调参（用户验收：亚克力不明显）：光晕 alpha 提升（gradient 50%/30%、geo 40%、
    grid 25%）、停靠点范围铺开 —— 背景层须有可感知的彩色 wash，经表面 0.48 透明 + blur 30
-   呈克制彩色磨砂（不发艳）。 */
+   呈克制彩色磨砂（不发艳）。
+   B6-1 网格强化（2px 线 + 24px 格距 + 交点圆点 40% accent）+ 新增 dots/diagonal/waves/aurora
+   4 预设 —— 用户选「衬底更鲜明但克制」：图案浓度经 color-mix alpha 控制（不发艳），
+   玻璃材质不动。 */
 .app-main__backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: var(--backdrop-bg); }
 .app-main[data-backdrop="gradient"] { --backdrop-bg:
@@ -38,12 +41,27 @@
   linear-gradient(135deg, transparent 30%, rgba(255,255,255,.03) 30% 32%, transparent 32%),
   var(--surface-solid); }
 .app-main[data-backdrop="grid"] { --backdrop-bg:
-  linear-gradient(color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
-  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 25%, transparent) 1px, transparent 1px),
+  radial-gradient(circle at 12px 12px, color-mix(in srgb, var(--accent-300) 50%, transparent) 1.5px, transparent 2px),
+  linear-gradient(color-mix(in srgb, var(--accent-300) 40%, transparent) 2px, transparent 2px),
+  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 40%, transparent) 2px, transparent 2px),
   var(--surface-solid); }
-/* 网格平铺尺寸须落在承载 background 的 .app-main__backdrop 上 —— background-size 不继承，
-   写在 .app-main 上的 background-size 不会下传子元素（背景实际画在 backdrop 元素） */
-.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 40px 40px; }
+.app-main[data-backdrop="grid"] .app-main__backdrop { background-size: 24px 24px, 24px 24px, 24px 24px; }
+.app-main[data-backdrop="dots"] { --backdrop-bg:
+  radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent-300) 45%, transparent) 0 2px, transparent 2.5px),
+  var(--surface-solid); }
+.app-main[data-backdrop="dots"] .app-main__backdrop { background-size: 24px 24px; }
+.app-main[data-backdrop="diagonal"] { --backdrop-bg:
+  repeating-linear-gradient(45deg, color-mix(in srgb, var(--accent-300) 22%, transparent) 0 1px, transparent 1px 12px),
+  var(--surface-solid); }
+.app-main[data-backdrop="waves"] { --backdrop-bg:
+  repeating-linear-gradient(180deg, color-mix(in srgb, var(--accent-300) 30%, transparent) 0 1px, transparent 1px 14px),
+  repeating-linear-gradient(180deg, transparent 0 7px, color-mix(in srgb, var(--accent-300) 18%, transparent) 7px 8px),
+  var(--surface-solid); }
+.app-main[data-backdrop="aurora"] { --backdrop-bg:
+  radial-gradient(100% 100% at 15% 20%, color-mix(in srgb, var(--accent-300) 45%, transparent) 0%, transparent 60%),
+  radial-gradient(100% 100% at 85% 75%, color-mix(in srgb, var(--accent-400) 35%, transparent) 0%, transparent 55%),
+  radial-gradient(80% 80% at 60% 40%, color-mix(in srgb, var(--neutral-400) 18%, transparent) 0%, transparent 50%),
+  var(--surface-solid); }
 /* B2-R7「关闭背景」预设：平铺实底，无渐变装饰（桌面/浏览器一致；Tauri 不再隐藏背景层，
    关窗口透明后背景层为不透明实底，观感与浏览器一致） */
 .app-main[data-backdrop="none"] { --backdrop-bg: var(--surface-solid); }

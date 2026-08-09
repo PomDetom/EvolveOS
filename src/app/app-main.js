@@ -175,13 +175,16 @@ export function mountAppMode(root) {
     if (mobileLabel) mobileLabel.textContent = label;
   });
 
-  // —— 浏览器装饰背景层（Task B2-2，浏览器侧模糊对象）——
+  // —— 浏览器装饰背景层（Task B2-2 + B6-1，浏览器侧模糊对象）——
   // Tauri 探测：桌面端背景层同显（B2-R7 关窗口透明 + 删隐藏规则）；浏览器默认可见
-  // （渐变/几何/网格/关闭四预设）。外观分区「背景装饰」4 预设按钮，点击更新 .app-main 的
-  // data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内纯 UI 态，不进 store、
-  // 不触发配置链路（与右窗状态同类）。
+  // （8 预设：渐变/几何/网格/圆点/斜线/波纹/极光/关闭）。外观分区「背景装饰」8 迷你预览卡，
+  // 点击更新 .app-main 的 data-backdrop（静态 --backdrop-bg 变化，不动画）。预设为会话内
+  // 纯 UI 态，不进 store、不触发配置链路（与右窗状态同类）。
   if (typeof window.__TAURI__ !== 'undefined') appMain.setAttribute('data-tauri', '1');
-  const BD_LABELS = { gradient: '渐变', geo: '几何', grid: '网格', none: '关闭' };
+  const BD_LABELS = {
+    gradient: '渐变', geo: '几何', grid: '网格', dots: '圆点',
+    diagonal: '斜线', waves: '波纹', aurora: '极光', none: '关闭',
+  };
   (() => {
     const page = appMain.querySelector('.csettings__page[data-page="appearance"]');
     if (!page) return;
@@ -190,19 +193,25 @@ export function mountAppMode(root) {
     block.innerHTML = `
       <div class="app-main__backdrop-sel-head">背景装饰</div>
       <div class="app-main__backdrop-sel-opts" role="group" aria-label="背景装饰">
-        ${Object.keys(BD_LABELS).map((bd) => `
-          <button type="button" class="app-main__backdrop-opt${appMain.dataset.backdrop === bd ? ' app-main__backdrop-opt--active' : ''}"
-            data-bd="${bd}" aria-pressed="${appMain.dataset.backdrop === bd}">${BD_LABELS[bd]}</button>`).join('')}
+        ${Object.keys(BD_LABELS).map((bd) => {
+          const active = appMain.dataset.backdrop === bd;
+          return `
+          <button type="button" class="app-main__backdrop-card${active ? ' app-main__backdrop-card--active' : ''}"
+            data-bd="${bd}" aria-pressed="${active}" aria-label="${BD_LABELS[bd]}">
+            <span class="app-main__backdrop-card-swatch" data-bd-swatch="${bd}"></span>
+            <span class="app-main__backdrop-card-label">${BD_LABELS[bd]}</span>
+          </button>`;
+        }).join('')}
       </div>`;
     const cust = page.querySelector('.csettings__cust');
     page.insertBefore(block, cust);
     block.querySelector('.app-main__backdrop-sel-opts').addEventListener('click', (e) => {
-      const btn = e.target.closest('.app-main__backdrop-opt');
-      if (!btn || btn.dataset.bd === appMain.dataset.backdrop) return;
-      appMain.dataset.backdrop = btn.dataset.bd;
-      block.querySelectorAll('.app-main__backdrop-opt').forEach((b) => {
+      const card = e.target.closest('.app-main__backdrop-card');
+      if (!card || card.dataset.bd === appMain.dataset.backdrop) return;
+      appMain.dataset.backdrop = card.dataset.bd;
+      block.querySelectorAll('.app-main__backdrop-card').forEach((b) => {
         const on = b.dataset.bd === appMain.dataset.backdrop;
-        b.classList.toggle('app-main__backdrop-opt--active', on);
+        b.classList.toggle('app-main__backdrop-card--active', on);
         b.setAttribute('aria-pressed', String(on));
       });
     });

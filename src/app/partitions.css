@@ -23,18 +23,51 @@
 /* 组合示例：剪贴板悬浮窗（.cfloat 流式 in-flow，随分区滚动，不遮挡分区内容） */
 .app-partition .cfloat { margin-top: var(--space-6); }
 
-/* —— 外观分区「背景装饰」预设选择（Task B2-2）——
-   3 预设按钮切换 .app-main 的 data-backdrop（渐变/几何/网格）。会话内纯 UI 态，
-   不进 store（与右窗状态同类，非配置链路）。激活态仅 paint（color/background，
-   paint-only 豁免过渡），无入场/离场动效主体。局部类 .app-main__backdrop-* 前缀。 */
-.app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 420px; }
+/* —— 外观分区「背景装饰」预设选择（Task B2-2 + B6-1）——
+   8 迷你图案预览卡切换 .app-main 的 data-backdrop（渐变/几何/网格/圆点/斜线/波纹/极光/关闭）。
+   每卡 = swatch mini 图案（独立于 --backdrop-bg，非继承，swatch 用简化版图案 + 对齐 mini
+   视口的平铺尺寸）+ 文字标签。会话内纯 UI 态，不进 store（与右窗状态同类，非配置链路）。
+   激活态仅 paint（color/background/border-color，paint-only 豁免过渡），无入场/离场动效主体。
+   局部类 .app-main__backdrop-* 前缀。 */
+.app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 480px; }
 .app-main__backdrop-sel-head { font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium); color: var(--text-1); margin-bottom: var(--space-2); }
-.app-main__backdrop-sel-opts { display: inline-flex; gap: 2px; padding: 3px;
-  border: 1px solid var(--glass-border); border-radius: var(--radius-full);
-  background: var(--surface-1); }
-.app-main__backdrop-opt { padding: 5px 14px; border-radius: var(--radius-full);
-  font-size: var(--font-size-xs); color: var(--text-2);
-  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
-.app-main__backdrop-opt:hover { color: var(--text-1); }
-.app-main__backdrop-opt--active { color: var(--accent); background: var(--accent-50); }
+.app-main__backdrop-sel-opts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.app-main__backdrop-card { display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-1); width: 56px; padding: var(--space-1) 0;
+  border: 1px solid var(--glass-border); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  background: var(--surface-1); color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out); }
+.app-main__backdrop-card:hover { color: var(--text-1); background: var(--surface-hover); }
+.app-main__backdrop-card--active { color: var(--accent); border-color: var(--accent);
+  background: var(--accent-50); }
+.app-main__backdrop-card-swatch { width: 40px; height: 26px;
+  border: 1px solid var(--glass-border); border-radius: calc(var(--radius-xs) * var(--radius-scale, 1));
+  background-color: var(--surface-solid); }
+.app-main__backdrop-card-label { font-size: var(--font-size-xs); line-height: 1; }
+
+/* —— 各预设 swatch mini 图案（独立规则，与 .app-main__backdrop 的 --backdrop-bg 解耦）—— */
+.app-main__backdrop-card-swatch[data-bd-swatch="gradient"] { background-image:
+  radial-gradient(100% 100% at 30% 25%, color-mix(in srgb, var(--accent-300) 50%, transparent) 0%, transparent 60%),
+  radial-gradient(100% 100% at 75% 80%, color-mix(in srgb, var(--accent-300) 30%, transparent) 0%, transparent 60%); }
+.app-main__backdrop-card-swatch[data-bd-swatch="geo"] { background-image:
+  radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-300) 40%, transparent) 0%, transparent 45%),
+  linear-gradient(135deg, transparent 55%, rgba(255,255,255,.12) 55% 57%, transparent 57%); }
+.app-main__backdrop-card-swatch[data-bd-swatch="grid"] { background-image:
+  radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent-300) 50%, transparent) 1px, transparent 1.5px),
+  linear-gradient(color-mix(in srgb, var(--accent-300) 40%, transparent) 1px, transparent 1px),
+  linear-gradient(90deg, color-mix(in srgb, var(--accent-300) 40%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px, 24px 24px; }
+.app-main__backdrop-card-swatch[data-bd-swatch="dots"] { background-image:
+  radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent-300) 45%, transparent) 0 2px, transparent 2.5px);
+  background-size: 24px 24px; }
+.app-main__backdrop-card-swatch[data-bd-swatch="diagonal"] { background-image:
+  repeating-linear-gradient(45deg, color-mix(in srgb, var(--accent-300) 22%, transparent) 0 1px, transparent 1px 12px); }
+.app-main__backdrop-card-swatch[data-bd-swatch="waves"] { background-image:
+  repeating-linear-gradient(180deg, color-mix(in srgb, var(--accent-300) 30%, transparent) 0 1px, transparent 1px 14px),
+  repeating-linear-gradient(180deg, transparent 0 7px, color-mix(in srgb, var(--accent-300) 18%, transparent) 7px 8px); }
+.app-main__backdrop-card-swatch[data-bd-swatch="aurora"] { background-image:
+  radial-gradient(100% 100% at 20% 25%, color-mix(in srgb, var(--accent-300) 45%, transparent) 0%, transparent 60%),
+  radial-gradient(100% 100% at 80% 80%, color-mix(in srgb, var(--accent-400) 35%, transparent) 0%, transparent 55%); }
+.app-main__backdrop-card-swatch[data-bd-swatch="none"] { background-image: none; }

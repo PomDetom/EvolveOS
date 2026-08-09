@@ -367,8 +367,9 @@ test('亚克力材质：表面增饱和模糊 + 噪点层存在', async ({ page 
 });
 
 // —— B2-2 浏览器装饰背景层（模糊对象）——
-// 背景层为浏览器侧装饰（渐变/几何/网格/关闭四预设），非配置链路（会话内纯 UI 态，不进 store）；
-// Tauri 探测（window.__TAURI__）保留标志但不再隐藏背景层（B2-R7：桌面端同显背景层）。
+// 背景层为浏览器侧装饰（渐变/几何/网格/圆点/斜线/波纹/极光/关闭 8 预设），非配置链路
+// （会话内纯 UI 态，不进 store）；Tauri 探测（window.__TAURI__）保留标志但不再隐藏背景层
+// （B2-R7：桌面端同显背景层）。B6-1：选择器由 4 文字胶囊 → 8 迷你图案预览卡（.app-main__backdrop-card）。
 
 test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await page.goto('/?mode=app');
@@ -378,13 +379,28 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   // 外观分区切换背景预设
   await page.locator('.c-titlebar__control--settings').click();
   await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
-  await page.locator('.app-main__backdrop-opt[data-bd="geo"]').click();
+  await page.locator('.app-main__backdrop-card[data-bd="geo"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
   // 关闭背景：data-backdrop=none → 背景层平铺实底（无渐变装饰）
-  await page.locator('.app-main__backdrop-opt[data-bd="none"]').click();
+  await page.locator('.app-main__backdrop-card[data-bd="none"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'none');
   const flat = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(flat).not.toMatch(/radial-gradient\(|linear-gradient\(/);
+});
+
+test('B6-1：背景装饰 8 预设 + 切换生效', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+  const cards = page.locator('.app-main__backdrop-card');
+  await expect(cards).toHaveCount(8);
+  // 切到 dots → data-backdrop 生效 + 激活态切换
+  await cards.filter({ hasText: '圆点' }).click();
+  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'dots');
+  await expect(page.locator('.app-main__backdrop-card[data-bd="dots"]')).toHaveAttribute('aria-pressed', 'true');
+  // 切回 grid → 生效
+  await cards.filter({ hasText: '网格' }).click();
+  await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'grid');
 });
 
 // —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
