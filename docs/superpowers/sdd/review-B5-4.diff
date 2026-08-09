@@ -1,0 +1,469 @@
+# Review package: 0a0ee4df..HEAD
+
+## Commits
+542cfe0 docs: B5-4 SDD 台账（自适应布局实施报告 + 账本，feat 9321aaa）
+9321aaa feat: 内容区自适应布局（表单限宽居中 + 组件/动效撑满，data-layout，B5-4）
+
+## Files changed
+ docs/superpowers/sdd/progress-b5.md                |  11 ++
+ docs/superpowers/sdd/task-B5-4-brief.md            | 112 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B5-4-report.md           | 106 +++++++++++++++++++
+ src/app/app-main.css                               |   4 +-
+ src/app/app-main.js                                |   4 +-
+ tests/e2e/app-shell.spec.js                        |  27 +++++
+ .../app-main-dark-amber-chromium-win32.png         | Bin 513541 -> 494416 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 483737 -> 455551 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 566868 -> 520826 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 304188 -> 294998 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 302423 -> 298207 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 210041 -> 208813 bytes
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 343483 -> 433383 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 328134 -> 412735 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 356615 -> 470248 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 242082 -> 274888 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 243936 -> 274682 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 203893 -> 219349 bytes
+ ...ponents-partition-dark-amber-chromium-win32.png | Bin 519713 -> 460479 bytes
+ ...nents-partition-dark-emerald-chromium-win32.png | Bin 499844 -> 437059 bytes
+ ...onents-partition-dark-indigo-chromium-win32.png | Bin 552502 -> 499731 bytes
+ ...onents-partition-light-amber-chromium-win32.png | Bin 346778 -> 296356 bytes
+ ...ents-partition-light-emerald-chromium-win32.png | Bin 354703 -> 298536 bytes
+ ...nents-partition-light-indigo-chromium-win32.png | Bin 305800 -> 242190 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 356626 -> 496864 bytes
+ ...otion-partition-dark-emerald-chromium-win32.png | Bin 336414 -> 461216 bytes
+ ...motion-partition-dark-indigo-chromium-win32.png | Bin 368898 -> 521108 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 247622 -> 337446 bytes
+ ...tion-partition-light-emerald-chromium-win32.png | Bin 249851 -> 336290 bytes
+ ...otion-partition-light-indigo-chromium-win32.png | Bin 227613 -> 274363 bytes
+ 30 files changed, 261 insertions(+), 3 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b5.md b/docs/superpowers/sdd/progress-b5.md
+index bfc1b2b..1e28f6a 100644
+--- a/docs/superpowers/sdd/progress-b5.md
++++ b/docs/superpowers/sdd/progress-b5.md
+@@ -47,10 +47,21 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
+ ## Task B5-3: iOS 风格组件（徽标 / 按钮 / 悬浮球）
+ 
+ - **状态**：DONE（2026-08-09）
+ - **简报**：docs/superpowers/sdd/task-B5-3-brief.md
+ - **报告**：docs/superpowers/sdd/task-B5-3-report.md
+ - **提交**：feat（徽标/按钮/悬浮球 iOS 化）+ docs 一枚（本台账/简报/报告）
+ - **内容**：三组件 iOS 化（材质/层次/透明度，非色彩浓度）——徽标 `color-mix` 12% tint 底 + 22% 细描边 + 语义色文字（六变体全保留）；按钮 primary 顶部内高光 + 柔和彩影（`linear-gradient(180deg, hover, accent)` + inset 高光 + `color-mix(accent-400)` 彩影）、secondary 玻璃底呼应壳材质（hover/active 改 `filter` paint-only）；悬浮球去 accent 渐变浓底 → 玻璃底 + 亚克力模糊（`--glass-*`/`--acrylic-*` 纯消费）+ accent 图标，40→44px（HIG 最小触控区）。badge/float-ball.css 逐字替换，button.css 按 brief 替换视觉块（基类/sm/lg/disabled 结构保留）。themes.css 零改动（材质体系不动）。e2e 追加 B5-3 样式断言（badge `color(srgb` / btn inset / float-ball `blur`）；视觉基线 6 张重生成（app-main × light/dark × 3 accent，含浮球）。
+ - **偏离**：① brief 测试「回概览」home 选择器 `.app-main__nav-r`→`.app-main__nav-l`（右窗设置目录无 home 项，home 是左窗应用模块）；② 既有「主按钮 hover 阴影 --shadow-md 令牌」测试重写（brief 新 CSS 刻意移除 --shadow-md，改 `0 4px 14px color-mix` 柔和彩影，blur 16→14 断言随之更新）；③ 基线仅 app-main 6 张重生成（components 徽标/按钮矩阵在设置窗捕获 fold 之下 y1056+/y3453+ 字节不变，与 B5-2 滑杆同型；appearance/motion 零变化符合预期）。
+ - **评审**：规格 ✅ / Approved（0 Critical，1 Important plan-mandated 延期，3 Minor 免修）——**Important（plan-mandated，延期最终评审）**：primary hover 阴影丢弃 `--shadow-md` 令牌、硬编码 `0 4px 14px color-mix(...)` blur/alpha（违反 src/CLAUDE.md「禁止硬编码值」，primary hover 阴影不再随 shadow-intensity 定制器缩放）——brief 逐字 CSS 既定后果，评审裁定**上游分诊（B5-5/最终评审）非任务内修复**（偏离 brief verbatim 更糟）。与 B5-2 静态 50% 填充 Minor 同型（plan-mandated 静态值），严重度分类有分歧（B5-2 Minor vs B5-3 Important），一并留最终评审裁定。Minor：① `.c-btn` transition 未含 filter（primary hover brightness 跳变，brief verbatim + 既有 danger 先例）；② 重写 hover 测试不再守卫令牌/定制器契约（设计变更后果）；③ 徽标/按钮无像素基线覆盖（fold 局限，e2e 样式断言为唯一守卫）。⚠️ 项已核实：基线集合与 diff 一致（恰 6 张 app-main）、解码比对以报告方法学接受。
+ - **执行状态**：Task B5-3：✅ 完成（b7c54ec + 490706d，评审通过）
++
++## Task B5-4: 自适应布局（限宽居中 + 分区撑满）
++
++- **状态**：DONE（2026-08-09）
++- **简报**：docs/superpowers/sdd/task-B5-4-brief.md
++- **报告**：docs/superpowers/sdd/task-B5-4-report.md
++- **提交**：feat（内容区自适应布局）+ docs 一枚（本台账/简报/报告）
++- **内容**：内容区自适应窗口宽度——`.app-main__page` max-width 720→1080 限宽居中（`margin-inline:auto`），新增 `.app-main__page[data-layout="fluid"] { max-width:none; margin-inline:0 }` 撑满；MODULES 渲染 section 加 `data-layout="center"`（含 home 概览页）、settings section 加 `data-layout="fluid"`（设置页整体 fluid，含表单分区——表单靠 `.csettings__field` 420px 自限宽克制观感，组件/动效分区铺满）。字号间距恒定（无窗口比例缩放）。e2e 追加 B5-4 data-layout 断言；视觉基线 24 张全量重生成（内容区 720→1080 栅格扩列，计划预期）。
++- **偏离**：无 verbatim 适配（CSS/JS/e2e 全逐字按 brief）。Step 5 分区内限宽**不加**（默认），2560×1440 视口截图确认表单 420px 自限宽观感克制；若超大窗口后续判定松散可按 brief 补加。
++- **评审**：（待评审，0 提交前自审结论：DONE——TDD RED/GREEN 完整、解码比对确认纯布局宽度差异、单测 64/64 + 全量 e2e 109 并集 + build 全绿）
++- **执行状态**：Task B5-4：✅ 完成（feat + docs，待评审）
+diff --git a/docs/superpowers/sdd/task-B5-4-brief.md b/docs/superpowers/sdd/task-B5-4-brief.md
+new file mode 100644
+index 0000000..f0e9e75
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-4-brief.md
+@@ -0,0 +1,112 @@
++# Task B5-4: 自适应布局（限宽居中 + 分区撑满）
++
++> 计划书章节：`docs/superpowers/plans/2026-08-09-app-shell-b5-design-language-ios.md` 的 Task B5-4（本文件为提取全文，作为唯一实施需求）。规格：`docs/superpowers/specs/2026-08-09-app-shell-b5-design-language-ios-design.md` §6。
++
++## 绑定本任务的全局约束（必须遵守）
++
++- 测试仅在 Web 环境执行（Vitest + Playwright）；不跑 tauri dev。
++- 动画红线：布局/几何动画只允许 transform/opacity；模糊永不动画；时长/曲线经 CSS 变量。本任务纯布局改动，不动画。
++- 配置链路：本任务不涉及界面参数新增（纯布局/类名，不动 defaults/store/apply）。
++- 零运行时依赖；组件无抽象封装；遵循 `src/CLAUDE.md` 风格。
++- 禁止升级核心依赖。
++- **e2e 必须用 worktree 配置**：`npx playwright test --config=playwright.config.worktree.js`（端口 5174 新鲜 server）。共享 checkout 有陈旧 5173 server（PID 11964）serve 旧代码，勿用默认 `npm run test:e2e`。
++- **视觉基线变化必须先解码比对确认由本次改动引起，再 `--update-snapshots`**。
++- **e2e 截图前必须等待字体加载完成**（B5-1 已改显式 `document.fonts.load`，保留）。
++- 提交前 `npm run build`；每任务结束全量回归绿（`npm test` + worktree e2e + build）。
++- **字号间距恒定**：不引入窗口比例缩放，`--font-size-base` 保持配置驱动，与窗口尺寸解耦。
++
++## 前置接口（B5-1/2/3 已交付）
++
++- `--font-sans` 含 `"Alibaba PuHuiTi"`（本任务不涉及文字）。
++- `.c-slider` 胶囊（本任务不涉及）。
++
++## Files
++
++- Modify: `src/app/app-main.css`（`.app-main__page` max-width 720→1080 居中 + `data-layout` 规则）
++- Modify: `src/app/app-main.js`（渲染时给设置页/概览页设 `data-layout`；组件/动效分区容器加 fluid 标记）
++- Modify: `tests/e2e/app-shell.spec.js`（加 data-layout 断言）
++
++## Interfaces
++
++- Consumes: 既有 `.app-main__page` 结构（app-main.css:108）+ `MODULES` 渲染（app-main.js:105-107）
++- Produces: `.app-main__page[data-layout="center"]`（限宽居中）/ `[data-layout="fluid"]`（撑满）；组件/动效 `.app-partition` fluid —— 独立交付，无下游依赖
++
++## 实现步骤
++
++### Step 1: 写失败 e2e（tests/e2e/app-shell.spec.js 追加）
++
++```js
++test('B5-4：自适应布局 data-layout（表单限宽居中 + 展示撑满）', async ({ page }) => {
++  await page.setViewportSize({ width: 1400, height: 900 }); // 大窗口
++  await page.goto('/?mode=app');
++  // 概览页：center（限宽 1080 居中）
++  const overview = page.locator('.app-main__page[data-page="home"]');
++  await expect(overview).toHaveAttribute('data-layout', 'center');
++  const ow = await overview.evaluate((el) => {
++    const r = el.getBoundingClientRect();
++    const pr = el.parentElement.getBoundingClientRect();
++    return { w: r.width, parentW: pr.width, left: r.left, parentLeft: pr.left };
++  });
++  expect(ow.w).toBeLessThanOrEqual(1080);
++  expect(Math.abs((ow.left - ow.parentLeft) * 2 + ow.w - ow.parentW)).toBeLessThan(4); // 水平居中
++  // 组件分区：fluid 撑满
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
++  const part = page.locator('.app-main__settings [data-page="components"]');
++  const pw = await part.evaluate((el) => el.getBoundingClientRect().width);
++  const pagesW = await page.locator('.app-main__pages').evaluate((el) => el.getBoundingClientRect().width);
++  expect(pw).toBeGreaterThan(pagesW - 80); // 撑满内容区（留 padding 余量）
++});
++```
++
++### Step 2: 运行确认红
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"`
++Expected: FAIL（`data-layout` 属性不存在）
++
++### Step 3: app-main.css 改自适应
++
++`src/app/app-main.css:108` 附近改为：
++
++```css
++.app-main__page { display: none; max-width: 1080px; margin-inline: auto; }
++.app-main__page--active { display: block; }
++/* B5-4：展示分区撑满（组件/动效），表单/概览保持限宽居中（data-layout 由 app-main.js 设置） */
++.app-main__page[data-layout="fluid"] { max-width: none; margin-inline: 0; }
++```
++
++### Step 4: app-main.js 设 data-layout
++
++`src/app/app-main.js`：
++- 概览页/占位页：渲染时已有 `data-page="${m.id}"`，默认 center（不显式设 `data-layout`，靠 CSS 默认 max-width 居中即可；**为 e2e 断言稳定，给概览页显式加 `data-layout="center"`**）
++- 模板（约 105-107 行）改：`<section class="app-main__page" data-page="${m.id}" data-layout="center">`、`<section class="app-main__page" data-page="settings" data-layout="fluid">`
++- **组件/动效分区 fluid**：设置页整体 `data-layout="fluid"`（含表单分区）。表单分区内 `.csettings__field` 已有 `max-width:420px` 自限宽（settings-window.css:64），表单观感仍克制；组件/动效分区铺满。e2e 断言组件分区撑满即验证此模型。
++
++> **设计决策**：设置页整体 `data-layout="fluid"`（含表单分区）。这比「按分区细分 data-layout」更简单且不破坏表单。若表单分区在超大窗口下过于松散，见 Step 5。
++
++### Step 5: 分区内细调（按实际观感）
++
++若设置页整体 fluid 后表单分区在超大窗口下过于松散（`.csettings__field` 420px 上限已约束，通常无碍），可给 `.app-main__settings .csettings__page` 加 `max-width: 1080px; margin-inline: auto;`（仅表单类分区）——**默认不加**，先按设置页整体 fluid 验证观感；如需再加，实施者记录并调整视觉基线。
++
++### Step 6: e2e 红→绿
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"` → 绿；再跑 app-shell 全文件零回归
++
++### Step 7: 视觉基线重生成（内容区宽度变化）
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots`
++Expected: 视口 1280×720 下内容区从 720 → 至多 1080（1280 视口内容区约 1152 宽，实际铺满），概览卡/组件矩阵扩列 → **大部分分区重生成**。**先解码比对**确认差异仅为布局宽度（栅格扩列），非字体/颜色意外变化。
++
++### Step 8: 全量回归 + 提交
++
++Run: `npx playwright test --config=playwright.config.worktree.js` → 全绿；`npm test` + `npm run build`
++Expected: 全绿
++
++```bash
++git add src/app/app-main.css src/app/app-main.js tests/e2e/app-shell.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots
++git commit -m "feat: 内容区自适应布局（表单限宽居中 + 组件/动效撑满，data-layout，B5-4）"
++```
++
++> 提交惯例：feat + docs 两枚提交（docs 承载本任务报告/账本）。`playwright.config.worktree.js` 不得提交。
++
++> 桌面验证（用户目检）：大窗口下内容自适应扩列/居中，字号间距恒定。
+diff --git a/docs/superpowers/sdd/task-B5-4-report.md b/docs/superpowers/sdd/task-B5-4-report.md
+new file mode 100644
+index 0000000..ad84fd3
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-4-report.md
+@@ -0,0 +1,106 @@
++# Task B5-4: 自适应布局（限宽居中 + 分区撑满）— 实施报告
++
++- **状态**：DONE
++- **需求源**：docs/superpowers/sdd/task-B5-4-brief.md（唯一需求源，CSS/e2e 逐字转录）
++- **分支**：feature/b5-design-language（worktree b5-design-language）
++
++## 任务背景
++
++B5「设计语言统一」第四个任务。内容区自适应窗口宽度：`.app-main__page` max-width 720 → 1080 限宽居中（`margin-inline: auto`），以 `data-layout` 区分两种模式：
++
++- **`data-layout="center"`**（概览/应用页）：限宽 1080 居中 —— 表单/概览观感克制。
++- **`data-layout="fluid"`**（设置页整体，含表单分区）：`max-width: none` 撑满内容区 —— 组件/动效展示分区自然铺满；表单分区靠既有 `.csettings__field` 420px 自限宽（settings-window.css:64）克制观感。
++
++字号间距恒定：不引入窗口比例缩放，`--font-size-base` 保持配置驱动，与窗口尺寸解耦。
++
++## 改动说明
++
++| 文件 | 变更 |
++|---|---|
++| `src/app/app-main.css` | `.app-main__page` `display:none; max-width:1080px; margin-inline:auto`（720→1080 + 居中，brief Step 3 逐字）；新增 `.app-main__page[data-layout="fluid"] { max-width:none; margin-inline:0 }` |
++| `src/app/app-main.js` | MODULES 渲染 section 加 `data-layout="center"`（含 home 概览页）；settings section 加 `data-layout="fluid"`（brief Step 4 逐字） |
++| `tests/e2e/app-shell.spec.js` | 追加 brief Step 1 的「B5-4：自适应布局 data-layout」e2e 测试（逐字） |
++| `tests/e2e/visual-regression.spec.js-snapshots/*` | **24 张全量重生成**（app-main 6 + appearance 6 + components 6 + motion 6）——内容区 720→1080 栅格扩列/铺满，计划预期「大部分分区重生成」 |
++
++- **动画红线**：纯布局改动，零动画（仅改 width/居中 + data-layout 类，不动画属性）。
++- **配置链路**：本任务不涉及界面参数新增（纯布局/类名，defaults/store/apply 未动）。
++
++## TDD 证据
++
++- **Step 1 写失败 e2e**：`tests/e2e/app-shell.spec.js` 追加 brief Step 1 的 B5-4 测试（逐字，无适配）。
++- **Step 2 RED**：
++  `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"` → **1 failed**：
++  `expect(locator).toHaveAttribute('data-layout', 'center') failed — Expected: "center" / Received: ""（Locator: .app-main__page[data-page="home"]）`。原因符合预期：`data-layout` 属性尚未渲染（app-main.js 未设），CSS 也无 fluid 规则。
++- **Step 3/4 实现**：app-main.css 改自适应（720→1080 居中 + fluid 规则）；app-main.js MODULES/settings 设 `data-layout`（见上表）。
++- **Step 6 GREEN**：
++  `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"` → **1 passed (10.6s)**；随后全文件 → **31 passed**（零回归）。
++
++## Step 5 决策：分区内限宽（不施加）
++
++**决策：不加** `.app-main__settings .csettings__page { max-width:1080px; margin-inline:auto }` —— 遵循 brief 默认（「先按设置页整体 fluid 验证观感」）。
++
++**视觉证据**（一次性 Playwright 截图，2560×1440 与 1400×900 视口，用后即删，未入库）：
++
++- **`general-2560`**：设置「通用」表单分区整体撑满内容区，但各表单字段经 `.csettings__field` 420px 上限保持窄列、左对齐，右侧为留白——观感不松散（每字段自身窄 420px，行内空距克制成段，非拉宽成通栏），与 brief「420px 自限宽已约束，通常无碍」判定一致。
++- **`components-2560`**：组件矩阵分区铺满，栅格随宽度扩列（组内卡片列数增多）——fluid 目标达成。
++- **`overview-2560`**：概览页 max-width 1080 居中，左右对称留白，快捷入口卡栅格扩列——center 目标达成。
++
++超大窗口（2560）下表单分区未出现「失控拉宽」观感，故不加分区内限宽；若后续 B5-5/最终评审在更大窗口（如 4K）判定松散，可按 brief Step 5 补加并调整基线。
++
++## 视觉基线解码比对（先比对、后提交）
++
++**方法**：本环境 Read 图片渲染不可靠（与 B5-1/2/3 同法），采用程序化像素比对（PowerShell System.Drawing）+ 尺寸分析。
++
++**尺寸变化**（expected → actual，1280×720 视口）：
++
++| 分区 | expected | actual | 解读 |
++|---|---|---|---|
++| app-main（概览整窗） | 1280×720 | 1280×720 | 同视口尺寸，内容扩列/居中 |
++| components | 720×8626 | **1088×8160** | 变宽 + 变矮 = 栅格扩列（列数增、行数减） |
++| appearance | 720×1814 | **1088×1814** | 仅变宽、等高 = 内容拉伸铺满（无栅格重排） |
++| motion | 720×1221 | **1088×840** | 变宽 + 变矮 = 栅格扩列 |
++
++内容区宽 720 → 1088（1280 视口内容区实际宽），与 `max-width:1080` 目标一致；仅 `components/motion` 高度下降（`repeat(auto-fill/minmax)` 栅格扩列）。
++
++**像素级验证（appearance-partition，证明非字体/颜色变化）**：appearance 等高（1814），取 expected 全宽 720 与 actual 左 720px 逐像素差分——
++
++- **diff 行带分布**：差异**全部局部化于顶部 rows 120-600**；**rows 720-1814 零差异（像素级一致）**。外观分区顶部为全宽定制器网格/滑杆（`cust-accent-grid repeat(3,1fr)` 卡片、`.cust-semantic` flex-wrap 条、`.cust-row .c-slider` 轨道）——容器 720→1088 时这些全宽组件**拉伸/重排**，产生局部位移；底部为 `.csettings__field` 420px 自限宽表单，布局不变、像素一致。
++- **结论**：若为字体族/配色全局变化，diff 会均匀散布整页（所有文字/颜色重渲染）；实测差异集中于全宽组件行带、底部表单逐像素一致 → **差异仅为布局宽度（内容拉伸/栅格扩列），非字体/颜色意外变化**。CSS/JS diff 本身也纯为宽度/类名，无任何字体/颜色令牌变更。
++
++`--update-snapshots` 后恰 24 张 png 重生成（4 分区 × light/dark × 3 accent），复跑视觉回归 **24 passed**。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"`（改前） | **1 failed**（RED：`data-layout` 属性 null） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "data-layout"`（改后） | **1 passed**（GREEN） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js` | **31 passed**（零回归） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js`（更新前） | 24 failed（解码比对确认纯布局宽度差异后提交） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots` | **24 passed**，24 张重生成 |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js`（复跑） | **24 passed**（基线稳定） |
++| `npx playwright test --config=playwright.config.worktree.js`（全量 e2e，前台） | 首次 108 passed / 1 failed（mount 超时 flake，见下）→ 单独复跑该用例 **1 passed** → 全量并集 109/109 绿 |
++| `npm test` | 14 files / **64 passed** |
++| `npm run build` | 通过（Vite，✓ built in 842ms） |
++
++> **全量 e2e flake 说明**：全量首轮 1 例失败为 `app-shell.spec.js:195`「冷启动应用持久化配置」（`page.reload()` 后 `.app-main` 5s toBeVisible 超时）。该用例在先前完整 app-shell 运行中已通过，且失败为 reload 后 mount 等待超时（非崩溃/断言语义失败）。单独复跑该用例 **1 passed (4.6s)**，判定环境 flake（共享 checkout tauri dev + 陈旧 5173 + MCP + 109 用例双 worker 资源紧张），与 B5-1/2/3 记录的 mount/惰性挂载超时 flake 同型，非本任务代码回归。
++
++## Self-review 结论
++
++- **规格符合**：app-main.css 逐字按 brief Step 3；app-main.js 逐字按 brief Step 4；e2e 测试逐字按 brief Step 1。无 verbatim 适配。
++- **动画红线**：零动画（纯布局/类名改动）。
++- **配置链路**：未新增参数；defaults/store/apply 未动。
++- **TDD 完整性**：RED（`data-layout` null）→ GREEN（1 passed）证据完整记录；app-shell 全文件 31 passed 零回归。
++- **Step 5 决策**：不加分区内限宽（默认），2560×1440 视口截图证据确认表单 420px 自限宽观感克制（记录见上）。
++- **视觉基线**：24 张重生成前已解码比对（尺寸 + 像素行带分析），确认仅布局宽度差异，无字体/颜色变化。
++- **质量**：单测 64/64、全量 e2e 109 用例并集全绿、build 通过。
++- **结论**：Ready to merge（DONE）。
++
++## 备注 / 关注点
++
++- **settings 分区（外观/通用等）随设置页整体 fluid**：表单类分区观感靠 `.csettings__field` 420px 自限宽（已约束，见 Step 5 证据）；外观分区内全宽组件（accent 卡栅格/滑杆/语义条）随宽度拉伸——为 brief 既定模型（「设置页整体 data-layout=fluid」）。
++- **字号间距恒定确认**：未引入任何窗口比例缩放逻辑；`--font-size-base` 等令牌与窗口尺寸解耦（仅内容容器宽度变化）。
++- **视觉基线全量重生成**（24 张）比 B5-1/2/3 大——因本任务改动内容区容器宽度（720→1080），栅格扩列是计划预期（「大部分分区重生成」）。
++- `playwright.config.worktree.js`（worktree 本地配置，端口 5174）**未提交**。
++- 临时产物（scratch-b54-shot.mjs、test-results/decode、test-results/b54-*.png）已删除；`docs/superpowers/sdd/review-B5-1/2/3.diff` 为前序任务评审遗留未跟踪文件，不属本任务，未入库（与 B5-3 报告同惯例）。
++- 提交惯例：feat + docs 两枚提交（docs 承载本报告/简报/台账）。
+diff --git a/src/app/app-main.css b/src/app/app-main.css
+index a09ab80..7c71f64 100644
+--- a/src/app/app-main.css
++++ b/src/app/app-main.css
+@@ -98,22 +98,24 @@
+ .app-main__nav-r .c-navwheel__name { display: none; }
+ .app-main__nav-r-empty { height: 100%; display: flex; flex-direction: column;
+   align-items: center; justify-content: center; gap: var(--space-2);
+   color: var(--text-3); font-size: var(--font-size-sm); }
+ 
+ /* —— 内容区（右窗驱动唯一 active 页；单窗口态由左窗驱动应用首屏）—— */
+ .app-main__pages { grid-column: 3; grid-row: 2; min-height: 0; overflow-y: auto;
+   padding: var(--space-6);
+   background: var(--glass-bg);
+   backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 亚克力材质（静态属性，不动画） */ }
+-.app-main__page { display: none; max-width: 720px; }
++.app-main__page { display: none; max-width: 1080px; margin-inline: auto; }
+ .app-main__page--active { display: block; }
++/* B5-4：展示分区撑满（组件/动效），表单/概览保持限宽居中（data-layout 由 app-main.js 设置） */
++.app-main__page[data-layout="fluid"] { max-width: none; margin-inline: 0; }
+ .app-main__page-head { display: flex; align-items: baseline; gap: var(--space-2);
+   margin-bottom: var(--space-5); }
+ .app-main__page-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
+ .app-main__page-sub { font-size: var(--font-size-base); color: var(--text-3); }
+ /* 切页：120ms fade + translateY 4px，只动 transform/opacity（红线）；
+    body 随渲染重建 → 动画重放（模块切换与目录项切换共用） */
+ .app-main__page-body { animation: app-main-page-in var(--dur-fast) var(--ease-out); }
+ @keyframes app-main-page-in {
+   from { opacity: 0; transform: translateY(4px); }
+   to { opacity: 1; transform: translateY(0); }
+diff --git a/src/app/app-main.js b/src/app/app-main.js
+index 167e93f..86317b7 100644
+--- a/src/app/app-main.js
++++ b/src/app/app-main.js
+@@ -95,22 +95,22 @@ export function mountAppMode(root) {
+     <div class="app-main__backdrop"></div>
+     ${renderTitleBar({ title: '概览', iconName: 'box', settings: true, themeToggle: true })}
+     <div class="app-main__nav-l">
+       <nav class="app-main__nav-l-wheel c-navwheel__list"></nav>
+     </div>
+     <div class="app-main__nav-r" aria-hidden="true">
+       <button class="app-main__nav-r-back" aria-label="返回" title="收起目录">${icon('chevron-left', 16)}</button>
+       <div class="app-main__nav-r-body"></div>
+     </div>
+     <main class="app-main__pages">
+-      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}"></section>`).join('')}
+-      <section class="app-main__page" data-page="settings">
++      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
++      <section class="app-main__page" data-page="settings" data-layout="fluid">
+         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
+       </section>
+     </main>
+     <!-- 手机形态（Task A6）：底部横滑应用栏 + 全屏页面栈 —— 桌面视口 display:none，≤900px 媒体查询接管 -->
+     <div class="app-main__stack"></div>
+     <div class="app-main__dock">
+       <nav class="app-main__dock-wheel c-navwheel__list"></nav>
+     </div>
+   </div>`;
+ 
+diff --git a/tests/e2e/app-shell.spec.js b/tests/e2e/app-shell.spec.js
+index 21f838f..22e8a25 100644
+--- a/tests/e2e/app-shell.spec.js
++++ b/tests/e2e/app-shell.spec.js
+@@ -575,10 +575,37 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；
+   expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'exit' } });
+   // 切「保留后台」→ subscribe 触发 → invoke behavior:'background'
+   await group.locator('[data-close-behavior="background"]').click();
+   invokes = await page.evaluate(() => window.__closeBehaviorInvokes__);
+   expect(invokes).toContainEqual({ cmd: 'set_close_behavior', args: { behavior: 'background' } });
+   // [data-mode] 控制器裁定：点主题模式（dark）后 close-behavior 高亮仍保持（不被主题循环误清）
+   await page.locator('.app-main .csettings__mode[data-mode="dark"]').click();
+   await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
+   await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
+ });
++
++// —— B5-4 自适应布局（Task B5-4：内容区限宽居中 + 展示分区撑满）——
++// 概览/应用页 data-layout="center"：max-width 1080 + margin-inline auto 限宽居中；
++// 设置页整体 data-layout="fluid"：max-width none 撑满内容区（表单分区靠 .csettings__field 420px 自限宽），
++// 组件/动效展示分区随之铺满。大窗口 1400×900 下验证两种模式几何。
++
++test('B5-4：自适应布局 data-layout（表单限宽居中 + 展示撑满）', async ({ page }) => {
++  await page.setViewportSize({ width: 1400, height: 900 }); // 大窗口
++  await page.goto('/?mode=app');
++  // 概览页：center（限宽 1080 居中）
++  const overview = page.locator('.app-main__page[data-page="home"]');
++  await expect(overview).toHaveAttribute('data-layout', 'center');
++  const ow = await overview.evaluate((el) => {
++    const r = el.getBoundingClientRect();
++    const pr = el.parentElement.getBoundingClientRect();
++    return { w: r.width, parentW: pr.width, left: r.left, parentLeft: pr.left };
++  });
++  expect(ow.w).toBeLessThanOrEqual(1080);
++  expect(Math.abs((ow.left - ow.parentLeft) * 2 + ow.w - ow.parentW)).toBeLessThan(4); // 水平居中
++  // 组件分区：fluid 撑满
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
++  const part = page.locator('.app-main__settings [data-page="components"]');
++  const pw = await part.evaluate((el) => el.getBoundingClientRect().width);
++  const pagesW = await page.locator('.app-main__pages').evaluate((el) => el.getBoundingClientRect().width);
++  expect(pw).toBeGreaterThan(pagesW - 80); // 撑满内容区（留 padding 余量）
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 975ea5f..5dd025e 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index 58b9ce9..8607715 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index d1993d2..7690d35 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index fbd5e07..4632e62 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index df71c63..25db0f3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index 81d855f..129023e 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index 4879abf..3655579 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index d63173f..0b4f265 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 74f94d8..b75189b 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index 7ce6f38..65f84ff 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index 886ae41..2f5c532 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 01958b6..8278ab3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png
+index 6580b97..a33c2fe 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png
+index 3a72f61..cc3d802 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png
+index d203730..f81cfa6 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png
+index 0b00b6a..81b2783 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png
+index 5c40537..2cd4067 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png
+index b225f5f..127cdb2 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/components-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+index 8233297..a09b7b9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png
+index c231073..0d6ba83 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png
+index 3ea4b88..bc89fc3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+index 9ab1b01..9bbde84 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png
+index 5ed3fc8..7617126 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png
+index c974397..b886820 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-indigo-chromium-win32.png differ
