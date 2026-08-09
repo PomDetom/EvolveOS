@@ -7,7 +7,7 @@
 
 - [x] Task B6-R2-1: 背景装饰大色块构图（8 预设可见且互不相同，渐变/极光区分）
 - [x] Task B6-R2-2: 按钮精致浅色材质（accent-100 tint + 描边 + 上浮 hover + 按钮像素基线）
-- [ ] Task B6-R2-3: 导航轮 resize 后顶/底项选中修复（ResizeObserver + destroy）
+- [x] Task B6-R2-3: 导航轮 resize 后顶/底项选中修复（ResizeObserver + destroy）
 - [ ] 最终整体评审 + 合并 main + 合并后全量回归
 
 ## 任务进度
@@ -33,3 +33,13 @@
 - **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 5。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① `components-basic.spec.js` `toRGB`/`token` helper 两测试块重复（可提模块级，低价值）；② `visual-regression.spec.js` `buttons` 选择器 `.showcase:has-text("按钮")` + `.first()` 依赖 DOM 序（未来按钮前插入含「按钮」文字的 showcase 会误重定向基线——潜在 footgun）；③ primary hover 测试 boxShadow/accent-200 读取在 `toHaveCSS(transform)` 后（安全仅因 `.c-btn` 过渡共用 `--dur-fast`，时长若分化会 flake）；④ danger hover 未测（补充用例只覆盖静止材质，规格清单未要求）；⑤ `toRGB` 对未知序列化返回 null（两侧 null 会假通过，当前 token 全 hex 不可达）。另记录：danger hover 75%（brief 原值，规格 §5 允许 80% 或所需档位）；补充用例 active 依赖 `mouse.down()` 触发 `:active`（正常演进信号）；e2e 冷启动 flake 为环境问题。
 - **评审闭环**：**Task B6-R2-2: complete（commits 1a4b0fa..3238bb1，review clean）**。按钮像素基线已补（B6 最终评审 Important-1 跟进项闭环）。
+
+### B6-R2-3 导航轮 resize 后顶/底项选中修复（ResizeObserver + destroy）— complete
+
+- **实施**：`nav-wheel.js` mount 一次性 pad 计算 + `const CONTENT_TOP` 整块替换为 `recomputeGeometry()`（重算 padTop/padBottom + `CONTENT_TOP = itemEls[0].offsetTop` + `setFocal()`）+ `const ro = new ResizeObserver(recomputeGeometry); ro.observe(list)`（`CONTENT_TOP` 改 `let`；list `position:absolute; inset` → clientHeight=容器高、改 padding 不改自身 clientHeight 无观测循环、display:none→可见亦触发）；返回值新增 `destroy: () => ro.disconnect()`。`app-main.js` `renderRight()` 重挂前 `rightWheel?.destroy(); rightWheel = null`（新增 `rightWheel` 句柄置 `dockMounted` 旁），防右窗多实例重挂 RO 泄漏。左窗/横向 dock/component-showcase 均为常驻单实例，无需销毁。**不在 resize 主动重对齐滚动**（避免 snapNow 误改选中，下次交互纠正）。nav-wheel-geometry.js 纯函数零改动。
+- **TDD**：RED 1 failed（点底部项 active `6→3`，与 brief「跳到 3/4」一致；调试 dump 另证顶项 `0→2`）→ GREEN 1 passed。⚠️ **brief verbatim e2e 用例在旧代码即「假绿」**——① 断言早于 snapNow 150ms 沉降（click 同步 active=6/0 先满足 toHaveAttribute）；② `goto` 后立即拉宽存在「拉宽先于动态 import 挂载」竞态（此时轮挂载于桌面宽度、pad 正确，bug 前置不成立）。已加固：断言前 `waitForTimeout(400)`（吸附沉降，spec 既有惯用）+ 拉宽前 `await expect(.app-main).toBeVisible()`（确保轮于手机形态挂载）。加固后 RED 连续成立、GREEN 连续成立。
+- **测试**：app-shell 全文件 34 passed（33 既有 + 1 新，零回归）；单测 15 files / 68 passed；`npm run build` ✓。**视觉基线零变化**（零视觉改动，未 update-snapshots）。
+- **全量 e2e**：默认 workers 每轮 1-3 个旋转失败的冷启动 flake（app-shell 亚克力/mobile-nav 主题卡/smoke/设置分区组件/visual 字体加载超时，均为 `page.goto` 后首断言 5s 内惰性元素未就绪或 5.3MB 普惠体加载超时）。**基线对照（stash 旧代码同条件全量 = 同批 3 failed）** 证明与本次改动无关；`--workers=1` 串行全量 **124 passed 全绿**（决定性证明套件完整全绿可达）。
+- **提交**：fix `4b16118`（代码+测试）；docs（本账本 + 报告 + brief）。
+- **评审**：待独立评审（占位）。
+- **Minor（deferred，最终评审 triage）**：① 全量默认 workers 冷启动 flake 为环境性（基线对照已证），若想根治可在既有冷启动易敏用例加「先等 `.app-main` 可见再首断言」挂载门（本次仅在 B6-R2-3 新用例加固，未扩到其他既有用例，避免范围外改动）；② `renderRight` 每次调用 `rightWheel?.destroy()`，若后续出现右窗轮需保留跨重挂状态（当前无此需求，纯 UI 态每次重建）。
