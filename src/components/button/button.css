@@ -15,8 +15,8 @@
   color: var(--accent-contrast);
   box-shadow: var(--shadow-sm); /* 中性轻投影 */
 }
-:root[data-theme="light"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
-:root[data-theme="dark"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, white); }
+:root[data-theme="light"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 92%, black); }
+:root[data-theme="dark"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 92%, white); }
 .c-btn--secondary {
   background: var(--glass-bg);
   color: var(--text-1);
@@ -28,8 +28,8 @@
 .c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
 .c-btn--danger { background: var(--danger-500); color: #fff; }
 /* danger 同 primary 机制：hover 实色明暗 theme-aware（去 filter: brightness） */
-:root[data-theme="light"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 88%, black); }
-:root[data-theme="dark"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 88%, white); }
+:root[data-theme="light"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 92%, black); }
+:root[data-theme="dark"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 92%, white); }
 .c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
 .c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
 .c-btn:disabled { opacity: 0.45; pointer-events: none; }
