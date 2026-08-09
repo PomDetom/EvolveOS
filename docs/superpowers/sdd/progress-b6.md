@@ -8,7 +8,14 @@
 - [x] Task B6-1: 背景装饰多样式（强化网格 + dots/diagonal/waves/aurora + 8 预览卡）
 - [x] Task B6-2: 悬浮球去光晕（删 glow + 中性 hover 投影）
 - [x] Task B6-3: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）
-- [ ] 最终整体评审 + 合并 main + 合并后全量回归
+- [x] 最终整体评审 + 合并 main + 合并后全量回归
+
+## 收尾记录
+
+- **合并**：`git merge --no-ff feature/b6-page-style-refresh` → main `33f1148`（25 文件，+1004/-72）。
+- **合并后全量回归**：e2e 116 passed（4.8m，worktree 配置 5174）+ 单测 69 passed + build ✓——全绿。
+- **删分支**：`feature/b6-page-style-refresh` 已删（merged）。
+- **B6 交付形态**：浏览器 `/` 与 Tauri 桌面见效果（用户桌面目检：① 背景网格/点阵/斜线等可感知 ② 浮球 hover 克制 ③ 按钮扁平实心、hover 明暗自然）。
 
 ## 任务进度
 
