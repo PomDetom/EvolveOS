@@ -18,5 +18,5 @@
 - **TDD**：RED 2 failed（`24px 24px` 平铺仍在 / gradient 2 团）→ GREEN 3 passed。⚠️ brief verbatim 单测在旧代码即全绿（grid 的 24px 在独立选择器、正则只捕首个 `{}` 块；旧 gradient 已单 accent 色）——补两条判别断言使 RED 成立（详见报告）。
 - **测试**：e2e 全量 117 passed（含 app-shell 33、B6-R2-1 1）；单测 68 passed（backdrop 4→3 用例）；build ✓。
 - **视觉基线**：先 chromium canvas 解码比对确认差异仅背景图案（app-main = 纯低幅 wash 全帧、appearance = swatch 构图 + wash、components/motion = 仅低幅 wash 低于阈值），无字体/布局/组件漂移；`--update-snapshots` 重生成 app-main 6 + appearance-partition 6（12 张），components/motion 恢复原基线（零变化）。重跑 visual 24 passed。
-- **提交**：feat（代码+测试+基线）`<待填>`；docs（本账本 + 报告 + brief）`<待填>`。
+- **提交**：feat `1c8dce2`（代码+测试+基线）；docs `b9f6723`（本账本 + 报告 + brief）。
 - **评审**：待控制器独立评审。
