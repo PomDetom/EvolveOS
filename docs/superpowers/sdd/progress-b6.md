@@ -5,7 +5,7 @@
 
 ## 任务清单
 
-- [ ] Task B6-1: 背景装饰多样式（强化网格 + dots/diagonal/waves/aurora + 8 预览卡）
+- [x] Task B6-1: 背景装饰多样式（强化网格 + dots/diagonal/waves/aurora + 8 预览卡）
 - [ ] Task B6-2: 悬浮球去光晕（删 glow + 中性 hover 投影）
 - [ ] Task B6-3: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）
 - [ ] 最终整体评审 + 合并 main + 合并后全量回归
@@ -29,6 +29,7 @@
   - **测试**：单测 4 passed；B6-1 e2e 1 passed；app-shell 32 passed；全量 e2e 114 passed（两轮含单测无关 flake：components/motion 挂载、亚克力两档 —— 隔离重跑均绿，终轮全绿）；`npm test` 69 passed；`npm run build` ✓。
   - **提交**：feat（修复）`440b563`；docs 本提交（报告 + 本账本）。
 - **Minor（deferred，最终评审 triage）**：① grid 预设 `circle at 12px 12px` 圆点落在格心而非交点——计划书 CSS 与规格 §3.1「交点圆点」意图相左（plan 内部张力，实施者按计划原样执行非缺陷）；② 预设图案在 app-main.css / partitions.css 双文件重复（计划允许 swatch 独立规则，维护需双改耦合）。
+- **评审闭环**：定点复审 Important ADDRESSED（`grid-template-columns: repeat(4,56px)` 4×2 平衡网格，无孤立卡），无新 Critical/Important 破坏。**Task B6-1: complete（commits 1483670..a53610b，review clean）**。
 
 ### B6-2 悬浮球去光晕
 
