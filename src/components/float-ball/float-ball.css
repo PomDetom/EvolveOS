@@ -10,11 +10,6 @@
   transition: transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out); }
 .c-float-ball svg { position: relative; }
-/* hover：上浮 2px + 光晕增强（只动 transform/box-shadow/opacity） */
+/* hover：上浮 2px + 中性投影（B6-2 去光晕：删 glow 环，彩影改 --shadow-md，只动 transform/box-shadow） */
 .c-float-ball:hover { transform: translateY(-2px);
-  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
-.c-float-ball__glow { position: absolute; inset: -8px; pointer-events: none;
-  border-radius: var(--radius-full); opacity: 0;
-  background: radial-gradient(circle, var(--accent-200) 0%, transparent 65%);
-  transition: opacity var(--dur-base) var(--ease-out); }
-.c-float-ball:hover .c-float-ball__glow { opacity: 1; }
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
