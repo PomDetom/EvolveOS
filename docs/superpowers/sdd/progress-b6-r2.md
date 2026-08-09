@@ -30,5 +30,6 @@
 - **测试**：e2e 全量 **123 passed**（components-basic 6 + 其余 + 视觉 30；三轮含 3 个与改动无关的冷启动时序 flake：smoke/app-shell 亚克力/mobile-nav 主题卡 —— 隔离重跑均绿，第三轮全绿）；单测 15 files / 68 passed（customizer 曾与后台 e2e 并发偶发 1 flake，独占重跑全绿）；`npm run build` ✓。
 - **视觉基线**：解码比对闸门 —— 裸跑 visual 24 passed（既有 24 张字节零变化，按钮改动在 components-partition fold 下）+ 6 failed（buttons 无基线）；`--update-snapshots` 后 **30 passed，仅新增 6 张 buttons-*（light/dark × indigo/amber/emerald），既有 24 张零修改**（git status 证实）。
 - **提交**：feat `1a4b0fa`（代码+测试+基线）；docs `32bfab1`（本账本 + 报告 + brief）。
-- **评审**（独立评审）：待控制器评审后填写。
-- **Minor（deferred，最终评审 triage）**：① danger hover 色档按 brief 用 75%（规格 §5 允许 80% 或既有所需档位）；② 补充用例的 active 断言依赖 `page.mouse.down()` 触发 :active（若未来基类 `:active` 变换与 primary 覆写不一致会误红，属正常演进信号）；③ e2e 冷启动时序 flake 为环境问题（见「测试」节），建议最终评审归入已知抖动，不阻塞。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 5。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① `components-basic.spec.js` `toRGB`/`token` helper 两测试块重复（可提模块级，低价值）；② `visual-regression.spec.js` `buttons` 选择器 `.showcase:has-text("按钮")` + `.first()` 依赖 DOM 序（未来按钮前插入含「按钮」文字的 showcase 会误重定向基线——潜在 footgun）；③ primary hover 测试 boxShadow/accent-200 读取在 `toHaveCSS(transform)` 后（安全仅因 `.c-btn` 过渡共用 `--dur-fast`，时长若分化会 flake）；④ danger hover 未测（补充用例只覆盖静止材质，规格清单未要求）；⑤ `toRGB` 对未知序列化返回 null（两侧 null 会假通过，当前 token 全 hex 不可达）。另记录：danger hover 75%（brief 原值，规格 §5 允许 80% 或所需档位）；补充用例 active 依赖 `mouse.down()` 触发 `:active`（正常演进信号）；e2e 冷启动 flake 为环境问题。
+- **评审闭环**：**Task B6-R2-2: complete（commits 1a4b0fa..3238bb1，review clean）**。按钮像素基线已补（B6 最终评审 Important-1 跟进项闭环）。
