@@ -1,0 +1,522 @@
+# Review package: cadff102..HEAD
+
+## Commits
+490706d docs: B5-3 SDD 台账（iOS 组件实施报告 + 账本，feat b7c54ec）
+b7c54ec feat: 徽标/按钮/悬浮球 iOS 化（tint 底 + 层次按钮 + 玻璃悬浮球，B5-3）
+
+## Files changed
+ docs/superpowers/sdd/progress-b5.md                |  11 ++
+ docs/superpowers/sdd/task-B5-3-brief.md            | 187 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B5-3-report.md           |  95 +++++++++++
+ src/components/badge/badge.css                     |  30 +++-
+ src/components/button/button.css                   |  19 ++-
+ src/components/float-ball/float-ball.css           |  16 +-
+ tests/e2e/components-basic.spec.js                 |  32 +++-
+ .../app-main-dark-amber-chromium-win32.png         | Bin 513629 -> 513541 bytes
+ .../app-main-dark-emerald-chromium-win32.png       | Bin 484402 -> 483737 bytes
+ .../app-main-dark-indigo-chromium-win32.png        | Bin 567103 -> 566868 bytes
+ .../app-main-light-amber-chromium-win32.png        | Bin 305978 -> 304188 bytes
+ .../app-main-light-emerald-chromium-win32.png      | Bin 304328 -> 302423 bytes
+ .../app-main-light-indigo-chromium-win32.png       | Bin 211241 -> 210041 bytes
+ 13 files changed, 365 insertions(+), 25 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b5.md b/docs/superpowers/sdd/progress-b5.md
+index fc437ac..6a263bf 100644
+--- a/docs/superpowers/sdd/progress-b5.md
++++ b/docs/superpowers/sdd/progress-b5.md
+@@ -36,10 +36,21 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
+ ## Task B5-2: 统一 Slider 组件（胶囊形，三处接入）
+ 
+ - **状态**：DONE（2026-08-09）
+ - **简报**：docs/superpowers/sdd/task-B5-2-brief.md
+ - **报告**：docs/superpowers/sdd/task-B5-2-report.md
+ - **提交**：feat（胶囊滑杆）+ docs 一枚（本台账/简报/报告）
+ - **内容**：三处滑杆（组件 `.c-slider` 原生 accent / 动效 `.ml-slider` 原生 accent / 外观 `.cust-range` 圆形拇指）统一为单一 `.c-slider` 胶囊自绘（8px 圆角轨道 + 20px 胶囊拇指 + track 填充经 `--fill` 变量）。slider.css 逐字替换；customizer-panel.js 三处 `.cust-range`→`.c-slider`（syncUI `--fill` setProperty 保留）；motion-lab.js 模板双类 `c-slider ml-slider`（JS :156/177/178 语义定位保留）；customizer.css / motion-lab.css 删独立规则；新增 slider.test.js 签名契约守卫；e2e/单测选择器更新；视觉基线 12 张重生成。
+ - **偏离**：① `tests/e2e/form-controls.spec.js`「滑杆使用主题强调色」断言重写（brief Files 未列此文件但 Step 7 要求全绿）：Chromium 151 起 `getComputedStyle` 对 `::-webkit-slider-*` 伪元素样式反射失效（返回原生默认值），原生 accentColor 断言随胶囊 appearance:none 移除机制而失效，改为「渲染像素随 `--accent` 变化」截图比对（像素验证胶囊渲染正确，仅 computed 反射失效）。② 基线仅 12 张重生成（appearance 6 + motion 6；components 滑杆组在捕获 fold 之下字节不变，比 brief 预期小）。③ `.ml-control .c-slider { min-width:0 }` 未应用（实测 flex 行无溢出）。
+ - **评审**：规格 ✅ / Approved（0 Critical，0 Important，5 Minor 免修）——Minor：① **plan-mandated**：非 customizer 滑杆（动效/组件）track 填充退化为静态 50%（`var(--fill, 50%)` 兜底；仅 customizer syncUI 设 `--fill`），旧原生 accent-color 三处都按值填充——brief verbatim CSS 既定后果，评审建议 **B5-5 确认或给 motion-lab input 补 `--fill` 同步**（供最终评审分诊）；② moz 端保真低（thumb 16px 无填充无 scale，brief verbatim，Chromium-only 测试不覆盖）；③ focus outline-offset 丢失（旧 .cust-range 有 4px，新无，纯外观）；④ `.ml-slider` 的 flex:1;min-width:0 移除（极窄容器边角，实测无溢出）；⑤ form-controls 断言间接性（像素验证无法区分 fill vs thumb 边框，语义等价）。⚠️ 项已核实：Chromium 151 伪元素反射失效为报告+probe 佐证（合理，评审接受）；解码比对/测试计数以报告方法学接受。
+ - **执行状态**：Task B5-2：✅ 完成（5810365 + e51f579，评审通过）
++
++## Task B5-3: iOS 风格组件（徽标 / 按钮 / 悬浮球）
++
++- **状态**：DONE（2026-08-09）
++- **简报**：docs/superpowers/sdd/task-B5-3-brief.md
++- **报告**：docs/superpowers/sdd/task-B5-3-report.md
++- **提交**：feat（徽标/按钮/悬浮球 iOS 化）+ docs 一枚（本台账/简报/报告）
++- **内容**：三组件 iOS 化（材质/层次/透明度，非色彩浓度）——徽标 `color-mix` 12% tint 底 + 22% 细描边 + 语义色文字（六变体全保留）；按钮 primary 顶部内高光 + 柔和彩影（`linear-gradient(180deg, hover, accent)` + inset 高光 + `color-mix(accent-400)` 彩影）、secondary 玻璃底呼应壳材质（hover/active 改 `filter` paint-only）；悬浮球去 accent 渐变浓底 → 玻璃底 + 亚克力模糊（`--glass-*`/`--acrylic-*` 纯消费）+ accent 图标，40→44px（HIG 最小触控区）。badge/float-ball.css 逐字替换，button.css 按 brief 替换视觉块（基类/sm/lg/disabled 结构保留）。themes.css 零改动（材质体系不动）。e2e 追加 B5-3 样式断言（badge `color(srgb` / btn inset / float-ball `blur`）；视觉基线 6 张重生成（app-main × light/dark × 3 accent，含浮球）。
++- **偏离**：① brief 测试「回概览」home 选择器 `.app-main__nav-r`→`.app-main__nav-l`（右窗设置目录无 home 项，home 是左窗应用模块）；② 既有「主按钮 hover 阴影 --shadow-md 令牌」测试重写（brief 新 CSS 刻意移除 --shadow-md，改 `0 4px 14px color-mix` 柔和彩影，blur 16→14 断言随之更新）；③ 基线仅 app-main 6 张重生成（components 徽标/按钮矩阵在设置窗捕获 fold 之下 y1056+/y3453+ 字节不变，与 B5-2 滑杆同型；appearance/motion 零变化符合预期）。
++- **评审**：（待独立评审）
++- **执行状态**：Task B5-3：✅ 完成（feat + docs 已提交，评审待补）
+diff --git a/docs/superpowers/sdd/task-B5-3-brief.md b/docs/superpowers/sdd/task-B5-3-brief.md
+new file mode 100644
+index 0000000..ac6cee2
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-3-brief.md
+@@ -0,0 +1,187 @@
++# Task B5-3: iOS 风格组件（徽标 / 按钮 / 悬浮球）
++
++> 计划书章节：`docs/superpowers/plans/2026-08-09-app-shell-b5-design-language-ios.md` 的 Task B5-3（本文件为提取全文，作为唯一实施需求）。规格：`docs/superpowers/specs/2026-08-09-app-shell-b5-design-language-ios-design.md` §5。
++
++## 绑定本任务的全局约束（必须遵守）
++
++- 测试仅在 Web 环境执行（Vitest + Playwright）；不跑 tauri dev。
++- 动画红线：布局/几何动画只允许 transform/opacity；模糊永不动画；时长/曲线经 CSS 变量。三组件 hover/active 只动 transform/box-shadow/background（background/border-color/box-shadow/color 为 paint-only 豁免，仅限 hover/focus/active 短暂状态切换）。
++- 配置链路：本任务不涉及界面参数新增（纯组件 CSS 视觉改，不动 defaults/store/apply）。
++- 零运行时依赖；组件无抽象封装；遵循 `src/CLAUDE.md` 风格。
++- 禁止升级核心依赖。
++- **材质体系不动**（themes.css 的 Windows 亚克力配方保持，不因 iOS 化而改）。
++- **e2e 必须用 worktree 配置**：`npx playwright test --config=playwright.config.worktree.js`（端口 5174 新鲜 server）。共享 checkout 有陈旧 5173 server（PID 11964）serve 旧代码，勿用默认 `npm run test:e2e`。
++- **视觉基线变化必须先解码比对确认由本次改动引起，再 `--update-snapshots`**。
++- **e2e 截图前必须等待字体加载完成**（B5-1 已改显式 `document.fonts.load`，保留）。
++- 提交前 `npm run build`；每任务结束全量回归绿（`npm test` + worktree e2e + build）。
++
++## 前置接口（B5-1/2 已交付）
++
++- `--font-sans` 含 `"Alibaba PuHuiTi"` 前缀（徽标/按钮文字继承）。
++- `.c-slider` 胶囊组件（本任务不涉及）。
++
++## Files
++
++- Modify: `src/components/badge/badge.css`（浅 tint 底 + 细描边）
++- Modify: `src/components/button/button.css`（primary 内高光 + 柔和彩影 / secondary 玻璃底）
++- Modify: `src/components/float-ball/float-ball.css`（玻璃悬浮球，去渐变浓底）
++- Test: `tests/e2e/components-basic.spec.js`（加 iOS 风格样式断言）
++
++## Interfaces
++
++- Consumes: Task B5-1 的 `--font-sans`（徽标文字继承）；既有 `--glass-*`/`--accent-*`/`--surface-*` 令牌
++- Produces: `.c-badge`（tint 底）/ `.c-btn`（层次）/ `.c-float-ball`（玻璃）iOS 观感 —— 独立交付，无下游依赖
++
++## 实现步骤
++
++### Step 1: 写失败 e2e（tests/e2e/components-basic.spec.js 追加）
++
++```js
++test('B5-3：徽标/按钮/悬浮球 iOS 风格（层次而非浓色）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const comp = page.locator('.app-main__settings [data-page="components"]');
++  // 进入组件分区
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
++  // 徽标：tint 底半透明混色（非实色语义底）+ 细描边
++  const badgeBg = await comp.locator('.c-badge--accent').first().evaluate((el) => getComputedStyle(el).backgroundColor);
++  expect(badgeBg).toContain('color(srgb'); // color-mix 混色计算值
++  // 按钮 primary：内高光（box-shadow 含 inset）
++  const btnShadow = await comp.locator('.c-btn--primary').first().evaluate((el) => getComputedStyle(el).boxShadow);
++  expect(btnShadow).toContain('inset');
++  // 悬浮球：玻璃底（backdrop-filter 生效）
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="home"]').click(); // 回概览（悬浮球在壳）
++  const ballFilter = await page.locator('.app-main__float-ball .c-float-ball').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(ballFilter).toContain('blur');
++});
++```
++
++> 注：badge 混色计算值在 Chromium 为 `color(srgb r g b / a)` 格式（B2-R3 同类断言先例）。若实现用 `color-mix(in srgb, var(--accent) 12%, transparent)`，计算值确为该格式。
++
++### Step 2: 运行确认红
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js -g "iOS 风格"`
++Expected: FAIL（现有 badge 是实色 `--accent-100`、btn 无 inset shadow、float-ball 是渐变底无 backdrop-filter）
++
++### Step 3: badge.css iOS 化
++
++`src/components/badge/badge.css` 整体替换为：
++
++```css
++/* iOS 风格徽标（B5-3）：浅 tint 底（accent/semantic 12% 透明混色）+ 细描边 + 语义色文字。
++   半透明混色让徽标「坐」在玻璃表面上而非实色「贴」上去；细描边 1px 界定轮廓。 */
++.c-badge { display: inline-flex; align-items: center; padding: 2px 9px; font-size: var(--font-size-xs);
++  font-weight: var(--font-weight-medium); border-radius: 999px;
++  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
++  background: color-mix(in srgb, var(--accent) 12%, transparent); }
++.c-badge--accent { color: var(--accent-700); }
++.c-badge--success { color: var(--success-600);
++  background: color-mix(in srgb, var(--success-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--success-500) 22%, transparent); }
++.c-badge--warning { color: var(--warning-600);
++  background: color-mix(in srgb, var(--warning-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--warning-500) 22%, transparent); }
++.c-badge--danger { color: var(--danger-600);
++  background: color-mix(in srgb, var(--danger-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--danger-500) 22%, transparent); }
++.c-badge--info { color: var(--info-600);
++  background: color-mix(in srgb, var(--info-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--info-500) 22%, transparent); }
++.c-badge--default { color: var(--neutral-600);
++  background: color-mix(in srgb, var(--neutral-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--neutral-500) 22%, transparent); }
++```
++
++> 暗色主题下语义色 `--success-600` 等已由 themes.css 自动切浅档（dark 覆盖 500/600），颜色对比保持。
++
++### Step 4: button.css iOS 化
++
++`src/components/button/button.css` 修改（保留结构，改 primary/secondary 视觉 + 内高光）：
++
++```css
++.c-btn {
++  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
++  font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
++  padding: 0 var(--space-4); height: 32px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
++  transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out),
++    color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
++  user-select: none; white-space: nowrap;
++}
++.c-btn:active { transform: scale(0.97); }
++/* iOS 层次按钮（B5-3）：primary 顶部内高光 + 柔和彩影（有厚度不扁平）；secondary 玻璃底呼应壳材质 */
++.c-btn--primary {
++  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
++  color: var(--accent-contrast);
++  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 8px color-mix(in srgb, var(--accent-400) 30%, transparent);
++}
++.c-btn--primary:hover { filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px color-mix(in srgb, var(--accent-400) 40%, transparent); }
++.c-btn--primary:active { filter: brightness(0.96); }
++.c-btn--secondary {
++  background: var(--glass-bg);
++  color: var(--text-1);
++  border: 1px solid var(--glass-border);
++  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
++}
++.c-btn--secondary:hover { background: var(--surface-hover); }
++.c-btn--ghost { color: var(--text-2); }
++.c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
++.c-btn--danger { background: var(--danger-500); color: #fff; }
++.c-btn--danger:hover { filter: brightness(1.08); }
++.c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
++.c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
++.c-btn:disabled { opacity: 0.45; pointer-events: none; }
++```
++
++> primary 用 `linear-gradient(180deg, hover, accent)`（轻渐变表达层次，非浓色平涂）+ inset 顶部内高光 + 柔和彩影。红线段：gradient 背景静态，hover 用 `filter`（paint-only）不改布局。
++
++### Step 5: float-ball.css iOS 化
++
++`src/components/float-ball/float-ball.css` 整体替换为：
++
++```css
++/* iOS 玻璃悬浮球（B5-3）：去 accent 渐变浓底 → 玻璃底 + 亚克力模糊（与壳材质一致）+ accent 图标。
++   层次靠 material 背景 + 投影 + 内高光，而非色彩浓度。 */
++.c-float-ball { position: relative; width: 44px; height: 44px; flex: none;
++  display: grid; place-items: center; color: var(--accent); cursor: pointer;
++  border: 1px solid var(--glass-border);
++  border-radius: var(--radius-full);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
++  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
++  transition: transform var(--dur-base) var(--ease-out),
++    box-shadow var(--dur-base) var(--ease-out); }
++.c-float-ball svg { position: relative; }
++/* hover：上浮 2px + 光晕增强（只动 transform/box-shadow/opacity） */
++.c-float-ball:hover { transform: translateY(-2px);
++  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
++.c-float-ball__glow { position: absolute; inset: -8px; pointer-events: none;
++  border-radius: var(--radius-full); opacity: 0;
++  background: radial-gradient(circle, var(--accent-200) 0%, transparent 65%);
++  transition: opacity var(--dur-base) var(--ease-out); }
++.c-float-ball:hover .c-float-ball__glow { opacity: 1; }
++```
++
++> 尺寸 40→44px（iOS 触控目标更大，44×44 是 HIG 建议最小触控区）。图标色从 `#fff` 改 `var(--accent)`（玻璃上白字无层次）。
++
++### Step 6: e2e 红→绿
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js -g "iOS 风格"` → 红 → 绿；再跑 components-basic 全文件零回归（既有 `.c-btn` 计数断言 7/4/1/1/1 应不受视觉改影响——是存在性计数非样式）
++
++### Step 7: 视觉基线重生成（三组件变化）
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots`
++Expected: components 分区 6 张（含按钮/徽标矩阵）+ app-main 2 张（含悬浮球）重生成；appearance/motion 零变化。**先解码比对**确认差异仅为组件视觉。
++
++### Step 8: 全量回归 + 提交
++
++Run: `npx playwright test --config=playwright.config.worktree.js` → 全绿；`npm test` + `npm run build`
++Expected: 全绿
++
++```bash
++git add src/components/badge/badge.css src/components/button/button.css src/components/float-ball/float-ball.css tests/e2e/components-basic.spec.js tests/e2e/visual-regression.spec.js tests/e2e/visual-regression.spec.js-snapshots
++git commit -m "feat: 徽标/按钮/悬浮球 iOS 化（tint 底 + 层次按钮 + 玻璃悬浮球，B5-3）"
++```
++
++> 提交惯例：feat + docs 两枚提交（docs 承载本任务报告/账本）。`playwright.config.worktree.js` 不得提交。
++
++> 桌面验证（用户目检）：徽标浅 tint、按钮层次感、悬浮球玻璃质感；深色主题下对比度不破。
+diff --git a/docs/superpowers/sdd/task-B5-3-report.md b/docs/superpowers/sdd/task-B5-3-report.md
+new file mode 100644
+index 0000000..0c7f7bd
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-3-report.md
+@@ -0,0 +1,95 @@
++# Task B5-3: iOS 风格组件（徽标 / 按钮 / 悬浮球）— 实施报告
++
++- **状态**：DONE
++- **需求源**：docs/superpowers/sdd/task-B5-3-brief.md（唯一需求源，CSS 逐字转录；三处适配披露见「verbatim 适配说明」）
++- **分支**：feature/b5-design-language（worktree b5-design-language）
++
++## 任务背景
++
++B5「设计语言统一」第三个任务。三个交互组件 iOS 化，方向是**材质/层次/透明度**而非色彩浓度：
++- **徽标 `.c-badge`**：语义 50 实色底 → accent/semantic 12% 透明混色（color-mix）+ 22% 细描边 + 语义色文字。
++- **按钮 `.c-btn`**：primary 加顶部内高光 + 柔和彩影（`linear-gradient` 层次 + inset 高光 + accent 彩影）；secondary 白实底 → 玻璃底（呼应壳材质）；hover/active 改用 `filter: brightness()`（paint-only）。
++- **悬浮球 `.c-float-ball`**：accent 渐变浓底 → 玻璃底 + 亚克力模糊（`blur/saturate/brightness`，与壳材质一致）+ accent 图标；40→44px（iOS HIG 最小触控区）。
++
++**材质体系不动**：themes.css 零改动，仅消费既有 `--glass-*` / `--acrylic-*` / `--accent-*` / 语义色令牌。
++
++## 改动说明
++
++| 文件 | 变更 |
++|---|---|
++| `src/components/badge/badge.css` | 整体替换为 brief Step 3 逐字 CSS（tint 底 color-mix 12% + 描边 22% + 语义色文字）；`.c-badge` 及 `--{accent,success,warning,danger,info,default}` 六变体全保留 |
++| `src/components/button/button.css` | 按 brief Step 4 修改（保留结构）：`.c-btn` 基类/`:active`/`--sm`/`--lg`/`:disabled` 不动；primary（渐变+内高光+彩影）、secondary（玻璃底）、ghost/danger 视觉替换。原 `:hover background`/`--accent-active` 机制移除（改 `filter` paint-only） |
++| `src/components/float-ball/float-ball.css` | 整体替换为 brief Step 5 逐字 CSS（玻璃底 + 亚克力模糊 + accent 图标 + 44px + 内高光 + glow）。HTML 结构（`.c-float-ball` > `.c-float-ball__glow` + svg）与 brief 假设一致，直接替换无结构出入 |
++| `tests/e2e/components-basic.spec.js` | 追加 brief Step 1 的「B5-3：徽标/按钮/悬浮球 iOS 风格」断言 + 既有 `--shadow-md` hover 断言重写（见适配说明②） |
++| `tests/e2e/visual-regression.spec.js-snapshots/*` | 6 张重生成（app-main × light/dark × indigo/amber/emerald，含悬浮球）；appearance/components/motion 18 张字节不变 |
++
++- **动画红线**：三组件 hover/active 仅动 `transform`/`box-shadow`/`background`/`filter`（paint-only 豁免）；`backdrop-filter` 静态不动画；时长/曲线经 `--dur-*`/`--ease-*` CSS 变量（data-motion=off 归零）。
++- **配置链路**：本任务不涉及界面参数新增（纯组件 CSS 视觉改，defaults/store/apply 未动）。
++- **材质体系**：themes.css 未改（Windows 亚克力配方保持）。
++
++## TDD 证据
++
++- **Step 1 写失败 e2e**：`tests/e2e/components-basic.spec.js` 追加 brief 的 B5-3 测试（唯一适配：回概览 home 选择器 `.app-main__nav-l`，见适配说明①）。
++- **Step 2 RED**：
++  - `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js -g "iOS 风格"` → **1 failed**：
++    `expect(received).toContain(expected)` — Expected substring `"color(srgb"`，Received string `"rgb(223, 227, 255)"`。原因符合预期：既有 badge 为实色 `--accent-100`（`#dfe3ff`），非 `color-mix` 混色计算值。
++- **Step 3/4/5 实现**：badge.css / button.css / float-ball.css 按 brief 逐字替换（见上表）。
++- **Step 6 GREEN**：
++  - `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js` → **4 passed (24.7s)**（图标 SVG / 按钮四变体计数 7/4/1/1/1 / 主按钮 hover 柔和彩影 / B5-3 iOS 风格）。
++
++## verbatim 适配说明（重要披露）
++
++**① brief 测试的「回概览」home 选择器 `.app-main__nav-r` → `.app-main__nav-l`**
++
++brief 测试行：`await page.locator('.app-main__nav-r .c-navwheel__item[data-id="home"]').click();`（注释「回概览，悬浮球在壳」）。实测 `.app-main__nav-r`（右窗目录轮）在设置模式下渲染 APP_SECTIONS（general/appearance/interface/shortcuts/notify/data/advanced/about/components/motion，`settings-pages.js:37-41`）——**无 `home` 项**，该选择器会 30s 定位超时。`home` 是左窗应用目录轮（`.app-main__nav-l`，`app-main.js:33` MODULES）的项。浮球 `.app-main__float-ball` 恒在壳内（`app-main.js:702-705`，position:fixed），回概览点击本非浮球定位所需，但为忠实 brief 意图（退出设置态回概览）保留该点击并修正为 `.app-main__nav-l`（左窗 home 点击在设置态会 exitSettingsMode，语义正确）。
++
++**② 既有测试「主按钮 hover 阴影使用 --shadow-md 令牌」重写（brief Files 清单未列此改动，Step 6 零回归预期触发）**
++
++brief Step 4 的 primary hover 阴影为逐字 `inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 14px color-mix(accent-400 40%)` —— 该设计刻意移除 `--shadow-md`（blur 16 中性暗影，Task I3 4d 契约）。原测试断言 `toHaveCSS('box-shadow', /0px 4px 16px/)` 在新 CSS 下必然失败（新值 blur 14 + color-mix）。故按 brief 设计意图重写该断言为：hover 阴影含 `0px 4px 14px`（新 iOS 彩影 blur 14 特征值）+ `inset`（内高光）。语义变化（`--shadow-md` → 柔和彩影）即 B5-3 核心设计，非测试破坏。
++
++**③ 视觉基线变化集比 brief Step 8 预期小（良性）**
++
++brief 预期「components 6 张 + app-main 2 张重生成」。实测仅 **app-main 6 张**重生成（浮球在壳内恒定可见，且 light/dark × 3 accent 全变化——浮球从 accent 渐变实球 → 玻璃球，六组合全部不同）；**components 6 张字节不变**——徽标/按钮矩阵位于设置窗捕获 fold 之下（探针实测：badge 组 y=3453、button 组 y=1056，均 > 视口 720px；`.app-main__settings` 容器高 8626px 无内滚，元素截图仅含顶部 `核心导航` 组），与 B5-2 滑杆同型既有基线局限。appearance/motion 零变化（符合 brief 预期）。徽标/按钮视觉由 e2e 样式断言覆盖（color-mix/inset），截图基线不承载。
++
++## 视觉基线解码比对（先比对、后提交）
++
++方法：PIL 程序化差分（本环境 Read 图片渲染不可靠，与 B5-1/2 同法）。6 张 app-main 失败对逐一分析：
++
++- **diff bbox 全部局部化于右下角**：`(1193-1196, 642-644) → (1280, 720)`，即浮球区域（right:16/bottom:16、44px 球 + 玻璃投影外扩）。
++- **变化像素占比仅 0.56-0.60%**；逐 8px 行带分析：所有 diff 行集中于 y640-720（浮球所在带），**y640 以上零变化**——无整页/布局移位，无其他 UI 区变化。
++- **旧（expected）vs 新（actual）采样**：球体区域新旧色差接近全强度（diff 行峰值 662-673，即渐变实球 vs 玻璃球），边角 AA 像素差异仅 ±1-3/channel（玻璃投影过渡）。
++- **结论**：6 张差异**仅为浮球视觉**（accent 渐变浓底 → 玻璃底 + accent 图标，40→44px），无布局破坏、无配色意外，可提交基线。`--update-snapshots` 后恰 6 张 png 变更（app-main-{light,dark}-{indigo,amber,emerald}），appearance/components/motion 18 张未触碰。
++
++## 验证结果
++
++| 命令 | 结果 |
++|---|---|
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js -g "iOS 风格"`（改前） | **1 failed**（RED：badge bg `rgb(223,227,255)` 实色，非 color(srgb)） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/components-basic.spec.js`（改后） | **4 passed**（GREEN） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js`（更新前） | 6 failed \| 18 passed（失败恰为 app-main 6 张，含浮球；解码比对后确认仅浮球差异） |
++| `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots` | **24 passed**，6 张重生成（app-main）；appearance/components/motion 字节不变 |
++| `npx playwright test --config=playwright.config.worktree.js`（全量 e2e，前台） | 首次 106 passed / 2 failed（mount 超时 flake，见下）→ 单独复跑两 spec 38/38 → **并集 108/108 全绿** |
++| `npm test` | 14 files / **64 passed** |
++| `npm run build` | 通过（Vite，✓ built in 838ms） |
++
++> **全量 e2e flake 说明**：全量首轮 2 例失败为 `app-shell.spec.js:109`（`.app-main__welcome` 5s toBeVisible 超时——**B5-2 记录过的同型 flake**）与 `mobile-nav.spec.js:106`（`.ml-card` 5s 计数超时，动效分区惰性挂载）——均为应用壳 mount/惰性挂载超时，与三组件 CSS 无关（badge/btn/float-ball 断言全绿，108 用例含全部相关 spec）。单独复跑 app-shell + mobile-nav 两 spec **38/38 通过**，判定环境 flake（共享 checkout tauri dev + 陈旧 5173 + MCP + 108 用例双 worker 资源紧张），非代码回归。
++
++## Self-review 结论
++
++- **规格符合**：badge.css / float-ball.css 逐字按 brief 整体替换；button.css 按 brief 替换视觉块、基类结构/尺寸（sm/lg/disabled）原样保留。六徽标变体、浮球 glow 结构、按钮四变体计数 7/4/1/1/1 全保留。
++- **动画红线**：primary/secondary hover/active 仅 `filter`/`box-shadow`/`background`（paint-only）；浮球 hover 仅 transform/box-shadow；`backdrop-filter` 静态；时长/曲线全经 CSS 变量。
++- **配置链路**：未新增参数；themes.css 未改（材质体系不动）；`--glass-*`/`--acrylic-*` 纯消费。
++- **TDD 完整性**：RED（1 failed：badge 实色）→ GREEN（4 passed）证据完整记录。
++- **偏差披露**：① 回概览 home 选择器修正 `.app-main__nav-r`→`.app-main__nav-l`；② `--shadow-md` hover 测试按新 iOS 彩影重写；③ 基线仅 app-main 6 张重生成（components 徽标/按钮在 fold 下字节不变，比 brief 预期小）。
++- **质量**：单测 64/64、全量 e2e 108 用例并集全绿、build 通过。
++- **结论**：Ready to merge（DONE）。
++
++## 备注 / 关注点
++
++- **primary hover 阴影不再消费 `--shadow-md`**：B5-3 设计以柔和彩影（`color-mix(accent-400 40%)` 硬编码 blur 14）替代中性令牌影，因此**不再随 shadow-intensity 定制器缩放**——brief verbatim CSS 的既定后果（与 B5-2 胶囊 track 静态 50% 同型），建议 B5-5/最终评审分诊是否需把彩影 blur 令牌化。
++- **徽标/按钮视觉无截图基线覆盖**：两矩阵在设置窗捕获 fold 之下（既有局限，同 B5-2 滑杆），视觉改由 e2e 样式断言兜底。若后续需像素级锁定，需在视觉回归加 fold 外滚动捕获（超出本任务范围）。
++- **浮球 44px（40→44）**：brief 有意为之（HIG 最小触控区），且 `--radius-full` 保持圆形；app-main 基线已重生成。
++- `playwright.config.worktree.js`（worktree 本地配置，端口 5174）**未提交**。
++- `docs/superpowers/sdd/review-B5-1.diff`、`review-B5-2.diff` 为前序任务遗留未跟踪文件，不属本任务，未入库。
++- 临时产物（b53-analyze.py、b53-probe.spec.js）已删除。
++- 提交惯例：feat + docs 两枚提交（docs 承载本报告/简报/台账）。
+diff --git a/src/components/badge/badge.css b/src/components/badge/badge.css
+index c4b5916..1468256 100644
+--- a/src/components/badge/badge.css
++++ b/src/components/badge/badge.css
+@@ -1,8 +1,22 @@
+-.c-badge { display: inline-flex; align-items: center; padding: 1px 8px; font-size: var(--font-size-xs);
+-  font-weight: var(--font-weight-medium); border-radius: 999px; }
+-.c-badge--accent { background: var(--accent-100); color: var(--accent-700); }
+-.c-badge--success { background: var(--success-50); color: var(--success-600); }
+-.c-badge--warning { background: var(--warning-50); color: var(--warning-600); }
+-.c-badge--danger { background: var(--danger-50); color: var(--danger-600); }
+-.c-badge--info { background: var(--info-50); color: var(--info-600); }
+-.c-badge--default { background: var(--neutral-100); color: var(--neutral-600); }
++/* iOS 风格徽标（B5-3）：浅 tint 底（accent/semantic 12% 透明混色）+ 细描边 + 语义色文字。
++   半透明混色让徽标「坐」在玻璃表面上而非实色「贴」上去；细描边 1px 界定轮廓。 */
++.c-badge { display: inline-flex; align-items: center; padding: 2px 9px; font-size: var(--font-size-xs);
++  font-weight: var(--font-weight-medium); border-radius: 999px;
++  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
++  background: color-mix(in srgb, var(--accent) 12%, transparent); }
++.c-badge--accent { color: var(--accent-700); }
++.c-badge--success { color: var(--success-600);
++  background: color-mix(in srgb, var(--success-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--success-500) 22%, transparent); }
++.c-badge--warning { color: var(--warning-600);
++  background: color-mix(in srgb, var(--warning-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--warning-500) 22%, transparent); }
++.c-badge--danger { color: var(--danger-600);
++  background: color-mix(in srgb, var(--danger-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--danger-500) 22%, transparent); }
++.c-badge--info { color: var(--info-600);
++  background: color-mix(in srgb, var(--info-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--info-500) 22%, transparent); }
++.c-badge--default { color: var(--neutral-600);
++  background: color-mix(in srgb, var(--neutral-500) 12%, transparent);
++  border-color: color-mix(in srgb, var(--neutral-500) 22%, transparent); }
+diff --git a/src/components/button/button.css b/src/components/button/button.css
+index 34a84f7..e8c6776 100644
+--- a/src/components/button/button.css
++++ b/src/components/button/button.css
+@@ -1,22 +1,31 @@
+ .c-btn {
+   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+   font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+   padding: 0 var(--space-4); height: 32px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+   transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast) var(--ease-out),
+     color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+   user-select: none; white-space: nowrap;
+ }
+ .c-btn:active { transform: scale(0.97); }
+-.c-btn--primary { background: var(--accent); color: var(--accent-contrast); }
+-.c-btn--primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-md); }
+-.c-btn--primary:active { background: var(--accent-active); }
+-.c-btn--secondary { background: var(--surface-2); color: var(--text-1);
+-  border: 1px solid var(--glass-border); }
++/* iOS 层次按钮（B5-3）：primary 顶部内高光 + 柔和彩影（有厚度不扁平）；secondary 玻璃底呼应壳材质 */
++.c-btn--primary {
++  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
++  color: var(--accent-contrast);
++  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 8px color-mix(in srgb, var(--accent-400) 30%, transparent);
++}
++.c-btn--primary:hover { filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px color-mix(in srgb, var(--accent-400) 40%, transparent); }
++.c-btn--primary:active { filter: brightness(0.96); }
++.c-btn--secondary {
++  background: var(--glass-bg);
++  color: var(--text-1);
++  border: 1px solid var(--glass-border);
++  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
++}
+ .c-btn--secondary:hover { background: var(--surface-hover); }
+ .c-btn--ghost { color: var(--text-2); }
+ .c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
+ .c-btn--danger { background: var(--danger-500); color: #fff; }
+ .c-btn--danger:hover { filter: brightness(1.08); }
+ .c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
+ .c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
+ .c-btn:disabled { opacity: 0.45; pointer-events: none; }
+diff --git a/src/components/float-ball/float-ball.css b/src/components/float-ball/float-ball.css
+index ef3bb91..78e4e6d 100644
+--- a/src/components/float-ball/float-ball.css
++++ b/src/components/float-ball/float-ball.css
+@@ -1,18 +1,20 @@
+-.c-float-ball { position: relative; width: 40px; height: 40px; flex: none;
+-  display: grid; place-items: center; color: #fff; cursor: pointer;
+-  border: 1px solid rgba(255, 255, 255, 0.28);
++/* iOS 玻璃悬浮球（B5-3）：去 accent 渐变浓底 → 玻璃底 + 亚克力模糊（与壳材质一致）+ accent 图标。
++   层次靠 material 背景 + 投影 + 内高光，而非色彩浓度。 */
++.c-float-ball { position: relative; width: 44px; height: 44px; flex: none;
++  display: grid; place-items: center; color: var(--accent); cursor: pointer;
++  border: 1px solid var(--glass-border);
+   border-radius: var(--radius-full);
+-  background: linear-gradient(135deg, var(--accent-400), var(--accent-600));
+-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28),
+-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
++  background: var(--glass-bg);
++  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
++  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+   transition: transform var(--dur-base) var(--ease-out),
+     box-shadow var(--dur-base) var(--ease-out); }
+ .c-float-ball svg { position: relative; }
+ /* hover：上浮 2px + 光晕增强（只动 transform/box-shadow/opacity） */
+ .c-float-ball:hover { transform: translateY(-2px);
+-  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
++  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+ .c-float-ball__glow { position: absolute; inset: -8px; pointer-events: none;
+   border-radius: var(--radius-full); opacity: 0;
+   background: radial-gradient(circle, var(--accent-200) 0%, transparent 65%);
+   transition: opacity var(--dur-base) var(--ease-out); }
+ .c-float-ball:hover .c-float-ball__glow { opacity: 1; }
+diff --git a/tests/e2e/components-basic.spec.js b/tests/e2e/components-basic.spec.js
+index 9cae0c2..0f0d64f 100644
+--- a/tests/e2e/components-basic.spec.js
++++ b/tests/e2e/components-basic.spec.js
+@@ -17,21 +17,43 @@ test('按钮四变体渲染', async ({ page }) => {
+   await box.waitFor();
+   // 计数限定在按钮展示区内：Card 页脚 / EmptyState action / Dialog / Toast 演示也会渲染按钮
+   await expect(box.locator('.c-btn')).toHaveCount(7);
+   await expect(box.locator('.c-btn--primary')).toHaveCount(4);
+   await expect(box.locator('.c-btn--secondary')).toHaveCount(1);
+   await expect(box.locator('.c-btn--ghost')).toHaveCount(1);
+   await expect(box.locator('.c-btn--danger')).toHaveCount(1);
+   await expect(box.locator('.c-btn--disabled')).toBeDisabled();
+ });
+ 
+-// Task I3 4d：primary hover 阴影令牌化（--shadow-md，跟随 shadow-intensity 定制器；
+-// 旧实现硬编码 rgba(0,0,0,0.18) 0 4px 12px，不响应定制器也不符合「禁止硬编码值」）
+-test('主按钮 hover 阴影使用 --shadow-md 令牌', async ({ page }) => {
++// Task I3 4d：primary hover 阴影 —— B5-3 iOS 化后从 `--shadow-md`（blur 16 中性暗影）
++// 改为柔和彩影 `0 4px 14px color-mix(accent-400 40%)`（内高光 + 彩影，层次按钮），
++// 断言随之改为新 iOS 彩影特征值（blur 14 + inset 内高光）。
++test('主按钮 hover 阴影为柔和彩影（内高光 + accent 彩影）', async ({ page }) => {
+   const comp = await openSettingsPartition(page, 8);
+   const box = comp.locator('.showcase:has-text("主按钮")');
+   await box.waitFor();
+   const btn = box.locator('.c-btn--primary').first();
+   await btn.hover();
+-  // --shadow-md = 0 4px 16px ...（blur 16 为令牌特征值；旧硬编码 blur 12）
+-  await expect(btn).toHaveCSS('box-shadow', /0px 4px 16px/);
++  // 新 iOS 层次按钮 hover：inset 顶部内高光 + 0 4px 14px accent 彩影（blur 14 特征值）
++  await expect(btn).toHaveCSS('box-shadow', /0px 4px 14px/);
++  await expect(btn).toHaveCSS('box-shadow', /inset/);
++});
++
++// B5-3：iOS 风格徽标/按钮/悬浮球（层次而非浓色）。brief verbatim，唯一适配：
++// 回概览的 home 项在左窗应用目录（.app-main__nav-l），右窗设置目录无 home 项。
++test('B5-3：徽标/按钮/悬浮球 iOS 风格（层次而非浓色）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  const comp = page.locator('.app-main__settings [data-page="components"]');
++  // 进入组件分区
++  await page.locator('.c-titlebar__control--settings').click();
++  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
++  // 徽标：tint 底半透明混色（非实色语义底）+ 细描边
++  const badgeBg = await comp.locator('.c-badge--accent').first().evaluate((el) => getComputedStyle(el).backgroundColor);
++  expect(badgeBg).toContain('color(srgb'); // color-mix 混色计算值
++  // 按钮 primary：内高光（box-shadow 含 inset）
++  const btnShadow = await comp.locator('.c-btn--primary').first().evaluate((el) => getComputedStyle(el).boxShadow);
++  expect(btnShadow).toContain('inset');
++  // 悬浮球：玻璃底（backdrop-filter 生效）
++  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]').click(); // 回概览（悬浮球在壳）
++  const ballFilter = await page.locator('.app-main__float-ball .c-float-ball').evaluate((el) => getComputedStyle(el).backdropFilter);
++  expect(ballFilter).toContain('blur');
+ });
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png
+index 0cde1a9..975ea5f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png
+index f7e298e..58b9ce9 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png
+index 72a4d06..d1993d2 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png
+index 33a56df..fbd5e07 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png
+index 64f2370..df71c63 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png
+index 90ba449..81d855f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/app-main-light-indigo-chromium-win32.png differ
