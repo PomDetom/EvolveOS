@@ -39,6 +39,8 @@
 - **测试**：全量 e2e 113 passed + 2 flake（app-shell 分区挂载 / title-bar mock 调用，隔离重跑均绿，同型于 B6-1 记录）；单测 69 passed；build ✓。
 - **视觉基线**：24/24 passed 零基线变化（静止 glow opacity 0、静止 box-shadow 未改）→ 不 update-snapshots。
 - **提交**：feat `1cd42a3`（CSS+JS+用例）；docs 本提交（报告 + 本账本 + brief）。
-- **评审**：（待独立评审）
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 3。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① `components-basic.spec.js`「neutral」仅经 blur 值间接判别（`--accent-300` 为纯 hex，同 blur 的 accent 彩影可通过全部断言）——可加固为断言外层阴影色 = 解析后 `--shadow-md` 色；② hover 后立即读 computed box-shadow，transition 200ms 存在时序敏感性（实测稳定，shadow-list 外层→inset 不可插值故 snap）；③ `float-ball.css` `.c-float-ball { position: relative }` 原仅供已删 glow 的 absolute 定位，现疑为 vestigial（可选清理）。
+- **评审闭环**：**Task B6-2: complete（commits 1cd42a3..11615a6，review clean）**。
 
 ### B6-3 按钮扁平实心
