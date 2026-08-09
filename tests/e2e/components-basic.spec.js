@@ -24,26 +24,10 @@ test('按钮四变体渲染', async ({ page }) => {
   await expect(box.locator('.c-btn--disabled')).toBeDisabled();
 });
 
-// B6-3：primary 扁平实心后 hover 仅背景明暗（theme-aware），box-shadow 保持中性 --shadow-sm
-// （0 1px 3px，blur-3 特征值，随 shadow-intensity 缩放）。旧「hover 彩影 0 4px 14px + inset
-// 内高光」（B5-3/B5-F1 引入）随彩影令牌回收一并删除。
-test('主按钮 hover 中性投影（--shadow-sm 无内高光无彩影）', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
-  const box = comp.locator('.showcase:has-text("主按钮")');
-  await box.waitFor();
-  const btn = box.locator('.c-btn--primary').first();
-  await btn.hover();
-  // 中性 --shadow-sm：0 1px 3px（blur-3 特征值，亮/暗主题同形，判别稳定）
-  await expect(btn).toHaveCSS('box-shadow', /0px 1px 3px/);
-  await expect(btn).toHaveCSS('box-shadow', /rgb/); // 中性投影（非 color-mix 彩）
-  await expect(btn).not.toHaveCSS('box-shadow', /inset/); // 内高光已去（扁平实心）
-  await expect(btn).not.toHaveCSS('box-shadow', /14px/); // 旧 hover 彩影 blur-14 已移除
-});
-
-// B5-3：iOS 风格徽标/按钮/悬浮球（徽标/悬浮球 iOS 玻璃；按钮 B6-3 起由层次改扁平实心）。
+// B5-3：iOS 风格徽标/按钮/悬浮球（徽标/悬浮球 iOS 玻璃；按钮 B6-R2-2 起改精致浅色材质）。
 // brief verbatim，唯一适配：
 // 回概览的 home 项在左窗应用目录（.app-main__nav-l），右窗设置目录无 home 项。
-test('B5-3：徽标/按钮/悬浮球 iOS 风格（按钮 B6-3 扁平实心）', async ({ page }) => {
+test('B5-3：徽标/按钮/悬浮球 iOS 风格（按钮 B6-R2-2 浅色材质）', async ({ page }) => {
   await page.goto('/?mode=app');
   const comp = page.locator('.app-main__settings [data-page="components"]');
   // 进入组件分区
@@ -52,11 +36,11 @@ test('B5-3：徽标/按钮/悬浮球 iOS 风格（按钮 B6-3 扁平实心）', 
   // 徽标：tint 底半透明混色（非实色语义底）+ 细描边
   const badgeBg = await comp.locator('.c-badge--accent').first().evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(badgeBg).toContain('color(srgb'); // color-mix 混色计算值
-  // 按钮 primary：扁平实心（B6-3 去内高光 inset、去渐变 → 实色 + 中性投影）
+  // 按钮 primary：精致浅色材质（B6-R2-2 取代 B6-3 实色扁平）—— 纯色 tint 底无渐变 + 顶部白内高光 inset
   const btnShadow = await comp.locator('.c-btn--primary').first().evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(btnShadow).not.toContain('inset');
+  expect(btnShadow).toContain('inset'); // 顶部白内高光（浅色材质层次）
   const btnBgImg = await comp.locator('.c-btn--primary').first().evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(btnBgImg).toBe('none'); // 无 linear-gradient
+  expect(btnBgImg).toBe('none'); // 无 linear-gradient（纯浅色 tint，非渐变）
   // 悬浮球：玻璃底（backdrop-filter 生效）
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]').click(); // 回概览（悬浮球在壳）
   const ballFilter = await page.locator('.app-main__float-ball .c-float-ball').evaluate((el) => getComputedStyle(el).backdropFilter);
@@ -82,58 +66,74 @@ test('B6-2：悬浮球 hover 中性投影（无彩色光晕 + 无 glow 元素）
   expect(shadow).not.toContain('22px'); // 旧 hover 彩影 0 8px 22px（blur-22）已移除
 });
 
-// B6-3：primary 扁平实心（B5-3 iOS 层次 → 实色扁平）：去渐变 + 去彩影 + theme-aware hover。
-// --accent/--accent-400 为纯 hex（非 color-mix），故 box-shadow 以 blur-3 特征值判别中性
-// （--shadow-sm = 0 1px 3px，同 B6-2 的 accent-300 教训）；theme-aware hover 以「canvas 解析
-// 计算色 → 亮度」判别方向性（Chromium 151 将 color-mix 结果序列化为 oklab(...) 而非 color(srgb，
-// 故亮度比较与序列化格式解耦）：浅色混 black 暗一档、深色混 white 亮一档。
-test('B6-3：按钮 primary 实色扁平（无渐变无彩影 + theme-aware hover）', async ({ page }) => {
+// B6-R2-2：按钮 primary 精致浅色材质（对齐菜单选中态 .c-navwheel__item--active 的 --accent-100
+// 浅 tint 材质），取代 B6-3 实色扁平 + :root[data-theme] color-mix 明暗 hover（luma 断言随规则删除）。
+// brief verbatim（Chromium 151 将 color-mix 计算值序列化为 oklab/color(srgb) → 断言经 toRGB 归一化解耦）。
+test('B6-R2-2：按钮 primary 浅色材质（accent-100 底 + accent-600 字 + 描边 + 上浮 hover）', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
   const comp = page.locator('.app-main__settings [data-page="components"]');
   const btn = comp.locator('.c-btn--primary').first();
-  // 实色：background 为纯色（非 gradient）
-  const bg = await btn.evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(bg).toBe('none'); // 无 linear-gradient
-  // 中性投影：box-shadow 非 color-mix 彩色，且为 --shadow-sm（0 1px 3px blur-3 特征值）
-  const shadow = await btn.evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(shadow).not.toContain('color(');
-  expect(shadow).toContain('0px 1px 3px'); // --shadow-sm
-  expect(shadow).not.toContain('inset'); // 内高光已去（扁平实心）
-  // theme-aware hover：浅色混 black 暗一档、深色混 white 亮一档（经 :root[data-theme] 区分）
-  // 设 motion=off 令 hover 背景瞬时到位（防 transition 120ms 插值相位抖动）
-  await page.evaluate(() => { document.documentElement.dataset.motion = 'off'; });
-  // 页内 canvas 把任意 CSS 颜色（含 oklab/color(srgb)）解析为 rgba → Rec.709 亮度（序列化解耦）
-  const hoverLuma = async (theme) => {
-    await page.evaluate((t) => { document.documentElement.dataset.theme = t; }, theme);
-    await btn.hover();
-    return btn.evaluate((el) => {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 1;
-      const ctx = cv.getContext('2d');
-      ctx.fillStyle = getComputedStyle(el).backgroundColor;
-      ctx.fillRect(0, 0, 1, 1);
-      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    });
+  await expect(btn).toBeVisible();
+  // 归一化任意 CSS 色为 [r,g,b]（hex 或 rgb()）
+  const toRGB = (color) => {
+    const c = color.trim();
+    if (c.startsWith('#')) {
+      const h = c.length === 4 ? c.slice(1).split('').map((x) => x + x).join('') : c.slice(1);
+      return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    }
+    const m = c.match(/rgba?\(([^)]+)\)/);
+    return m ? m[1].split(',').slice(0, 3).map(Number) : null;
   };
-  const accentLuma = await page.evaluate(() => {
-    const probe = document.createElement('i');
-    probe.style.backgroundColor = 'var(--accent)';
-    document.body.appendChild(probe);
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 1;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = getComputedStyle(probe).backgroundColor;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    probe.remove();
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  });
-  const lightLuma = await hoverLuma('light');
-  const darkLuma = await hoverLuma('dark');
-  expect(lightLuma).toBeLessThan(accentLuma); // 浅色混 black → 暗一档
-  expect(darkLuma).toBeGreaterThan(accentLuma); // 深色混 white → 亮一档
-  expect(darkLuma).toBeGreaterThan(lightLuma); // 深色 hover 亮于浅色 hover
+  const token = (name) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+  // 底 = --accent-100（浅 tint，非旧 var(--accent) 纯色）
+  expect(toRGB(await btn.evaluate((el) => getComputedStyle(el).backgroundColor)))
+    .toEqual(toRGB(await token('--accent-100')));
+  // 字 = --accent-600
+  expect(toRGB(await btn.evaluate((el) => getComputedStyle(el).color)))
+    .toEqual(toRGB(await token('--accent-600')));
+  // 描边存在
+  expect(await btn.evaluate((el) => getComputedStyle(el).borderTopWidth)).not.toBe('0px');
+  // hover：上浮 translateY(-1px) + 阴影加深（--shadow-md blur 16px）+ 底色 accent-200
+  await btn.hover();
+  await expect(btn).toHaveCSS('transform', /matrix\(1, 0, 0, 1, 0, -1\)/);
+  expect(await btn.evaluate((el) => getComputedStyle(el).boxShadow)).toContain('16px');
+  expect(toRGB(await btn.evaluate((el) => getComputedStyle(el).backgroundColor)))
+    .toEqual(toRGB(await token('--accent-200')));
+});
+
+// B6-R2-2 补充（spec §5 验证清单补齐）：顶部白内高光 inset + active 压下 scale(0.97) + danger 浅色材质。
+test('B6-R2-2：按钮顶部内高光 + active 压下 + danger 浅色材质', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
+  const box = page.locator('.app-main__settings [data-page="components"] .showcase:has-text("主按钮")');
+  await box.waitFor();
+  const toRGB = (color) => {
+    const c = color.trim();
+    if (c.startsWith('#')) {
+      const h = c.length === 4 ? c.slice(1).split('').map((x) => x + x).join('') : c.slice(1);
+      return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    }
+    const m = c.match(/rgba?\(([^)]+)\)/);
+    return m ? m[1].split(',').slice(0, 3).map(Number) : null;
+  };
+  const token = (name) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+  const primary = box.locator('.c-btn--primary').first();
+  // 顶部白内高光 inset 0 1px 0 rgba(255,255,255,0.5)（静止态即有层次）
+  await expect(primary).toHaveCSS('box-shadow', /inset/);
+  // active：translateY(0) scale(0.97) → matrix(0.97, 0, 0, 0.97, 0, 0) 压下
+  await primary.hover();
+  await page.mouse.down();
+  await expect(primary).toHaveCSS('transform', /matrix\(0\.97, 0, 0, 0\.97, 0, 0\)/);
+  await page.mouse.up();
+  // danger 同机制：danger-50 底 + danger-600 字 + 描边
+  const danger = box.locator('.c-btn--danger').first();
+  await expect(danger).toBeVisible();
+  expect(toRGB(await danger.evaluate((el) => getComputedStyle(el).backgroundColor)))
+    .toEqual(toRGB(await token('--danger-50')));
+  expect(toRGB(await danger.evaluate((el) => getComputedStyle(el).color)))
+    .toEqual(toRGB(await token('--danger-600')));
+  expect(await danger.evaluate((el) => getComputedStyle(el).borderTopWidth)).not.toBe('0px');
 });
