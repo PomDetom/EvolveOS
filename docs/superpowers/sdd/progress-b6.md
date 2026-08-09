@@ -6,7 +6,7 @@
 ## 任务清单
 
 - [x] Task B6-1: 背景装饰多样式（强化网格 + dots/diagonal/waves/aurora + 8 预览卡）
-- [ ] Task B6-2: 悬浮球去光晕（删 glow + 中性 hover 投影）
+- [x] Task B6-2: 悬浮球去光晕（删 glow + 中性 hover 投影）
 - [ ] Task B6-3: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）
 - [ ] 最终整体评审 + 合并 main + 合并后全量回归
 
