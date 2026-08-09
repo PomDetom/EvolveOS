@@ -19,6 +19,9 @@ const SHOTS = [
   ['appearance-partition', '.app-main__settings [data-page="appearance"]', 1],
   ['components-partition', '.app-main__settings [data-page="components"]', 8],
   ['motion-partition', '.app-main__settings [data-page="motion"]', 9],
+  // B6-R2-2：补按钮像素基线（修复 B6 最终评审 Important-1 跟进项 —— 按钮矩阵在设置窗 fold 下，
+  // components-partition 截图不含按钮，本 SHOT 下滚到按钮 showcase 单独捕获）。
+  ['buttons', '.app-main__settings [data-page="components"] .showcase:has-text("按钮")', 8],
 ];
 
 const THEMES = ['light', 'dark'];

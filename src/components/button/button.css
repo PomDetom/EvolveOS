@@ -8,15 +8,25 @@
   user-select: none; white-space: nowrap;
 }
 .c-btn:active { transform: scale(0.97); }
-/* B6-3：primary 扁平实心（B5-3 iOS 层次 → 实色）：去渐变 + 去内高光 + 回收 B5-F1 彩影令牌。
-   hover theme-aware 明暗（浅色混 black 暗一档 / 深色混 white 亮一档，经 :root[data-theme] 区分） */
+/* B6-R2-2：primary/danger 精致浅色材质（对齐菜单选中态 .c-navwheel__item--active 的 --accent-100
+   浅 tint）。静止 = 浅 tint 底 + 深色字 + 柔和 accent 描边 + 顶部白内高光；hover = 上浮 -1px +
+   阴影加深 --shadow-md + 底色深一档；active = 压下 scale(0.97)。取代 B6-3 实色扁平 +
+   :root[data-theme] color-mix 明暗 hover（已删，两主题 hover 一致）。 */
 .c-btn--primary {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  box-shadow: var(--shadow-sm); /* 中性轻投影 */
+  background: var(--accent-100);
+  color: var(--accent-600);
+  border: 1px solid color-mix(in srgb, var(--accent-500) 45%, transparent);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
-:root[data-theme="light"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 92%, black); }
-:root[data-theme="dark"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 92%, white); }
+.c-btn--primary:hover {
+  transform: translateY(-1px);
+  background: var(--accent-200);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.c-btn--primary:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
 .c-btn--secondary {
   background: var(--glass-bg);
   color: var(--text-1);
@@ -26,10 +36,21 @@
 .c-btn--secondary:hover { background: var(--surface-hover); }
 .c-btn--ghost { color: var(--text-2); }
 .c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
-.c-btn--danger { background: var(--danger-500); color: #fff; }
-/* danger 同 primary 机制：hover 实色明暗 theme-aware（去 filter: brightness） */
-:root[data-theme="light"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 92%, black); }
-:root[data-theme="dark"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 92%, white); }
+.c-btn--danger {
+  background: var(--danger-50);
+  color: var(--danger-600);
+  border: 1px solid color-mix(in srgb, var(--danger-500) 45%, transparent);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.c-btn--danger:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--danger-50) 75%, var(--danger-500));
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.c-btn--danger:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
 .c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
 .c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
 .c-btn:disabled { opacity: 0.45; pointer-events: none; }

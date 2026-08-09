@@ -54,6 +54,8 @@
 | `none` 关闭 | 实底 | `var(--surface-solid)`（不变） | — |
 
 > 若某预设叠加后观感不符「鲜明但克制」，按上述结构方向微调浓度/尺寸/位置（勿大改玻璃材质），解码比对 + 记入报告。
+>
+> **实现注记（最终评审记录，2026-08-09）**：`waves` 主层 alpha 按计划书落地为 36%，略低于本规格 40-55% 下限（计划书原值，非实施偏差）——经玻璃后 4pt 差异不可感知；若用户目检偏淡，提到 ~42% 即可。
 
 **预览卡 swatch**：`partitions.css` 8 个 `[data-bd-swatch]` 规则同步改为各预设的 **mini 大构图**（同款多层渐变缩放到 swatch 盒内，`background-size` 相应对齐），保持与真实背景一致的观感。
 
@@ -99,6 +101,8 @@
 覆盖手机→桌面跨越（display:none→可见，ResizeObserver 会触发）、桌面窗口 resize、以及任何容器尺寸变化。
 
 **回归测试**（TDD）：e2e —— ① 手机宽度（≤900px）加载 → 拉宽到较矮桌面窗口 → 点击左窗顶项/底项，断言 active index === 点击 index（不跳变）；② 桌面直接加载常规尺寸 → 顶/底正常；③ 既有 app-shell 导航 e2e 与 geometry 单测全绿。
+
+> **实现注记（最终评审记录，2026-08-09）**：规格第 3 步「将当前选中项重新对齐锚线（`list[AXIS.scroll] = scrollTopForAnchor(active) + CONTENT_TOP`）」在实现中**有意省略**——resize 时主动重对齐会触发 scroll → `snapNow`，有重复/误改选中风险；且顶/底项的自然 scroll 边界（顶部 scrollTop 0、底部 maxScroll）已使本 bug 复现的两端情形自动对齐。残余影响：**列表中部**选中项 resize 后轻微偏离锚线直至下次交互（纯视觉、非回归、下次点击/滚动纠正）。如需严格对齐可后续在 `pointerId === null` 且目标≠当前 scrollTop 时补 re-align。
 
 ## 7. 非目标
 
