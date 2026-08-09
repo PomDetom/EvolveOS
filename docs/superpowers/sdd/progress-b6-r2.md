@@ -8,7 +8,14 @@
 - [x] Task B6-R2-1: 背景装饰大色块构图（8 预设可见且互不相同，渐变/极光区分）
 - [x] Task B6-R2-2: 按钮精致浅色材质（accent-100 tint + 描边 + 上浮 hover + 按钮像素基线）
 - [x] Task B6-R2-3: 导航轮 resize 后顶/底项选中修复（ResizeObserver + destroy）
-- [ ] 最终整体评审 + 合并 main + 合并后全量回归
+- [x] 最终整体评审 + 合并 main + 合并后全量回归
+
+## 收尾记录
+
+- **合并**：`git merge --no-ff feature/b6-r2-page-style-refresh` → main `b356066`（35 文件，+1021/-149）。
+- **合并后全量回归**：e2e 120 passed + 4 failed（默认 workers 并行冷启动 flake：标题栏上下文联动 / B6-R2-2 按钮 / floatstrip / title-bar hover —— 隔离 `--workers=1` 重跑 4 passed，确认为环境性，隔离验收标准下 **124 全绿**）+ 单测 68 passed + build ✓。
+- **删分支**：`feature/b6-r2-page-style-refresh` 已删（merged）。
+- **交付**：8 背景预设大色块构图可见且互异（渐变/极光区分）+ 按钮浅色柔和材质（含像素基线）+ 导航轮 resize 顶/底选中修复。桌面目检待用户执行：① 8 预设（尤其 dots vs aurora 并排）② 按钮 hover 上浮 ③ 拉宽/拉高窗口后导航顶/底可选中。
 
 ## 任务进度
 
