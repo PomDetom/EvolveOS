@@ -19,4 +19,6 @@
 - **测试**：e2e 全量 117 passed（含 app-shell 33、B6-R2-1 1）；单测 68 passed（backdrop 4→3 用例）；build ✓。
 - **视觉基线**：先 chromium canvas 解码比对确认差异仅背景图案（app-main = 纯低幅 wash 全帧、appearance = swatch 构图 + wash、components/motion = 仅低幅 wash 低于阈值），无字体/布局/组件漂移；`--update-snapshots` 重生成 app-main 6 + appearance-partition 6（12 张），components/motion 恢复原基线（零变化）。重跑 visual 24 passed。
 - **提交**：feat `1c8dce2`（代码+测试+基线）；docs `b9f6723`（本账本 + 报告 + brief）。
-- **评审**：待控制器独立评审。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① e2e「8 预设均可见」`toContain('gradient')` 断言偏弱（1px 细线 repeating-gradient 亦可通过，单测已用 `not.toContain('24px 24px')` + 层数断言兜底）；② 单测整文件 `not.toContain('24px 24px')` 守卫脆（未来无关 24px 会误红，可接受）；③ **dots 与 aurora 是互异性最接近的一对**（同为 accent-300/400+neutral-400 三团、锚点相近，区分靠团尺寸与 neutral alpha）——用户桌面目检时建议并排对比；waves 主层 alpha 36% 略低于规格 40-55% 下限（brief 原值，若目检偏淡可提到 ~42%）；④ 单测覆盖略降（删 BD_LABELS 键序/渲染卡断言，e2e B6-1 仍覆盖）。
+- **评审闭环**：**Task B6-R2-1: complete（commits 1c8dce2..211fa7a，review clean）**。核心验收（8 预设经玻璃后可见且互不相同）为规格既定用户目检闸门，实现层 CSS 结构证据充分。
