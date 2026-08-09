@@ -50,6 +50,6 @@
 - **用例适配（brief verbatim 不红两因）**：①Chromium 151 将 `color-mix(..., black)` 计算值序列化为 `oklab(...)` 而非 `color(srgb` → 改 canvas 解析任意 CSS 色为 rgba → Rec.709 亮度，比对 `light < accent < dark` 三档方向性（与序列化格式解耦）；②视觉基线按钮在设置窗 fold 下（components 分区截图仅含顶部 ~816px，按钮矩阵 y=930）→ 基线零变化。
 - **测试**：全量 e2e 115 passed + 1 flake（app-shell「亚克力两档」`data-glass` 时序，隔离重跑绿，同 B6-1 记录型）；单测 69 passed；build ✓；`grep -r "shadow-glow" src/ tests/` 零命中。
 - **视觉基线**：24 张 `--update-snapshots` 重生成后与原基线 sha1 逐字节一致 → 零改动不提交（解码比对确认按钮在 fold 下）。
-- **提交**：feat `?`（CSS+令牌+用例）；docs `?`（报告 + 本账本 + brief）。
+- **提交**：feat `ebf9fa5`（CSS+令牌+用例）；docs `393f6fd`（报告 + 本账本 + brief）。
 - **评审**（独立评审）：待最终整体评审。
 - **关注点**：规格 §5 写 hover 混 92% 而 brief/计划书为 88%，以 brief 为准；`.c-btn` transition 仍留 `filter` 兜底项（brief 明确保留），可留收尾清理。

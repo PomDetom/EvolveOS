@@ -72,8 +72,8 @@ themes.css 令牌定义已删；button.css 无残留引用（注释亦不写令�
 
 ## 提交
 
-- feat `?`：按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌，B6-3）
-- docs `?`：B6-3 交接（报告 + 账本进度 + brief）
+- feat `ebf9fa5`：按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌，B6-3）
+- docs `393f6fd`：B6-3 交接（报告 + 账本进度 + brief）
 
 ## 自评
 
