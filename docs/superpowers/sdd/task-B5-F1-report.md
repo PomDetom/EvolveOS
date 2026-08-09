@@ -77,11 +77,24 @@
 
 ## Concerns / 建议
 
-1. **视觉规格未显式加载 500 档**（简报范围外，未改动 `visual-regression.spec.js`）：现规格 `document.fonts.load` 只显式拉 400/700，500 靠惰性触发。经验上 appearance 6/6 稳定加载并重生成，风险低；但 appearance 基线此后依赖「截图前 65 已加载」这一时序（其余分区两态均稳）。建议后续将 `'500 14px "Alibaba PuHuiTi"'` 并入视觉规格的 fonts.load（与 B5-1 对 400/700 的竞态适配同型），即可对 65 档取得完全确定性。此项超出简报 Files 范围，留待控制器/评审决定。
+1. ~~**视觉规格未显式加载 500 档**~~（**已修复，见下「评审修复 round 1/5」**）：原状态为现规格 `document.fonts.load` 只显式拉 400/700，500 靠惰性触发；已按评审补 500 档，消除 appearance 基线确定性缺口。
 2. **smoke 冷启动 flake**：全量跑首测（`/?mode=app` 冷启动 vite 5174）偶发 5s 未挂载超时；重跑绿。环境性（资源受限 + 新 server 首请求），非本次改动引入。
 3. 桌面目检（真 65 下按钮/标签/表单 label 清晰锐利、400/700 观感不变）由用户人工验证，Web 侧已由 tokens e2e + 基线重生成覆盖。
 
 ## 提交
 
-- feat 提交：`feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）`（含 65 woff2 + fonts.css + 两个测试文件 + 8 张基线）
-- docs 提交：本报告 + 账本 `progress-b5-fix.md` + 简报（`git add docs/superpowers/sdd/`）
+- feat 提交 `5122103`：`feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）`（含 65 woff2 + fonts.css + 两个测试文件 + 8 张基线）
+- docs 提交 `a8dbd37`：本报告 + 账本 `progress-b5-fix.md` + 简报（`git add docs/superpowers/sdd/`）
+- fix 提交 `74721f2`（评审 round 1/5，见下）
+
+## 评审修复（round 1/5：Important）
+
+**问题**：`visual-regression.spec.js` 截图前显式字体加载 `Promise.all` 只 load 400/700 档，未含 500。本任务重生成的 6 张 appearance 基线为「65 face 已加载」状态，若截图时 65 未加载（冷启动/CI），medium 文字渲染为伪粗 → 对新基线失败。65 为应用最大资产（5.3MB），最慢最易错过 600ms settle 窗口，且 65 依赖正是本任务引入的。
+
+**改动**（一行，沿用既有 B5-1 模式）：`tests/e2e/visual-regression.spec.js:71-75` 的 `Promise.all` 补入 `document.fonts.load('500 14px "Alibaba PuHuiTi"')`（位于 400 与 700 之间，保持字重升序），并更新上方注释注明 B5-F1 补 500 档意图。仅此一文件，2 insertions。
+
+**覆盖测试**：`npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js` → **24 passed (2.2m)**，含重生成的 8 张（appearance ×6 + motion-amber ×2）与保持原基线的 16 张（500 强制加载后 real-65 渲染仍在阈值内）——全部绿。
+
+**build**：`npm run build` → ✓ built in 731ms。
+
+**提交**：`git commit -m "fix: visual-regression 字体等待补 500 档（消除 appearance 基线确定性缺口，B5-F1 评审）"` → `74721f2`（只含该文件）。
