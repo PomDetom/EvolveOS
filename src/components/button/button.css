@@ -8,14 +8,15 @@
   user-select: none; white-space: nowrap;
 }
 .c-btn:active { transform: scale(0.97); }
-/* iOS 层次按钮（B5-3）：primary 顶部内高光 + 柔和彩影（有厚度不扁平）；secondary 玻璃底呼应壳材质 */
+/* B6-3：primary 扁平实心（B5-3 iOS 层次 → 实色）：去渐变 + 去内高光 + 回收 B5-F1 彩影令牌。
+   hover theme-aware 明暗（浅色混 black 暗一档 / 深色混 white 亮一档，经 :root[data-theme] 区分） */
 .c-btn--primary {
-  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), var(--shadow-glow);
+  box-shadow: var(--shadow-sm); /* 中性轻投影 */
 }
-.c-btn--primary:hover { filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), var(--shadow-glow-hover); }
-.c-btn--primary:active { filter: brightness(0.96); }
+:root[data-theme="light"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
+:root[data-theme="dark"] .c-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, white); }
 .c-btn--secondary {
   background: var(--glass-bg);
   color: var(--text-1);
@@ -26,7 +27,9 @@
 .c-btn--ghost { color: var(--text-2); }
 .c-btn--ghost:hover { background: var(--surface-hover); color: var(--text-1); }
 .c-btn--danger { background: var(--danger-500); color: #fff; }
-.c-btn--danger:hover { filter: brightness(1.08); }
+/* danger 同 primary 机制：hover 实色明暗 theme-aware（去 filter: brightness） */
+:root[data-theme="light"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 88%, black); }
+:root[data-theme="dark"] .c-btn--danger:hover { background: color-mix(in srgb, var(--danger-500) 88%, white); }
 .c-btn--sm { height: 26px; padding: 0 var(--space-3); font-size: var(--font-size-xs); }
 .c-btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-base); }
 .c-btn:disabled { opacity: 0.45; pointer-events: none; }
