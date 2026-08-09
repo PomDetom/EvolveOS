@@ -1,9 +1,16 @@
-/* 阿里普惠体（B5-1）：55 Regular 正文 + 85 Bold 标题，WOFF2 官方包。拉丁缺字形回退系统字体栈
-   （--font-sans 后续已含 -apple-system/Segoe UI）。font-display: swap → 首屏系统字体占位、加载后替换。 */
+/* 阿里普惠体（B5-1 55/85，B5-F1 补 65）：55 Regular 正文 + 65 Medium 中等 + 85 Bold 标题，WOFF2 官方包。
+   拉丁缺字形回退系统字体栈（--font-sans 后续已含 -apple-system/Segoe UI）。
+   font-display: swap → 首屏系统字体占位、加载后替换。
+   B5-F1：补 65 Medium 档，令 --font-weight-medium(500) 命中真字重，消除 Chromium 由 400 伪合成加粗的 CJK 模糊。 */
 @font-face {
   font-family: 'Alibaba PuHuiTi';
   src: url('../assets/fonts/AlibabaPuHuiTi-3-55-Regular.woff2') format('woff2');
   font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  src: url('../assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2') format('woff2');
+  font-weight: 500; font-display: swap;
 }
 @font-face {
   font-family: 'Alibaba PuHuiTi';
