@@ -51,5 +51,6 @@
 - **测试**：全量 e2e 115 passed + 1 flake（app-shell「亚克力两档」`data-glass` 时序，隔离重跑绿，同 B6-1 记录型）；单测 69 passed；build ✓；`grep -r "shadow-glow" src/ tests/` 零命中。
 - **视觉基线**：24 张 `--update-snapshots` 重生成后与原基线 sha1 逐字节一致 → 零改动不提交（解码比对确认按钮在 fold 下）。
 - **提交**：feat `ebf9fa5`（CSS+令牌+用例）；docs `393f6fd`（报告 + 本账本 + brief）。
-- **评审**（独立评审）：待最终整体评审。
-- **关注点**：规格 §5 写 hover 混 92% 而 brief/计划书为 88%，以 brief 为准；`.c-btn` transition 仍留 `filter` 兜底项（brief 明确保留），可留收尾清理。
+- **评审**（独立评审）：Spec ✅（实质）符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① **88% vs 92% plan-vs-spec 张力**——规格 §5 写 hover 混 92%、计划书/brief 为 88%，实施者按 brief 落地并披露（4pp 视觉细微；若以规格为准应改 92%，否则正式记录规格修订）；② `:root:not([data-theme])` hover 兜底缺失——新规则仅 `data-theme="light|dark"` 生效，data-theme 缺位时 hover 静默失效（applyConfig 恒设，低风险）；③ `.claude/worktrees/b5-design-language` 陈旧 worktree 仍含已删 `--shadow-glow` 令牌（B5 遗留，可删 worktree 清理）；④ 按钮新视觉零像素基线覆盖（按钮矩阵在设置窗 fold 下 y=930 > 截图 ~816px，仅计算样式断言，最终评审须人工/截图补验）。
+- **评审闭环**：**Task B6-3: complete（commits ebf9fa5..a250c76，review clean）**。
