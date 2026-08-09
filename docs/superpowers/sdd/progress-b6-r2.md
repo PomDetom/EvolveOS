@@ -29,6 +29,6 @@
 - **TDD**：RED 3 failed（旧实色底无 inset/无描边/hover 无上浮）→ GREEN components-basic 6 passed。
 - **测试**：e2e 全量 **123 passed**（components-basic 6 + 其余 + 视觉 30；三轮含 3 个与改动无关的冷启动时序 flake：smoke/app-shell 亚克力/mobile-nav 主题卡 —— 隔离重跑均绿，第三轮全绿）；单测 15 files / 68 passed（customizer 曾与后台 e2e 并发偶发 1 flake，独占重跑全绿）；`npm run build` ✓。
 - **视觉基线**：解码比对闸门 —— 裸跑 visual 24 passed（既有 24 张字节零变化，按钮改动在 components-partition fold 下）+ 6 failed（buttons 无基线）；`--update-snapshots` 后 **30 passed，仅新增 6 张 buttons-*（light/dark × indigo/amber/emerald），既有 24 张零修改**（git status 证实）。
-- **提交**：feat `1a4b0fa`（代码+测试+基线）；docs `（见下）`（本账本 + 报告 + brief）。
+- **提交**：feat `1a4b0fa`（代码+测试+基线）；docs `32bfab1`（本账本 + 报告 + brief）。
 - **评审**（独立评审）：待控制器评审后填写。
 - **Minor（deferred，最终评审 triage）**：① danger hover 色档按 brief 用 75%（规格 §5 允许 80% 或既有所需档位）；② 补充用例的 active 断言依赖 `page.mouse.down()` 触发 :active（若未来基类 `:active` 变换与 primary 覆写不一致会误红，属正常演进信号）；③ e2e 冷启动时序 flake 为环境问题（见「测试」节），建议最终评审归入已知抖动，不阻塞。
