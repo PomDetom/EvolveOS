@@ -44,3 +44,10 @@
 - **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 3。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① ~~账本 `--workers=1` 全绿表述过强~~ **已修正**（见上「全量 e2e」节，评审发现账本与报告矛盾）；② 可滚动视口下点底部项 `onChange` 双触发（snapNow 守卫 `|scroll-target|<0.05` 因末项目标超 maxScroll ~12px 永不成立 → select 二次触发；既有几何行为、修复未引入、左窗幂等无害）；③ 新用例 400ms 吸附沉降等待存在约 50ms 余量的低 flake 风险（与 spec 既有惯用一致，实测连续 RED/GREEN）。另记录：全量默认 workers 冷启动 flake 为环境性（基线对照已证）；`renderRight` 每次重挂 destroy（当前右窗轮纯 UI 态每次重建，无跨重挂状态需求）。
 - **评审闭环**：**Task B6-R2-3: complete（commits 4b16118..e7e1f5c，review clean）**。
+
+### 最终整体评审（opus，0b0b9fb..dc0ffe8）
+
+- **结论**：Ready to merge: Yes。无 Critical/Important 缺陷；12 个 deferred minors 全 ship-as-is；R2-3 修复验证正确（RO 循环安全经 border-box/inset 确认、destroy 生命周期完整）；账本 `--workers=1` 过强表述已 reconcile。
+- **Minor 4（均非阻塞）**：① **规格 §6 第 3 步「resize 重对齐选中项」有意未实现**（防 snapNow 误改选中；顶/底两端自然边界已自动对齐，残余仅「中部选中项 resize 后轻微偏锚直至下次交互」）——已记入规格实现注记；② 底部项 `onChange` 双触发（既有几何、幂等无害）；③ waves alpha 36% vs 规格 40-55%（计划书原值）——已记入规格实现注记，目检偏淡再调；④ `buttons` 基线选择器依赖 DOM 序（潜在 footgun，下次触碰时收紧 `:has-text("按钮 Button")`）。
+- **三验收闸门均有证据**：8 预设可见/互异（基线重生成 + appearance dark swatch 显著变化 + 用户目检）；按钮浅色材质（CSS 三态符合规格 + 6 张像素基线 + 行为 e2e）；导航 resize 顶/底可选中（真 RED→GREEN + 加固测试）。
+- **合并后**：全量回归以「隔离复跑 + 改动相关用例确定性全绿」为验收（默认 workers 冷启动 flake 环境性）；用户桌面目检三项（尤其 dots vs aurora 并排、waves 浓度）。
