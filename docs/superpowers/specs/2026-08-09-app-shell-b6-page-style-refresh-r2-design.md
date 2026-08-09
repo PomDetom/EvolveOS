@@ -79,7 +79,28 @@
 
 **验证**：更新 B6-3 e2e 断言（`--accent-100` 底 / `--accent-600` 字 / 描边存在 / 顶部内高光 / hover `translateY(-1px)` + `--shadow-md` 加深 / active `scale(0.97)`；删除 color-mix 明暗 luma 断言）；**新增按钮像素基线**（修复 B6 最终评审 Important-1 跟进项：components 分区滚到按钮 showcase 或独立按钮捕获截图，按钮矩阵不再被 fold 遮挡）。
 
-## 6. 非目标
+## 6. 导航轮选中 bug 修复（用户报告，与 R2 一并处理）
+
+**症状**：页面拉宽后，菜单窗口最上和最下的项无法选中，选中后自动跳到下一个菜单。
+
+**根因（已复现确认）**：`src/components/navigation-wheel/nav-wheel.js` 的几何 padding（`padTop/padBottom`）与 `CONTENT_TOP` **只在 mount 时按当时 `viewLen()` 计算一次，容器尺寸变化后永不重算**。关键触发：
+- 页面以 ≤900px（手机形态）加载时左窗 `display:none` → `clientHeight=0` → `padTop=padBottom=0`。
+- 「拉宽」过 900px 断点后左窗显示但 padding 仍为 0；窗口较矮（左窗 7 项内容 ≈442px > 视口，可滚动）时锚线数学断裂：
+  - 点击底部项 → 目标 scrollTop 超出 maxScroll 被 clamp → `snapNow` 的 `findNearestIndex` 在 scrollTop=0 处锚线指向中间项（≈3-4）→ 跳到中间项；
+  - 点击顶部项（从中间位置）→ 滚回 0 后 `snapNow` 重算锚线最近项为相邻项（≈1-2）→ 跳到下一项。
+- 桌面加载后 resize（高度变化）同理：pad 按旧高度欠配 → 内容可滚动时同样跳变。
+
+**修复方向**：`nav-wheel.js` 挂 **ResizeObserver** 观察 list 元素（list 为 `position:absolute; inset`，其 clientHeight = 容器高；改 padding 不影响其 clientHeight，故无观测循环）→ 容器尺寸变化时：
+1. 重算 `padTop/padBottom`（同 mount 公式）；
+2. 重算 `CONTENT_TOP = itemEls[0][AXIS.offset]`（`const` 改 `let`）；
+3. 将当前选中项重新对齐锚线（`list[AXIS.scroll] = scrollTopForAnchor(active) + CONTENT_TOP`，越界自然 clamp）；
+4. `setFocal()`。
+
+覆盖手机→桌面跨越（display:none→可见，ResizeObserver 会触发）、桌面窗口 resize、以及任何容器尺寸变化。
+
+**回归测试**（TDD）：e2e —— ① 手机宽度（≤900px）加载 → 拉宽到较矮桌面窗口 → 点击左窗顶项/底项，断言 active index === 点击 index（不跳变）；② 桌面直接加载常规尺寸 → 顶/底正常；③ 既有 app-shell 导航 e2e 与 geometry 单测全绿。
+
+## 7. 非目标
 
 - 材质体系（玻璃/亚克力配方）不改。
 - 不引入背景参数可配置化（密度/色浓度固定）。
@@ -88,8 +109,9 @@
 - 不重构组件抽象层；不碰 secondary/ghost 现有样式。
 - `.c-btn` 基类 transition 的 `filter` 项与 `.c-float-ball { position:relative }` 等 B6 deferred minor 不属本次范围（维持现状）。
 
-## 7. 交付形态
+## 8. 交付形态
 
 - Git：分支（自 main 检出，如 `feature/b6-r2-page-style-refresh`），共享 checkout 执行；SDD 流程（每任务 TDD + 独立评审 + 全量回归绿）→ 最终整体评审 → 合并 main → 合并后全量回归。
+- **任务分解（3 任务串行）**：① B6-R2-1 背景大色块构图 ② B6-R2-2 按钮精致浅色材质 ③ B6-R2-3 导航轮 resize 选中修复。
 - 留痕：`docs/superpowers/sdd/progress-b6-r2.md`（或追加 B6 账本）。
-- 桌面目检：① 8 背景预设各可见且互不相同、渐变/极光区分明显 ② 按钮浅色柔和有层次、hover 上浮自然、danger 协调。
+- 桌面目检：① 8 背景预设各可见且互不相同、渐变/极光区分明显 ② 按钮浅色柔和有层次、hover 上浮自然、danger 协调 ③ 拉宽/拉高窗口后导航顶/底项可正常选中。
