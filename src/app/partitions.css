@@ -32,7 +32,9 @@
 .app-main__backdrop-sel { margin-bottom: var(--space-5); max-width: 480px; }
 .app-main__backdrop-sel-head { font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium); color: var(--text-1); margin-bottom: var(--space-2); }
-.app-main__backdrop-sel-opts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* 4×2 平衡网格：8 卡固定 4 列（56px×4 + 3 间隙×8 = 248px），无 flex-wrap 的 7+1 孤立卡
+   （评审 B6-1 Important：504px > 480px 容器宽曾致第 8 卡孤悬第二行） */
+.app-main__backdrop-sel-opts { display: grid; grid-template-columns: repeat(4, 56px); gap: var(--space-2); }
 .app-main__backdrop-card { display: flex; flex-direction: column; align-items: center;
   gap: var(--space-1); width: 56px; padding: var(--space-1) 0;
   border: 1px solid var(--glass-border); border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
