@@ -403,6 +403,23 @@ test('B6-1：背景装饰 8 预设 + 切换生效', async ({ page }) => {
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'grid');
 });
 
+// —— B6-R2-1 背景装饰大色块构图（8 预设可见且互不相同）——
+// 旧细线图案被玻璃磨没，本任务改大尺寸渐变构图（blob/band ≥ 容器 15-25%，alpha 40-55%）；
+// 断言每预设 .app-main__backdrop computed background-image 为多层渐变（非 none、非纯实底）。
+
+test('B6-R2-1：8 背景预设切换均生效（非 none 预设 backdrop 含渐变 wash）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click();
+  await expect(page.locator('.app-main__backdrop-card')).toHaveCount(8);
+  for (const bd of ['gradient', 'geo', 'grid', 'dots', 'diagonal', 'waves', 'aurora', 'none']) {
+    await page.locator(`.app-main__backdrop-card[data-bd="${bd}"]`).click();
+    const img = await page.locator('.app-main__backdrop').evaluate((el) => getComputedStyle(el).backgroundImage);
+    if (bd === 'none') expect(img).toBe('none');
+    else expect(img).toContain('gradient'); // 大构图 wash 非纯实底
+  }
+});
+
 // —— B2-R3 背景层预设柔和补色（闭环 B2-2 I-1：暗色光晕过广）——
 // 三预设 --backdrop-bg 从 --accent-200/300 实色改 color-mix 加 alpha（≤0.3）、范围收窄；
 // 默认 gradient 实色光晕经 color-mix 后计算值带非零 alpha（Chromium 序列化为
