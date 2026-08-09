@@ -244,6 +244,8 @@ export function mountAppMode(root) {
 
   // —— 右窗：按 rightMode 渲染应用目录轮 / 设置目录轮（纯 icon，38.2% 锚点）——
   function renderRight() {
+    rightWheel?.destroy(); // 重挂前释放旧 ResizeObserver（防多次重挂泄漏）
+    rightWheel = null;
     if (state.rightMode === 'settings') {
       navRBody.innerHTML = `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`;
       const wheel = mountNavWheel(navRBody.querySelector('.c-navwheel__list'), {
@@ -252,6 +254,7 @@ export function mountAppMode(root) {
         anchorRatio: 0.382,
       });
       wheel.setActive(state.settingsId); // 保持上次选中的设置分区
+      rightWheel = wheel;
       return wheel;
     }
     const mod = MODULES.find((m) => m.id === state.moduleId);
@@ -265,6 +268,7 @@ export function mountAppMode(root) {
       anchorRatio: 0.382,
     });
     wheel.setActive(state.dirId); // 首项即锚点初始位（scrollTop 0），无需滚动
+    rightWheel = wheel;
     return wheel;
   }
 
@@ -592,6 +596,9 @@ export function mountAppMode(root) {
     pushStack({ type: 'dir', moduleId: id });
   }
 
+  // 右窗轮持有句柄（B6-R2-3）：renderRight 重挂前 destroy 旧轮，防 ResizeObserver 随多次重挂泄漏。
+  // 右窗为多实例（应用目录轮 / 设置目录轮交替），左窗/横向 dock 常驻单实例无需销毁。
+  let rightWheel = null;
   // dock 懒挂载：桌面视口下 dock 为 display:none（clientWidth=0 会让几何 pad 计算失真），
   // 首次进入手机形态时才挂载（几何基于实测视口长度；手机视口近似恒定，挂载一次即可）
   let dockMounted = false;

@@ -43,13 +43,27 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
   // 精确首尾 padding：使首/末项能滚到主轴锚线（38.2%）。锚点非居中 → 上/下 padding 非对称：
   // 首项对齐 viewportLen*anchorRatio，末项对齐 viewportLen*(1-anchorRatio)；anchorRatio=0.5 时
   // 二者相等 = 旧中心语义（CSS calc(38.2% - 32px) 相对宽度，实测值才正确）
-  const padTop = Math.max(0, viewLen() * anchorRatio - itemH / 2 - marginTop);
-  const padBottom = Math.max(0, viewLen() * (1 - anchorRatio) - itemH / 2 - marginTop);
-  list.style[AXIS.padBefore] = `${padTop}px`;
-  list.style[AXIS.padAfter] = `${padBottom}px`;
-  // 内容起点偏移 = 首项 offsetTop（padding + margin，布局实测），保证几何公式与 CSS 一致
-  const CONTENT_TOP = itemEls[0][AXIS.offset];
+  let CONTENT_TOP = itemEls[0][AXIS.offset];
   let active = 0, raf = 0;
+
+  // B6-R2-3：容器尺寸变化（窗口 resize / 手机↔桌面 900px 跨越 / 任意尺寸变化）后
+  // 几何 padding 与 CONTENT_TOP 必须重算 —— 否则首/末项锚线失准，选中跳到相邻项。
+  // 根因：原实现只在 mount 算一次 pad；≤900px 手机形态加载时左窗 display:none →
+  // clientHeight=0 → pad=0，拉宽后 pad 陈旧 → 锚线数学断裂。
+  // ResizeObserver 观察 list（position:absolute; inset 铺满容器 → clientHeight=容器高；
+  // 改 padding 不改变自身 clientHeight，无观测循环；display:none→可见亦触发）。
+  function recomputeGeometry() {
+    const vlen = viewLen();
+    const pt = Math.max(0, vlen * anchorRatio - itemH / 2 - marginTop);
+    const pb = Math.max(0, vlen * (1 - anchorRatio) - itemH / 2 - marginTop);
+    list.style[AXIS.padBefore] = `${pt}px`;
+    list.style[AXIS.padAfter] = `${pb}px`;
+    CONTENT_TOP = itemEls[0][AXIS.offset];
+    setFocal();
+  }
+  recomputeGeometry();
+  const ro = new ResizeObserver(recomputeGeometry);
+  ro.observe(list);
 
   // —— 拖拽 + 惯性 + 锚定吸附（Task 12 B 部分 + 最终审查 A：滚轮停止吸附）——
   // 坐标约定：几何函数用「内容坐标」（不含容器 padding/margin），list.scrollTop 是原始坐标，
@@ -208,6 +222,8 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     },
     // 对外：场景模板按索引滚动选中（含锚定动画），越界 clamp
     scrollToIndex: (i) => select(Math.max(0, Math.min(items.length - 1, i))),
+    // 断开 ResizeObserver（防右窗重挂泄漏；左窗/横向 dock 常驻挂载无需调用）
+    destroy: () => ro.disconnect(),
   };
 }
 // cubic-bezier 求值：解析 --ease-spring 曲线，对输入 t ∈ [0,1] 用二分求 x(u)=t 的 u，再返回 y(u)

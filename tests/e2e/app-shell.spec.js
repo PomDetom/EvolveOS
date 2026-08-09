@@ -642,3 +642,34 @@ test('B5-4：自适应布局 data-layout（表单限宽居中 + 展示撑满）'
   const pagesW = await page.locator('.app-main__pages').evaluate((el) => el.getBoundingClientRect().width);
   expect(pw).toBeGreaterThan(pagesW - 80); // 撑满内容区（留 padding 余量）
 });
+
+// —— B6-R2-3 导航轮 resize 后顶/底项选中修复（ResizeObserver 重算几何 padding）——
+// 根因：padTop/padBottom 与 CONTENT_TOP 只在 mount 时按当时 viewLen() 计算一次，容器尺寸变化后
+// 永不重算。手机形态（≤900px）加载时左窗 display:none → clientHeight=0 → pad=0；拉宽到较矮
+// 桌面窗口（左窗 7 项 ≈442px > 视口 400px，可滚动）后 pad 陈旧 → 锚线数学断裂：点底部项
+// 目标 scrollTop 超 maxScroll 被 clamp → snapNow 锚线指向中间项（≈3-4）；点顶部项（从滚动位置
+// 跳回）snapNow 重算锚线最近项为相邻项（≈1-2）。修复后 ResizeObserver 重算 pad/CONTENT_TOP，
+// 顶/底项应精确选中。
+
+test('B6-R2-3：resize 后导航顶/底项可正常选中（手机加载→拉宽，无跳变）', async ({ page }) => {
+  // 手机形态加载 → 左窗 display:none → mount 时 clientHeight=0 → pad=0（bug 前置）
+  await page.setViewportSize({ width: 700, height: 800 });
+  await page.goto('/?mode=app');
+  // 等应用壳挂载完成（app-main 为动态 import，load 事件不等其 resolve）——
+  // 确保轮在手机形态下挂载（pad=0）；否则拉宽先于挂载则 mount 于桌面宽度，bug 前置不成立
+  await expect(page.locator('.app-main')).toBeVisible();
+  // 拉宽到较矮桌面窗口（左窗内容 442px > 视口，可滚动，pad 陈旧时锚线断裂）
+  await page.setViewportSize({ width: 1440, height: 400 });
+  const L = '.app-main__nav-l .c-navwheel__list';
+  await expect(page.locator(L).first()).toBeVisible();
+  await page.waitForTimeout(300);
+  // 点后等吸附沉降再断言（覆盖 snapNow 150ms + 锚定动画余量；否则只断言同步 active 假绿）
+  // 底部项 → 应选中 6（修复前 snapNow 跳到 3-4）
+  await page.locator(`${L} .c-navwheel__item`).nth(6).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator(`${L} .c-navwheel__item--active`)).toHaveAttribute('data-index', '6');
+  // 顶部项 → 应选中 0（修复前从滚动位置跳回时 snapNow 跳到 1-2）
+  await page.locator(`${L} .c-navwheel__item`).nth(0).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator(`${L} .c-navwheel__item--active`)).toHaveAttribute('data-index', '0');
+});
