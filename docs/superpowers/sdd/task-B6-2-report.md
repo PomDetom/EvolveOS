@@ -57,8 +57,8 @@ brief Step 1 的 verbatim 用例照抄在本代码库**不是 RED**，两个根�
 
 ## 提交
 
-- feat：`悬浮球 hover 去光晕（中性投影，删 glow 元素，B6-2）`
-- docs：`B6-2 交接（报告 + 账本进度 + brief）`
+- feat `1cd42a3`：悬浮球 hover 去光晕（中性投影，删 glow 元素，B6-2）
+- docs `56b9f81`：B6-2 交接（报告 + 账本进度 + brief）；docs `82060cf`：任务清单勾选
 
 ## 自评
 
