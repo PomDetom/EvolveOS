@@ -57,3 +57,22 @@ test('B5-3：徽标/按钮/悬浮球 iOS 风格（层次而非浓色）', async 
   const ballFilter = await page.locator('.app-main__float-ball .c-float-ball').evaluate((el) => getComputedStyle(el).backdropFilter);
   expect(ballFilter).toContain('blur');
 });
+
+// B6-2：悬浮球去光晕（B5-3 iOS 玻璃底之上，hover 从「彩色光晕 + 外圈 glow 环」改
+// 「上浮 + 中性投影」）。glow 环（.c-float-ball__glow）已删、hover box-shadow 改
+// --shadow-md 中性（随 shadow-intensity 缩放），内高光保留。
+// 适配：①壳挂载期惰性 append 悬浮球，先 toBeVisible 再断言 count，否则 count 断言踩空 DOM 竞态；
+//       ②--accent-300 为纯 hex（非 color-mix），计算值无 'color(' 残余 —— 改以 --shadow-md 的
+//       blur-16 特征值（0 4px 16px）判别中性投影，旧 0 8px 22px 彩影为 blur-22。
+test('B6-2：悬浮球 hover 中性投影（无彩色光晕 + 无 glow 元素）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const ball = page.locator('.app-main__float-ball .c-float-ball');
+  await expect(ball).toBeVisible(); // 等壳挂载 append，避免 glow count 断言踩空 DOM
+  await expect(ball.locator('.c-float-ball__glow')).toHaveCount(0); // glow 环已删
+  await ball.hover();
+  const shadow = await ball.evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(shadow).not.toContain('color('); // 非 color-mix 彩色阴影
+  expect(shadow).toContain('rgb'); // 中性投影（--shadow-md 计算值）
+  expect(shadow).toContain('16px'); // --shadow-md = 0 4px 16px（blur-16 特征值）
+  expect(shadow).not.toContain('22px'); // 旧 hover 彩影 0 8px 22px（blur-22）已移除
+});
