@@ -31,6 +31,14 @@
 - **Minor（deferred，最终评审 triage）**：① grid 预设 `circle at 12px 12px` 圆点落在格心而非交点——计划书 CSS 与规格 §3.1「交点圆点」意图相左（plan 内部张力，实施者按计划原样执行非缺陷）；② 预设图案在 app-main.css / partitions.css 双文件重复（计划允许 swatch 独立规则，维护需双改耦合）。
 - **评审闭环**：定点复审 Important ADDRESSED（`grid-template-columns: repeat(4,56px)` 4×2 平衡网格，无孤立卡），无新 Critical/Important 破坏。**Task B6-1: complete（commits 1483670..a53610b，review clean）**。
 
-### B6-2 悬浮球去光晕
+### B6-2 悬浮球去光晕（删 glow 环 + hover 中性投影）— complete
+
+- **实施**：`float-ball.css` 删 `.c-float-ball__glow` 全部规则，hover 阴影 `0 8px 22px var(--accent-300)` → 中性 `var(--shadow-md)`（blur-16，随 shadow-intensity 缩放）；`float-ball.js` 删 glow span 渲染点 + 注释同步；e2e `components-basic.spec.js` 新增 B6-2 用例。保留上浮 2px + 内高光 + 静止 `--glass-shadow` + backdrop-filter。
+- **TDD**：RED 1 failed（glow count 断言 Expected 0 Received 1）→ GREEN 1 passed；components-basic 全文件 5 passed。
+- **用例适配（brief verbatim 在本库不红，两因）**：①壳挂载期惰性 append 悬浮球，未等挂载直接 count 断言踩空 DOM（首跑 GREEN 即此）→ 先 `toBeVisible` 再断言；②`--accent-300` 为纯 hex 非 color-mix，旧彩影计算值 `rgb(...) 0px 8px 22px` 同时满足 `not color(` 与 `rgb` → 追加 blur-16/22 特征值判别（`--shadow-md` = `0 4px 16px`）。
+- **测试**：全量 e2e 113 passed + 2 flake（app-shell 分区挂载 / title-bar mock 调用，隔离重跑均绿，同型于 B6-1 记录）；单测 69 passed；build ✓。
+- **视觉基线**：24/24 passed 零基线变化（静止 glow opacity 0、静止 box-shadow 未改）→ 不 update-snapshots。
+- **提交**：feat `1cd42a3`（CSS+JS+用例）；docs 本提交（报告 + 本账本 + brief）。
+- **评审**：（待独立评审）
 
 ### B6-3 按钮扁平实心
