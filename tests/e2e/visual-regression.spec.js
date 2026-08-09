@@ -68,9 +68,11 @@ for (const [name, selector, partition] of SHOTS) {
         const locator = page.locator(selector).first();
         // B5-1：CJK 字体大，截图前必须等加载完成防抖动 —— 显式 load 强制拉取普惠体
         //（仅 document.fonts.ready 不足：字体由渲染惰性触发，ready 可能在 load 前已 settle）
+        // B5-F1：补 500 档 —— 65 为最大资产（5.3MB），medium 文字截图须真字重，防伪粗抖动
         await page.evaluate(() =>
           Promise.all([
             document.fonts.load('14px "Alibaba PuHuiTi"'),
+            document.fonts.load('500 14px "Alibaba PuHuiTi"'),
             document.fonts.load('700 14px "Alibaba PuHuiTi"'),
           ]));
         await locator.scrollIntoViewIfNeeded();
