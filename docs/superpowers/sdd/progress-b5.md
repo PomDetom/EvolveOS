@@ -107,3 +107,10 @@ Base: 6d57299（branch feature/b5-design-language，自 main 检出）
 - **再评审（scoped，8e06211..HEAD）**：**All findings addressed，无新 Critical/Important 破坏**——find 1 ADDRESSED（slider.js:5-9 内联 --fill clamp+除零、motion-lab.js:113-120 setSliderFill 于 applyParams 覆盖 mount/input/subscribe、customizer syncUI 不动、showcase 80%/20% 生效）、find 2 ADDRESSED（themes.css:147-148 --shadow-glow 默认观感逐字不变、button.css:15,17 消费 + inset 独立、calc 乘法既有先例）、--fill 验证建议 ADDRESSED（customizer 像素级 25%/75% + motion-lab 弹性 60/100/50 + slider 单测三层）。新破坏 Minor：① `.c-btn` transition 加 `filter` 不在文档 paint-only 豁免清单（docs/CLAUDE.md「先固化口径再落地」要求）；② 报告 prose 像素描述近似值不精确（非功能）。
 - **口径固化**：`0a3e8f8` docs：动画红线豁免清单补 `filter`（paint-only，docs/CLAUDE.md 加 bullet「filter：按钮 hover/active 的 brightness 微调」+ src/CLAUDE.md 豁免列表加 `/filter`）——再评审 Minor ① 闭环。
 - **执行状态**：Task B5-final：✅ 完成（8e06211 + 1374957 + 0a3e8f8，修复波评审闭环）
+
+## 合并 main + 合并后全量回归（2026-08-09）
+
+- **合并**：`--no-ff` 合并提交 `8a615b7`（parents: main 6d57299 + feature HEAD 06ab513；tree 与 feature 一致）。沙箱分类器首拦 update-ref（瞬态），用户授权后重试通过。共享 checkout（main）需 `git reset --hard main` 同步并重启 tauri:dev。
+- **合并后全量回归**（worktree 验证，tree 与 main 相同）：unit 65/65（一次并发 flake 重跑绿）、e2e 并集 112/112（首跑 111 passed + 1 例 app-shell.spec.js:270 `.csg` 挂载超时环境 flake → 隔离重跑 app-shell 31/31 绿，与 B5-1..5 全程同型）、build 通过（855ms）。
+- **B5 完成**：① 阿里普惠体全局替换 ② 三区统一胶囊 Slider ③ 徽标/按钮/悬浮球 iOS 化 ④ 内容区自适应布局 ⑤ 控件语言收尾 全部落地 main。
+- **最终评审遗留**：修复波已将两项 plan-mandated 延期项闭环（滑杆 --fill 全接线 + primary 彩影令牌化）；余下 Minor 全部免修入账（见「延期项汇总」）。用户可目检：字体观感 / 三区滑杆一致 / iOS 组件 / 大窗口自适应 / 阴影强度定制器对 primary 生效。
