@@ -39,3 +39,12 @@ test('B5-1：--font-sans 全局指向阿里普惠体', async ({ page }) => {
     document.fonts.check('14px "Alibaba PuHuiTi"'));
   expect(loaded).toBe(true);
 });
+
+test('B5-F1：--font-sans 的 medium 字重指向普惠体 500（65 Medium）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  // 显式强制加载 500 档（B5-1 竞态适配同型：document.fonts.ready 早 settle，须显式 load）
+  await page.evaluate(() => document.fonts.load('500 14px "Alibaba PuHuiTi"'));
+  const loaded = await page.evaluate(() =>
+    document.fonts.check('500 14px "Alibaba PuHuiTi"'));
+  expect(loaded).toBe(true);
+});

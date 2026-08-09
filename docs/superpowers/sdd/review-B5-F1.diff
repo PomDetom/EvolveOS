@@ -1,0 +1,392 @@
+# Review package: be55eae..HEAD
+
+## Commits
+a8dbd37 docs: B5-F1 实施报告 + 账本留痕（普惠体 500 补齐，5122103）
+5122103 feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）
+
+## Files changed
+ docs/superpowers/sdd/progress-b5-fix.md            |  21 ++++
+ docs/superpowers/sdd/task-B5-F1-brief.md           | 122 +++++++++++++++++++++
+ docs/superpowers/sdd/task-B5-F1-report.md          |  87 +++++++++++++++
+ src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2  | Bin 0 -> 5469328 bytes
+ src/styles/fonts.css                               |  11 +-
+ tests/e2e/tokens.spec.js                           |   9 ++
+ ...earance-partition-dark-amber-chromium-win32.png | Bin 433547 -> 433696 bytes
+ ...rance-partition-dark-emerald-chromium-win32.png | Bin 412912 -> 413196 bytes
+ ...arance-partition-dark-indigo-chromium-win32.png | Bin 470444 -> 470634 bytes
+ ...arance-partition-light-amber-chromium-win32.png | Bin 275060 -> 275478 bytes
+ ...ance-partition-light-emerald-chromium-win32.png | Bin 274855 -> 275327 bytes
+ ...rance-partition-light-indigo-chromium-win32.png | Bin 219522 -> 219893 bytes
+ .../motion-partition-dark-amber-chromium-win32.png | Bin 496327 -> 496517 bytes
+ ...motion-partition-light-amber-chromium-win32.png | Bin 337043 -> 337083 bytes
+ tests/unit/font-assets.test.js                     |   7 +-
+ 15 files changed, 253 insertions(+), 4 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/sdd/progress-b5-fix.md b/docs/superpowers/sdd/progress-b5-fix.md
+new file mode 100644
+index 0000000..b608095
+--- /dev/null
++++ b/docs/superpowers/sdd/progress-b5-fix.md
+@@ -0,0 +1,21 @@
++# SDD ledger — plan: docs/superpowers/plans/2026-08-09-app-shell-b5-faux-weight-fix.md
++
++Base: be55eae（branch feature/b5-faux-weight-fix，自 main 0b79e70 检出）
++规格：docs/superpowers/specs/2026-08-09-app-shell-b5-faux-weight-fix-design.md（唯一需求源）
++计划书：docs/superpowers/plans/2026-08-09-app-shell-b5-faux-weight-fix.md（唯一实施需求源）
++
++## Pre-flight 扫描（2026-08-09，干净，无阻塞冲突）
++
++- 单任务（B5-F1），无任务间矛盾；无「测试断言空洞/逻辑块逐字重复」的计划强制造缺陷。
++- B5-1 的 `document.fonts.ready` 竞态适配模式沿用（显式 `document.fonts.load`）。
++- medium 字重渲染变化 → 预期内多分区视觉基线重生成（先解码比对）。
++- 环境：共享 checkout 陈旧 5173 server（PID 11964）运行中——e2e 一律 playwright.config.worktree.js（5174）。worktree 已建该配置（不提交）。共享 checkout 尚未同步新 main（用户待 reset），不影响本 worktree。
++- 基线前提：main 0b79e70 全绿（B5 合并后 112/112）。
++
++## Task B5-F1: 普惠体 500 字重补齐（65 Medium）
++
++- **状态**：完成
++- **简报**：docs/superpowers/sdd/task-B5-F1-brief.md
++- **报告**：docs/superpowers/sdd/task-B5-F1-report.md
++- **提交**：`5122103` feat（65 woff2 + fonts.css 500 档 + 单测/e2e 断言 + 8 张视觉基线重生成）；docs 提交见下（含本账本）。
++- **结论**：单测 65/65、e2e 112 passed（smoke 冷启动 flake 重跑绿）、build 成功；视觉基线 8 张重生成，解码比对确认仅 medium 字形粗细变化（真 65 vs 伪粗），非布局/颜色。
+diff --git a/docs/superpowers/sdd/task-B5-F1-brief.md b/docs/superpowers/sdd/task-B5-F1-brief.md
+new file mode 100644
+index 0000000..4862d2b
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-F1-brief.md
+@@ -0,0 +1,122 @@
++# Task B5-F1: 普惠体 500 字重补齐（65 Medium）
++
++> 计划书章节：`docs/superpowers/plans/2026-08-09-app-shell-b5-faux-weight-fix.md` 的 Task B5-F1（本文件为提取全文，作为唯一实施需求）。规格：`docs/superpowers/specs/2026-08-09-app-shell-b5-faux-weight-fix-design.md`。
++
++## 绑定本任务的全局约束（必须遵守）
++
++- 测试仅在 Web 环境执行（Vitest + Playwright）；不跑 tauri dev。
++- **e2e 必须用 worktree 配置**：`npx playwright test --config=playwright.config.worktree.js`（端口 5174 新鲜 server）。共享 checkout 有陈旧 5173 server（PID 11964）serve 旧代码，勿用默认 `npm run test:e2e`。
++- **视觉基线变化必须先解码比对确认由本次改动引起，再 `--update-snapshots`**；本修复改 medium 字重渲染 → 预期内多分区重生成。
++- **e2e 截图前必须等待字体加载完成**（B5-1 已改显式 `document.fonts.load`，保留）。
++- 动画红线：本任务零动画改动。
++- 配置链路：本任务不涉及界面参数（纯字体资产 + @font-face + 测试）。
++- 零运行时依赖；禁止升级核心依赖；遵循 `src/CLAUDE.md` 风格。
++- 提交前 `npm run build`；每任务结束全量回归绿。
++- `--font-weight-*` 令牌定义**不动**（400/500/600/700 保持）；600 行为不动（就近 700）；`--font-mono` 不动；themes.css 不动。
++- 字体文件来源（用户已提供）：`C:\Users\PomDetom\Downloads\AlibabaPuHuiTi-3-65-Medium\AlibabaPuHuiTi-3-65-Medium.woff2`（5.3MB，已确认存在）。
++- 既有 55/85 WOFF2 已在 `src/assets/fonts/`（B5-1），不得删改。
++
++## Files
++
++- Create: `src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2`（从 Downloads 复制）
++- Modify: `src/styles/fonts.css`（新增 500 @font-face + 注释更新）
++- Modify: `tests/unit/font-assets.test.js`（补 65 存在性 + 500 face 断言）
++- Modify: `tests/e2e/tokens.spec.js`（补 500 face 加载断言）
++
++## Interfaces
++
++- Consumes: B5-1 的 `--font-sans: "Alibaba PuHuiTi", ...` 前缀（本次不碰）
++- Produces: `@font-face 'Alibaba PuHuiTi'` 新增 500 档 —— medium 消费点（`var(--font-weight-medium)`）自动经字重匹配命中真 65，无需改任何 CSS 消费点
++
++## 实现步骤
++
++### Step 1: 复制字体文件到 src/assets/fonts/
++
++```bash
++cp "C:/Users/PomDetom/Downloads/AlibabaPuHuiTi-3-65-Medium/AlibabaPuHuiTi-3-65-Medium.woff2" src/assets/fonts/
++```
++
++### Step 2: 扩展失败单测（tests/unit/font-assets.test.js）
++
++将既有「55/85 两个 WOFF2 文件存在」用例改为含 65，并给「fonts.css 定义两档 @font-face」用例补 500 断言：
++
++```js
++  it('55/65/85 三个 WOFF2 文件存在', () => {
++    // 仅存在性守卫，不读内容（二进制大文件）
++    expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-55-Regular.woff2'))).toBeTruthy();
++    expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2'))).toBeTruthy();
++    expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-85-Bold.woff2'))).toBeTruthy();
++  });
++
++  it('fonts.css 定义 55 Regular + 65 Medium + 85 Bold 三档 @font-face', () => {
++    const css = readFileSync(base('styles/fonts.css'), 'utf8');
++    expect(css).toContain("font-family: 'Alibaba PuHuiTi'");
++    expect(css).toContain('AlibabaPuHuiTi-3-55-Regular.woff2');
++    expect(css).toContain('AlibabaPuHuiTi-3-65-Medium.woff2');
++    expect(css).toContain('AlibabaPuHuiTi-3-85-Bold.woff2');
++    expect(css).toContain('font-weight: 400');
++    expect(css).toContain('font-weight: 500');
++    expect(css).toContain('font-weight: 700');
++    expect(css).toContain('font-display: swap');
++  });
++```
++
++（tokens.css `--font-sans` 前缀断言、base.css `@import` 断言保持原样。）
++
++### Step 3: 运行确认红
++
++Run: `npx vitest run tests/unit/font-assets.test.js`
++Expected: FAIL（65 文件不存在 → 存在性断言红；fonts.css 无 500 档 → @font-face 断言红）
++
++### Step 4: 实现 fonts.css 500 档
++
++`src/styles/fonts.css` 在两个既有 @font-face 之后新增（并更新文件头注释，注明三档 55/65/85）：
++
++```css
++@font-face {
++  font-family: 'Alibaba PuHuiTi';
++  src: url('../assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2') format('woff2');
++  font-weight: 500; font-display: swap;
++}
++```
++
++> 与 55/85 逐字同结构，仅文件与字重不同。放在 55 与 85 之间保持字重升序。
++
++### Step 5: 单测确认绿
++
++Run: `npx vitest run tests/unit/font-assets.test.js`
++Expected: PASS
++
++### Step 6: e2e 补 500 face 加载断言（tests/e2e/tokens.spec.js 追加）
++
++在既有 B5-1 tokens 测试后追加：
++
++```js
++test('B5-F1：--font-sans 的 medium 字重指向普惠体 500（65 Medium）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 显式强制加载 500 档（B5-1 竞态适配同型：document.fonts.ready 早 settle，须显式 load）
++  await page.evaluate(() => document.fonts.load('500 14px "Alibaba PuHuiTi"'));
++  const loaded = await page.evaluate(() =>
++    document.fonts.check('500 14px "Alibaba PuHuiTi"'));
++  expect(loaded).toBe(true);
++});
++```
++
++### Step 7: 视觉基线重生成（medium 文字渲染变化）
++
++Run: `npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots`
++Expected: 含 medium 文字的分区重生成（app-main/appearance/components/motion 中以 `--font-weight-medium` 渲染的标签/按钮/徽标文字变清晰）。**先解码比对**：随机抽 2-3 张新旧图确认差异仅文字字形粗细（真 65 vs 伪粗描边），非布局/颜色变化，再提交基线。
++
++### Step 8: 全量回归 + 提交
++
++Run: `npx playwright test --config=playwright.config.worktree.js` → 全绿；`npm test` + `npm run build`
++Expected: 全绿
++
++```bash
++git add src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2 src/styles/fonts.css tests/unit/font-assets.test.js tests/e2e/tokens.spec.js tests/e2e/visual-regression.spec.js-snapshots
++git commit -m "feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）"
++```
++
++> 提交惯例：feat + docs 两枚提交（docs 承载本任务报告/账本 `progress-b5-fix.md`）。`playwright.config.worktree.js` 不得提交。
++
++> 桌面验证（用户目检）：按钮/标签/表单 label 等 medium 文字不再"糊糊"，清晰锐利；400 正文与 700 加粗观感不变。
+diff --git a/docs/superpowers/sdd/task-B5-F1-report.md b/docs/superpowers/sdd/task-B5-F1-report.md
+new file mode 100644
+index 0000000..ceb61b2
+--- /dev/null
++++ b/docs/superpowers/sdd/task-B5-F1-report.md
+@@ -0,0 +1,87 @@
++# Task B5-F1 实施报告：普惠体 500 字重补齐（65 Medium）
++
++> 简报：docs/superpowers/sdd/task-B5-F1-brief.md（唯一实施需求）。计划书：docs/superpowers/plans/2026-08-09-app-shell-b5-faux-weight-fix.md。
++> 环境：worktree `C:\Repository\ui-design\.claude\worktrees\b5-design-language`，分支 `feature/b5-faux-weight-fix`（自 main 0b79e70 检出）。e2e 一律 `playwright.config.worktree.js`（端口 5174 新鲜 server）。
++
++## 实现内容
++
++| 文件 | 变更 |
++|---|---|
++| `src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2` | 新增（5,469,328 B ≈ 5.3MB，从 `C:\Users\PomDetom\Downloads\...` 复制，Step 1） |
++| `src/styles/fonts.css` | 新增 500 @font-face（65 Medium），插于 55 与 85 之间保持字重升序；文件头注释更新为三档 55/65/85 并说明 B5-F1 意图 |
++| `tests/unit/font-assets.test.js` | 「55/85 两个 WOFF2」→「55/65/85 三个 WOFF2」；「两档 @font-face」→「三档 @font-face」补 500 断言（逐字按简报） |
++| `tests/e2e/tokens.spec.js` | 追加 B5-F1 用例：`document.fonts.load('500 14px "Alibaba PuHuiTi"')` + `document.fonts.check(...)`（逐字按简报） |
++| `tests/e2e/visual-regression.spec.js-snapshots/*.png` | 8 张基线重生成（见「视觉基线解码比对」） |
++
++未改动（全局约束兑现）：`--font-weight-*` 令牌、`--font-mono`、themes.css、既有 55/85 WOFF2、视觉规格文件本身、无任何运行时依赖、零动画改动、不涉及配置链路。
++
++## TDD Evidence
++
++### RED（Step 3）
++- 命令：`npx vitest run tests/unit/font-assets.test.js`
++- 结果：**1 failed / 3 passed**（退出码 1）
++- 失败输出（摘）：
++  ```
++  FAIL tests/unit/font-assets.test.js > fonts.css 定义 55 Regular + 65 Medium + 85 Bold 三档 @font-face
++  AssertionError: expected '/* 阿里普惠体（B5-1）：55 Regular 正文 + 85 Bol…' to contain 'AlibabaPuHuiTi-3-65-Medium.woff2'
++  ```
++- 为什么红：实现前 fonts.css 只有 400/700 两档，`AlibabaPuHuiTi-3-65-Medium.woff2` 路径与 `font-weight: 500` 断言均落空。
++- 说明：按简报 Step 1→2 顺序，65 文件存在性断言在 Step 1 复制后即绿，红色聚焦在真正的实现面（fonts.css 500 档）——符合简报步骤排序。
++
++### GREEN（Step 5）
++- 命令：`npx vitest run tests/unit/font-assets.test.js`
++- 结果：**4 passed**（1 file / 4 tests），退出码 0。
++
++### e2e 断言（Step 6）
++- 命令：`npx playwright test --config=playwright.config.worktree.js tests/e2e/tokens.spec.js`
++- 结果：**4 passed**（含新增 B5-F1 500 face 加载断言）。
++
++## 测试结果
++
++- `npm test`（全量单测）：**14 文件 / 65 用例全绿**。
++- `npx playwright test --config=playwright.config.worktree.js`（全量 e2e）：**112 passed + 1 flake**。
++  - 唯一失败：`smoke.spec.js:5 › app shell renders`（首个测试，冷启动 vite 5174 下 5s 内 `.app-main` 未挂载，mount-timeout 型）。单独重跑同 spec **通过（647ms）**，确认为环境性冷启动抖动，非回归。已知抖动家族同型。
++- `npm run build`：成功，`dist/assets/AlibabaPuHuiTi-3-65-Medium-*.woff2`（5,469.33 kB）正确打包。
++
++## 视觉基线解码比对（Step 7）
++
++命令：`npx playwright test --config=playwright.config.worktree.js tests/e2e/visual-regression.spec.js --update-snapshots` → **24 passed**（8 张 re-generated + 16 张保持原基线）。
++
++**重生成的 8 张**（git status 确认仅这些有变更）：
++- `appearance-partition` × 6（light/dark × indigo/amber/emerald，全重生成）
++- `motion-partition-light-amber`、`motion-partition-dark-amber`
++
++**解码比对**（旧基线存 `/tmp/b5f1-baseline-old`，Python/PIL 逐像素 diff + 连通域 + 调色板分析）：
++- 变化量极小：appearance 每张约 2132–2139 px（占 2,009,536 的 0.106%）；motion-amber 276 px（0.03%）。
++- 空间形态：appearance 变化像素呈 5 条 11px 高、窄 x 带的散点（x≈0–47 / 378–413 / 744–767；y≈60/354/441/528/615）——即文本行的字形笔画带；motion-amber 的 276 px 全部收敛在单一 35×12 标签框内（538,615)-(573,627)。非布局位移（布局位移会产生大块连续变化区）。
++- 调色板不变：量化后新旧图互斥色仅 0–2 px（2M 量级），**无任何颜色/主题变化**。
++- 字形笔锋：孤立标签 ink 色稳定（如 motion 标签 ink=(186,134,29) 琥珀强调色，新旧同色），墨迹覆盖以减薄为主（真 65 细于伪粗合成），少数单元格 ±4–10 px 属多色区域 ink 采样剪裁噪声。
++- 结论：**差异仅为 medium 文字字形粗细（真 65 vs 伪粗描边），非布局、非颜色**，基线提交安全。
++
++**未重生成的 16 张**（app-main ×6、components ×6、motion-indigo/emerald ×4）：以简报同款视觉流程新鲜截图逐像素比对，与旧基线差异**全部 < Playwright 默认阈值 51/channel**（components 1337 px / app-main 197 px / motion-indigo 4473 px，maxChannel>51 均为 0）——即这些分区确有 medium 文字渲染变化但幅度低于重生成阈值，且**无论 65 是否在截图前加载均落在阈值内**（未加载=伪粗=旧基线；已加载=真 65=轻微差异），基线稳定不抖。对照 `--font-weight-medium` 消费点：appearance 定制器标签/分区标题为中等字号长文本，笔画差达 >51 → 触发重生成；components/app-main 的按钮/徽标/标签/标题栏文字为 xs/sm 短文本，差异低于阈值。
++
++## 全量回归（Step 8）
++
++| 项 | 结果 |
++|---|---|
++| `npm test` | 65/65 全绿（14 文件） |
++| 全量 e2e（worktree config） | 112 passed + 1 冷启动 flake（smoke 重跑绿，非回归） |
++| `npm run build` | 成功 |
++
++## Self-review 发现
++
++- 三个代码文件与简报 Step 2/4/6 逐字一致；`git diff` 确认无多余改动。
++- 全局约束逐条核对：令牌不动、themes.css 不动、55/85 不动、`--font-mono` 不动、无依赖新增、零动画改动、未触碰配置链路。
++- `playwright.config.worktree.js` 未加入任何提交；temp 比对脚本/诊断 spec 已清理。
++- 视觉基线重生成前已做解码比对（上节），满足「先解码确认再 update」要求。
++
++## Concerns / 建议
++
++1. **视觉规格未显式加载 500 档**（简报范围外，未改动 `visual-regression.spec.js`）：现规格 `document.fonts.load` 只显式拉 400/700，500 靠惰性触发。经验上 appearance 6/6 稳定加载并重生成，风险低；但 appearance 基线此后依赖「截图前 65 已加载」这一时序（其余分区两态均稳）。建议后续将 `'500 14px "Alibaba PuHuiTi"'` 并入视觉规格的 fonts.load（与 B5-1 对 400/700 的竞态适配同型），即可对 65 档取得完全确定性。此项超出简报 Files 范围，留待控制器/评审决定。
++2. **smoke 冷启动 flake**：全量跑首测（`/?mode=app` 冷启动 vite 5174）偶发 5s 未挂载超时；重跑绿。环境性（资源受限 + 新 server 首请求），非本次改动引入。
++3. 桌面目检（真 65 下按钮/标签/表单 label 清晰锐利、400/700 观感不变）由用户人工验证，Web 侧已由 tokens e2e + 基线重生成覆盖。
++
++## 提交
++
++- feat 提交：`feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）`（含 65 woff2 + fonts.css + 两个测试文件 + 8 张基线）
++- docs 提交：本报告 + 账本 `progress-b5-fix.md` + 简报（`git add docs/superpowers/sdd/`）
+diff --git a/src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2 b/src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2
+new file mode 100644
+index 0000000..fa037a7
+Binary files /dev/null and b/src/assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2 differ
+diff --git a/src/styles/fonts.css b/src/styles/fonts.css
+index eccf019..13925fd 100644
+--- a/src/styles/fonts.css
++++ b/src/styles/fonts.css
+@@ -1,12 +1,19 @@
+-/* 阿里普惠体（B5-1）：55 Regular 正文 + 85 Bold 标题，WOFF2 官方包。拉丁缺字形回退系统字体栈
+-   （--font-sans 后续已含 -apple-system/Segoe UI）。font-display: swap → 首屏系统字体占位、加载后替换。 */
++/* 阿里普惠体（B5-1 55/85，B5-F1 补 65）：55 Regular 正文 + 65 Medium 中等 + 85 Bold 标题，WOFF2 官方包。
++   拉丁缺字形回退系统字体栈（--font-sans 后续已含 -apple-system/Segoe UI）。
++   font-display: swap → 首屏系统字体占位、加载后替换。
++   B5-F1：补 65 Medium 档，令 --font-weight-medium(500) 命中真字重，消除 Chromium 由 400 伪合成加粗的 CJK 模糊。 */
+ @font-face {
+   font-family: 'Alibaba PuHuiTi';
+   src: url('../assets/fonts/AlibabaPuHuiTi-3-55-Regular.woff2') format('woff2');
+   font-weight: 400; font-display: swap;
+ }
++@font-face {
++  font-family: 'Alibaba PuHuiTi';
++  src: url('../assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2') format('woff2');
++  font-weight: 500; font-display: swap;
++}
+ @font-face {
+   font-family: 'Alibaba PuHuiTi';
+   src: url('../assets/fonts/AlibabaPuHuiTi-3-85-Bold.woff2') format('woff2');
+   font-weight: 700; font-display: swap;
+ }
+diff --git a/tests/e2e/tokens.spec.js b/tests/e2e/tokens.spec.js
+index 93d185b..95e1b1b 100644
+--- a/tests/e2e/tokens.spec.js
++++ b/tests/e2e/tokens.spec.js
+@@ -32,10 +32,19 @@ test('B5-1：--font-sans 全局指向阿里普惠体', async ({ page }) => {
+       document.fonts.load('700 14px "Alibaba PuHuiTi"'),
+     ]));
+   const fam = await page.evaluate(() =>
+     getComputedStyle(document.body).fontFamily);
+   expect(fam).toContain('Alibaba PuHuiTi');
+   // 普惠体已加载（55 Regular）
+   const loaded = await page.evaluate(() =>
+     document.fonts.check('14px "Alibaba PuHuiTi"'));
+   expect(loaded).toBe(true);
+ });
++
++test('B5-F1：--font-sans 的 medium 字重指向普惠体 500（65 Medium）', async ({ page }) => {
++  await page.goto('/?mode=app');
++  // 显式强制加载 500 档（B5-1 竞态适配同型：document.fonts.ready 早 settle，须显式 load）
++  await page.evaluate(() => document.fonts.load('500 14px "Alibaba PuHuiTi"'));
++  const loaded = await page.evaluate(() =>
++    document.fonts.check('500 14px "Alibaba PuHuiTi"'));
++  expect(loaded).toBe(true);
++});
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png
+index 25341d3..3481570 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png
+index 8280501..8d4873f 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png
+index 1e6e5b2..99234dc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-dark-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png
+index 208da5d..361dd54 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png
+index ffb426e..6b482bc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-emerald-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png
+index 46e6e5c..3c4054a 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/appearance-partition-light-indigo-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png
+index 2df6500..2dcbfdc 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-dark-amber-chromium-win32.png differ
+diff --git a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png
+index 7bbad93..299a9a3 100644
+Binary files a/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png and b/tests/e2e/visual-regression.spec.js-snapshots/motion-partition-light-amber-chromium-win32.png differ
+diff --git a/tests/unit/font-assets.test.js b/tests/unit/font-assets.test.js
+index dfa1a57..810df49 100644
+--- a/tests/unit/font-assets.test.js
++++ b/tests/unit/font-assets.test.js
+@@ -1,31 +1,34 @@
+ import { describe, it, expect } from 'vitest';
+ import { readFileSync } from 'node:fs';
+ 
+ describe('阿里普惠体字体（B5-1：全局字体替换）', () => {
+   // Vitest 3.2 + Vite 会将 `new URL(path, import.meta.url)` 字面量按 dev asset URL 解析，
+   // 先取到变量再作 base，命中磁盘上真实的文件（同 window-capabilities.test.js 模式）。
+   const moduleURL = import.meta.url;
+   const base = (p) => new URL(`../../src/${p}`, moduleURL);
+ 
+-  it('55/85 两个 WOFF2 文件存在', () => {
++  it('55/65/85 三个 WOFF2 文件存在', () => {
+     // 仅存在性守卫，不读内容（二进制大文件）
+     expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-55-Regular.woff2'))).toBeTruthy();
++    expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-65-Medium.woff2'))).toBeTruthy();
+     expect(readFileSync(base('assets/fonts/AlibabaPuHuiTi-3-85-Bold.woff2'))).toBeTruthy();
+   });
+ 
+-  it('fonts.css 定义 55 Regular + 85 Bold 两档 @font-face', () => {
++  it('fonts.css 定义 55 Regular + 65 Medium + 85 Bold 三档 @font-face', () => {
+     const css = readFileSync(base('styles/fonts.css'), 'utf8');
+     expect(css).toContain("font-family: 'Alibaba PuHuiTi'");
+     expect(css).toContain('AlibabaPuHuiTi-3-55-Regular.woff2');
++    expect(css).toContain('AlibabaPuHuiTi-3-65-Medium.woff2');
+     expect(css).toContain('AlibabaPuHuiTi-3-85-Bold.woff2');
+     expect(css).toContain('font-weight: 400');
++    expect(css).toContain('font-weight: 500');
+     expect(css).toContain('font-weight: 700');
+     expect(css).toContain('font-display: swap');
+   });
+ 
+   it('tokens.css --font-sans 含 Alibaba PuHuiTi 前缀', () => {
+     const css = readFileSync(base('styles/tokens.css'), 'utf8');
+     expect(css).toMatch(/--font-sans:\s*"Alibaba PuHuiTi",/);
+   });
+ 
+   it('base.css 引入 fonts.css', () => {
