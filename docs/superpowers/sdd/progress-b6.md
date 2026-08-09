@@ -7,7 +7,7 @@
 
 - [x] Task B6-1: 背景装饰多样式（强化网格 + dots/diagonal/waves/aurora + 8 预览卡）
 - [x] Task B6-2: 悬浮球去光晕（删 glow + 中性 hover 投影）
-- [ ] Task B6-3: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）
+- [x] Task B6-3: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）
 - [ ] 最终整体评审 + 合并 main + 合并后全量回归
 
 ## 任务进度
@@ -43,4 +43,13 @@
 - **Minor（deferred，最终评审 triage）**：① `components-basic.spec.js`「neutral」仅经 blur 值间接判别（`--accent-300` 为纯 hex，同 blur 的 accent 彩影可通过全部断言）——可加固为断言外层阴影色 = 解析后 `--shadow-md` 色；② hover 后立即读 computed box-shadow，transition 200ms 存在时序敏感性（实测稳定，shadow-list 外层→inset 不可插值故 snap）；③ `float-ball.css` `.c-float-ball { position: relative }` 原仅供已删 glow 的 absolute 定位，现疑为 vestigial（可选清理）。
 - **评审闭环**：**Task B6-2: complete（commits 1cd42a3..11615a6，review clean）**。
 
-### B6-3 按钮扁平实心
+### B6-3 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌）— complete
+
+- **实施**：`button.css` primary 渐变+内高光+`--shadow-glow` 彩影 → 实色 `var(--accent)` + `var(--accent-contrast)` + 中性 `var(--shadow-sm)`；hover theme-aware（light 混 black / dark 混 white，经 `:root[data-theme]`，88%）；active 沿用基类 scale(0.97)；danger 同机制（去 `filter: brightness`）；`themes.css` 删 `--shadow-glow`/`--shadow-glow-hover` 令牌（原 143-149 行）；e2e 新增 B6-3 用例 + 同步「主按钮 hover」与 B5-3 按钮断言。
+- **TDD**：RED 3 failed（渐变尚在 / inset 尚在 / 旧 hover 彩影尚在）→ GREEN 6 passed。
+- **用例适配（brief verbatim 不红两因）**：①Chromium 151 将 `color-mix(..., black)` 计算值序列化为 `oklab(...)` 而非 `color(srgb` → 改 canvas 解析任意 CSS 色为 rgba → Rec.709 亮度，比对 `light < accent < dark` 三档方向性（与序列化格式解耦）；②视觉基线按钮在设置窗 fold 下（components 分区截图仅含顶部 ~816px，按钮矩阵 y=930）→ 基线零变化。
+- **测试**：全量 e2e 115 passed + 1 flake（app-shell「亚克力两档」`data-glass` 时序，隔离重跑绿，同 B6-1 记录型）；单测 69 passed；build ✓；`grep -r "shadow-glow" src/ tests/` 零命中。
+- **视觉基线**：24 张 `--update-snapshots` 重生成后与原基线 sha1 逐字节一致 → 零改动不提交（解码比对确认按钮在 fold 下）。
+- **提交**：feat `?`（CSS+令牌+用例）；docs `?`（报告 + 本账本 + brief）。
+- **评审**（独立评审）：待最终整体评审。
+- **关注点**：规格 §5 写 hover 混 92% 而 brief/计划书为 88%，以 brief 为准；`.c-btn` transition 仍留 `filter` 兜底项（brief 明确保留），可留收尾清理。
