@@ -18,8 +18,17 @@
 - **TDD**：RED 4 failed（`[data-backdrop="dots"]`、`24px 24px`、BD_LABELS 键序、预览卡类缺失）→ GREEN 4 passed。
 - **测试**：e2e 全量 114 passed（含 app-shell 32）；单测 69 passed；build ✓。
 - **视觉基线**：先 canvas 解码比对确认差异仅选择器（胶囊→卡）+ 74px 内容下移，无字体/布局/组件漂移；`--update-snapshots` 重生成 6 张 appearance-partition（app-main/components/motion 零变化）。
-- **提交**：feat `1483670`（代码+测试+基线）；docs 本提交（报告 + 本账本 + brief）。
-- **评审**：待独立评审。
+- **提交**：feat `1483670`（代码+测试+基线）；docs `7d591af`（报告 + 本账本 + brief）。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；Important 1 + Minor 2。
+
+### B6-1 ... — fix round 1/5（Important 修复完成）
+
+- **Important（评审提出）**：`partitions.css` `.app-main__backdrop-sel` `max-width:480px` < 8 卡所需 504px（8×56 + 7×8 间隙）→ 桌面宽度确定性 7+1 换行，第 8 卡孤立。
+  - **修复**：`.app-main__backdrop-sel-opts` 改 `display:grid; grid-template-columns: repeat(4, 56px)` → 4×2 平衡网格（248px 宽，卡保持竖向约 56×44）。激活态/描边过渡、`data-bd`/`aria-pressed`/swatch 图案规则不动。
+  - **基线**：先 canvas 解码比对确认差异仅卡区排列（7+1→4×2，bbox 限 y 85-190、total 14,810px，y>200 全零），`--update-snapshots` 重生成 6 张 appearance-partition。
+  - **测试**：单测 4 passed；B6-1 e2e 1 passed；app-shell 32 passed；全量 e2e 114 passed（两轮含单测无关 flake：components/motion 挂载、亚克力两档 —— 隔离重跑均绿，终轮全绿）；`npm test` 69 passed；`npm run build` ✓。
+  - **提交**：feat（修复）`440b563`；docs 本提交（报告 + 本账本）。
+- **Minor（deferred，最终评审 triage）**：① grid 预设 `circle at 12px 12px` 圆点落在格心而非交点——计划书 CSS 与规格 §3.1「交点圆点」意图相左（plan 内部张力，实施者按计划原样执行非缺陷）；② 预设图案在 app-main.css / partitions.css 双文件重复（计划允许 swatch 独立规则，维护需双改耦合）。
 
 ### B6-2 悬浮球去光晕
 

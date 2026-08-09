@@ -77,3 +77,17 @@
 - 预设 CSS 按 brief 原值落地，未做额外浓度微调（brief 值已平衡「衬底更鲜明但克制」；swatch 图案复用同款 color-mix 浓度缩放至 mini 视口）。
 - 视觉基线变化落在 `appearance-partition`（非 brief 措辞的「app-main」）——因默认背景 gradient 未改、选择器本身位于外观分区，属「按实测」；app-main 6 张基线零变化。
 - 既有 B2-2 e2e 用例因胶囊类移除而同步更新（含于 brief「背景预设切换断言」Files 范围）。
+
+---
+
+## 修复轮（独立评审 Important）
+
+**评审发现**：`.app-main__backdrop-sel` max-width 480px，8 卡 × 56px + 7 间隙 × 8px = 504px > 480px，`flex-wrap` 在桌面/e2e viewport 确定性排成 7+1，第 8 卡孤悬第二行 —— 交付 UI 可见布局缺陷。
+
+**修复**（方案 B，`src/app/partitions.css`）：`.app-main__backdrop-sel-opts` 由 `display:flex; flex-wrap:wrap` 改为 **`display:grid; grid-template-columns: repeat(4, 56px)`** → 8 卡排成 4×2 平衡网格（宽 4×56 + 3×8 = 248px，卡保持竖向约 56×44，swatch 上 label 下）。激活态/描边过渡、`data-bd`/`aria-pressed`/swatch 图案规则不动。
+
+**基线解码比对**（canvas 逐像素，脚本已删）：新旧截图同尺寸 1921×1088（两版均为两行卡，页高不变）；差异 total 仅 14,810px（dark-indigo）/ 2,651px（light-indigo），bbox 严格限于选择器卡区（x 8-438、y 85-190），y>200 全零 —— 差异仅为卡片排列（7+1→4×2），无字体/布局/组件漂移。`--update-snapshots` 重生成 6 张 appearance-partition。
+
+**覆盖测试**：`npx vitest run tests/unit/backdrop.test.js` → 4 passed；`npx playwright test --config=playwright.config.worktree.js tests/e2e/app-shell.spec.js -g "B6-1"` → 1 passed；app-shell 全文件 32 passed；全量 e2e 114 passed（两轮单测无关 flake：components/motion 挂载、亚克力两档 —— 隔离重跑均绿，终轮全绿）；`npm test` 69 passed；`npm run build` ✓。
+
+**修复提交**：feat `440b563`（partitions.css + 6 张基线）；docs 本提交（报告 + 账本）。
