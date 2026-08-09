@@ -18,5 +18,6 @@ Base: be55eae（branch feature/b5-faux-weight-fix，自 main 0b79e70 检出）
 - **简报**：docs/superpowers/sdd/task-B5-F1-brief.md
 - **报告**：docs/superpowers/sdd/task-B5-F1-report.md
 - **提交**：`5122103` feat（65 woff2 + fonts.css 500 档 + 单测/e2e 断言 + 8 张视觉基线重生成）；`74721f2` fix（评审 round 1/5：visual-regression 字体等待补 500 档）；docs 提交含本账本。
-- **评审**：round 1/5 发现 1 个 Important（visual-regression 未显式 load 500 档 → appearance 基线确定性缺口），已修复（`74721f2`），视觉回归 24/24 绿 + build 通过。
+- **评审**：round 1/5 发现 1 个 Important（visual-regression 未显式 load 500 档 → appearance 基线确定性缺口），已修复（`74721f2`），视觉回归 24/24 绿 + build 通过。**再评审（scoped，a8dbd37..HEAD）**：All findings addressed，无新 Critical/Important 破坏——500 档加载确认存在于 visual-regression.spec.js:75，冷启动/CI 伪粗窗口关闭；修复 diff 仅 1 行加进 Promise.all（fetch 并行，数组位置语义无关），docs 仅叙事更新。
 - **结论**：单测 65/65、e2e 112 passed（smoke 冷启动 flake 重跑绿）、build 成功；视觉基线 8 张重生成，解码比对确认仅 medium 字形粗细变化（真 65 vs 伪粗），非布局/颜色。
+- **执行状态**：Task B5-F1：✅ 完成（5122103 + 74721f2，评审 + 修复闭环；单任务分支评审已全分支覆盖，无需重复最终评审）
