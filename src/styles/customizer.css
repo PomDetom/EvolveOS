@@ -122,10 +122,11 @@
 .cust-overview__icon--inactive { width: 6px; height: 6px; background: var(--text-3); opacity: 0.7; }
 
 /* ---- 行：标签 + 控件 ---- */
+/* B5-5：行对齐统一 —— 标签基线一致、switch 行与 slider 行头部等高（min-height 为密度兜底，不动画） */
 .cust-row { margin-bottom: var(--space-3); }
 .cust-row__head {
   display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 6px; min-height: 20px;
 }
 .cust-row__label { font-size: var(--font-size-sm); color: var(--text-1); }
 .cust-row__hint {
@@ -137,40 +138,14 @@
   color: var(--accent); background: var(--accent-50);
   padding: 1px 6px; border-radius: var(--radius-xs);
 }
-.cust-row--switch { display: flex; align-items: center; justify-content: space-between; }
-.cust-row--switch .cust-row__head { margin-bottom: 0; }
+.cust-row--switch { display: flex; align-items: center; justify-content: space-between; min-height: 40px; }
+.cust-row--switch .cust-row__head { margin-bottom: 0; min-height: auto; }
 .cust-row--switch .c-switch { flex-shrink: 0; }
-
-/* ---- 滑杆（原生 range，accent 主题色，轨道/拇指自绘） ---- */
-.cust-range {
-  -webkit-appearance: none; appearance: none;
-  width: 100%; height: 4px; border-radius: 999px;
-  background: linear-gradient(var(--accent), var(--accent)) 0 / var(--fill, 50%) 100% no-repeat,
-    var(--surface-hover);
-  outline-offset: 4px;
-}
-.cust-range::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: var(--surface-2); border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  transition: transform var(--dur-fast) var(--ease-spring);
-}
-.cust-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
-.cust-range::-webkit-slider-thumb:active { transform: scale(1.05); }
-.cust-range::-moz-range-thumb {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--surface-2); border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-}
-.cust-range::-moz-range-track { height: 4px; border-radius: 999px; background: var(--surface-hover); }
-.cust-range:disabled { opacity: 0.45; }
-.cust-range:disabled::-webkit-slider-thumb { transform: none; }
 
 /* ---- 风格卡片（6 张主题色） ---- */
 .cust-accent-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-3); align-items: stretch; /* B5-5：3 列等高 */
 }
 .cust-accent-card {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;

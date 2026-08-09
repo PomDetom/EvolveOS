@@ -81,13 +81,13 @@ function controls(cfg, liftDefault) {
       </div>
       <label class="ml-control">
         <span class="ml-control__label">弹性</span>
-        <input class="ml-slider" type="range" min="0" max="1" step="0.05"
+        <input class="c-slider ml-slider" type="range" min="0" max="1" step="0.05"
           value="${cfg.motion.springStrength}" aria-label="弹性强度">
         <output class="ml-out" data-out="spring"></output>
       </label>
       <label class="ml-control">
         <span class="ml-control__label">位移</span>
-        <input class="ml-slider" type="range" min="0" max="24" step="1"
+        <input class="c-slider ml-slider" type="range" min="0" max="24" step="1"
           value="${liftDefault}" data-lift aria-label="位移距离">
         <output class="ml-out" data-out="lift"></output><span class="ml-unit">px</span>
       </label>
@@ -108,6 +108,15 @@ function card(d, cfg) {
 function prefersReducedMotion() {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** 滑杆 --fill 按值（0-100%）：动效试玩器弹性(0-1)/位移(0-24)滑杆随值填充（B5-final find 1 全接线，
+ *  非 50% 静态兜底）。min/max 取输入自身属性，两滑杆范围不同各自计算。 */
+function setSliderFill(input) {
+  const min = Number(input.min);
+  const max = Number(input.max);
+  if (!(max > min)) return;
+  input.style.setProperty('--fill', `${Math.min(100, Math.max(0, ((Number(input.value) - min) / (max - min)) * 100))}%`);
 }
 
 /**
@@ -131,6 +140,10 @@ function applyParams(card, cfg, springSlider, liftSlider, durBtn) {
   if (outSpring) outSpring.textContent = Number(springSlider.value).toFixed(2);
   const outLift = card.querySelector('[data-out="lift"]');
   if (outLift) outLift.textContent = liftSlider.value;
+  // B5-final（find 1）：试玩器滑杆 track 填充按值 —— 弹性 0.6→60%、位移 8/24→33% 等（非 50% 兜底）。
+  // applyParams 覆盖初始渲染 / input 事件 / subscribe 同步三条路径。
+  setSliderFill(springSlider);
+  setSliderFill(liftSlider);
 }
 
 /** 重播：clone 舞台中的演示根元素替换原节点 —— 全新节点插入，动画从头播放 */

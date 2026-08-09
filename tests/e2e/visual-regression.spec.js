@@ -66,6 +66,13 @@ for (const [name, selector, partition] of SHOTS) {
           document.documentElement.removeAttribute('style');
         }, [theme, accent]);
         const locator = page.locator(selector).first();
+        // B5-1：CJK 字体大，截图前必须等加载完成防抖动 —— 显式 load 强制拉取普惠体
+        //（仅 document.fonts.ready 不足：字体由渲染惰性触发，ready 可能在 load 前已 settle）
+        await page.evaluate(() =>
+          Promise.all([
+            document.fonts.load('14px "Alibaba PuHuiTi"'),
+            document.fonts.load('700 14px "Alibaba PuHuiTi"'),
+          ]));
         await locator.scrollIntoViewIfNeeded();
         await page.waitForTimeout(SETTLE_MS); // 字体/布局稳定
         // animations: 'disabled' —— 入场 stagger 处于不同相位会导致截图抖动

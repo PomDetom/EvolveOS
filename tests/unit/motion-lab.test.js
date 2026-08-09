@@ -25,8 +25,8 @@ describe('mountMotionLab 退订（防订阅累积）', () => {
 
     saveConfig({ motion: { springStrength: 0.8 } }); // store 变更 → 订阅回调同步弹性滑杆
     // 新容器（当前挂载）跟随 store：弹性滑杆同步为 0.8
-    expect(current.querySelector('.ml-slider').value).toBe('0.8');
+    expect(current.querySelector('.c-slider').value).toBe('0.8');
     // 旧容器已退订：仍停留在挂载时的默认值 0.6（不再被同步）
-    expect(old.querySelector('.ml-slider').value).toBe('0.6');
+    expect(old.querySelector('.c-slider').value).toBe('0.6');
   });
 });

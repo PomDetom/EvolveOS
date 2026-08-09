@@ -1,16 +1,18 @@
-.c-float-ball { position: relative; width: 40px; height: 40px; flex: none;
-  display: grid; place-items: center; color: #fff; cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+/* iOS 玻璃悬浮球（B5-3）：去 accent 渐变浓底 → 玻璃底 + 亚克力模糊（与壳材质一致）+ accent 图标。
+   层次靠 material 背景 + 投影 + 内高光，而非色彩浓度。 */
+.c-float-ball { position: relative; width: 44px; height: 44px; flex: none;
+  display: grid; place-items: center; color: var(--accent); cursor: pointer;
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent-400), var(--accent-600));
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transition: transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out); }
 .c-float-ball svg { position: relative; }
 /* hover：上浮 2px + 光晕增强（只动 transform/box-shadow/opacity） */
 .c-float-ball:hover { transform: translateY(-2px);
-  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+  box-shadow: 0 8px 22px var(--accent-300), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
 .c-float-ball__glow { position: absolute; inset: -8px; pointer-events: none;
   border-radius: var(--radius-full); opacity: 0;
   background: radial-gradient(circle, var(--accent-200) 0%, transparent 65%);

@@ -582,3 +582,30 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
   await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
   await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
 });
+
+// —— B5-4 自适应布局（Task B5-4：内容区限宽居中 + 展示分区撑满）——
+// 概览/应用页 data-layout="center"：max-width 1080 + margin-inline auto 限宽居中；
+// 设置页整体 data-layout="fluid"：max-width none 撑满内容区（表单分区靠 .csettings__field 420px 自限宽），
+// 组件/动效展示分区随之铺满。大窗口 1400×900 下验证两种模式几何。
+
+test('B5-4：自适应布局 data-layout（表单限宽居中 + 展示撑满）', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 }); // 大窗口
+  await page.goto('/?mode=app');
+  // 概览页：center（限宽 1080 居中）
+  const overview = page.locator('.app-main__page[data-page="home"]');
+  await expect(overview).toHaveAttribute('data-layout', 'center');
+  const ow = await overview.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const pr = el.parentElement.getBoundingClientRect();
+    return { w: r.width, parentW: pr.width, left: r.left, parentLeft: pr.left };
+  });
+  expect(ow.w).toBeLessThanOrEqual(1080);
+  expect(Math.abs((ow.left - ow.parentLeft) * 2 + ow.w - ow.parentW)).toBeLessThan(4); // 水平居中
+  // 组件分区：fluid 撑满
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="components"]').click();
+  const part = page.locator('.app-main__settings [data-page="components"]');
+  const pw = await part.evaluate((el) => el.getBoundingClientRect().width);
+  const pagesW = await page.locator('.app-main__pages').evaluate((el) => el.getBoundingClientRect().width);
+  expect(pw).toBeGreaterThan(pagesW - 80); // 撑满内容区（留 padding 余量）
+});
