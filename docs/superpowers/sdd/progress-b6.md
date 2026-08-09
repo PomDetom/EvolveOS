@@ -54,3 +54,13 @@
 - **评审**（独立评审）：Spec ✅（实质）符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① **88% vs 92% plan-vs-spec 张力**——规格 §5 写 hover 混 92%、计划书/brief 为 88%，实施者按 brief 落地并披露（4pp 视觉细微；若以规格为准应改 92%，否则正式记录规格修订）；② `:root:not([data-theme])` hover 兜底缺失——新规则仅 `data-theme="light|dark"` 生效，data-theme 缺位时 hover 静默失效（applyConfig 恒设，低风险）；③ `.claude/worktrees/b5-design-language` 陈旧 worktree 仍含已删 `--shadow-glow` 令牌（B5 遗留，可删 worktree 清理）；④ 按钮新视觉零像素基线覆盖（按钮矩阵在设置窗 fold 下 y=930 > 截图 ~816px，仅计算样式断言，最终评审须人工/截图补验）。
 - **评审闭环**：**Task B6-3: complete（commits ebf9fa5..a250c76，review clean）**。
+
+### 最终整体评审（opus，0171b0b..368b0b2）
+
+- **结论**：Ready to merge: Yes。无 Critical/Important 缺陷；grep/token/基线卫生验证通过；跨任务集成一致（float-ball 单一渲染路径、令牌删除全清）。
+- **Important 1（非 merge-blocking，跟进项）**：B6-3 按钮新视觉**零像素基线覆盖**（按钮矩阵 y=930 < components 分区截图 ~816px fold，仅计算样式断言）——已记录为下一阶段跟进（加滚到 showcase 或独立按钮捕获），用户桌面目检覆盖。
+- **Minor 3**：① `.c-float-ball { position: relative }` vestigial（可选清理）；② `.c-btn` 基类 transition 仍留 `filter` 项（B6-3 后无变体使用，brief 曾要求保留）；③ B6-2 测试 hover 读取未加 `data-motion=off`（B6-3 已加，统一性硬化）。
+- **Deferred minors triage（9 项全 ship as-is）**：grid 圆点格心 vs 规格「交点圆点」——blur-30 玻璃下不可感知，记 spec deviation（修复可 `circle at 0 0`）；预设图案双文件重复——plan 允许；B6-2 neutral 仅 blur 判别——风险低；box-shadow 读取时序——实测稳定；float-ball position vestigial；88/92 张力——**已修复**（见下）；data-theme 兜底缺失——applyConfig 恒设，低风险；陈旧 worktree 含已删令牌——housekeeping；按钮零像素基线——跟进项。
+- **最终修复波**：hover 混色 88%→92%（对齐规格 §5 权威值，primary/danger 四条 color-mix）`b178653`；B6-3 luma 断言通过（方向性比对，92% 下仍成立）+ 全量 e2e 116 + 单测 69 + build ✓；基线零影响。
+- **修复波复审**：ADDRESSED（四行 92% 精确到位，grep 零残留 88%），无新破坏。**Final review clean。**
+- **housekeeping（待用户确认）**：`.claude/worktrees/b5-design-language` 陈旧 worktree 仍含已删 `--shadow-glow`（B5 遗留，交接书 §7 建议删除；删除操作被权限层拦截，留待用户执行：`git worktree remove --force` 或手动删目录）。
