@@ -12,6 +12,9 @@
 - 禁止硬编码值：颜色/间距/圆角/时长/缓动全部引用 CSS 变量。
 - 圆角一律 `calc(var(--radius-*) * var(--radius-scale, 1))`。
 - 主题约定：`data-theme`（深浅）、`data-accent`（12 套主题色）、`data-motion`（动效开关）挂 `<html>`，正交组合。
+- 语义色（成功/警告/危险/信息）固定随 `data-theme`（light/dark 块内定义），**不随 `data-accent` 派生**。
+- 强调色 = 手写 50–950 全色阶预设色板，`--accent` 指向预设档位；`ACCENTS` 的 color 字段档位不统一（400/500/品牌色混用），新增预设先核对既有 presets 实际值，禁止任意 `--accent` 覆盖。
+- 字体缩放倍率用精确有理数（calc 内 `*5/7` 而非 `*0.714` 小数），默认值下保持 float 精确整数、防 ±1px 视觉漂移。
 - 配置链路：defaults（默认值 + RANGES）→ store（持久化）→ apply（写入 CSS 变量覆盖层）。**新增可配置参数必须三件套齐**，不绕过直接写 CSS 变量。
 - 场景/展示区新增组件实例用**局部类名**，避免打破全页严格计数断言。
 
@@ -36,10 +39,17 @@
 - **测试仅在 Web 环境执行**：单测（Vitest）+ 浏览器交互测试（Playwright），**不做 webview 真机验证**（Tauri 壳可启动即视为环境就绪，桌面内页面行为由用户自行测试）。
 - 逻辑/配置改动 → `npm test`（单测全量）。
 - 组件/交互/场景改动 → `npm run test:e2e`（全量交互测试）。
+- **e2e 必须用 worktree 配置**（`--config=playwright.config.worktree.js`，端口 5174 自起 server、`reuseExistingServer:false`）——默认配置 `reuseExistingServer:true` 会误连共享 checkout 残留的陈旧 5173 server 测到旧代码。
+- 主题默认 `theme:'system'`：涉及主题的测试须显式 seed `theme:'light'|'dark'`，勿假设默认主题。
+- e2e 冷启动 flake（`page.goto` 后首断言 5s 超时，惰性元素未就绪/5.3MB 普惠体加载）属环境性：隔离单跑通过即接受，勿归因产品改动。
+- 异步/吸附/动态挂载行为写回归 e2e 时，须先加确定性等待（吸附沉降、等挂载）再断言——naive「操作后立即断言」会在旧代码上也绿（TDD 红不起来），勿改断言语义。
 - 视觉改动 → 检查视觉基线是否需重生成，**基线变化必须确认由本次改动引起**。
 - 每次提交前 → `npm run build`。
 
 ## 常见坑
 
 - Playwright：`filter({hasText})` 只匹配可见文本（不匹配 title — 用 sr-only 方案）；transform 计算值恒为 `matrix(...)`；`evaluate` 勿返回永不 resolve 的 Promise；jsdom 无 `matchMedia` 需守卫。
+- Vitest 会重写测试内 `import.meta.url` 字面量：经它定位文件路径属环境怪癖，评审勿判为缺陷。
+- 布局/几何边界 bug（clamp/resize/断点跨越/显示态切换）纯函数单测复现不出时，须用 Playwright 真实交互复现取证并锁定确切触发配置，勿停留在纯几何层下结论（geometry 单测绿不代表布局正确）。
 - 视觉基线平台耦合（chromium-win32），换平台/CI 需重生成；截图前关闭动效（时长归零 + 禁用动画）防入场相位随机导致基线抖动。
+- 长截图分区重生成视觉基线时偶发 top-band 色带抖动属已知 run-to-shot 抖动：复跑绿即接受，勿归因产品改动。
