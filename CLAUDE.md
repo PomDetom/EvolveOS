@@ -21,6 +21,7 @@
 - **任务直接在共享 checkout（主工作目录）执行，不使用 git worktree 隔离**（B5 确立：worktree 引发沙箱隔离 + 共享 checkout 同步/合并复杂化）。
 - **测试与验证仅在 Web 环境执行**（单测 + Playwright 浏览器测试），不在 webview 内做真机验证。
 - 禁止升级核心依赖、禁止删除用户已有改动。
+- **开发模式与边界（框架 vs 应用）**：UI 框架（`src/components|styles|config|app|scenes|demo|motion|assets`）如需修改只能**单独修改**（`ui/` 分支，全量回归 + 框架 owner 评审）；应用（`src/apps/<id>/`）只能制作自己的页面，**禁止修改框架目录**，合并前必跑 `npm run check:boundary`。详规：`docs/superpowers/specs/2026-08-09-app-shell-dev-governance-design.md`；git 走 main + dev 双分支（`ui/*`、`app/<id>/*` 从 dev 检出）。
 
 ## 常用命令
 

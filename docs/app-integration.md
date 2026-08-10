@@ -17,49 +17,29 @@
 - **玻璃材质体系**（深/浅双主题 × 12 套强调色 × 动效开关，正交组合）+ 背景装饰 8 预设
 - **悬浮条 FloatStrip / 悬浮球 FloatBall**（桌面悬浮窗形态）
 
-你只需往 `src/app/app-main.js` 的 `MODULES` 数组加一项，壳自动完成左窗图标、右窗目录、内容区页面、标题栏上下文、级联联动。**零抽象封装、零运行时依赖**——页面就是返回 HTML 字符串的纯函数。
+你只需在 `src/apps/<id>/index.js` 放一个导出 `module` 的文件，壳经 `import.meta.glob` 自动发现，完成左窗图标、右窗目录、内容区页面、标题栏上下文、级联联动。**零抽象封装、零运行时依赖**——页面就是返回 HTML 字符串的纯函数。
 
 ---
 
-## 1. 最快接入：注册一个模块
+## 1. 最快接入：注册一个应用
 
-在 `src/app/app-main.js` 的 `MODULES` 数组末尾加一项：
+**应用 = `src/apps/<id>/` 一个目录**，壳用 `import.meta.glob('../apps/*/index.js')` 自动发现（Task G1），**新增应用 = 建目录放文件，壳零改动**。
 
-```js
-const MODULES = [
-  // ...既有模块（home/clipboard/key/wallet/search/help/info）...
-  {
-    id: 'notes', name: '便签', icon: 'pin',           // icon 名见 icon.js 的 PATHS 键
-    dir: [                                            // 右窗应用目录（可为 []，则无目录单页）
-      { id: 'all', name: '全部', icon: 'box' },
-      { id: 'archived', name: '归档', icon: 'folder' },
-    ],
-    render: notesPage,                                // 页面渲染纯函数
-  },
-];
-```
-
-对应渲染函数（**页面骨架规范**，见 §5.1）：
+`src/apps/notes/index.js`：
 
 ```js
-function notesPage(ctx) {
-  const { module, dirName } = ctx; // ctx = { module, dirId, dirName }
-  return `
-    <div class="app-main__page-head">
-      <h2 class="app-main__page-title">${module.name}</h2>
-      ${dirName ? `<span class="app-main__page-sub">${dirName}</span>` : ''}
-    </div>
-    <div class="app-main__page-body">
-      <div class="app-main__card">
-        <div class="app-main__card-title">最近便签</div>
-        <div class="app-main__card-desc">列表内容…</div>
-        ${renderButton({ label: '新建', variant: 'primary', iconName: 'plus' })}
-      </div>
-    </div>`;
-}
+import { renderButton } from '../../components/button/button.js';
+export const module = {
+  id: 'notes', name: '便签', icon: 'pin',
+  dir: [
+    { id: 'all', name: '全部', icon: 'box' },
+    { id: 'archived', name: '归档', icon: 'folder' },
+  ],
+  render: notesPage,
+};
 ```
 
-> 刷新即见：左窗出现「便签」图标，点击后右窗推入目录，内容区渲染页面，标题栏显示「便签 › 全部」。**零其他改动**。
+> **边界红线**：应用只允许修改 `src/apps/<id>/` 自己目录（+ 该应用测试 + docs），**禁止触碰框架目录**（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。合并前跑 `npm run check:boundary`；违反即失败。框架需修改 → 单独 `ui/` 分支。
 
 ---
 
@@ -92,7 +72,7 @@ ctx = {
 ### 2.3 壳自动做的事（你不需要碰）
 
 左窗图标渲染 / 右窗目录轮 / 内容区唯一 active 页 / 标题栏「应用名 › 页面名」/ 概览页快捷入口卡片 /
-应用切换时右键重载目录 / 设置模式与右键状态机。壳代码在 `src/app/app-main.js`，**扩展新应用只改 `MODULES` 数组**。
+应用切换时右键重载目录 / 设置模式与右键状态机。壳代码在 `src/app/app-main.js`，**扩展新应用只改 `src/apps/` 目录**。
 
 ---
 

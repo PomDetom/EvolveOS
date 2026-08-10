@@ -27,3 +27,4 @@
 - 铁律：任务间禁止并行派发实施子代理；控制器不直接修改代码；不接受无评审的自评报告。
 - **任务直接在共享 checkout（主工作目录）执行，不用 git worktree 隔离**（B5 确立：worktree 引发沙箱隔离 + 共享 checkout 同步/合并复杂化）。
 - 留痕：每一步的计划、工作内容、提交记录写入执行留痕，随代码提交。
+- **边界门禁**：应用任务合并前跑 `npm run check:boundary`（禁触框架目录）；框架任务须全量回归 + 框架 owner 评审。设计规格：`docs/superpowers/specs/2026-08-09-app-shell-dev-governance-design.md`。
