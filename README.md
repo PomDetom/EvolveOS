@@ -1,7 +1,6 @@
-# ui-design — 多应用壳 UI 设计系统
+# EvolveOS — 多应用综合管理系统
 
-为多个 Rust Tauri 桌面小应用（剪贴板、密码管理、记账等）提供统一界面的**应用壳**，并沉淀完整设计系统（令牌 / 32 组件 / 主题定制器）作为基础设施。
-纯原生 Web（Vite + HTML/CSS/JS，**零框架零运行时依赖**），组件 = 原生 HTML + CSS 类（BEM `c-` 前缀）+ 渐进增强 JS。
+EvolveOS 是一个**多应用综合管理系统**——以统一应用壳承载多个桌面应用（剪贴板 / 密码 / 记账…），共享设计系统（令牌 / 34 组件 / 主题定制器）为基础设施。应用 = 自己的页面（`src/apps/<id>/`，壳零侵入），壳提供一体式标题栏、级联双窗导航、统一设置与开发治理（框架 `ui/*` / 应用 `app/<id>/*` 双轨）。纯原生 Web（Vite + HTML/CSS/JS，**零框架零运行时依赖**），组件 = 原生 HTML + CSS 类（BEM `c-` 前缀）+ 渐进增强 JS。
 
 ## 两种形态
 
@@ -48,14 +47,15 @@ src/
 ├── styles/                 # 设计令牌（tokens/themes/motion/base/layout）
 ├── config/                 # 可配置层（defaults/store/apply）
 ├── motion/                 # spring 曲线 / 时长缩放
-├── components/             # 32+ 组件（各自 css + js，render()/mount() 契约；含 float-strip 悬浮条）
+├── components/             # 34 组件（各自 css + js，render()/mount() 契约；含 float-strip 悬浮条）
 ├── demo/                   # 应用壳复用的展示模块（组件矩阵/动效实验室/定制器）
 ├── app/                    # 应用壳（mode 解析 / app-main / strip-main 入口 / FloatBall 演示）
-└── scenes/                 # 场景模块（剪贴板悬浮窗；设置页共享 settings-pages）
+├── apps/                   # 应用（每个子目录一个应用，src/apps/<id>/index.js 导出 module，壳 glob 发现）
+├── scenes/                 # 场景模板（剪贴板悬浮窗；设置页共享 settings-pages）
 src-tauri/                  # Tauri 2 壳（无边框透明窗口 + 窗口控制）
 tests/
 ├── unit/                   # Vitest 单元测试
-└── e2e/                    # Playwright 交互测试 + 视觉回归（18 张基线）
+└── e2e/                    # Playwright 交互测试 + 视觉回归（30 张基线）
 docs/                       # 规格 / 计划 / 执行留痕（全部集中在此，随代码提交）
 ```
 
