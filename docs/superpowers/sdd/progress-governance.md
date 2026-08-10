@@ -31,5 +31,6 @@
 - **TDD**：`tests/unit/boundary-check.test.js` 红（`scripts/boundary-check.js` 不存在 → import transform 失败）→ 绿（6 passed）。
 - **验证**：CLI 冒烟 `npm run check:boundary main...HEAD` 与无参数默认范围均输出 `✓ 框架改动：须全量回归 + 框架 owner 评审`（kind=ui，exit 0）；`app/<id>/` 与未知分支 fail 语义由单测 6 条断言覆盖。`npm test` 17 files/75 passed；`npm run build` ✓（656ms，无警告）。
 - **Minor**：无。
-- **评审**：待独立评审。
-- **评审闭环**：待定。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① app 允许集 `tests/(unit|e2e)/` 收窄了绑定约束的 `tests/`（当前等价、fail-closed 无害，但未来 tests/ 直接子目录会被拦——需在规格固化 `(unit|e2e)` 意图）；② **未知分支仅「触框架即失败」、未实现规格「按应用边界检查」全义**（未知分支可能碰其他应用目录而通过——当前可行、交由最终评审裁定是否补严）；③ 单测缺边角覆盖（空文件列表/嵌套子目录前缀/config `.ts`/`.mjs`/未知分支非框架改动通过）；④ G2 报告误称 task-G2-brief 为既有（实为本任务新建，cosmetic）。
+- **评审闭环**：**Task G2: complete（commits eb3ae68..8b7237d，review clean）**。
