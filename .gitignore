@@ -5,3 +5,4 @@ playwright-report/
 .vite/
 playwright.config.worktree.js
 .claude/
+.idea/
