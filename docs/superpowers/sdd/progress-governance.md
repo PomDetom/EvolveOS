@@ -34,3 +34,11 @@
 - **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① app 允许集 `tests/(unit|e2e)/` 收窄了绑定约束的 `tests/`（当前等价、fail-closed 无害，但未来 tests/ 直接子目录会被拦——需在规格固化 `(unit|e2e)` 意图）；② **未知分支仅「触框架即失败」、未实现规格「按应用边界检查」全义**（未知分支可能碰其他应用目录而通过——当前可行、交由最终评审裁定是否补严）；③ 单测缺边角覆盖（空文件列表/嵌套子目录前缀/config `.ts`/`.mjs`/未知分支非框架改动通过）；④ G2 报告误称 task-G2-brief 为既有（实为本任务新建，cosmetic）。
 - **评审闭环**：**Task G2: complete（commits eb3ae68..8b7237d，review clean）**。
+
+### Task G3 — dev 分支工作流 + CLAUDE.md 红线 + 手册同步（complete 2026-08-10）
+
+- **提交**：`80e5634` docs（3 文件 +17/-35：根 CLAUDE.md 加「开发模式与边界」铁律 + docs/CLAUDE.md 加「边界门禁」+ app-integration.md §1 整节替换为 `src/apps/<id>/` glob 结构含边界红线 + §2.3 过时表述清理 + §0 同句过时表述一致性修正（beyond-brief，flagged））。
+- **验证**：纯 docs 无代码/package.json/测试改动（git status 证实）；手册全文件无残留「往 MODULES 数组加一项」操作性表述。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① §1 示例 `render: notesPage` 引用未定义函数（brief 原值 verbatim，作为插图引用可接受——可补一行注释指向 §5.1 骨架使自足）；② **根 CLAUDE.md 红线只列 8 个框架目录、未列 `vite.config`/`package.json`（brief 第 1/3 步不一致；手册更严，可接受，若根行为权威门禁可补）**；③ 「应用」vs「模块」术语并存（§1 应用 / §2 模块，刻意保留，读感顺）；④ 报告 stat 微瑕（17+/35− 为三文件聚合，per-file 15+）。
+- **评审闭环**：**Task G3: complete（commits dfa22ec..80e5634，review clean）**。`dev` 分支由控制器在合并后创建。
