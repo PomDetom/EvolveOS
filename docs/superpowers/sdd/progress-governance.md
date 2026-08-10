@@ -21,3 +21,6 @@
 - **验证**：app-shell e2e 34/34 绿（左窗 7 模块顺序/id 零回归）；视觉基线 30/30 原样通过（零视觉改动）；`npm test` 16 files/69 passed；`npm run build` ✓（glob 生产构建解析正确，无警告）。
 - **全量 e2e**：4 轮均 123 passed / 1 failed，失败为**旋转变化的冷启动时序 flake**（B6-R2-3 报告同型；docs/app-integration.md「e2e 冷启动 flake」既有条目）。**基线对照**：stash 旧代码同条件全量 → 同样 1 failed（不同受害者）→ 与环境争用有关、与本次改动无关。全部 flake 受害者隔离复跑绿 → 并集 124/124 绿。
 - **Minor**：无。
+- **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 3。Task quality Approved。
+- **Minor（deferred，最终评审 triage）**：① `tests/unit/apps.test.js` `>= 6` 不拦第 7 个应用、未断言 `order` 唯一（改为 `toBe(6)` + `new Set(orders).size === orders.length` 更贴合意图）；② `src/apps/*/index.js` `render: (ctx) => placeholderPage(ctx)` 为多余包装（可 `render: placeholderPage`，brief 原值故非缺陷）；③ `app-main.js` 注释前瞻 `check:boundary`（G2 未落，harmless 前瞻引用）。
+- **评审闭环**：**Task G1: complete（commits 7207bb5..5776032，review clean）**。
