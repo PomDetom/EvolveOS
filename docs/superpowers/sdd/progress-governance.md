@@ -6,9 +6,9 @@
 ## 任务清单
 
 - [x] Task G1: MODULES 迁移到 src/apps/ + 壳 glob 自动发现
-- [ ] Task G2: 边界检查脚本（npm run check:boundary）
-- [ ] Task G3: dev 分支 + CLAUDE.md 红线 + 手册同步
-- [ ] 最终整体评审 + 合并 main + 建 dev + 合并后全量回归
+- [x] Task G2: 边界检查脚本（npm run check:boundary）
+- [x] Task G3: dev 分支 + CLAUDE.md 红线 + 手册同步
+- [x] 最终整体评审 + 合并 main + 建 dev + 合并后全量回归
 
 ## 任务进度
 
@@ -42,3 +42,14 @@
 - **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 4。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① §1 示例 `render: notesPage` 引用未定义函数（brief 原值 verbatim，作为插图引用可接受——可补一行注释指向 §5.1 骨架使自足）；② **根 CLAUDE.md 红线只列 8 个框架目录、未列 `vite.config`/`package.json`（brief 第 1/3 步不一致；手册更严，可接受，若根行为权威门禁可补）**；③ 「应用」vs「模块」术语并存（§1 应用 / §2 模块，刻意保留，读感顺）；④ 报告 stat 微瑕（17+/35− 为三文件聚合，per-file 15+）。
 - **评审闭环**：**Task G3: complete（commits dfa22ec..80e5634，review clean）**。`dev` 分支由控制器在合并后创建。
+
+### 最终整体评审（opus，9aca5dc..adc06ce）+ 修复波 + 复审
+
+- **结论**：Ready to land: With fixes。无行为回归；门禁对文档化工作流（`app/<id>/*`/`ui/*`）fail-closed 正确。
+- **Important 2（已修）**：① **规格 §5.1 分支图与落地约定矛盾**（图写 `feature/ui/`、`feature/app/<id>/`，门禁只认 `ui/`、`app/<id>/` → 按图建分支落入未知分支路径可碰他应用目录而通过）→ 改图对齐 `ui/<name>`/`app/<id>/<name>`；② **G3 报告未提交**（SDD 留痕缺失）→ 入库。
+- **Minor 5（已修）**：① 手册 §2.1/§1 缺 `order` 字段（首例应用按手册 verbatim 会落导航位 99）→ 补 order 行 + `order: 7` 示例；② 门禁 `FRAMEWORK_FILE_RE` 漏 `vitest.config`/`index.html`/`package-lock.json` → 补 + 规格 §3.2/§4.1 镜像 + 单测；③ G1 契约测试补 order 唯一断言（`toBe(6)` 不改）；④ 根 CLAUDE.md 红线补 `vite.config`/`package.json`；⑤ `.claude/` 入 .gitignore。
+- **修复波**：`b1ac428`（7 项）+ `10e9929`（修复报告）+ `5a9adf1`（文档卫生：恢复 B6 `final-review-fix-report.md` + 治理报告改名 `final-review-fix-report-governance.md`，防同名覆盖）。
+- **复审**：All findings addressed（2/2 Important + 5/5 Minor），无新 Critical/Important 破坏；1 个新 Minor（治理报告残留「可 git checkout 恢复 B6」过时注记，非阻塞）。
+- **Deferred minors triage（全 ship-as-is）**：G1 契约测试 `>=6` 正确（改 toBe(6) 会破坏新增应用路径）；`render` 包装 verbatim 无害；注释前瞻已准确；`tests/(unit|e2e)/` 收窄 fail-closed；未知分支仅触框架失败（与规格「触框架即失败」一致，补严会误伤 hotfix 框架触碰）；单测边角覆盖；示例 `notesPage` 插图引用；根/手册红线不对称（门禁已覆盖）；「应用/模块」术语并存；报告 stat 微瑕。
+- **落地**：`dev` 分支已建（adc06ce）；治理三任务 + 修复波全部合并 main。
+
