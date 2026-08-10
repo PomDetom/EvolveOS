@@ -22,6 +22,12 @@ describe('边界检查（G2：框架/应用门禁）', () => {
     const r = assessBranchChanges('app/ledger/report', ['package.json', 'vite.config.js']);
     expect(r.ok).toBe(false);
   });
+  it('应用分支触碰仓库根入口/锁文件/测试配置 → 失败（index.html / package-lock.json / vitest.config）', () => {
+    const r = assessBranchChanges('app/ledger/report',
+      ['index.html', 'package-lock.json', 'vitest.config.js']);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(['index.html', 'package-lock.json', 'vitest.config.js']);
+  });
   it('ui 框架分支触碰框架 → 通过（标记须全量回归）', () => {
     const r = assessBranchChanges('ui/backgrounds', ['src/components/button/button.css']);
     expect(r.ok).toBe(true);

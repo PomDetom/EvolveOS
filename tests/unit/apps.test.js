@@ -22,5 +22,6 @@ describe('应用模块契约（G1：glob 自动发现）', () => {
       return m.id;
     });
     expect(new Set(ids).size).toBe(ids.length); // id 唯一
+    expect(new Set(modules.map((m) => m.order)).size).toBe(modules.length); // order 唯一（重复 order 会静默错排左窗导航）
   });
 });

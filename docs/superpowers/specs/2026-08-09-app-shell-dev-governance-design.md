@@ -53,7 +53,7 @@ const MODULES = [homeModule, ...APPS];   // home 为壳内置概览
 ### 3.2 应用禁止（红线，违反即失败）
 
 - 修改 `src/components|styles|config|app|scenes|demo|motion|assets` 任何文件。
-- 修改 `vite.config.*`、`package.json`（依赖）、`playwright.config.*`。
+- 修改 `vite.config.*`、`vitest.config.*`、`index.html`、`package.json`（依赖）、`package-lock.json`、`playwright.config.*`。
 - 绕过配置链路直接写 CSS 变量 / `data-theme` / `data-accent`。
 - 引入运行时依赖、升级核心依赖。
 
@@ -68,7 +68,7 @@ const MODULES = [homeModule, ...APPS];   // home 为壳内置概览
 - `scripts/check-boundary.js` + npm script `npm run check:boundary`。
 - 用法：`npm run check:boundary -- <base>...<head>`（如 `main...dev` / `dev...HEAD`）。
 - 规则：
-  - **应用改动**（分支前缀 `app/<id>/` 且改动全在 `src/apps/<id>/` + 该应用测试）：断言未触碰框架路径（§2 框架目录 + `vite.config` + `package.json` + `playwright.config`）；触碰即 exit 1 + 列出违规路径。
+  - **应用改动**（分支前缀 `app/<id>/` 且改动全在 `src/apps/<id>/` + 该应用测试）：断言未触碰框架路径（§2 框架目录 + `vite.config` + `vitest.config` + `index.html` + `package.json` + `package-lock.json` + `playwright.config`）；触碰即 exit 1 + 列出违规路径。
   - **框架改动**（分支前缀 `ui/`）：允许触碰框架，但输出标记「须全量回归 + 框架 owner 评审」。
   - **不匹配前缀 / 混合**：按最严格处理（按应用边界检查，触框架即失败）。
 - 由 `src/CLAUDE.md` 固化为「应用合并前必跑」。
@@ -96,8 +96,8 @@ main  （稳定 · 可发版）     只接受 dev 合入 / hotfix 直合
   ▲
 dev   （集成 · 全量回归绿）  接受特性分支合入
   ▲
-feature/ui/<name>          框架特性（从 dev 检出）
-feature/app/<id>/<name>    应用特性（从 dev 检出）
+ui/<name>                   框架特性（从 dev 检出）
+app/<id>/<name>             应用特性（从 dev 检出）
 hotfix/<name>              紧急修复（直合 main → 同步 dev）
 ```
 

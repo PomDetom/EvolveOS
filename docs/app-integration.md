@@ -30,7 +30,7 @@
 ```js
 import { renderButton } from '../../components/button/button.js';
 export const module = {
-  id: 'notes', name: '便签', icon: 'pin',
+  id: 'notes', name: '便签', icon: 'pin', order: 7,
   dir: [
     { id: 'all', name: '全部', icon: 'box' },
     { id: 'archived', name: '归档', icon: 'folder' },
@@ -52,6 +52,7 @@ export const module = {
 | `id` | string | 模块唯一标识（data-page、右键目录、上下文 data-module 用） |
 | `name` | string | 左窗 aria-label / 标题栏上下文 / 概览快捷入口名 |
 | `icon` | string | `icon.js` 的 `PATHS` 键（Lucide 风格 24×24 stroke 1.8） |
+| `order` | number | 左窗排序（home=0，应用按 order 递增） |
 | `dir` | array | 右窗目录项 `[{ id, name, icon }]`；空数组 = 无目录单页（点击直接进首屏） |
 | `render` | fn | `render(ctx) => string`，页面 HTML |
 

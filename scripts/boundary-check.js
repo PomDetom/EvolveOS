@@ -4,7 +4,11 @@ export const FRAMEWORK_PREFIXES = [
   'src/components/', 'src/styles/', 'src/config/', 'src/app/',
   'src/scenes/', 'src/demo/', 'src/motion/', 'src/assets/',
 ];
-export const FRAMEWORK_FILE_RE = [/^vite\.config/, /^package\.json/, /^playwright\.config/];
+// 仓库根框架文件：构建/入口/锁文件（应用禁止触碰）。
+export const FRAMEWORK_FILE_RE = [
+  /^vite\.config/, /^vitest\.config/, /^index\.html/,
+  /^package\.json/, /^package-lock\.json/, /^playwright\.config/,
+];
 
 export function assessBranchChanges(branch, files) {
   const appMatch = branch.match(/^app\/([^/]+)\//); // app/<id>/<name>
