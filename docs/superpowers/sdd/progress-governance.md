@@ -24,3 +24,12 @@
 - **评审**（独立评审）：Spec ✅ 符合全部要求；无 Critical/Important；Minor 3。Task quality Approved。
 - **Minor（deferred，最终评审 triage）**：① `tests/unit/apps.test.js` `>= 6` 不拦第 7 个应用、未断言 `order` 唯一（改为 `toBe(6)` + `new Set(orders).size === orders.length` 更贴合意图）；② `src/apps/*/index.js` `render: (ctx) => placeholderPage(ctx)` 为多余包装（可 `render: placeholderPage`，brief 原值故非缺陷）；③ `app-main.js` 注释前瞻 `check:boundary`（G2 未落，harmless 前瞻引用）。
 - **评审闭环**：**Task G1: complete（commits 7207bb5..5776032，review clean）**。
+
+### Task G2 — 边界检查脚本（npm run check:boundary）（complete 2026-08-10）
+
+- **提交**：`feat`（4 文件 +117：scripts/boundary-check.js 纯函数 + scripts/check-boundary.js CLI + package.json script + tests/unit/boundary-check.test.js）；docs 提交（本账本 + task-G2-report.md + task-G2-brief.md）。
+- **TDD**：`tests/unit/boundary-check.test.js` 红（`scripts/boundary-check.js` 不存在 → import transform 失败）→ 绿（6 passed）。
+- **验证**：CLI 冒烟 `npm run check:boundary main...HEAD` 与无参数默认范围均输出 `✓ 框架改动：须全量回归 + 框架 owner 评审`（kind=ui，exit 0）；`app/<id>/` 与未知分支 fail 语义由单测 6 条断言覆盖。`npm test` 17 files/75 passed；`npm run build` ✓（656ms，无警告）。
+- **Minor**：无。
+- **评审**：待独立评审。
+- **评审闭环**：待定。
