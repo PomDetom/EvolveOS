@@ -6,11 +6,10 @@
 // 左窗/右窗均为 NavigationWheel 实例（纯 icon，38.2% 黄金比例锚点；名称由标题栏上下文承担，
 // 栏内 name 经 app-main.css 隐藏，nav-wheel 组件零改动、docs 行为不变）。
 // MODULES 扩展契约：应用注册 = 模块项（左窗 icon）+ 目录项（右窗 icon）+ 页面渲染函数（内容区）。
-//   后续填充真实功能只改 MODULES（新增/改模块项、目录项、渲染函数），壳逻辑不变。
+//   后续填充真实功能只新增 src/apps/<id>/index.js（导出 module，Task G1），壳逻辑不变。
 // 右窗状态为纯 UI 态（会话内），不进配置存储。
 import { icon } from '../components/icon/icon.js';
 import { renderTitleBar, mountTitleBar } from '../components/title-bar/title-bar.js';
-import { renderEmptyState } from '../components/empty-state/empty-state.js';
 import { mountNavWheel } from '../components/navigation-wheel/nav-wheel.js';
 import { renderFloatBall, mountFloatBall } from '../components/float-ball/float-ball.js';
 import { renderFloatStrip, mountFloatStrip, renderTokenMonitor } from '../components/float-strip/float-strip.js';
@@ -28,62 +27,15 @@ import './partitions.css';
 // 仍派发 click —— pointerdown 记录起点，click 阶段位移 > 阈值视为拖拽忽略，防误触发收起。
 const TAP_MAX_MOVE = 10;
 
-// —— MODULES 扩展契约 ——
-const MODULES = [
-  { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview },
-  {
-    id: 'clipboard', name: '剪贴板', icon: 'clipboard',
-    dir: [
-      { id: 'history', name: '历史', icon: 'list' },
-      { id: 'pinned', name: '固定', icon: 'pin' },
-      { id: 'groups', name: '分组', icon: 'folder' },
-    ],
-    render: placeholderPage,
-  },
-  {
-    id: 'key', name: '密码', icon: 'key',
-    dir: [
-      { id: 'all', name: '全部', icon: 'box' },
-      { id: 'groups', name: '分组', icon: 'folder' },
-      { id: 'trash', name: '回收站', icon: 'trash' },
-    ],
-    render: placeholderPage,
-  },
-  {
-    id: 'wallet', name: '记账', icon: 'wallet',
-    dir: [
-      { id: 'overview', name: '概览', icon: 'wallet' },
-      { id: 'flows', name: '流水', icon: 'list' },
-      { id: 'categories', name: '分类', icon: 'folder' },
-    ],
-    render: placeholderPage,
-  },
-  {
-    id: 'search', name: '搜索', icon: 'search',
-    dir: [
-      { id: 'all', name: '全部', icon: 'search' },
-      { id: 'web', name: '网页', icon: 'globe' },
-      { id: 'files', name: '文件', icon: 'image' },
-    ],
-    render: placeholderPage,
-  },
-  {
-    id: 'help', name: '帮助', icon: 'help',
-    dir: [
-      { id: 'usage', name: '使用', icon: 'list' },
-      { id: 'faq', name: '常见问题', icon: 'help' },
-    ],
-    render: placeholderPage,
-  },
-  {
-    id: 'info', name: '关于', icon: 'info',
-    dir: [
-      { id: 'version', name: '版本', icon: 'box' },
-      { id: 'license', name: '许可', icon: 'shield' },
-    ],
-    render: placeholderPage,
-  },
-];
+// —— MODULES 扩展契约：home 为壳内置概览，其余应用经 glob 自动发现（Task G1）——
+// 应用 = src/apps/<id>/index.js 导出 module（id/name/icon/order/dir/render），壳零改动即可新增。
+// 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/app-integration.md + check:boundary）。
+const homeModule = { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview, order: 0 };
+const appModules = import.meta.glob('../apps/*/index.js', { eager: true });
+const APPS = Object.values(appModules)
+  .map((m) => m.module)
+  .sort((a, b) => (a.order ?? 99) - (b.order ?? 99)); // 左窗顺序：home(0) + 应用按 order
+const MODULES = [homeModule, ...APPS];
 
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
@@ -763,24 +715,6 @@ export function mountAppMode(root) {
   };
   syncCloseBehavior(getConfig());
   subscribe((cfg) => { syncCloseBehavior(cfg); });
-}
-
-// —— 占位页骨架：页面头（应用名 + 可选 › 目录项）+ EmptyState（图标 + 功能开发中 + 接入说明）——
-function placeholderPage(ctx) {
-  const { module, dirName } = ctx;
-  const sub = dirName ? ` › ${dirName}` : '';
-  return `
-    <div class="app-main__page-head">
-      <h2 class="app-main__page-title">${module.name}</h2>
-      ${dirName ? `<span class="app-main__page-sub">${sub}</span>` : ''}
-    </div>
-    <div class="app-main__page-body">
-      ${renderEmptyState({
-        iconName: module.icon,
-        title: '功能开发中',
-        desc: `「${module.name}${sub}」为应用壳占位骨架，接入真实功能后替换此处。`,
-      })}
-    </div>`;
 }
 
 // —— 概览页：欢迎卡 + 7 快捷入口卡（点击 = 展开右窗 + 切到该应用）+ 主题状态卡 ——
