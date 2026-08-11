@@ -256,6 +256,7 @@ function collectEditor(body) {
 function openEditorDialog(existing) {
   return new Promise((resolve) => {
     const mask = document.createElement('div');
+    mask.className = 'tt__editor'; // 供 token-tool.css 覆盖对话框材质（实底，非透明玻璃）
     const kind = existing?.kind ?? 'deepseek';
     mask.innerHTML = renderDialog({
       title: existing ? '编辑账户' : '添加账户',
@@ -269,8 +270,8 @@ function openEditorDialog(existing) {
 
     const syncKind = () => {
       const k = kindSel.value;
-      body.querySelector('[data-tt-row="deepseek"]').hidden = k !== 'deepseek';
-      body.querySelector('[data-tt-row="opencode_go"]').hidden = k !== 'opencode_go';
+      body.querySelectorAll('[data-tt-row="deepseek"]').forEach((el) => { el.hidden = k !== 'deepseek'; });
+      body.querySelectorAll('[data-tt-row="opencode_go"]').forEach((el) => { el.hidden = k !== 'opencode_go'; });
     };
 
     const done = (acc) => {

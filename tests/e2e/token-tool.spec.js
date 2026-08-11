@@ -152,3 +152,38 @@ test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', a
   await expect(page.locator('.c-dialog')).toBeVisible();
   await expect(page.locator('.c-dialog__header')).toContainText('添加账户');
 });
+
+// 回归（用户报 bug）：新增账户选 OpenCode 必须带出 workspace + cookie 字段；
+// 编辑器对话框为实底材质（非透明毛玻璃，与主页面一致）。
+test('tokenTool：新增账户选 OpenCode 带出 workspace+cookie；对话框实底材质', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') return { accounts: [] };
+          if (cmd === 'get_balances') return [];
+          if (cmd === 'refresh_all' || cmd === 'save_config') return null;
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.waitForTimeout(400);
+  // 打开「添加账户」
+  await page.locator('.tt__toolbar .c-btn', { hasText: '添加账户' }).click();
+  const dialog = page.locator('.c-dialog');
+  await expect(dialog).toBeVisible();
+  // 实底材质：无毛玻璃 backdrop-filter 模糊
+  await expect(dialog).toHaveCSS('backdrop-filter', 'none');
+  // 选 OpenCode Go 套餐 → workspace + cookie 两行都带出（旧代码只带出 workspace）
+  await page.locator('[data-tt-field="kind"] .c-select').selectOption('opencode_go');
+  await expect(page.locator('[data-tt-field="workspace"]')).toBeVisible();
+  await expect(page.locator('[data-tt-field="cookie"]')).toBeVisible();
+});

@@ -86,3 +86,8 @@
   font-size: var(--font-size-sm);
   color: var(--text-3);
 }
+/* 添加/编辑账户对话框：实底材质（与主页面一致，非透明毛玻璃）——覆盖框架 .c-dialog 的玻璃面板 */
+.tt__editor .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+}
