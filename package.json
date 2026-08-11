@@ -15,6 +15,7 @@
     "test:e2e": "playwright test",
     "test:visual": "playwright test tests/e2e/visual-regression.spec.js",
     "check:boundary": "node scripts/check-boundary.js",
+    "set-version": "node scripts/set-version.js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
