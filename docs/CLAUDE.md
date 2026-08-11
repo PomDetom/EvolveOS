@@ -35,3 +35,4 @@
 - **后台子代理中途 yield（如仍在跑 e2e）会留下未提交工作树改动**：恢复/续跑前先 `git status` 检查仓库状态，勿直接派发新任务。
 - **Windows 下提交前用 `git status`/`git diff --stat` 核对**，防 Cargo.toml 等被构建触碰文件的行尾（LF/CRLF）噪声混入提交。
 - **合并 feature 分支进 main 后须先全量回归**（`npm test` + `npm run test:e2e` + `npm run build`）通过再删分支收尾。
+- **发版步骤**：dev 稳定 → `npm run release -- <patch|minor|major>`（bump+CHANGELOG+门禁）→ dev→main `--no-ff` 全量回归 → tag `vX.Y.Z`。main 只收 dev 合入 + hotfix；docs 也走 dev。

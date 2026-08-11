@@ -106,8 +106,8 @@ hotfix/<name>              紧急修复（直合 main → 同步 dev）
 1. 从 `dev` 检出特性分支（`ui/*` 或 `app/<id>/*`），共享 checkout 执行（不用 worktree，B5 铁律）。
 2. SDD：TDD → 独立评审 → 修复循环 → 每任务回归。
 3. 合回 `dev` → **dev 全量回归**（e2e + 单测 + build）。
-4. dev 稳定 → 合 `main`（`--no-ff`，视作一次发版）→ **main 合并后全量回归** → 删分支。
-5. 里程碑打 tag：`ui/vX.Y.Z`。
+4. dev 稳定 → 合 `main`（`--no-ff`，视作一次发版）（main 只收 dev 合入 + hotfix，docs 也走 dev）→ **main 合并后全量回归** → 删分支。
+5. 里程碑打 tag：`vX.Y.Z`。
 6. 留痕：`docs/superpowers/sdd/progress-*.md` 账本 + HANDOFF 交接；dev 集成 / main 发版各记一笔。
 
 ### 5.3 回归门（按改动分级）
