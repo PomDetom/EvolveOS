@@ -1,0 +1,88 @@
+/* tokenTool 应用局部样式 —— 全部消费设计令牌，类名 tt__*（避免全页计数断言冲突） */
+.tt__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.tt__toolbar-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-3);
+}
+.tt__toolbar-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.tt__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+.tt__card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.tt__card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.tt__card-name {
+  color: var(--text-1);
+}
+.tt__card-last {
+  font-size: var(--font-size-xs);
+  color: var(--text-3);
+  margin-left: auto;
+}
+.tt__card-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+.tt__card-error {
+  font-size: var(--font-size-sm);
+  color: var(--danger-600);
+  background: var(--danger-50);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  padding: var(--space-2) var(--space-3);
+}
+.tt__card-balance {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-1);
+}
+.tt__card-balance--empty {
+  color: var(--text-3);
+}
+.tt__window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.tt__window-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+.tt__window-label { color: var(--text-2); }
+.tt__window-meta { color: var(--text-1); }
+.tt__window-sub {
+  font-size: var(--font-size-xs);
+  color: var(--text-3);
+}
+/* 进度条色彩变体（进度组件仅内置 accent，按用量分级着色） */
+.tt__window .c-progress__fill--warning { background: var(--warning-500); }
+.tt__window .c-progress__fill--danger { background: var(--danger-500); }
+.tt__card-none {
+  font-size: var(--font-size-sm);
+  color: var(--text-3);
+}

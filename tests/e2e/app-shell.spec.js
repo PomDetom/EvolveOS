@@ -1,20 +1,20 @@
 import { test, expect } from '@playwright/test';
 
-// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 7 模块占位。
+// 应用壳骨架（Task A3，规格 §2/§3/§4）：双窗口级联 + 标题栏上下文 + 8 模块占位。
 // 入口 `?mode=app`（docs 模式零冲击是硬门槛，本 spec 只测 app 路径）。
 // 动画时长：右窗推入 --dur-push 240ms（calc(--dur-base*1.2)）、切页 --dur-fast 120ms，
 // 点击后 waitForTimeout 覆盖动画相位。
 
 const APP_URL = '/?mode=app';
 
-test('壳结构：标题栏/左窗 7 模块/单窗口态右窗隐藏/内容区概览页', async ({ page }) => {
+test('壳结构：标题栏/左窗 8 模块/单窗口态右窗隐藏/内容区概览页', async ({ page }) => {
   await page.goto(APP_URL);
   await expect(page.locator('.app-main')).toBeVisible();
   // 标题栏存在（app 模式唯一实例）
   await expect(page.locator('.app-main .c-titlebar')).toHaveCount(1);
   await expect(page.locator('.app-main [data-ctx]')).toBeVisible();
-  // 左窗 7 个模块项
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+  // 左窗 8 个模块项
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
   // 单窗口态：右窗隐藏
   await expect(page.locator('.app-main__nav-r')).toBeHidden();
   // 内容区：概览页为默认 active 页
@@ -106,11 +106,11 @@ test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ 
   await expect(ctx).toHaveText('剪贴板');
 });
 
-test('概览页结构：欢迎卡 + 7 快捷入口 + 主题状态卡', async ({ page }) => {
+test('概览页结构：欢迎卡 + 8 快捷入口 + 主题状态卡', async ({ page }) => {
   await page.goto(APP_URL);
   const overview = page.locator('.app-main__page[data-page="home"]');
   await expect(overview.locator('.app-main__welcome')).toBeVisible();
-  await expect(overview.locator('.app-main__shortcut')).toHaveCount(7);
+  await expect(overview.locator('.app-main__shortcut')).toHaveCount(8);
   await expect(overview.locator('.app-main__theme-status')).toBeVisible();
   // 快捷入口点击 = 展开右窗 + 切到该应用（点击剪贴板入口）
   await overview.locator('.app-main__shortcut[data-shortcut="clipboard"]').click();
@@ -301,7 +301,7 @@ test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({
 
 // —— B1-3 评审修复：恢复垂直导航轮「滚轮 → 停止 → 吸附 → 38.2% 锚点」覆盖（规格 §8.3 不得悬置）——
 // 原用例随 nav-wheel.spec.js 删除（docs 侧栏 .navwheel__list 无宿主），行为是壳左窗的真实交互，
-// 重挂到 `.app-main__nav-l .c-navwheel__list`（应用壳左窗 7 模块垂直轮，anchorRatio 0.382）。
+// 重挂到 `.app-main__nav-l .c-navwheel__list`（应用壳左窗 8 模块垂直轮，anchorRatio 0.382）。
 // 与 mobile-nav.spec.js 的横向 dock 覆盖互补：本用例专测垂直主轴滚轮路径。
 test('左窗导航轮：滚轮滚动停止后吸附最近项并选中（38.2% 锚点）', async ({ page }) => {
   await page.goto('/?mode=app');
@@ -454,9 +454,9 @@ test('导航图标选中项放大加粗、非选中项常规', async ({ page }) 
 
 test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) => {
   await page.goto('/?mode=app');
-  // 先等导航轮挂载（7 项）再断言：若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过，
+  // 先等导航轮挂载（8 项）再断言：若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过，
   // 失去「删光晕」的真门禁（挂载后仍有 glow 时也必须失败）
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
   await expect(page.locator('.c-navwheel__glow')).toHaveCount(0);
   const bg = await page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon')
     .evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -467,12 +467,12 @@ test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) 
 // 顶部 48px 渐变叠加层（.c-navwheel__mask，linear-gradient(var(--glass-bg), transparent)）
 // 叠在导航栏自身 48% 半透明背景上 = 双倍着色把顶部洗白，与标题栏割裂成色带。
 // 修法：删除叠加渐变 div，竖向列表改 CSS mask-image 内容遮罩（淡出滚动项但不叠加颜色层）。
-// 先等导航轮挂载（7 项）再断言 count 0 —— 若在挂载前断言，空 DOM 上 toHaveCount(0) 会真空通过
+// 先等导航轮挂载（8 项）再断言 count 0 —— 若在挂载前断言，空 DOM 上 toHaveCount(0) 会真空通过
 // （B2-R4 同款门禁：挂载后仍有 mask 时必须失败）。横向 dock 无竖向遮罩需求，不加 mask-image。
 
 test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
   await page.goto('/?mode=app');
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(7);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
   // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
   await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
   // 竖向列表有 mask-image 内容遮罩
