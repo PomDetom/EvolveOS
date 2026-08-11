@@ -7,7 +7,7 @@ import { renderDialog } from '../../components/dialog/dialog.js';
 import { renderInput } from '../../components/input/input.js';
 import { renderSelect } from '../../components/select/select.js';
 import { toast } from '../../components/toast/toast.js';
-import { accountCard, formatRelative } from './token-tool-utils.js';
+import { accountCard, escapeHtml, formatRelative } from './token-tool-utils.js';
 import './token-tool.css';
 
 export function tokenToolPage() {
@@ -189,7 +189,7 @@ function editorFormHtml(existing, kind) {
     <div class="tt__form">
       <label class="tt__field" data-tt-field="name">
         <span class="tt__field-label">名称</span>
-        ${renderInput({ value: e.name ?? '', placeholder: '账户备注名', label: '名称' })}
+        ${renderInput({ value: escapeHtml(e.name ?? ''), placeholder: '账户备注名', label: '名称' })}
       </label>
       <label class="tt__field" data-tt-field="kind">
         <span class="tt__field-label">类型</span>
@@ -203,19 +203,19 @@ function editorFormHtml(existing, kind) {
       </label>
       <div class="tt__field" data-tt-field="baseUrl" data-tt-row="deepseek"${ds}>
         <span class="tt__field-label">接口地址</span>
-        ${renderInput({ value: e.baseUrl ?? 'https://api.deepseek.com', placeholder: 'https://api.deepseek.com', label: '接口地址' })}
+        ${renderInput({ value: escapeHtml(e.baseUrl ?? 'https://api.deepseek.com'), placeholder: 'https://api.deepseek.com', label: '接口地址' })}
       </div>
       <div class="tt__field" data-tt-field="apiKey" data-tt-row="deepseek"${ds}>
         <span class="tt__field-label">API Key</span>
-        ${renderInput({ type: 'password', value: e.apiKey ?? '', placeholder: 'sk-...', label: 'API Key' })}
+        ${renderInput({ type: 'password', value: escapeHtml(e.apiKey ?? ''), placeholder: 'sk-...', label: 'API Key' })}
       </div>
       <div class="tt__field" data-tt-field="workspace" data-tt-row="opencode_go"${oc}>
         <span class="tt__field-label">Workspace ID</span>
-        ${renderInput({ value: e.workspaceId ?? '', placeholder: 'wrk_xxx', label: 'Workspace ID' })}
+        ${renderInput({ value: escapeHtml(e.workspaceId ?? ''), placeholder: 'wrk_xxx', label: 'Workspace ID' })}
       </div>
       <div class="tt__field" data-tt-field="cookie" data-tt-row="opencode_go"${oc}>
         <span class="tt__field-label">Auth Cookie</span>
-        ${renderInput({ type: 'password', value: e.authCookie ?? '', placeholder: 'auth=... 整段', label: 'Auth Cookie' })}
+        ${renderInput({ type: 'password', value: escapeHtml(e.authCookie ?? ''), placeholder: 'auth=... 整段', label: 'Auth Cookie' })}
       </div>
       <div class="tt__field" data-tt-field="interval">
         <span class="tt__field-label">刷新间隔(秒)</span>

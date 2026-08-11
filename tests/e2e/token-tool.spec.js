@@ -78,3 +78,43 @@ test('tokenTool：桌面端（mock __TAURI__）加载账户、渲染卡片、触
   invokes = await page.evaluate(() => window.__tokenToolInvokes__);
   expect(invokes.map((i) => i.cmd)).toContain('refresh_all');
 });
+
+// 编辑对话框表单值转义：账户名含 `"` 时，name 输入框 value 必须完整回显且原始属性为转义形态
+// （旧代码直接插值破坏属性 → 自 XSS 路径 + 编辑回显错误；浏览器实体解码属性值，
+// 故解码后 getAttribute('value') = `a"b`，原始转义形态看序列化 outerHTML）
+test('tokenTool：编辑对话框表单值转义（含引号账户名不破坏属性）', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') {
+            return {
+              accounts: [
+                { id: 'a1', name: 'a"b', kind: 'deepseek', baseUrl: 'https://api.deepseek.com', apiKey: 'sk-x', workspaceId: null, authCookie: null, refreshIntervalSecs: 300, warnThreshold: 10 },
+              ],
+            };
+          }
+          if (cmd === 'get_balances') return [];
+          if (cmd === 'save_config') return null;
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.waitForTimeout(400);
+
+  // 打开含引号账户的编辑对话框 → 名称值完整回显 + 原始属性为转义形态。
+  // 注：浏览器解析 HTML 时实体解码属性值，getAttribute('value') 返回解码后的 `a"b`；
+  // 原始转义形态需看序列化 outerHTML（`"` → `&quot;`）。旧代码属性被 `"` 截断为 `a`。
+  await page.locator('.tt__card', { hasText: 'a"b' }).locator('[data-tt-action="edit"]').click();
+  const nameInput = page.locator('[data-tt-field="name"] .c-input');
+  await expect(nameInput).toHaveAttribute('value', 'a"b');
+  expect(await nameInput.evaluate((el) => el.outerHTML)).toContain('value="a&quot;b"');
+});
