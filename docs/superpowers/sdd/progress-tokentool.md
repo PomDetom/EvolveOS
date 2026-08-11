@@ -136,6 +136,13 @@
 **待桌面真机验证**（web 测试不覆盖，`npm run tauri:dev` 人工确认）：真实 IPC（invoke 5 命令）、DPAPI 加解密、30s 调度器轮询、`config.json` 落 exe 旁。
 **遗留未跟踪文件**（非本分支产物，未提交未删除）：`.idea/`（dev 分支缺 .gitignore 更新，main 已 ignore）、`AGENTS.md`（内容为项目 CLAUDE.md 旧版草稿，来源不明，留待确认）。
 
+## 合并完成（2026-08-11）
+
+- `ui/tokentool` 合并进 **dev**（fast-forward，dev = fcbc0a7）与 **main**（merge commit `5ee573a`，保留 main 既有 docs 提交），两处均无冲突。
+- main 全量回归通过：npm test 85/85、npm run build、cargo test 11/11、全量 e2e（worktree 配置）128/128（含视觉 30 + token-tool 4 用例）。
+- 分支已删除。
+- 说明：post-merge 的 `npm run check:boundary` 在 main 上报 package.json/package-lock.json——经核实为 main 自身「项目更名」提交 `9974010`（dev 快进后不含），非 tokenTool 改动；分支门禁已在 ui/tokentool 上通过（框架改动提示）。
+
 **最终整分支评审（opus, 7ecb730..b6f21e0）**: ✅ 无 Critical；**2 个 Important（修复波中）** + Minor 清扫建议。
 - Important 1: 空状态「添加账户」CTA 失灵——`renderAccounts` 的 `renderEmptyState({action:{label:'添加账户'}})` 渲染 `.c-btn` 但 `onGrid` 只匹配 `[data-tt-action]`、`onToolbar` 只绑工具栏 → 零账户首启点击无反应（mock e2e 未覆盖零账户态）。修复：onGrid 加 `.c-btn` 兜底或给 action 加 `data-tt-action="add"` + 补零账户 e2e。
 - Important 2: plan/设计规格文档未提交到分支（在 main 66b9cfc/59c9152/57a2578），账本引用需显式说明（不重复提交以免合并冲突）。
