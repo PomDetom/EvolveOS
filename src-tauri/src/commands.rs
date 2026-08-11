@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::models::{Account, AppConfig, Balance};
 use crate::scheduler::refresh_all_now;

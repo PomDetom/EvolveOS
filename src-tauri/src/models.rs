@@ -8,15 +8,6 @@ pub enum AccountKind {
     OpencodeGo,
 }
 
-impl AccountKind {
-    pub fn label(&self) -> &'static str {
-        match self {
-            AccountKind::Deepseek => "DeepSeek 官方",
-            AccountKind::OpencodeGo => "OpenCode Go 套餐",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {

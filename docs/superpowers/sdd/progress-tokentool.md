@@ -2,6 +2,8 @@
 
 > 执行留痕（唯一权威进度来源）。每任务：计划 / 工作内容 / 提交哈希 / 评审结论。
 > 分支：`ui/tokentool`（自 dev `7ecb730` 检出）。设计规格：`docs/superpowers/specs/2026-08-10-tokentool-design.md`。
+>
+> 计划 `docs/superpowers/plans/2026-08-10-tokentool.md` 与设计规格 `docs/superpowers/specs/2026-08-10-tokentool-design.md` 已提交在 `main`（规格 `66b9cfc`，计划 `59c9152` + 计划修正 `57a2578`），本分支按其 verbatim 执行、有意不在分支重复提交（避免合并冲突）。
 
 ## Global Constraints（执行期恒约束）
 
@@ -109,4 +111,10 @@
 
 **提交**: （待填）
 
-**评审**: （待填）
+**评审**: （待最终修复波后填）
+
+**最终整分支评审（opus, 7ecb730..b6f21e0）**: ✅ 无 Critical；**2 个 Important（修复波中）** + Minor 清扫建议。
+- Important 1: 空状态「添加账户」CTA 失灵——`renderAccounts` 的 `renderEmptyState({action:{label:'添加账户'}})` 渲染 `.c-btn` 但 `onGrid` 只匹配 `[data-tt-action]`、`onToolbar` 只绑工具栏 → 零账户首启点击无反应（mock e2e 未覆盖零账户态）。修复：onGrid 加 `.c-btn` 兜底或给 action 加 `data-tt-action="add"` + 补零账户 e2e。
+- Important 2: plan/设计规格文档未提交到分支（在 main 66b9cfc/59c9152/57a2578），账本引用需显式说明（不重复提交以免合并冲突）。
+- Minor 清扫（修复波含）：commands.rs 未用 `Manager` 导入、models.rs `AccountKind::label()` 死代码（Rust 警告清扫）；`unlisten` 赋值竞态（trivial）。
+- Minor（deferred，账本已有 + 新增）：编辑对话框缺 Tab 焦点圈定（a11y 低影响）；`config-updated`/`balance-updated`(单数) 事件发射但前端未监听（无害）；`test_one` spawn 失败兜底 `last_updated:0` 显示 1970 日期（罕见路径）；Cargo.toml `tokio full`/`reqwest json` 特性可裁剪（编译时间）；ledger Task 9 块待填（修复波后控制器补）。
