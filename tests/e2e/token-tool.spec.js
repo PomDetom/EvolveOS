@@ -118,3 +118,37 @@ test('tokenTool：编辑对话框表单值转义（含引号账户名不破坏�
   await expect(nameInput).toHaveAttribute('value', 'a"b');
   expect(await nameInput.evaluate((el) => el.outerHTML)).toContain('value="a&quot;b"');
 });
+
+// 零账户空态：「添加账户」CTA 必须打开添加账户编辑对话框（修复波覆盖——旧 onGrid 只匹配
+// [data-tt-action]，空态 CTA 渲染的 .c-btn 无该属性 → 点击无反应）
+test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') return { accounts: [] };
+          if (cmd === 'get_balances') return [];
+          if (cmd === 'save_config') return null;
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.waitForTimeout(400);
+
+  // 空状态 CTA 可见
+  const cta = page.locator('.tt__grid .c-btn', { hasText: '添加账户' });
+  await expect(cta).toBeVisible();
+
+  // 点击 → 添加账户编辑对话框出现
+  await cta.click();
+  await expect(page.locator('.c-dialog')).toBeVisible();
+  await expect(page.locator('.c-dialog__header')).toContainText('添加账户');
+});

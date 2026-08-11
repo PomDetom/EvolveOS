@@ -145,7 +145,12 @@ export function mountTokenTool(pageEl) {
 
   const onGrid = (e) => {
     const actionEl = e.target.closest('[data-tt-action]');
-    if (!actionEl) return;
+    if (!actionEl) {
+      // 空状态 CTA（renderEmptyState 的 action 不带 data-tt-action）→ 打开添加账户
+      const cta = e.target.closest('.c-btn');
+      if (cta && cta.textContent.includes('添加账户')) openEditor();
+      return;
+    }
     const card = actionEl.closest('.tt__card');
     if (!card) return;
     const action = actionEl.dataset.ttAction;
@@ -158,18 +163,20 @@ export function mountTokenTool(pageEl) {
   toolbar.addEventListener('click', onToolbar);
   grid.addEventListener('click', onGrid);
 
-  window.__TAURI__.event.listen('balances-updated', (e) => {
+  const listenPromise = window.__TAURI__.event.listen('balances-updated', (e) => {
     if (disposed) return;
     balances = e.payload ?? [];
     renderAccounts();
-  }).then((un) => { unlisten = un; }).catch(() => {});
+  });
+  listenPromise.then((un) => { unlisten = un; }).catch(() => {});
 
   timer = window.setInterval(renderLastRefreshes, 30 * 1000);
 
   disposes.set(pageEl, () => {
     disposed = true;
     clearInterval(timer);
-    unlisten?.();
+    if (unlisten) unlisten();
+    else listenPromise.then((un) => un && un()).catch(() => {});
     toolbar.removeEventListener('click', onToolbar);
     grid.removeEventListener('click', onGrid);
   });
