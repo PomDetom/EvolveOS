@@ -1,5 +1,7 @@
 mod crypto;
 mod models;
+mod config;
+mod state;
 
 use tauri::Manager;
 use std::sync::Mutex;
