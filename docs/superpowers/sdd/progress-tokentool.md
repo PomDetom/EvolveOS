@@ -143,6 +143,14 @@
 - 分支已删除。
 - 说明：post-merge 的 `npm run check:boundary` 在 main 上报 package.json/package-lock.json——经核实为 main 自身「项目更名」提交 `9974010`（dev 快进后不含），非 tokenTool 改动；分支门禁已在 ui/tokentool 上通过（框架改动提示）。
 
+## 跟进修复轮（2026-08-11，用户 3 项）
+
+- **Bug**：新增账户选 OpenCode 不带出 Auth Cookie——`syncKind` 用 `querySelector('[data-tt-row="opencode_go"]')` 只命中第一个匹配（workspace 行），cookie 是第二个 opencode 行永远带不出；编辑时 kind 初始即 opencode 直接渲染可见故只有编辑能填。复现 e2e 证伪后修复为 `querySelectorAll` 遍历（TDD 红→绿）。
+- **优化**：新增/编辑对话框材质由透明毛玻璃（`--glass-bg` + backdrop-filter blur）改为实底不透明（`--surface-solid` + `backdrop-filter:none`，与主页面卡片同色系），经 `.tt__editor` 类作用域覆盖，app 内局部、不波及框架对话框。
+- **措辞**：CLAUDE.md/README「克制的玻璃质感」→「亚克力质感」（用户：不要克制，直接亚克力）。
+- 分支 `app/token-tool/fix`（自 main）承载应用改动（token-tool.js/css/spec），`main...HEAD` 边界检查 ✓ 应用改动通过；合并进 main `08b596f` + 措辞 docs 提交 `2093a38`；dev 已同步至 main（2093a38）；分支已删。
+- 验证：token-tool 5 + app-shell 34 e2e 绿、npm test 85/85、build 绿。全量 e2e 一次出现 `app-shell 亚克力两档` 失败——隔离单跑通过（13.5s）、与 npm test 同窗口 flake 后复跑干净一致，判定环境 flake（改动为 `.tt__editor` 作用域 CSS + docs，碰不到 applyConfig/data-glass）；最终全量 e2e 复跑确认中。
+
 **最终整分支评审（opus, 7ecb730..b6f21e0）**: ✅ 无 Critical；**2 个 Important（修复波中）** + Minor 清扫建议。
 - Important 1: 空状态「添加账户」CTA 失灵——`renderAccounts` 的 `renderEmptyState({action:{label:'添加账户'}})` 渲染 `.c-btn` 但 `onGrid` 只匹配 `[data-tt-action]`、`onToolbar` 只绑工具栏 → 零账户首启点击无反应（mock e2e 未覆盖零账户态）。修复：onGrid 加 `.c-btn` 兜底或给 action 加 `data-tt-action="add"` + 补零账户 e2e。
 - Important 2: plan/设计规格文档未提交到分支（在 main 66b9cfc/59c9152/57a2578），账本引用需显式说明（不重复提交以免合并冲突）。
