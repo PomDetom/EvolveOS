@@ -235,6 +235,7 @@ export function mountAppMode(root) {
     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
     const page = pages.find((p) => p.dataset.page === state.moduleId);
     page.innerHTML = mod.render(modCtx(mod));
+    mod.mount?.(page, modCtx(mod)); // 应用交互挂载钩子（render 后调用；无 mount 的占位 app 为 no-op）
   }
 
   // —— 设置页分区切换：唯一 active 页 + 惰性挂载（外观定制器 + 组件/动效展示内容，Task B1-1）。
@@ -457,6 +458,14 @@ export function mountAppMode(root) {
     mobile.animateTop = false;
     activateMobileSettings();
     updateCtx();
+    // 应用交互挂载钩子（手机栈顶 detail 页，render 后调用）
+    const topEntry = mobile.stack[mobile.stack.length - 1];
+    const topEl = stackEl.lastElementChild;
+    if (topEntry?.type === 'detail' && topEl && topEl.dataset.stack === 'detail') {
+      const topMod = MODULES.find((m) => m.id === topEntry.moduleId);
+      const body = topEl.querySelector('.app-main__stack-body');
+      if (body) topMod.mount?.(body, { module: topMod, dirId: topEntry.dirId, dirName: topEntry.dirName });
+    }
   }
 
   function pushStack(entry) {

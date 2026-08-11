@@ -10,14 +10,14 @@ const APP_URL = '/?mode=app';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('手机形态：底部横滑应用栏可见（7 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
+test('手机形态：底部横滑应用栏可见（8 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
   await page.goto(APP_URL);
   await expect(page.locator('.app-main')).toBeVisible();
-  // 底部 dock 可见且含 7 个应用项，沿 x 轴横排（位置递增）
+  // 底部 dock 可见且含 8 个应用项，沿 x 轴横排（位置递增）
   const dock = page.locator('.app-main__dock');
   await expect(dock).toBeVisible();
   const items = dock.locator('.c-navwheel__item');
-  await expect(items).toHaveCount(7);
+  await expect(items).toHaveCount(8);
   const xs = await items.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
   for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
   // 桌面双窗隐藏

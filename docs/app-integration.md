@@ -70,6 +70,8 @@ ctx = {
 - 需要交互的页面：HTML 返回后由壳或你自己的 `mount` 接线（见 §3.2）。
 - 目录项切换（右键选中）会重渲染内容区——页面里显示 `ctx.dirName` 即可天然联动。
 
+**可选 `mount(pageEl, ctx)`**：`module` 还可导出可选 `mount(pageEl, ctx)`——壳在 `render` 之后、页面注入 `innerHTML` 后调用，用于接线交互（事件/订阅/定时器）。**每次左右窗切换重渲染都会重跑 render + mount**，mount 内须先释放上次挂载的监听/定时器（tokenTool 用 `WeakMap` 按 pageEl 管理 dispose），否则泄漏。浏览器/桌面统一经此钩子；无 `mount` 的占位 app 为 no-op。手机页面栈 detail 路径同样在 render 后调用 `mount`（作用于栈顶 detail 页的 `.app-main__stack-body`）。
+
 ### 2.3 壳自动做的事（你不需要碰）
 
 左窗图标渲染 / 右窗目录轮 / 内容区唯一 active 页 / 标题栏「应用名 › 页面名」/ 概览页快捷入口卡片 /
@@ -207,6 +209,7 @@ mountInput(pageEl.querySelector('.c-input'));
 - 概览页：`renderOverview`（欢迎卡 + 快捷入口网格 + 主题状态卡）。
 - 设置页：`src/scenes/settings-window/settings-pages.js`（表单字段 / 主题三态 / 开关 / 保存 / 快捷键）。
 - 完整独立应用：`src/scenes/clipboard-float/`（悬浮窗形态）。
+- 真实数据应用（复用 Tauri 后端）：`src/apps/token-tool/`（桌面优先/浏览器「需桌面端使用」空态；`mount` 交互 + 自定义编辑对话框 + invoke/listen 实时刷新；Rust 后端在 `src-tauri/src/`）。
 
 ---
 
