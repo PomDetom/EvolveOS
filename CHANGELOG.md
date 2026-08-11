@@ -1,3 +1,331 @@
+## [0.1.1] - 2026-08-11
+
+### Added
+
+### Changed
+
+### Fixed
+
+- feat: 半自动发版脚本 release.js + CHANGELOG（单测）
+- feat: About 页版本动态读 package.json（vite define __APP_VERSION__）
+- feat: 版本治理——version-utils 纯函数 + set-version 同步脚本（单测）
+- chore: 远端推送准备（合并官方 Node/Rust/Windows .gitignore + AGENTS.md 同步 CLAUDE.md + README/关于页措辞优化）
+- docs: tokenTool 跟进修复轮留痕（OpenCode cookie bug + 对话框实底材质 + 亚克力措辞）
+- docs: 设计语言措辞「克制的玻璃质感」→「亚克力质感」（非玻璃）
+- fix: tokenTool 新增账户选 OpenCode 带出 workspace/cookie 字段（syncKind 改 querySelectorAll）+ 编辑对话框实底材质
+- docs: tokenTool 合并完成记录（dev fast-forward + main merge 5ee573a，main 全量回归通过）
+- Merge branch 'ui/tokentool'
+- docs: tokenTool 执行留痕账本收尾（Task 9 完成 + 分支汇总 + 真机验证清单）
+- chore: tokenTool Rust 警告清扫（未用 Manager/label）+ ledger 文档位置说明
+- fix: tokenTool 空状态添加账户 CTA 接线 + 零账户 e2e
+- docs: tokenTool 接入文档（mount 契约 + 参考实现）+ 执行留痕账本
+- fix: tokenTool 编辑对话框表单值转义（防属性突破自 XSS）
+- feat: tokenTool 交互挂载（invoke/listen/编辑对话框/测试/刷新，mock e2e）
+- feat: tokenTool 应用接入（渲染/样式/纯函数单测 + 壳计数 7→8 + 视觉基线）
+- feat: 壳 render 后调 mod.mount 挂载钩子（app 交互接线）
+- feat: tokenTool Rust 后端接线（注册 5 命令 + 启动 30s 轮询调度器）
+- feat: tokenTool Rust 调度器 + 5 个 Tauri 命令
+- feat: tokenTool Rust 适配器（DeepSeek 余额 + OpenCode Go 三窗口解析）
+- feat: tokenTool Rust config/state（DPAPI 加密存储 + 共享状态）
+- feat: tokenTool Rust 后端脚手架（models + crypto + Cargo 依赖）
+- docs: 修正 tokenTool 计划 Task1 cargo test 命令（双 filter 需 -- 分隔，改全量跑）
+- docs: tokenTool 实施计划（Rust 后端移植 5 任务 + 壳 mount 钩子 + app 前端 2 任务 + 回归）
+- docs: tokenTool 应用接入设计规格（复用 codeplan-usage Rust 后端 + EvolveOS UI，桌面优先/浏览器降级）
+- docs: CLAUDE.md 瘦身——Tauri 坑移入 src-tauri/CLAUDE.md（子目录按需加载），根文件留指针
+- docs: 合并 harness-enhance 沉淀规则入 CLAUDE.md（Tauri 桌面壳坑 + 测试/SDD 流程约定，分层路由根/src/docs）
+- chore: gitignore .idea/（IDE 配置）
+- docs: 项目更名为 EvolveOS（多应用综合管理系统）—— 品牌引用 + 介绍措辞 + README 计数刷新
+- docs: 治理账本最终评审闭环 + 清单勾选
+- docs: 恢复 B6 最终评审修复报告 + 治理修复报告改名（防同名覆盖）
+- docs: 治理最终评审修复报告（spec 分支图 + 门禁构建文件 + 手册 order + G3 入库 收尾）
+- fix: 治理最终评审闭环（spec 分支图对齐 ui/app 前缀 + 门禁补构建文件 + 手册 order 字段 + G3 报告入库）
+- merge: 开发模式边界红线固化（CLAUDE.md）+ 手册同步（G3）
+- docs: G3 账本评审闭环（review clean，4 Minor deferred）+ G3 brief 入库
+- docs: 开发模式边界红线固化（CLAUDE.md）+ 手册同步 glob 应用结构（G3）
+- merge: 边界检查脚本（npm run check:boundary，G2）
+- docs: G2 账本评审闭环（review clean，4 Minor deferred）
+- docs: Task G2 报告 + 账本（边界检查脚本完成，TDD/冒烟/全量回归留痕）
+- feat: 框架/应用边界检查脚本（npm run check:boundary，G2）
+- merge: 应用模块迁至 src/apps/（glob 自动发现，G1）
+- docs: G1 账本评审闭环（review clean，3 Minor deferred）
+- docs: Task G1 报告 + 账本（MODULES 迁 src/apps/，glob 自动发现零回归）
+- feat: 应用模块迁至 src/apps/（glob 自动发现，壳零侵入，G1）
+- docs: 开发模式治理实施计划书（MODULES 迁移 apps/ + 边界脚本 + dev 分支，3 任务 TDD）
+- docs: 应用壳开发模式与 Git 治理设计规格（目录契约/边界门禁/main+dev 迭代）
+- docs: 应用接入指南（模块契约/组件复用/设计令牌/页面规范/场景模板）
+- docs: B6-R2 账本收尾（合并 main + 合并后回归绿 + 删分支）
+- merge: B6-R2 页面样式修订（背景大色块构图 + 按钮浅色材质 + 导航轮 resize 修复）
+- docs: B6-R2 最终评审（opus ready-to-merge）+ 规格实现注记（resize 不重对齐 / waves 36%）
+- docs: B6-R2-3 账本评审闭环 + 修正 --workers=1 全绿过强表述（reconcile 评审 Minor-1）
+- docs: B6-R2-3 报告 + 账本（导航轮 resize 选中修复完成，TDD/隔离复跑/构建留痕）
+- fix: 导航轮 resize 后顶/底项选中修复（ResizeObserver 重算几何 padding，B6-R2-3）
+- docs: B6-R2-2 账本评审闭环（review clean，5 Minor deferred）
+- docs: 账本补 B6-R2-2 提交哈希（feat 1a4b0fa / docs 32bfab1）
+- docs: B6-R2-2 报告 + 账本（按钮浅色材质任务完成，TDD/基线/全量回归留痕）
+- feat: 按钮精致浅色材质（accent-100 浅 tint + 描边 + 上浮 hover，补按钮像素基线，B6-R2-2）
+- docs: B6-R2-1 账本评审闭环（review clean，4 Minor deferred）
+- docs: 账本补 B6-R2-1 提交哈希（feat 1c8dce2 / docs b9f6723）
+- docs: B6-R2-1 报告 + 账本（大色块构图任务完成，TDD/基线解码比对/全量回归留痕）
+- feat: 背景装饰大色块构图（8 预设可见且互不相同，渐变/极光区分，B6-R2-1）
+- docs: B6-R2 实施计划书（背景大色块/按钮浅色材质/导航轮 resize 修复，3 任务 TDD）
+- docs: B6-R2 规格补充导航轮选中 bug（resize 后 pad 陈旧根因 + ResizeObserver 修复方向）
+- docs: B6-R2 设计规格（背景大色块可见化 + 按钮精致浅色材质，用户验收反馈修订）
+- docs: B6 账本收尾（合并 main + 合并后全量回归绿 + 删分支）
+- merge: B6 页面样式刷新（背景装饰多样式 + 浮球去光晕 + 按钮扁平实心）
+- docs: B6 最终评审（opus ready-to-merge）+ 修复波 88→92 对齐 + housekeeping 记录
+- fix: primary/danger hover 混色 88%→92%（对齐规格 §5，B6 最终评审）
+- docs: B6-3 账本评审闭环（review clean，4 Minor deferred）
+- docs: B6-3 报告/账本补提交哈希
+- docs: B6-3 交接（报告 + 账本进度 + brief）
+- feat: 按钮扁平实心（primary 实色 + theme-aware hover + 回收彩影令牌，B6-3）
+- docs: B6-2 账本评审闭环（review clean，3 Minor deferred）
+- docs: B6-2 报告补提交哈希
+- docs: B6-2 任务清单勾选
+- docs: B6-2 交接（报告 + 账本进度 + brief）
+- feat: 悬浮球 hover 去光晕（中性投影，删 glow 元素，B6-2）
+- docs: B6-1 账本评审闭环；chore: gitignore worktree e2e 配置
+- docs: B6-1 修复轮交接（4×2 网格修复 + 基线处理记录）
+- fix: 背景预览卡 8 卡改 4×2 平衡网格（修 7+1 孤立卡，B6-1 评审 Important）
+- docs: B6-1 交接（报告 + 账本进度 + brief）
+- feat: 背景装饰多样式（网格强化 + 圆点/斜线/波纹/极光 + 8 预览卡，B6-1）
+- merge: docs（B6 计划书 + 交接书入 main）
+- docs: B6 计划书 + 交接书（页面样式刷新，下一轮对话执行）
+- merge: docs（B6 页面样式刷新设计规格入 main）
+- docs: B6 页面样式刷新设计规格（背景装饰/悬浮球/按钮）
+- merge: docs（任务不在 worktree 执行规则入 CLAUDE.md）
+- docs: 任务执行规则——不在 worktree 执行任务（直接在共享 checkout，B5 确立）
+- merge: B5 修复（普惠体 500 字重补齐，消除伪字重模糊）
+- docs: B5-F1 再评审结论入账（All findings addressed，单任务分支全分支覆盖）
+- docs: B5-F1 评审 round 1/5 修复留痕（500 档字体等待补全，74721f2）
+- fix: visual-regression 字体等待补 500 档（消除 appearance 基线确定性缺口，B5-F1 评审）
+- docs: B5-F1 实施报告 + 账本留痕（普惠体 500 补齐，5122103）
+- feat: 普惠体 500 字重补齐（65 Medium，消除 medium 伪粗模糊，B5-F1）
+- docs: B5 修复计划书（普惠体 500 字重补齐，TDD）
+- docs: B5 修复规格（普惠体 500 字重补齐，消除伪字重模糊）
+- merge: B5 账本留痕（合并 + 回归记录入 main）
+- docs: B5 合并 main + 合并后全量回归留痕（8a615b7，112/112 全绿）
+- docs: B5 审查包（review-B5-1..final-fix，SDD 产物入库）
+- merge: B5 设计语言统一（字体/Slider/iOS 组件/自适应/控件收尾）
+- docs: B5 最终修复波再评审结论入账（All findings addressed）+ filter 口径固化
+- docs: 动画红线豁免清单补 filter（paint-only，B5 按钮 brightness 过渡固化口径）
+- docs: B5 最终评审修复报告 + 台账闭环（find1 滑杆 --fill 全接线 / find2 primary 阴影令牌化）
+- fix: B5 最终评审修复（滑杆 --fill 全接线 + primary 阴影令牌化，闭环最终评审）
+- docs: B5-5 评审结论入账 + 延期项汇总（供最终评审分诊）
+- docs: B5-5 SDD 台账（外观页行对齐统一实施报告 + 账本，feat a6982db）
+- feat: 外观页控件行对齐统一（标签基线/行距/分组，B5-5）
+- docs: B5-4 评审结论入账（Approved，0 Critical/Important，3 Minor 免修）
+- docs: B5-4 SDD 台账（自适应布局实施报告 + 账本，feat 9321aaa）
+- feat: 内容区自适应布局（表单限宽居中 + 组件/动效撑满，data-layout，B5-4）
+- docs: B5-3 评审结论入账（Approved，1 Important plan-mandated 延期最终评审）
+- docs: B5-3 SDD 台账（iOS 组件实施报告 + 账本，feat b7c54ec）
+- feat: 徽标/按钮/悬浮球 iOS 化（tint 底 + 层次按钮 + 玻璃悬浮球，B5-3）
+- docs: B5-2 评审结论入账（Approved，0 Critical/Important，5 Minor 免修）
+- docs: B5-2 SDD 台账（胶囊 Slider 实施报告 + 账本，feat 5810365）
+- feat: 统一胶囊形 Slider 组件（组件/动效/外观三区共用 .c-slider，B5-2）
+- docs: B5-1 评审结论入账（Approved，0 Critical/Important，3 Minor 免修）
+- docs: B5-1 SDD 台账（字体替换实施报告 + 账本，feat b07e603）
+- feat: 阿里普惠体全局替换（--font-sans 前缀 + 55/85 WOFF2，B5-1）
+- merge: B5 交接文档
+- docs: B5 交接文档（设计语言统一，下一轮对话执行）
+- merge: B5 实施计划书
+- docs: B5 实施计划书（字体替换 + Slider 统一 + iOS 组件 + 自适应布局，交接下一轮对话）
+- merge: B5 设计规格
+- docs: B5 设计规格（设计语言统一 + iOS 风格组件 + 字体替换 + 自适应布局）
+- docs: B4 合并留痕（merge worktree-b4-close-sizing + 合并后全量回归）
+- merge: B4 收尾修复（悬浮窗尺寸 DPI 贴合 + 主窗关闭可配置 + 历轮悬浮窗修复）
+- docs: B4F 账本收尾（最终评审 + 修复波闭环）
+- docs: B4F 最终评审留痕（With fixes → 修复波闭环，Ready to merge: Yes）
+- fix: 最终评审修复（删死 onShow re-fit + 补 closeBehavior 变更 invoke 测试锁，B4 收尾）
+- docs: B4F-5 执行留痕（恢复主窗按钮 + 评审通过）
+- feat: strip 悬浮窗恢复主窗按钮（后台模式下唤回主窗，B4 收尾）
+- docs: B4F-4 执行留痕（JS 同步与清理 + 评审通过）
+- fix: 移除 JS onCloseRequested 异步关 strip（主窗关不掉根因），配置经 set_close_behavior 同步 Rust（B4 收尾）
+- docs: B4F-3 执行留痕（Rust 关闭行为 + cargo check + 评审通过）
+- feat: 主窗关闭行为 Rust 侧（exit→app.exit / background→prevent_close+hide，set_close_behavior 命令，B4 收尾）
+- docs: B4F-2 执行留痕（closeBehavior 配置 + 通用分区选择器 + 评审通过）
+- feat: 主窗关闭行为可配置（closeBehavior 退出应用/保留后台，通用分区选择器，B4 收尾）
+- docs: B4F-1 执行留痕（LogicalSize 尺寸贴合 + computeFitSize 单测 + 评审通过）
+- fix: 悬浮窗尺寸用显式 LogicalSize 贴合内容（DPI 下底部不再被裁）+ computeFitSize 单测（B4 收尾）
+- docs: B4 收尾修复实施计划书（交接下一轮对话）
+- docs: B4 收尾修复设计规格（悬浮窗尺寸 DPI 贴合 + 主窗关闭可配置）
+- fix: 竖排内容宽度（关窗按钮/底部圆角）+ skipTaskbar + 主窗关闭连带关 strip
+- fix: 悬浮窗贴边触发 Windows 缩放（恢复 resizable:false）+ 全局屏蔽浏览器右键菜单
+- fix: strip 窗口模式禁用 backdrop-filter（透明窗内 WebView2 圆角裁剪成方角）
+- fix: strip 窗口半透明遮罩 + 尺寸贴合（body 清透明 + 去 resizable:false + 显示后重贴合）
+- fix: 桌面悬浮窗无法打开（改用预注册隐藏窗口+show，规避全局 WebviewWindow 构造函数缺失）
+- debug: 悬浮窗创建错误面诊（tauri://error + try/catch toast + 挂载标记）
+- docs: B4 合并留痕（merge ecc9045 + 合并后全量回归）
+- merge: B4 桌面真实化（窗口控制权限 + 独立悬浮窗 + 颜色方案 + 文字排版）
+- docs: B4 最终整体评审留痕（With fixes → 修复波闭环，Ready to merge: Yes）
+- docs: B4 最终评审修复留痕（fix 562ab24 报告）
+- fix: B4 最终评审修复（set-focus 权限 + 过期文案 + strip 跟随主题，闭环最终评审）
+- docs: B4-6 执行留痕 + 评审（Approved + 审查包 + 简报报告）
+- feat: strip 窗口行为（系统拖拽/尺寸贴合/位置持久化/关闭，B4-6）
+- docs: B4-5 执行留痕 + 评审（Approved + 审查包 + 简报报告）
+- feat: 主窗 FloatBall 创建独立 strip 窗口（透明置顶，B4-5）
+- docs: B4-4 执行留痕 + 评审（Approved + 审查包 + 简报报告）
+- feat: 强调色预设扩至 12 套（玫红/橙/青柠/青/蓝/品红），B4-4
+- docs: B4-3 评审留痕（Approved + 审查包）
+- docs: B4-3 执行留痕（简报 + 报告 + 台账）
+- feat: 删色彩微调组（色相/饱和度/色温），强调色=预设色板直出（B4-3）
+- docs: B4-2 评审留痕（Approved + 审查包）
+- docs: B4-2 执行留痕（简报 + 报告 + 台账）
+- feat: 文字排版真实生效（字号令牌派生自 --font-size-base，baseSize/scale 全局缩放，闭环 B4-4）
+- docs: B4-1 评审留痕（Approved + 审查包）
+- docs: B4-1 执行留痕（评审包：单测守卫 + capability 授权 + 全量回归）
+- fix: Tauri 窗口控制权限（min/max/close/拖拽 capability 授权，闭环 B4-1）
+- docs: B4 桌面真实化实施计划（6 任务：权限/悬浮窗/颜色/排版）
+- docs: B4 桌面真实化设计规格（窗口控制权限/独立悬浮窗/颜色方案/文字排版）
+- docs: B3 合并留痕（merge b601904 + 合并后全量回归）
+- merge: B3 设置完善（P0 主题卡修复 + B3-1 分组重命名 + B3-2 实时预览卡）
+- docs: B3 最终整体评审留痕（Ready to merge: Yes）
+- docs: B3-2 执行留痕（评审结论 + 审查包）
+- docs: B3-2 执行留痕（进度台账）
+- docs: B3-2 实施报告（含提交哈希 2514d41）
+- feat: 外观分区实时整体预览卡（主题/强调色/玻璃/圆角/图标实时联动）
+- docs: B3-1 执行留痕（进度台账 + 审查包）
+- docs: B3-1 实施报告（含提交哈希 352398a）
+- feat: 外观分组重命名（整体色调/表面质感/文字排版/边角形状/动效节奏/阴影层次）+ desc
+- docs: B3-P0 执行留痕（进度台账 + 审查包）
+- docs: B3-P0 实施报告（含提交哈希回填 71e55cd）
+- fix: 概览主题状态卡随主题切换实时更新（桌面+手机，闭环 B2 最终评审 Issue 1）
+- docs: B3 开发交接书（B2+返工已合并 main，含 B3 计划与移交收尾项）
+- docs: B2 返工最终整体评审留痕（Ready to merge: Yes，修复波闭环 + Issue1 parked）
+- fix: 最终评审收尾（概览主题卡同步 + 卫生项清理）
+- docs: R9 评审留痕（规格✅/Approved，I1 冷启动图标修复闭环 + 4 Minor）
+- fix: 标题栏主题按钮冷启动图标未初始化（R8 回归）+ 深色基线重生成
+- feat: 标题栏主题按钮三态循环（浅/深/跟随系统）+ 与设置分区双向同步
+- docs: R8 评审留痕（规格✅/Approved，0 Critical/Important + 3 Minor）
+- docs: B2-R8 导航栏遮罩改内容遮罩 + 标题栏深浅切换执行留痕（报告 + brief）
+- feat: 导航栏遮罩改内容遮罩（消除顶部色带）+ 标题栏快捷深浅切换按钮
+- docs: R7 评审留痕（规格✅/Approved，0 Critical/Important + 3 Minor）
+- feat: Tauri 桌面显示背景层（关窗口透明）+ 背景装饰「关闭背景」预设
+- docs: R6 评审留痕（规格✅/Approved，0 Critical/Important + 3 Minor）
+- test: 视觉基线重生成（明显亚克力调参后 24 张全量更新）
+- docs: B2-R6 亚克力可见性调参执行留痕（报告 + brief）
+- feat: 亚克力可见性调参（明显亚克力：着色0.48/模糊30/噪点0.06 + 背景层增强）
+- docs: R5 评审留痕（规格✅/Approved，0 Critical/Important + 4 Minor）+ 返工全部任务闭环
+- docs: R5 自定义器调整 + 措辞同步执行留痕（报告 + 进度台账）
+- feat: 自定义器表面质感组（亚克力开关 + 噪点强度滑杆）+ 措辞同步
+- docs: R4 评审留痕（规格✅/Approved，0 Critical/Important + 2 Minor）
+- docs: R4 执行留痕（报告，评审待进行）
+- feat: 图标选中态去光晕（只留衬底 + active:hover 优先）
+- docs: R3 评审留痕（规格✅/Approved，0 Critical/Important + 4 Minor）
+- feat: 背景层预设柔和补色（accent 光晕加 alpha 收窄，暗色不发腻）
+- docs: R2 评审留痕（规格✅/Approved，Important 基线修复闭环 + 表面一致化）
+- fix: 亚克力材质一致化其余 --glass-* 消费者 + 视觉基线重生成（评审 R1/5）
+- feat: 表面应用亚克力材质（去高光反光 + 噪点层 + 标题栏/遮罩降级闭环）
+- docs: R1 评审留痕（规格✅/Approved，0 Critical/Important + 4 Minor）
+- feat: 亚克力材质令牌与噪点配置链路（--acrylic-* 配方 + glass.noise → --noise-opacity）
+- docs: B2 返工账本初始化（亚克力设计/计划/任务分解）
+- docs: B2 返工实施计划（亚克力材质体系 5 任务）
+- docs: B2 返工设计规格（玻璃→Windows 11 亚克力材质体系 + 图标去光晕）
+- docs: B2 最终整体评审留痕（Ready to merge，0 Critical/Important，修复注释闭环）
+- docs: 修正图标分级测试注释（innerHTML → 原地改 svg 属性，与实现一致）
+- docs: B2-3 评审留痕（规格✅/Approved，0 Critical/Important + 5 Minor）
+- docs: B2-3 导航图标四项增强执行留痕（报告 + 进度台账）
+- feat: 导航图标四项增强（提亮高对比/衬底/选中光晕/尺寸粗细分级）
+- docs: B2-2 评审留痕（规格✅/Approved，1 Important deferred→最终评审 + 4 Minor）
+- docs: B2-2 浏览器装饰背景层执行留痕（报告 + 进度台账）
+- feat: 浏览器装饰背景层（渐变/几何/网格三预设 + Tauri 透明）
+- docs: B2-1 评审留痕（规格✅/Approved，1 Important deferred→最终评审 + 4 Minor）
+- docs: B2-1 玻璃两档执行留痕（报告 + 进度台账）
+- feat: 玻璃材质两档（磨砂 backdrop-filter / 纯色不透明降级）
+- docs: B2/B3 实施计划 + 开发交接文档（下一对话执行）
+- docs: B1 实施收尾（合并 main + 全量回归通过）
+- docs: B1 最终评审修复波闭环（订阅退订 + 加载重试）
+- fix: 动效分区订阅退订 + 分区加载失败重试
+- docs: B1 最终整体审查包
+- docs: B1-4 执行留痕（模式简化 + 评审）
+- feat: 模式简化（浏览器直进应用壳）+ docs 渲染删除
+- docs: B1-3 执行留痕（e2e 迁移 + 评审 + 修复闭环）
+- fix: 恢复垂直导航轮滚轮吸附覆盖测试
+- test: docs e2e 迁移至应用壳设置分区（组件/动效/外观）
+- docs: B1-2 账本留痕 + 审查包
+- docs: Task B1-2 执行留痕（窗口控制双通道 + 评审）
+- feat: 窗口控制浏览器降级通道（按钮保留 + 桌面端提示）
+- docs: B1-1 执行留痕（分区扩展 + 评审）
+- feat: 设置分区扩展（组件/动效分区 + 展示内容内化）
+- docs: B1 架构地基实施计划（展示内化/窗口双通道/测试迁移/模式简化）
+- docs: 应用壳产品化设计规格（收敛设计系统展示 + 玻璃/图标/窗口/外观）
+- docs: 应用壳实施收尾（合并 main + 全量回归通过）
+- docs: 最终评审 + 修复波留痕（账本 + 审查包）
+- docs: 收尾评审修复报告（I1/I2/M1/M2 修复 + 覆盖测试 + 回归留痕）
+- fix: 应用壳冷启动配置 + 左窗拖拽阈值 + 订阅防泄漏 + 转义卫生
+- docs: Task A7 执行留痕（基线/README + 评审）
+- docs: 应用壳收尾（基线 + README）
+- docs: Task A6 执行留痕（手机形态 + 评审 + 修复闭环）
+- fix: 手机 dock 横滑浏览不再误触发页面推入
+- feat: 手机形态（底部横滑 + 页面栈）
+- docs: Task A5 执行留痕（FloatStrip + 评审）
+- feat: FloatStrip 悬浮条（横竖形态/四边磁吸/无边框）
+- docs: Task A1-A4 执行留痕补全（简报/报告/审查包入库）
+- docs: Task A4 评审修复闭环留痕（残留设置轮修复 + 覆盖测试）
+- fix: 退出设置模式后右窗目录轮残留修复
+- docs: Task A4 执行留痕（设置模式共享实现 + 接线 + 验证）
+- feat: 应用壳设置模式（⚙ 按钮 + 右窗设置目录）
+- feat: 应用壳骨架（双窗口级联 + 7 模块占位）
+- docs: Task A2 执行留痕（黄金比例锚点 + 方向参数化，18 张基线重生成）
+- feat: NavigationWheel 黄金比例锚点（38.2%）+ 方向参数化
+- feat: 应用/文档双模式入口
+- docs: 项目文档更新（应用壳定位 + README 双形态说明 + 应用壳规范细则）
+- docs: 应用壳规格 + 实施计划 + 交接账本（转型方案文档化，待下会话执行）
+- fix: Tauri 窗口宽度 960（> 900 断点，桌面端保持完整滑动导航布局）
+- docs: 迭代期收尾留痕（I3/I4 评审 + 红线豁免同步 src）
+- feat: 迭代修复批 2（窄屏折叠导航/存储降级提示）
+- docs: 规范与计划修正（测试仅 Web 执行 + I2 真机验证移除 + I2 审查包留痕）
+- docs: Task I3 实施留痕（报告）
+- fix: 迭代修复批 1（无障碍/浮层/令牌化/稳定性）
+- docs: 动画红线补充 paint-only 过渡豁免口径（与既有实现一致）
+- fix: toast e2e 稳定性（消失断言放宽超时，消除全量并行下定时器拖延竞态）
+- test: 滚轮吸附专用 e2e（停止 150ms 后最近项居中选中）
+- docs: Task I2 实施留痕（报告 + 账本）
+- feat: 窗口控制桥（Tauri API 接线 + 浏览器降级）
+- docs: Task I1 实施留痕（报告 + 账本）
+- chore: Tauri 壳搭建（src-tauri + 配置 + scripts）
+- docs: 迭代期计划书 + 账本
+- docs: 计划项 A 评审完成留痕
+- docs: 色温任务实施留痕（简报/报告/账本/计划状态）
+- feat: 色温滑杆映射（中性色冷暖偏移）
+- docs: 分层 CLAUDE 规范（根总纲 + src/docs 细则）替代 HANDOFF
+- feat: 色相滑杆（色彩微调 — hue 跟随主题色 + 饱和度缩放覆盖）
+- docs: 收尾 — 更新交接文档与 CLAUDE.md 为合并后状态 + .vite 忽略
+- fix: 最终审查 — 滚轮停止吸附/首末项居中/主题切换同步/data-motion 选择器
+- test: 视觉回归基线（深/浅 × 3 accent × 6 区域截图，motion-off + swiftshader 确定性）
+- docs: Tauri 接入指南 + README
+- chore: 收尾修复（账本待办 1-9：radius/间距令牌/spring 默认值/focus-visible/engines/syncUI/navwheel 高度/死代码/pointer 守卫）
+- feat: 场景模板 3 设置页（滑动分区 + 定制器整页嵌入）
+- feat: 场景模板 2 主窗口（一体式标题栏 + 滑动导航 + 8 模块）
+- fix: 剪贴板列表重渲染抑制 stagger 重放 + reduced-motion 归零
+- feat: 场景模板 1 剪贴板悬浮窗（搜索/固定/删除/清空）
+- feat: 主题定制器（风格卡片/滑杆组/预设/导出 CSS）
+- fix: reduced-motion 下 stagger 延迟归零
+- feat: 动效实验室（5 演示 + 参数试玩器）
+- fix: FloatingWindow 补第 2 变体（折叠/置顶静态展示）
+- feat: 组件展示区（6 组 32 组件完整矩阵）
+- feat: 令牌展示区（色板/字体/间距/圆角/阴影/玻璃）
+- fix: 悬浮窗演示区与 TitleBar 演示区位置重叠
+- feat: 悬浮窗专属组件（FloatingWindow/SearchBar/HotkeyHint/FloatBall/HotkeyRecorder）
+- feat: NavigationWheel B（拖拽惯性/居中吸附/设置入口）
+- feat: NavigationWheel A（几何算法/滚动/点击居中吸附）
+- feat: TitleBar 一体式标题栏
+- feat: 浮层反馈组（Toast/Dialog/Popover/右键菜单）+ 导航辅助（Tab/面包屑）
+- feat: 数据展示组件组（卡片/列表/徽标/标签/进度/头像/骨架/空态）
+- feat: 表单组件组（输入/选择/开关/复选/单选/滑杆/文本域/键帽）
+- feat: Icon 图标集 + Button 四变体 + 组件展示渲染器
+- feat: 主题切换器（三态 + 6 套主题色 + 持久化）
+- docs: 会话交接（CLAUDE.md 项目指南 + HANDOFF.md 交接快照）
+- docs: 计划补充 — Task 1-4 实施修订记录（修正/待办/设计确认点）
+- feat: 可配置层（defaults/store/apply + spring 曲线）
+- feat: 展示页应用骨架（顶部栏/导航容器/内容区）
+- feat: 设计令牌层（tokens/themes/motion/base + 6 套主题色）
+- chore: 项目脚手架（vite/vitest/playwright）
+- docs: 计划修订 — 演示重复导航项 + 主窗口 8 模块 + 设置页 8 分区加宽
+- docs: Tauri 统一 UI 设计系统实施计划（21 个任务）
+- docs: 色彩升级为 6 套主题色风格预设，支持一键切换对比
+- docs: 修正组件数量统计（26→32）
+- docs: Tauri 统一 UI 设计系统设计规格
+
 # Changelog
 
 ## [0.1.0] - 2026-08-11
