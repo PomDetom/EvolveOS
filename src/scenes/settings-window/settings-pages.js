@@ -183,7 +183,7 @@ function aboutPage() {
     <div class="csettings__about">
       <div class="csettings__logo">${icon('palette', 36)}</div>
       <div class="csettings__name">EvolveOS</div>
-      <div class="csettings__ver">版本 0.1.0</div>
+      <div class="csettings__ver">版本 ${__APP_VERSION__}</div>
       <div class="csettings__meta">
         <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
         <div class="csettings__row"><span>设计语言</span><span>亚克力质感 · 深/浅双主题 · 12 主题色</span></div>
