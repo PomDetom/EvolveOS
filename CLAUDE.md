@@ -27,6 +27,13 @@
 ## 常用命令
 
 `npm install` / `npm run dev` / `npm test` / `npm run test:e2e` / `npm run build`（不用 pnpm/yarn）。
+`npm run release / npm run set-version`（发版与版本同步，见下节）。
+
+## 发版与版本治理
+
+- **分支**：feature（`ui/*`、`app/<id>/*`）从 dev 检出、**只合入 dev**；dev 稳定后 `--no-ff` 合入 main（=一次发版）；**main 只接受 dev 合入 + `hotfix/*` 直合**（随后回 dev）；docs 也走 dev。
+- **版本**：package.json 为唯一版本源；`npm run set-version -- X.Y.Z` 同步 3 个 manifest（package.json / Cargo.toml / tauri.conf.json）；设置「关于」页版本号动态读 package.json。
+- **发版**：`npm run release -- [patch|minor|major]`（bump → CHANGELOG → npm test+build 门禁 → 提交 → 打印后续）；dev→main 前全量回归（npm test + test:e2e + build + cargo test）；合并后打 tag `vX.Y.Z`。
 
 ## 细则位置
 

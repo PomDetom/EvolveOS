@@ -39,6 +39,8 @@ npm run tauri:dev  # 桌面窗口运行（应用壳模式）
 | `npm run build` | 生产构建（dist/） |
 | `npm run tauri:dev` | Tauri 桌面开发运行（应用壳） |
 | `npm run tauri:build` | Tauri release 打包 |
+| `npm run set-version -- 1.2.3` | 同步版本号到 package.json / Cargo.toml / tauri.conf.json |
+| `npm run release -- patch` | 半自动发版（bump + CHANGELOG + 门禁 + 提交；随后 dev→main + tag vX.Y.Z） |
 
 ## 目录结构
 
