@@ -3,6 +3,8 @@ mod models;
 mod config;
 mod state;
 mod adapters;
+mod commands;
+mod scheduler;
 
 use tauri::Manager;
 use std::sync::Mutex;
