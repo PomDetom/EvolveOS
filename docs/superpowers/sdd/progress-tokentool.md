@@ -109,9 +109,32 @@
 
 **工作内容**: app-integration.md §2.2 补「可选 mount(pageEl, ctx)」契约（含重挂/释放提示、手机 detail 路径），§5.7 参考实现加 token-tool 条目；本账本随各任务持续维护。全量回归见下方提交后的命令输出。
 
-**提交**: （待填）
+**提交**: `b6f21e0 docs: tokenTool 接入文档（mount 契约 + 参考实现）+ 执行留痕账本`；最终修复波 `12cba7c fix: tokenTool 空状态添加账户 CTA 接线 + 零账户 e2e`、`c5cf3f4 chore: tokenTool Rust 警告清扫（未用 Manager/label）+ ledger 文档位置说明`。
 
-**评审**: （待最终修复波后填）
+**评审**: ✅ Approved。全量回归：npm test 85/85、全量 e2e（worktree 配置）127/127、npm run build、cargo check 0 error + cargo test 11/11、`npm run check:boundary` → `[ui/tokentool] ✓ 框架改动：须全量回归 + 框架 owner 评审`。最终整分支评审 2 个 Important（空状态 CTA、plan/spec 文档位置）修复并经复评审 ADDRESSED、无新破坏；deferred-minor 全部记录如上、均不阻塞合并。
+
+**Task 9: complete（commits 7ecb730..c5cf3f4，全量回归绿 + 边界门禁过 + 最终评审闭环）**
+
+---
+
+## 分支汇总（ui/tokentool，7ecb730..c5cf3f4，11 commits）
+
+| Commit | 内容 |
+|---|---|
+| ce4c10d | Rust 脚手架（models + crypto + Cargo 依赖） |
+| 356e5aa | config/state（DPAPI 加密存储） |
+| 7f19a97 | adapters（DeepSeek + OpenCode Go） |
+| 6ab1283 | scheduler + 5 命令 |
+| 5dec941 | lib.rs 接线（CloseBehaviorState 更名 + 调度器启动） |
+| 2f8ad82 | 壳 mod.mount 挂载钩子 |
+| 0aa2416 | tokenTool 应用接入（渲染/样式/单测 + 计数 7→8 + 视觉基线） |
+| 46958c2 | tokenTool 交互挂载（invoke/listen/编辑对话框） |
+| dd9fbab | fix: 编辑对话框表单值转义（自 XSS） |
+| b6f21e0 | docs: 接入文档 + 本账本 |
+| 12cba7c + c5cf3f4 | 最终修复波（空状态 CTA + Rust 警告清扫 + ledger 文档位置） |
+
+**待桌面真机验证**（web 测试不覆盖，`npm run tauri:dev` 人工确认）：真实 IPC（invoke 5 命令）、DPAPI 加解密、30s 调度器轮询、`config.json` 落 exe 旁。
+**遗留未跟踪文件**（非本分支产物，未提交未删除）：`.idea/`（dev 分支缺 .gitignore 更新，main 已 ignore）、`AGENTS.md`（内容为项目 CLAUDE.md 旧版草稿，来源不明，留待确认）。
 
 **最终整分支评审（opus, 7ecb730..b6f21e0）**: ✅ 无 Critical；**2 个 Important（修复波中）** + Minor 清扫建议。
 - Important 1: 空状态「添加账户」CTA 失灵——`renderAccounts` 的 `renderEmptyState({action:{label:'添加账户'}})` 渲染 `.c-btn` 但 `onGrid` 只匹配 `[data-tt-action]`、`onToolbar` 只绑工具栏 → 零账户首启点击无反应（mock e2e 未覆盖零账户态）。修复：onGrid 加 `.c-btn` 兜底或给 action 加 `data-tt-action="add"` + 补零账户 e2e。
