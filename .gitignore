@@ -1,8 +1,73 @@
+# EvolveOS — 根 .gitignore
+# 合并官方 github/gitignore（Node + Rust + Windows）摘录 + 项目专用条目。
+# Rust target 产物由 src-tauri/.gitignore（/target/）负责，此处不再重复忽略。
+
+# ── Node.js / Vite（github/gitignore Node.gitignore 摘录）──
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# 依赖目录
 node_modules/
+jspm_packages/
+
+# 构建产物（Vite）
 dist/
+dist-ssr
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# 环境变量文件
+.env
+.env.*
+!.env.example
+
+# 覆盖率 / 测试产物
+coverage
+*.lcov
+.nyc_output
 test-results/
 playwright-report/
-.vite/
-playwright.config.worktree.js
-.claude/
+
+# npm 缓存 / 打包
+.npm
+*.tgz
+.eslintcache
+.stylelintcache
+.node_repl_history
+
+# TypeScript 缓存
+*.tsbuildinfo
+
+# ── Rust（github/gitignore Rust.gitignore 摘录；target 见 src-tauri/.gitignore）──
+*.rs.bk
+*.pdb
+rustc-ice-*.txt
+
+# ── Windows（github/gitignore Windows.gitignore 摘录）──
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# ── 编辑器 / IDE / 系统 ──
 .idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# ── Claude Code ──
+.claude/
+
+# ── 本地 worktree e2e 配置（本地生成、不入库）──
+playwright.config.worktree.js

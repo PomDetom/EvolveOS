@@ -182,11 +182,11 @@ function aboutPage() {
     ${pageHead('关于', '应用信息与版本')}
     <div class="csettings__about">
       <div class="csettings__logo">${icon('palette', 36)}</div>
-      <div class="csettings__name">UI Design System</div>
-      <div class="csettings__ver">版本 1.0.0</div>
+      <div class="csettings__name">EvolveOS</div>
+      <div class="csettings__ver">版本 0.1.0</div>
       <div class="csettings__meta">
         <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
-        <div class="csettings__row"><span>设计语言</span><span>克制的亚克力质感 · 深/浅双主题 · 6 主题色</span></div>
+        <div class="csettings__row"><span>设计语言</span><span>亚克力质感 · 深/浅双主题 · 12 主题色</span></div>
       </div>
       <button type="button" class="csettings__link" data-open-source>${icon('globe', 16)}开源仓库</button>
     </div>`;
