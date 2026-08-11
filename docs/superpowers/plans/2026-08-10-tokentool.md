@@ -66,7 +66,7 @@ mod models;
 export PATH="$USERPROFILE/.cargo/bin:$PATH"
 cd /c/Repository/EvolveOS/src-tauri
 cargo check
-cargo test models:: crypto:: 2>&1 | tail -30
+cargo test 2>&1 | tail -30
 ```
 
 Expected: `cargo check` 0 error（unused reqwest/tokio 等警告属预期，后续任务消除）；`cargo test` 中 models 的 `account_kind_roundtrip`、`balance_windows_serde` 与 crypto 的 `roundtrip`、`legacy_plain_passthrough` PASS。（首次编译会下载/编译新 crate，耗时数分钟属预期。）
