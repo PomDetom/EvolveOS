@@ -673,3 +673,16 @@ test('B6-R2-3：resize 后导航顶/底项可正常选中（手机加载→拉�
   await page.waitForTimeout(400);
   await expect(page.locator(`${L} .c-navwheel__item--active`)).toHaveAttribute('data-index', '0');
 });
+
+// —— 版本治理（Task 2：vite define __APP_VERSION__ → About 页版本动态读 package.json）——
+
+test('设置→关于：应用信息卡渲染（版本号动态读 package.json）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(7).click(); // 关于（APP_SECTIONS index 7）
+  const about = page.locator('.app-main__settings [data-page="about"]');
+  await expect(about).toBeVisible();
+  await expect(about.locator('.csettings__name')).toHaveText('EvolveOS');
+  await expect(about.locator('.csettings__ver')).toHaveText(/版本 \d+\.\d+\.\d+/);
+});

@@ -1,7 +1,7 @@
 {
   "name": "evolveos",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "EvolveOS — 多应用综合管理系统：统一应用壳承载多桌面应用，共享设计系统为基础设施。",
   "engines": {
@@ -15,6 +15,8 @@
     "test:e2e": "playwright test",
     "test:visual": "playwright test tests/e2e/visual-regression.spec.js",
     "check:boundary": "node scripts/check-boundary.js",
+    "set-version": "node scripts/set-version.js",
+    "release": "node scripts/release.js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
