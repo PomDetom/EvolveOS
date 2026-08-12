@@ -99,6 +99,20 @@ test('设置推入：标题栏 ⚙ → 设置页推入 + toggle 弹回', async (
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
 });
 
+// 0.1.2 设置内置模块（Task 2）：底部 dock 设置项 = 触发设置模式（等同标题栏 ⚙ 移动端行为）——
+// 点击 → 设置页推入（data-stack="settings"，含 11 分区 tab）。
+test('设置入口：dock 点「设置」→ 设置页推入（等同标题栏 ⚙）', async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="settings"]').click();
+  await page.waitForTimeout(350);
+  const pages = page.locator('.app-main__stack-page');
+  await expect(pages).toHaveCount(2);
+  await expect(pages.last()).toHaveAttribute('data-stack', 'settings');
+  await expect(pages.last()).toContainText('通用');
+  await expect(page.locator('.app-main__settings-tab')).toHaveCount(11);
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('设置 › 通用');
+});
+
 // —— 收尾评审修复覆盖：I1 手机动效分区订阅退订（闭环 I1）——
 // 手机路径每次 renderStack 重建页面栈 DOM → activateMobileSettings 对空容器重挂
 // mountMotionLab（新增一次 store 订阅）。重建前 renderStack 释放 mobileMotionUnsub 旧订阅，

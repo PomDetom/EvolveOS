@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { openSettingsPartition } from './helpers.js';
 
-// B1-3 迁移：docs `#components` 展示区 → 应用壳「组件」设置分区（APP_SECTIONS index 8）。
+// B1-3 迁移：docs `#components` 展示区 → 应用壳「组件」设置分区（APP_SECTIONS index 9）。
 // 原用例经 window.__toast/__openDialog 测试桥（docs 专属）触发浮层 —— 分区矩阵内浮层组件
 // 自带「点击演示」触发按钮（[data-toast] / [data-dialog]），改点按钮驱动，语义不变。
 
@@ -12,14 +12,14 @@ import { openSettingsPartition } from './helpers.js';
 // 修复：两个断言都用自动重试 + 足够超时（不依赖精确计时预算），慢环境不再失败，
 // 测试语义（出现 → 自动消失）不变。
 test('Toast 出现并自动消失', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   await comp.locator('[data-toast="success"]').click();
   await expect(page.locator('.c-toast').last()).toContainText('操作成功', { timeout: 10000 });
   await expect(page.locator('.c-toast')).toHaveCount(0, { timeout: 15000 });
 });
 
 test('Dialog 打开与确认', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   await comp.locator('[data-dialog="danger"]').click();
   await expect(page.locator('.c-dialog')).toContainText('确认删除');
   await page.locator('.c-dialog .c-btn--danger').click();
@@ -27,7 +27,7 @@ test('Dialog 打开与确认', async ({ page }) => {
 });
 
 test('Tab 切换指示条跟随', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   const tab = comp.locator('.c-tabs').first().locator('.c-tab').nth(1);
   await tab.click();
   await expect(tab).toHaveClass(/c-tab--active/);
@@ -38,7 +38,7 @@ test('Tab 切换指示条跟随', async ({ page }) => {
 // tab 宽度变化（响应式字体/间距场景）+ 真实窗口 resize；无 resize 重算时指示条
 // 保持旧宽/旧位（中心偏 12px），有重算则精确对齐。
 test('Tab 指示条在布局重排（resize）后重新定位', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   const tabs = comp.locator('.c-tabs').first();
   const tab = tabs.locator('.c-tab').nth(1);
   const bar = tabs.locator('.c-tabs__indicator');

@@ -16,12 +16,12 @@ import { test, expect } from '@playwright/test';
 
 const SHOTS = [
   ['app-main', '.app-main', null],
-  ['appearance-partition', '.app-main__settings [data-page="appearance"]', 1],
-  ['components-partition', '.app-main__settings [data-page="components"]', 8],
-  ['motion-partition', '.app-main__settings [data-page="motion"]', 9],
+  ['appearance-partition', '.app-main__settings [data-page="appearance"]', 2],
+  ['components-partition', '.app-main__settings [data-page="components"]', 9],
+  ['motion-partition', '.app-main__settings [data-page="motion"]', 10],
   // B6-R2-2：补按钮像素基线（修复 B6 最终评审 Important-1 跟进项 —— 按钮矩阵在设置窗 fold 下，
   // components-partition 截图不含按钮，本 SHOT 下滚到按钮 showcase 单独捕获）。
-  ['buttons', '.app-main__settings [data-page="components"] .showcase:has-text("按钮")', 8],
+  ['buttons', '.app-main__settings [data-page="components"] .showcase:has-text("按钮")', 9],
 ];
 
 const THEMES = ['light', 'dark'];
@@ -46,12 +46,12 @@ for (const [name, selector, partition] of SHOTS) {
         if (partition != null) {
           // 设置分区基线：⚙ 进入设置 → 点右窗分区项 → 等惰性挂载（动态 import 完成后内容非空）
           await page.locator('.c-titlebar__control--settings').click();
-          await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+          await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
           await page.locator('.app-main__nav-r .c-navwheel__item').nth(partition).click();
-          if (partition === 1) {
+          if (partition === 2) {
             // 外观分区：定制器整页形态 6 组（含「表面质感」组 + 噪点预览），锁定 .cust-group 计数
             await expect(page.locator('.app-main__settings [data-page="appearance"] .cust-group')).toHaveCount(6);
-          } else if (partition === 8) {
+          } else if (partition === 9) {
             // 组件分区：6 组矩阵 + 1 个交互悬浮窗实例块（csg count 7）+ 剪贴板悬浮窗组合示例
             await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
             await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();

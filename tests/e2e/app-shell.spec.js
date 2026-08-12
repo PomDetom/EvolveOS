@@ -289,6 +289,30 @@ test('设置分区包含组件/动效且挂载展示内容', async ({ page }) =>
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
 });
 
+// —— 0.1.2 设置内置模块（Task 2）：左窗设置项 = 触发设置模式（等同标题栏 ⚙）——
+// 再点一次：设置项已是设置模式 → no-op（不 toggle 收起）—— 与「已选中应用再点收起」路径
+// 不同（设置模式不写 state.moduleId，左窗 pointerdown 的 active 判定为 false，click 分支不触发），
+// 故断言「设置目录保持展开 + 内容区仍为设置页」这一稳定项。
+test('左窗「设置」入口：右窗展开设置目录 + 内容区设置页 + 左窗项 active（再点 no-op 保持）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const settingsItem = page.locator('.app-main__nav-l .c-navwheel__item[data-id="settings"]');
+  await settingsItem.click();
+  await page.waitForTimeout(400);
+  // 右窗展开 = 设置目录 11 项（APP_SECTIONS：通用0/导航1/外观2/…/组件9/动效10）
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  // 内容区 active 页 = 设置页
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+  // 左窗设置项 active 高亮（setSettingsMode → leftWheel.setActive('settings')）
+  await expect(settingsItem).toHaveClass(/c-navwheel__item--active/);
+  // 再点一次：已在设置模式 → no-op（设置目录保持展开、内容区仍为设置页）
+  await settingsItem.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+});
+
 // —— 窗口控制双通道（Task B1-2：浏览器降级）——
 
 test('浏览器模式下窗口控制按钮点击给出桌面端提示', async ({ page }) => {
