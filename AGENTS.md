@@ -20,7 +20,7 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 
 - `src/apps/<id>/`：应用（自己的页面 + 局部 CSS + 交互 + 单测）；`index.js` 导出 `module`（`id/name/icon/order/dir/render/mount`），壳零改动即发现。新图标用应用自持（`module.icons` + `icon(name,size,stroke,icons)`），禁改 `src/components/icon/icon.js`。
 - `src/components|styles|config|app|scenes|demo|motion|assets/`：**框架**（设计系统 + 壳），应用禁止触碰。
-- 接入契约 / 组件清单 / 设计令牌 / 页面规范：`docs/app-integration.md`。
+- 接入契约 / 组件清单 / 设计令牌 / 页面规范：`docs/integration/app-integration.md`。
 - 分层细则：`src/AGENTS.md`（组件/令牌/动画/验证）、`src-tauri/AGENTS.md`（桌面壳）、`docs/AGENTS.md`（文档体系/任务执行）。
 - 模式与入口：浏览器 `/` 与 Tauri 均应用壳；`?mode=app|strip` 显式覆盖，非法/无参回落 `app`。
 

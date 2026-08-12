@@ -29,7 +29,7 @@ const TAP_MAX_MOVE = 10;
 
 // —— MODULES 扩展契约：home 为壳内置概览，其余应用经 glob 自动发现（Task G1）——
 // 应用 = src/apps/<id>/index.js 导出 module（id/name/icon/order/dir/render），壳零改动即可新增。
-// 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/app-integration.md + check:boundary）。
+// 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/integration/app-integration.md + check:boundary）。
 const homeModule = { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview, order: 0 };
 const appModules = import.meta.glob('../apps/*/index.js', { eager: true });
 const APPS = Object.values(appModules)

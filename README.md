@@ -66,7 +66,7 @@ docs/                       # 规格 / 计划 / 执行留痕（全部集中在�
 
 | 文档 | 说明 |
 |---|---|
-| [Tauri 接入指南](docs/tauri-integration.md) | 透明窗口/拖拽/窗口控制/macOS/主题跟随/定制器嵌入/悬浮窗 |
+| [Tauri 接入指南](docs/integration/tauri-integration.md) | 透明窗口/拖拽/窗口控制/macOS/主题跟随/定制器嵌入/悬浮窗 |
 | [应用壳设计规格](docs/superpowers/specs/2026-08-05-app-shell-ui-design.md) | 应用壳 UI 设计（级联双窗/纯图标/黄金比例锚点/悬浮条/手机形态） |
 | [设计系统规格](docs/superpowers/specs/2026-08-04-tauri-ui-design.md) | 设计系统基础规格 |
 | [应用壳实施计划](docs/superpowers/plans/2026-08-05-app-shell.md) | 应用壳转型实施计划（7 任务，含执行交接指引） |

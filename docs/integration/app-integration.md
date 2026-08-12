@@ -246,7 +246,7 @@ mountInput(pageEl.querySelector('.c-input'));
 
 ## 8. Tauri 桌面壳
 
-- 接入 Rust Tauri 的**窗口/透明/拖拽/悬浮窗**完整配置见 `docs/tauri-integration.md`。
+- 接入 Rust Tauri 的**窗口/透明/拖拽/悬浮窗**完整配置见 `docs/integration/tauri-integration.md`。
 - 模式入口：`src/app/mode.js` 的 `resolveMode` 只返回 `'app' | 'strip'`；`?mode=app`/`?mode=strip` 显式优先，无参数/非法值/`?mode=docs` → `'app'`。
 - 应用壳在浏览器与 Tauri 渲染一致（`window.__TAURI__` 探测决定是否联动 Rust 窗口 API）。
 

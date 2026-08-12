@@ -1,6 +1,6 @@
 // 占位页骨架（框架场景模板，Task G1 从 app-main.js 移出）——
 // 应用模块未接入真实页面时的占位渲染。接入真实页面后替换 render 即可
-// （见 docs/app-integration.md §5.1 页面骨架）。
+// （见 docs/integration/app-integration.md §5.1 页面骨架）。
 import { renderEmptyState } from '../components/empty-state/empty-state.js';
 
 export function placeholderPage(ctx) {
