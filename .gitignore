@@ -68,6 +68,7 @@ $RECYCLE.BIN/
 
 # ── Claude Code ──
 .claude/
+.superpowers/
 
 # ── 本地 worktree e2e 配置（本地生成、不入库）──
 playwright.config.worktree.js
