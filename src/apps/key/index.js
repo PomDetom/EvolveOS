@@ -1,7 +1,7 @@
 import { placeholderPage } from '../../scenes/placeholder-page.js';
 
 export const module = {
-  id: 'key', name: '密码', icon: 'key', order: 2,
+  id: 'key', name: '密码', icon: 'key', order: 1,
   dir: [
     { id: 'all', name: '全部', icon: 'box' },
     { id: 'groups', name: '分组', icon: 'folder' },

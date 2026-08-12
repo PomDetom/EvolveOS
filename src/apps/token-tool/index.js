@@ -3,7 +3,7 @@
 import { tokenToolPage, mountTokenTool } from './token-tool.js';
 
 export const module = {
-  id: 'token-tool', name: 'TokenTool', icon: 'bolt', order: 7, dir: [],
+  id: 'token-tool', name: 'TokenTool', icon: 'bolt', order: 2, dir: [],
   render: (ctx) => tokenToolPage(ctx),
   mount: (pageEl, ctx) => mountTokenTool(pageEl, ctx),
 };
