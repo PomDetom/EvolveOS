@@ -31,11 +31,13 @@ const TAP_MAX_MOVE = 10;
 // 应用 = src/apps/<id>/index.js 导出 module（id/name/icon/order/dir/render），壳零改动即可新增。
 // 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/integration/app-integration.md + check:boundary）。
 const homeModule = { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview, order: 0 };
+// 0.1.2：设置内置模块（非 app 目录）—— 左窗点选 = 触发设置模式（等同标题栏 ⚙）
+const settingsModule = { id: 'settings', name: '设置', icon: 'settings', order: 9, dir: [], special: 'settings' };
 const appModules = import.meta.glob('../apps/*/index.js', { eager: true });
 const APPS = Object.values(appModules)
   .map((m) => m.module)
   .sort((a, b) => (a.order ?? 99) - (b.order ?? 99)); // 左窗顺序：home(0) + 应用按 order
-const MODULES = [homeModule, ...APPS];
+const MODULES = [homeModule, ...APPS, settingsModule];
 
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
@@ -54,7 +56,8 @@ export function mountAppMode(root) {
       <div class="app-main__nav-r-body"></div>
     </div>
     <main class="app-main__pages">
-      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
+      ${MODULES.filter((m) => !m.special) // special 模块（设置）无自有页，页区由下方硬编码 settings 页承担
+        .map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
       <section class="app-main__page" data-page="settings" data-layout="fluid">
         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
       </section>
@@ -352,6 +355,7 @@ export function mountAppMode(root) {
     if (state.rightMode === 'settings') return;
     state.rightMode = 'settings';
     state.rightOpen = true;
+    leftWheel.setActive('settings'); // 左窗高亮同步：设置内置模块项
     renderRight();
     renderPages();
     applyRightOpen();
@@ -361,6 +365,7 @@ export function mountAppMode(root) {
     if (state.rightMode !== 'settings') return;
     state.rightMode = 'apps';
     state.rightOpen = false;
+    leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
     renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
     renderPages(); // 内容区回到左窗选中应用页
     applyRightOpen();
@@ -381,6 +386,7 @@ export function mountAppMode(root) {
   // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
   function onLeftSelect(id) {
+    if (id === 'settings') { setSettingsMode(); return; }
     if (id !== state.moduleId) setModule(id);
   }
 
@@ -391,6 +397,7 @@ export function mountAppMode(root) {
     state.rightOpen = false;
     if (wasSettings) {
       state.rightMode = 'apps';
+      leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
       renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
       renderPages();
     }
