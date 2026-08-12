@@ -546,11 +546,17 @@ export function mountAppMode(root) {
     }
   }
 
-  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；其他应用 → 目录页。
-  // 滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
+  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；设置 → 推入设置页；
+  // 其他应用 → 目录页。滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
   function handleDockTap(id) {
     const mod = MODULES.find((m) => m.id === id);
     const top = mobile.stack[mobile.stack.length - 1];
+    if (id === 'settings') {
+      // 设置内置模块：dock 点击 = 触发设置模式（等同标题栏 ⚙ 移动端行为）—— 已在设置页 → 弹回
+      if (top?.type === 'settings') popStack();
+      else pushStack({ type: 'settings' });
+      return;
+    }
     if (!mod.dir.length) { resetStack(); return; }
     if (top?.type === 'dir' && top.moduleId === id) return; // 已在该应用目录
     if (top && top.type !== 'overview') {
