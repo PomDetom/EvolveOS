@@ -18,6 +18,7 @@ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
+import { resolveNav } from '../config/nav.js';
 import { applyConfig, prefersDark } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
@@ -37,7 +38,7 @@ const appModules = import.meta.glob('../apps/*/index.js', { eager: true });
 const APPS = Object.values(appModules)
   .map((m) => m.module)
   .sort((a, b) => (a.order ?? 99) - (b.order ?? 99)); // 左窗顺序：home(0) + 应用按 order
-const MODULES = [homeModule, ...APPS, settingsModule];
+let MODULES = resolveNav([homeModule, ...APPS, settingsModule], getConfig().nav); // 0.1.2：入口 nav {order,hidden} 运行时解析（rebuildNav 重赋值）
 
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
@@ -185,7 +186,8 @@ export function mountAppMode(root) {
   }
 
   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
-  const leftWheel = mountNavWheel(navL, {
+  // 0.1.2：let + 可重挂（rebuildNav 根据 nav 配置变更 destroy 旧轮后重挂新轮）
+  let leftWheel = mountNavWheel(navL, {
     items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
     onChange: (item) => onLeftSelect(item.id),
     anchorRatio: 0.382,
@@ -576,16 +578,43 @@ export function mountAppMode(root) {
   // dock 懒挂载：桌面视口下 dock 为 display:none（clientWidth=0 会让几何 pad 计算失真），
   // 首次进入手机形态时才挂载（几何基于实测视口长度；手机视口近似恒定，挂载一次即可）
   let dockMounted = false;
-  function mountDock() {
-    if (dockMounted) return;
+  // dock 轮持有句柄：rebuildNav 强制重挂前 destroy 旧轮，防 ResizeObserver 随多次重挂泄漏（同左窗机制）
+  let dockWheel = null;
+  function mountDock(force = false) {
+    if (dockMounted && !force) return;
+    dockWheel?.destroy?.(); // 强制重挂前释放旧轮 ResizeObserver
     dockMounted = true;
-    mountNavWheel(dockList, {
+    dockWheel = mountNavWheel(dockList, {
       items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
       onChange: () => {}, // 滚动/吸附仅更新轮内高亮，页面推入由点击驱动（钻取模型）
       anchorRatio: 0.382,
       direction: 'horizontal',
     });
   }
+
+  // —— 0.1.2 导航响应式：nav 配置变更 → 重排左窗 + 手机 dock + 概览快捷卡（设置内容不重渲）——
+  function rebuildNav() {
+    MODULES = resolveNav([homeModule, ...APPS, settingsModule], getConfig().nav);
+    // 重挂左窗轮（destroy 旧轮防 ResizeObserver 泄漏）
+    leftWheel?.destroy?.();
+    leftWheel = mountNavWheel(navL, {
+      items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
+      onChange: (item) => onLeftSelect(item.id),
+      anchorRatio: 0.382,
+    });
+    // 若设置模式激活，左窗高亮 settings；否则保持当前 moduleId
+    leftWheel.setActive(state.rightMode === 'settings' ? 'settings' : state.moduleId);
+    // 手机 dock 重建（若已挂载）
+    if (dockMounted) mountDock(true); // 强制重挂（dockMounted 保持 true）
+    // 概览页重渲（若当前显示概览）
+    if (state.moduleId === 'home' && state.rightMode !== 'settings') renderPages();
+  }
+  // 订阅 nav 变更（仅 nav 变化才重建，避免主题切换也重建左窗）
+  let lastNav = JSON.stringify(getConfig().nav ?? {});
+  subscribe((cfg) => {
+    const navJson = JSON.stringify(cfg.nav ?? {});
+    if (navJson !== lastNav) { lastNav = navJson; rebuildNav(); }
+  });
 
   // —— 事件 ——
   settingsBtn.addEventListener('click', toggleSettings);
