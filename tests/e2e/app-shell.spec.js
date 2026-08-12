@@ -718,3 +718,126 @@ test('设置→关于：应用信息卡渲染（版本号动态读 package.json�
   await expect(about.locator('.csettings__name')).toHaveText('EvolveOS');
   await expect(about.locator('.csettings__ver')).toHaveText(/版本 \d+\.\d+\.\d+/);
 });
+
+// —— 0.1.2 Final Fix（评审 Critical 1 / Important 2 / Minor M7）——
+// M7：导航分区排序/隐藏链路此前完全无 e2e。本用例覆盖三条链路：
+// ① 排序（下移/上移）→ saveConfig → subscribe → rebuildNav 同步左窗项序；
+// ② 隐藏 → 左窗项移除 + 护栏（逐个隐藏至仅 1 可见 → 最后可见项隐藏按钮禁用）；
+// ③ reload 持久化（nav.order/hidden 写 store → 冷启动保持）。
+const NAV_DEFAULT = ['home', 'key', 'token-tool', 'memo', 'sync', 'notes', 'knowledge', 'assistant', 'account', 'settings'];
+
+test('导航分区：排序重排左窗 + 隐藏移出左窗 + 护栏 + reload 持久化', async ({ page }) => {
+  const leftIds = () => page.locator('.app-main__nav-l .c-navwheel__item')
+    .evaluateAll((els) => els.map((el) => el.dataset.id));
+  const navRows = () => page.locator('.app-main__settings [data-page="nav"] [data-nav-mgmt] .csettings__nav-row');
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  expect(await leftIds()).toEqual(NAV_DEFAULT);
+  // 进入设置 → 导航分区（10 行 = home + 8 应用 + settings）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await expect(navRows()).toHaveCount(10);
+  // 排序①：sync 下移（与 notes 互换）→ 左窗项序同步（rebuildNav）
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(250);
+  let order = [...NAV_DEFAULT];
+  [order[4], order[5]] = [order[5], order[4]];
+  expect(await leftIds()).toEqual(order);
+  // 排序②：memo 上移（与 token-tool 互换）→ 左窗项序再同步
+  await page.locator('[data-nav-id="memo"] [data-nav-move="up"]').click();
+  await page.waitForTimeout(250);
+  [order[2], order[3]] = [order[3], order[2]];
+  expect(await leftIds()).toEqual(order);
+  // 隐藏：memo 隐藏 → 左窗项移除（9 项）+ 分区行 data-hidden=true
+  await page.locator('[data-nav-id="memo"] [data-nav-hide]').click();
+  await page.waitForTimeout(250);
+  expect(await leftIds()).toEqual(order.filter((id) => id !== 'memo'));
+  await expect(page.locator('[data-nav-id="memo"]')).toHaveAttribute('data-hidden', 'true');
+  // 退出设置 → 左窗保持新排序/显隐
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  const persisted = order.filter((id) => id !== 'memo');
+  expect(await leftIds()).toEqual(persisted);
+  // reload 持久化：冷启动保持（memo 仍隐藏 + 新排序）
+  await page.reload();
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  expect(await leftIds()).toEqual(persisted);
+  // 护栏：再入导航分区，逐个隐藏剩余可见（除 settings）→ 仅 1 可见 → settings 隐藏按钮禁用
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await expect(navRows()).toHaveCount(10);
+  for (const id of persisted) {
+    if (id === 'settings') continue;
+    await page.locator(`[data-nav-id="${id}"] [data-nav-hide]`).click();
+    await page.waitForTimeout(150);
+  }
+  await expect(page.locator('[data-nav-id="settings"] [data-nav-hide]')).toBeDisabled();
+});
+
+// Important 2：损坏配置（nav.hidden 覆盖全部 10 入口 → MODULES=[]）冷启动挂空轮即崩（修复前
+// nav-wheel itemEls[0] getComputedStyle TypeError）。修复后空轮 no-op 句柄：不崩 + ⚙ 恢复路径可用
+// + 手机 dock 空挂载不崩。pageerror 监听抓任何未捕获异常。
+test('损坏配置冷启动不崩：全隐藏 → 空轮挂载 + ⚙ 恢复路径 + 手机 dock 空挂载', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e.message)));
+  await page.addInitScript(() => {
+    localStorage.setItem('ui-design-config', JSON.stringify({
+      nav: { order: [], hidden: ['home', 'key', 'token-tool', 'memo', 'sync', 'notes', 'knowledge', 'assistant', 'account', 'settings'] },
+    }));
+  });
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main')).toBeVisible();
+  // 左窗轮挂空（MODULES=[] → items=[]）不崩：0 导航项 + 无 pageerror
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(0);
+  expect(errors).toEqual([]);
+  // 恢复路径：⚙ 标题栏恒可用 → 设置右窗 11 分区正常挂载
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  expect(errors).toEqual([]);
+  // 缩到手机视口 + reload → isMobile() 路径 dock 空轮挂载不崩
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.locator('.app-main')).toBeVisible();
+  await expect(page.locator('.app-main__dock')).toBeVisible();
+  await expect(page.locator('.app-main__dock .c-navwheel__item')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+// Critical 1：nav-wheel 把 6 个 DOM 监听器（scroll/click/pointerdown/move/up/cancel）挂在持久 list 上，
+// 修复前 destroy() 只 disconnect ResizeObserver → rebuildNav/mountDock(true) 每次重挂在同一容器
+// 累积 N 套监听器 → 拖拽灵敏度 N×。本用例触发 2 次 rebuildNav 后做精确拖拽：
+// 拖 -50px → scrollTop 应 +50（单倍）；若监听器累积 3 套 → +150。行为级验证（getEventListeners 不可靠）。
+test('重复 nav 重配后左窗拖拽灵敏度仍单倍（监听器不随重挂累积）', async ({ page }) => {
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  // 触发 2 次 rebuildNav（每次排序点击 = saveConfig → subscribe → rebuildNav 重挂左窗轮）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await page.waitForTimeout(250);
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(200);
+  // 退出设置（左窗轮保留最后一次重挂；重建路径须已移除旧监听器）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  // 精确拖拽：scrollTop 置 120 → 指针拖 -50px → 应 +50（单倍灵敏度）
+  const list = page.locator('.app-main__nav-l .c-navwheel__list');
+  await list.evaluate((el) => { el.scrollTop = 120; });
+  await page.waitForTimeout(100);
+  const before = await list.evaluate((el) => el.scrollTop);
+  const box = await list.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 50, { steps: 6 }); // 6 步向上拖共 50px
+  const during = await list.evaluate((el) => el.scrollTop); // 松手前测量（排除惯性影响）
+  await page.mouse.up();
+  await page.waitForTimeout(400); // 惯性/吸附沉降
+  expect(Math.abs((during - before) - 50)).toBeLessThan(10);
+});
