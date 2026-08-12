@@ -2,7 +2,10 @@
 
 ## 文档体系
 
-- 全部集中在 docs/，随代码提交：**目标规划**（设计规格/需求决策，唯一事实源）/ **计划书**（实施计划）/ **执行留痕**（每步计划/工作/提交，含提交哈希与评审结论）。
+- 全部集中在 docs/，随代码提交。**根目录只放 `AGENTS.md`/`CLAUDE.md` 记忆文件**，文档按主题入文件夹：
+  - `integration/`：应用接入指南（`app-integration.md`）+ Tauri 桌面壳配置（`tauri-integration.md`）。
+  - `handoffs/`：历史阶段交接（`HANDOFF-B*.md`，只读存档，不改写）。
+  - `superpowers/`：SDD 流程——`specs/`（设计规格，唯一事实源）/ `plans/`（实施计划）/ `sdd/`（执行留痕，每步计划/工作/提交，含提交哈希与评审结论）。
 - 会话开始先读执行留痕（`docs/superpowers/sdd/progress-*.md`），从第一个未完成任务恢复；**已完成任务不得重新派发**。
 - 动画红线口径在 `src/AGENTS.md`（不在此重复）。
 
