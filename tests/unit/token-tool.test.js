@@ -86,7 +86,7 @@ describe('token-tool module 契约', () => {
     expect(module.id).toBe('token-tool');
     expect(module.name).toBe('TokenTool');
     expect(module.icon).toBe('bolt');
-    expect(module.order).toBe(7);
+    expect(module.order).toBe(2);
     expect(module.dir).toEqual([]);
     expect(typeof module.render).toBe('function');
     expect(typeof module.mount).toBe('function');
