@@ -29,9 +29,6 @@ npm run release -- patch      # 半自动发版（bump + CHANGELOG + 门禁 + �
 ## 核心铁律
 
 - 零运行时依赖，组件无抽象封装，遵循现有代码风格。
-- 动画只用 transform/opacity，模糊永不动画；时长/曲线经 CSS 变量。
-- 界面参数修改必须经配置层完整链路（defaults → store → apply），不绕过直接写 CSS 变量。
-- 滑动导航选中锚点为**黄金比例点 0.382**（非居中）；滑动窗口**纯图标**，名称由标题栏上下文承担。
 - **任务直接在共享 checkout（主工作目录）执行，不用 git worktree 隔离**（worktree 引发沙箱隔离 + 同步/合并复杂化）。
 - **测试与验证仅在 Web 环境执行**（单测 + Playwright 浏览器测试），不做 webview 真机验证。
 - 禁止升级核心依赖、禁止删除用户已有改动。
