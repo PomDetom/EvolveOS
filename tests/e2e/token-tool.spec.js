@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 
 const APP_URL = '/?mode=app';
 
-// 浏览器（无 Tauri）：tokenTool 显示「需桌面端使用」空态，且作为第 8 个模块可导航
-test('tokenTool：浏览器空态 + 左窗第 8 项 + 概览快捷卡', async ({ page }) => {
+// 浏览器（无 Tauri）：tokenTool 显示「需桌面端使用」空态，且作为 token-tool 模块可导航
+test('tokenTool：浏览器空态 + 左窗 token-tool 模块 + 概览快捷卡', async ({ page }) => {
   await page.goto(APP_URL);
   // 概览快捷卡存在（先于切页断言：概览页非 active 时 display:none 不可见）
   const overview = page.locator('.app-main__page[data-page="home"]');
   await expect(overview.locator('.app-main__shortcut[data-shortcut="token-tool"]')).toBeVisible();
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'token-tool');
@@ -58,7 +58,7 @@ test('tokenTool：桌面端（mock __TAURI__）加载账户、渲染卡片、触
     window.__tokenToolInvokes__ = invokes;
   });
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
 
   // 两账户卡渲染（DeepSeek 余额 + OpenCode 三窗口）
@@ -107,7 +107,7 @@ test('tokenTool：编辑对话框表单值转义（含引号账户名不破坏�
     };
   });
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
 
   // 打开含引号账户的编辑对话框 → 名称值完整回显 + 原始属性为转义形态。
@@ -140,7 +140,7 @@ test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', a
     };
   });
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
 
   // 空状态 CTA 可见
@@ -174,7 +174,7 @@ test('tokenTool：新增账户选 OpenCode 带出 workspace+cookie；对话框�
     };
   });
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(7).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
   // 打开「添加账户」
   await page.locator('.tt__toolbar .c-btn', { hasText: '添加账户' }).click();

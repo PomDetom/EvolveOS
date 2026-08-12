@@ -18,6 +18,7 @@ import { renderCustomizerGroups } from '../demo/customizer-panel.js';
 import { toast } from '../components/toast/toast.js';
 import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '../scenes/settings-window/settings-pages.js';
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
+import { resolveNav } from '../config/nav.js';
 import { applyConfig, prefersDark } from '../config/apply.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
@@ -29,13 +30,15 @@ const TAP_MAX_MOVE = 10;
 
 // —— MODULES 扩展契约：home 为壳内置概览，其余应用经 glob 自动发现（Task G1）——
 // 应用 = src/apps/<id>/index.js 导出 module（id/name/icon/order/dir/render），壳零改动即可新增。
-// 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/app-integration.md + check:boundary）。
+// 应用只能制作自己的页面，禁止修改框架目录（边界见 docs/integration/app-integration.md + check:boundary）。
 const homeModule = { id: 'home', name: '概览', icon: 'home', dir: [], render: renderOverview, order: 0 };
+// 0.1.2：设置内置模块（非 app 目录）—— 左窗点选 = 触发设置模式（等同标题栏 ⚙）
+const settingsModule = { id: 'settings', name: '设置', icon: 'settings', order: 9, dir: [], special: 'settings' };
 const appModules = import.meta.glob('../apps/*/index.js', { eager: true });
 const APPS = Object.values(appModules)
   .map((m) => m.module)
   .sort((a, b) => (a.order ?? 99) - (b.order ?? 99)); // 左窗顺序：home(0) + 应用按 order
-const MODULES = [homeModule, ...APPS];
+let MODULES = resolveNav([homeModule, ...APPS, settingsModule], getConfig().nav); // 0.1.2：入口 nav {order,hidden} 运行时解析（rebuildNav 重赋值）
 
 export function mountAppMode(root) {
   // 冷启动应用持久化配置（闭环 I1）：重启/Tauri 重开后界面保持
@@ -54,7 +57,8 @@ export function mountAppMode(root) {
       <div class="app-main__nav-r-body"></div>
     </div>
     <main class="app-main__pages">
-      ${MODULES.map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
+      ${MODULES.filter((m) => !m.special) // special 模块（设置）无自有页，页区由下方硬编码 settings 页承担
+        .map((m) => `<section class="app-main__page" data-page="${m.id}" data-layout="center"></section>`).join('')}
       <section class="app-main__page" data-page="settings" data-layout="fluid">
         <div class="csettings__pages app-main__settings">${settingsPagesHtml}</div>
       </section>
@@ -173,6 +177,24 @@ export function mountAppMode(root) {
   // rightMode: 'apps'（应用目录）| 'settings'（设置目录）—— 设置模式右窗状态为纯 UI 态
   const state = { moduleId: 'home', dirId: null, rightOpen: false, rightMode: 'apps', settingsId: 'general' };
 
+  // —— 0.1.2 隐藏激活模块 crash 兜底（控制器补充，Task 4 评审发现的 load-bearing）——
+  // state.moduleId 不在当前 MODULES（被 nav.hidden 隐藏）时切到首个可见应用模块。
+  // 覆盖三条路径：冷启动配置预设（如 localStorage hidden:['home']）、rebuildNav（nav 变更）、
+  // 设置模式进出（exitSettingsMode/collapseRight 时激活应用被隐藏）。返回 true = 发生切换。
+  function ensureActiveModule() {
+    if (MODULES.some((m) => m.id === state.moduleId)) return false;
+    // 优先切到首个可见应用模块；全部非 special 都被隐藏（仅设置可见）时回退到始终可见的
+    // settings 模块 —— settings 页硬编码存在于页面区，renderPages/守卫路径安全
+    // （review ①：逐个隐藏 8 应用 + home 后退出设置/冷启动 reload 不得 crash）。
+    const fallback = MODULES.find((m) => !m.special && m.render)
+      ?? MODULES.find((m) => m.id === 'settings');
+    if (!fallback) return false; // 病态配置（MODULES 为空，连 settings 也被隐藏）：保持原 id，由各处空页守卫兜底
+    state.moduleId = fallback.id;
+    state.dirId = fallback.dir.length ? fallback.dir[0].id : null;
+    return true;
+  }
+  ensureActiveModule(); // 冷启动：激活模块若被配置预设隐藏 → 先切走，防初始渲染对不存在 id 崩溃
+
   // 手机形态（Task A6）：独立导航模型 —— 底部 dock（横向应用轮，点击驱动推入）+ 全屏页面栈。
   // 栈 = 钻取路径（基底概览 → 应用目录页 → 详情页 / 设置页）；桌面/手机两套模型经媒体查询切换，
   // 共享标题栏上下文；页面栈状态为纯 UI 态（会话内），不进配置存储。
@@ -182,7 +204,8 @@ export function mountAppMode(root) {
   }
 
   // —— 左窗：7 模块 NavigationWheel（纯 icon，38.2% 锚点）——
-  const leftWheel = mountNavWheel(navL, {
+  // 0.1.2：let + 可重挂（rebuildNav 根据 nav 配置变更 destroy 旧轮后重挂新轮）
+  let leftWheel = mountNavWheel(navL, {
     items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
     onChange: (item) => onLeftSelect(item.id),
     anchorRatio: 0.382,
@@ -210,6 +233,11 @@ export function mountAppMode(root) {
       return wheel;
     }
     const mod = MODULES.find((m) => m.id === state.moduleId);
+    if (!mod) {
+      // review ①：病态配置（MODULES 为空/激活模块被隐藏且无可切模块）→ 渲染空态，防 mod.dir TypeError
+      navRBody.innerHTML = `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无可用入口</span></div>`;
+      return null;
+    }
     navRBody.innerHTML = mod.dir.length
       ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
       : `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无子目录</span></div>`;
@@ -231,9 +259,14 @@ export function mountAppMode(root) {
       setSettingsPageActive();
       return;
     }
-    const mod = MODULES.find((m) => m.id === state.moduleId);
+    let mod = MODULES.find((m) => m.id === state.moduleId);
+    if (!mod) {
+      // 0.1.2 兜底：state.moduleId 指向模块被隐藏/缺失（病态配置，正常路径已由 ensureActiveModule 切走）
+      mod = MODULES.find((m) => !m.special && m.render) ?? MODULES[0];
+    }
     pages.forEach((p) => p.classList.toggle('app-main__page--active', p.dataset.page === state.moduleId));
     const page = pages.find((p) => p.dataset.page === state.moduleId);
+    if (!page || !mod?.render) return; // 病态配置兜底：无对应页/模块无 render → 留空不 crash
     page.innerHTML = mod.render(modCtx(mod));
     mod.mount?.(page, modCtx(mod)); // 应用交互挂载钩子（render 后调用；无 mount 的占位 app 为 no-op）
   }
@@ -246,6 +279,7 @@ export function mountAppMode(root) {
   let custMounted = false; // 桌面惰性挂载标志（手机路径按容器空态重挂，不用此标志）
   let componentsMounted = false;
   let motionMounted = false;
+  let navMounted = false; // 0.1.2 Task 5：导航分区惰性挂载标志（桌面防重复挂载；手机按容器空态）
   function mountComponentsPartition(part) {
     if (part.children.length) return; // 已挂载（移动端按空态重挂的防线）
     Promise.all([
@@ -274,6 +308,77 @@ export function mountAppMode(root) {
       toast('分区内容加载失败', { variant: 'danger' });
     });
   }
+
+  // —— 0.1.2 导航分区（Task 5）：入口排序（上移/下移）/隐藏管理列表 ——
+  // 惰性挂载（桌面 setSettingsPageActive / 手机 activateMobileSettings 首次激活）。读写配置链路
+  // saveConfig {nav:{order,hidden}} → subscribe → rebuildNav 同步重排左窗轮/手机 dock/概览快捷卡。
+  // 护栏：至少保留 1 个可见入口 —— 最后一个可见的隐藏按钮禁用（canHide）+ 点击处理器二次守卫
+  // （visibleNow < 2 直接 return）。变更后重渲列表，反映最新排序/显隐（含被隐藏行）。
+  // 列表用全量入口（[homeModule, ...APPS, settingsModule] 当前顺序，含隐藏行）而非 MODULES
+  // （MODULES = resolveNav 输出，已过滤隐藏 —— 用它渲染则隐藏项从列表消失、无法再显示）；
+  // 隐藏行置灰 + 「显示」按钮（眼图标），上移/下移按全量顺序重排 nav.order。
+  // 图标：隐藏开关用 eye（PATHS 无 eye-off），隐藏态加 --off 类 + title/aria-label「显示/隐藏」。
+  function mountNavPartition(container) {
+    if (!container) return;
+    const cfg = getConfig();
+    const nav = cfg.nav ?? { order: [], hidden: [] };
+    const hidden = new Set(nav.hidden ?? []);
+    const ALL = [homeModule, ...APPS, settingsModule];
+    const rankAll = (m) => {
+      const i = (nav.order ?? []).indexOf(m.id);
+      return i === -1 ? 1000 + (m.order ?? 99) : i;
+    };
+    const full = [...ALL].sort((a, b) => rankAll(a) - rankAll(b)); // 全量当前顺序（含隐藏）
+    const visibleCount = full.filter((m) => !hidden.has(m.id)).length;
+    container.innerHTML = `
+      <div class="csettings__nav-partition">
+        <div class="csettings__field-desc">调整入口顺序与显示。至少保留 1 个可见入口。</div>
+        <div class="csettings__nav-list" data-nav-mgmt>
+          ${full.map((m, i) => {
+            const isHidden = hidden.has(m.id);
+            const canHide = isHidden || visibleCount > 1; // 最后一个可见不可隐藏
+            return `
+            <div class="csettings__nav-row" data-nav-id="${m.id}" data-hidden="${isHidden}">
+              <span class="csettings__nav-icon">${icon(m.icon, 16)}</span>
+              <span class="csettings__nav-name">${m.name}</span>
+              <span class="csettings__nav-actions">
+                <button type="button" class="csettings__nav-btn" data-nav-move="up" ${i === 0 ? 'disabled' : ''} title="上移" aria-label="上移">${icon('chevron-up', 14)}</button>
+                <button type="button" class="csettings__nav-btn" data-nav-move="down" ${i === full.length - 1 ? 'disabled' : ''} title="下移" aria-label="下移">${icon('chevron-down', 14)}</button>
+                <button type="button" class="csettings__nav-btn${isHidden ? ' csettings__nav-btn--off' : ''} csettings__nav-hide" data-nav-hide ${canHide ? '' : 'disabled'} title="${isHidden ? '显示' : '隐藏'}" aria-label="${isHidden ? '显示' : '隐藏'}">${icon('eye', 14)}</button>
+              </span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    container.querySelector('[data-nav-mgmt]').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-nav-move],[data-nav-hide]');
+      if (!btn) return;
+      const row = btn.closest('[data-nav-id]');
+      const id = row.dataset.navId;
+      const nav = getConfig().nav ?? { order: [], hidden: [] };
+      const order = [...(nav.order ?? [])];
+      const hidden = [...(nav.hidden ?? [])];
+      if (btn.dataset.navMove === 'up' || btn.dataset.navMove === 'down') {
+        const current = full.map((m) => m.id); // 全量当前顺序（含隐藏行，nav.order 已含隐藏 id）
+        const i = current.indexOf(id);
+        const j = btn.dataset.navMove === 'up' ? i - 1 : i + 1;
+        if (j < 0 || j >= current.length) return;
+        [current[i], current[j]] = [current[j], current[i]];
+        saveConfig({ nav: { order: current, hidden } });
+      } else if (btn.dataset.navHide !== undefined) {
+        if (hidden.includes(id)) {
+          hidden.splice(hidden.indexOf(id), 1); // 显示
+        } else {
+          const visibleNow = full.filter((m) => !hidden.includes(m.id)).length;
+          if (visibleNow < 2) return; // 至少保留 1 可见（防绕过禁用按钮）
+          hidden.push(id); // 隐藏
+        }
+        saveConfig({ nav: { order, hidden } });
+      }
+      // saveConfig → subscribe → rebuildNav 已同步重排左窗/dock；列表自身须重渲反映变更
+      mountNavPartition(container);
+    });
+  }
   function setSettingsPageActive() {
     const sec = pages.find((p) => p.dataset.page === 'settings');
     sec.querySelectorAll('.csettings__page').forEach((p) =>
@@ -290,12 +395,17 @@ export function mountAppMode(root) {
       motionMounted = true;
       mountMotionPartition(sec.querySelector('[data-page="motion"] [data-partition="motion"]'));
     }
+    if (state.settingsId === 'nav' && !navMounted) {
+      navMounted = true;
+      mountNavPartition(sec.querySelector('[data-page="nav"] [data-partition="nav"]'));
+    }
   }
 
   function setSettingsSection(id) {
     if (id === state.settingsId) return;
     state.settingsId = id;
     setSettingsPageActive();
+    rightWheel?.setActive(id); // review ②：右窗设置轮高亮同步（概览「管理入口」跳转时 rightWheel 已挂，防残留旧分区高亮）
     updateCtx();
   }
 
@@ -310,6 +420,7 @@ export function mountAppMode(root) {
       return;
     }
     const mod = MODULES.find((m) => m.id === state.moduleId);
+    if (!mod) return; // 0.1.2 病态配置兜底（可见应用模块为空）：留空上下文不 crash
     ctx.textContent = state.rightOpen && state.dirId && mod.dir.length
       ? `${mod.name} › ${mod.dir.find((d) => d.id === state.dirId).name}`
       : mod.name;
@@ -329,8 +440,9 @@ export function mountAppMode(root) {
   // 若当前处于设置模式则一并切回应用模式（左栏应用恒可选中，规格 §5）
   function setModule(id) {
     if (id === state.moduleId) return;
-    state.moduleId = id;
     const mod = MODULES.find((m) => m.id === id);
+    if (!mod) return; // review ① 防御：id 对应模块被隐藏/缺失（正常路径恒存在，来自 MODULES 轮项）
+    state.moduleId = id;
     state.dirId = mod.dir.length ? mod.dir[0].id : null;
     state.rightMode = 'apps';
     state.rightOpen = mod.dir.length > 0;
@@ -352,6 +464,8 @@ export function mountAppMode(root) {
     if (state.rightMode === 'settings') return;
     state.rightMode = 'settings';
     state.rightOpen = true;
+    ensureActiveModule(); // 0.1.2 兜底：进入设置前保证激活模块可见（防御性，正常路径恒有效）
+    leftWheel.setActive('settings'); // 左窗高亮同步：设置内置模块项
     renderRight();
     renderPages();
     applyRightOpen();
@@ -361,6 +475,8 @@ export function mountAppMode(root) {
     if (state.rightMode !== 'settings') return;
     state.rightMode = 'apps';
     state.rightOpen = false;
+    ensureActiveModule(); // 0.1.2 兜底：当前激活应用若在设置期间被隐藏 → 切到首个可见，防 setActive/render 崩溃
+    leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
     renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
     renderPages(); // 内容区回到左窗选中应用页
     applyRightOpen();
@@ -381,6 +497,7 @@ export function mountAppMode(root) {
   // 同 id 的补发，见下方 navL click 监听注释）不在此 toggle —— 收起由独立 click 监听判定，
   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
   function onLeftSelect(id) {
+    if (id === 'settings') { setSettingsMode(); return; }
     if (id !== state.moduleId) setModule(id);
   }
 
@@ -391,6 +508,8 @@ export function mountAppMode(root) {
     state.rightOpen = false;
     if (wasSettings) {
       state.rightMode = 'apps';
+      ensureActiveModule(); // 0.1.2 兜底：同 exitSettingsMode —— 退出设置时激活应用被隐藏则切走
+      leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
       renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
       renderPages();
     }
@@ -416,17 +535,23 @@ export function mountAppMode(root) {
       body = renderOverview();
     } else if (entry.type === 'dir') {
       const mod = MODULES.find((m) => m.id === entry.moduleId);
-      body = `
-        <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
-        <div class="app-main__dir-list">
-          ${mod.dir.map((d) => `
-            <button class="app-main__dir-item" data-dir="${d.id}">
-              ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
-            </button>`).join('')}
-        </div>`;
+      // review ③ 兜底：模块被隐藏 → 空目录 body（head/back 保留，可返回），不渲染无返回按钮空白页
+      body = mod
+        ? `
+          <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
+          <div class="app-main__dir-list">
+            ${mod.dir.map((d) => `
+              <button class="app-main__dir-item" data-dir="${d.id}">
+                ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
+              </button>`).join('')}
+          </div>`
+        : '';
     } else if (entry.type === 'detail') {
       const mod = MODULES.find((m) => m.id === entry.moduleId);
-      body = mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName });
+      // review ③ 兜底：模块被隐藏/无 render → 空详情 body（head/back 保留，可返回）
+      body = mod && typeof mod.render === 'function'
+        ? mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName })
+        : '';
     } else if (entry.type === 'settings') {
       body = `
         <div class="app-main__settings-tabs">
@@ -464,7 +589,8 @@ export function mountAppMode(root) {
     if (topEntry?.type === 'detail' && topEl && topEl.dataset.stack === 'detail') {
       const topMod = MODULES.find((m) => m.id === topEntry.moduleId);
       const body = topEl.querySelector('.app-main__stack-body');
-      if (body) topMod.mount?.(body, { module: topMod, dirId: topEntry.dirId, dirName: topEntry.dirName });
+      // review ③ 防御：模块被隐藏（topMod undefined）→ 跳过挂载钩子（renderStackPage 已渲染空 body + 返回按钮）
+      if (body) topMod?.mount?.(body, { module: topMod, dirId: topEntry.dirId, dirName: topEntry.dirName });
     }
   }
 
@@ -518,6 +644,8 @@ export function mountAppMode(root) {
         mobileMotionUnsub = unsub;
       });
     }
+    const nav = sec.querySelector('[data-page="nav"] [data-partition="nav"]');
+    if (state.settingsId === 'nav' && nav && !nav.children.length) mountNavPartition(nav);
   }
 
   function updateCtxMobile() {
@@ -539,11 +667,18 @@ export function mountAppMode(root) {
     }
   }
 
-  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；其他应用 → 目录页。
-  // 滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
+  // 底部 dock 点击 = 一级导航（钻取不叠加）：home（无目录）→ 回基底；设置 → 推入设置页；
+  // 其他应用 → 目录页。滚动/吸附只更新轮内高亮（nav-wheel onChange 为 noop），推入由显式点击驱动 —— 横滑浏览不弹页。
   function handleDockTap(id) {
     const mod = MODULES.find((m) => m.id === id);
+    if (!mod) { resetStack(); return; } // 0.1.2 兜底：id 对应模块被隐藏/缺失（病态配置）→ 回基底概览
     const top = mobile.stack[mobile.stack.length - 1];
+    if (id === 'settings') {
+      // 设置内置模块：dock 点击 = 触发设置模式（等同标题栏 ⚙ 移动端行为）—— 已在设置页 → 弹回
+      if (top?.type === 'settings') popStack();
+      else pushStack({ type: 'settings' });
+      return;
+    }
     if (!mod.dir.length) { resetStack(); return; }
     if (top?.type === 'dir' && top.moduleId === id) return; // 已在该应用目录
     if (top && top.type !== 'overview') {
@@ -563,10 +698,13 @@ export function mountAppMode(root) {
   // dock 懒挂载：桌面视口下 dock 为 display:none（clientWidth=0 会让几何 pad 计算失真），
   // 首次进入手机形态时才挂载（几何基于实测视口长度；手机视口近似恒定，挂载一次即可）
   let dockMounted = false;
-  function mountDock() {
-    if (dockMounted) return;
+  // dock 轮持有句柄：rebuildNav 强制重挂前 destroy 旧轮，防 ResizeObserver 随多次重挂泄漏（同左窗机制）
+  let dockWheel = null;
+  function mountDock(force = false) {
+    if (dockMounted && !force) return;
+    dockWheel?.destroy?.(); // 强制重挂前释放旧轮 ResizeObserver
     dockMounted = true;
-    mountNavWheel(dockList, {
+    dockWheel = mountNavWheel(dockList, {
       items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
       onChange: () => {}, // 滚动/吸附仅更新轮内高亮，页面推入由点击驱动（钻取模型）
       anchorRatio: 0.382,
@@ -574,13 +712,46 @@ export function mountAppMode(root) {
     });
   }
 
+  // —— 0.1.2 导航响应式：nav 配置变更 → 重排左窗 + 手机 dock + 概览快捷卡（设置内容不重渲）——
+  function rebuildNav() {
+    MODULES = resolveNav([homeModule, ...APPS, settingsModule], getConfig().nav);
+    const activeChanged = ensureActiveModule(); // 兜底：当前激活模块被隐藏 → 切到首个可见（先切走再挂轮/渲染）
+    // 重挂左窗轮（destroy 旧轮防 ResizeObserver 泄漏）
+    leftWheel?.destroy?.();
+    leftWheel = mountNavWheel(navL, {
+      items: MODULES.map((m) => ({ id: m.id, name: m.name, icon: m.icon })),
+      onChange: (item) => onLeftSelect(item.id),
+      anchorRatio: 0.382,
+    });
+    // 若设置模式激活，左窗高亮 settings；否则保持当前 moduleId
+    leftWheel.setActive(state.rightMode === 'settings' ? 'settings' : state.moduleId);
+    // 手机 dock 重建（若已挂载）
+    if (dockMounted) mountDock(true); // 强制重挂（dockMounted 保持 true）
+    if (state.rightMode === 'settings') return; // 设置轮不受 moduleId 影响；退出时按新 moduleId 重渲
+    if (activeChanged) {
+      renderRight(); // 目录轮随新 moduleId/dirId 重挂
+      renderPages();
+      applyRightOpen();
+    } else if (state.moduleId === 'home') {
+      renderPages(); // 概览快捷卡随排序/显隐刷新
+    }
+  }
+  // 订阅 nav 变更（仅 nav 变化才重建，避免主题切换也重建左窗）
+  let lastNav = JSON.stringify(getConfig().nav ?? {});
+  subscribe((cfg) => {
+    const navJson = JSON.stringify(cfg.nav ?? {});
+    if (navJson !== lastNav) { lastNav = navJson; rebuildNav(); }
+  });
+
   // —— 事件 ——
   settingsBtn.addEventListener('click', toggleSettings);
   navRRoot.querySelector('.app-main__nav-r-back').addEventListener('click', collapseRight);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseRight(); });
   pagesEl.addEventListener('click', (e) => {
     const card = e.target.closest('.app-main__shortcut');
-    if (card) goToModule(card.dataset.shortcut);
+    if (!card) return;
+    if (card.dataset.shortcut === '__nav-mgmt__') { setSettingsMode(); setSettingsSection('nav'); return; } // 0.1.2：管理入口卡 → 设置导航分区
+    goToModule(card.dataset.shortcut);
   });
   // 三通道之一：再次点击左窗已选中项 → 收起（toggle）。nav-wheel 对点击/锚定仍会对同 id 补发
   // onChange（子像素滚动偏差 <1px 使 snapNow 守卫 0.05px 容差未跳过），不能据 onChange 判定用户
@@ -603,7 +774,7 @@ export function mountAppMode(root) {
       // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
       if (state.rightMode === 'settings') { exitSettingsMode(); return; }
       const mod = MODULES.find((m) => m.id === state.moduleId);
-      if (mod.dir.length) {
+      if (mod?.dir.length) { // review ① 防御：active 已保证 mod 存在，`?.` 双保险
         state.rightOpen = !state.rightOpen;
         applyRightOpen();
       }
@@ -646,7 +817,16 @@ export function mountAppMode(root) {
       return;
     }
     const shortcut = e.target.closest('.app-main__shortcut');
-    if (shortcut) handleDockTap(shortcut.dataset.shortcut);
+    if (shortcut) {
+      if (shortcut.dataset.shortcut === '__nav-mgmt__') {
+        // 0.1.2：手机管理入口卡 → 推入设置页并切到导航分区（与桌面一致）
+        state.settingsId = 'nav';
+        if (mobile.stack[mobile.stack.length - 1]?.type !== 'settings') pushStack({ type: 'settings' });
+        else { activateMobileSettings(); updateCtx(); }
+        return;
+      }
+      handleDockTap(shortcut.dataset.shortcut);
+    }
   });
   // 视口横纵切换（媒体查询 900px 断点）：进入手机形态懒挂载 dock；上下文切回对应导航模型
   const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 900px)') : null;
@@ -667,9 +847,9 @@ export function mountAppMode(root) {
   pages.forEach((page) => {
     if (page.dataset.page === 'settings') return;
     const mod = MODULES.find((m) => m.id === page.dataset.page);
-    page.innerHTML = mod.render(modCtx(mod));
+    if (mod?.render) page.innerHTML = mod.render(modCtx(mod)); // review ① 防御：模块缺失则留空
   });
-  pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
+  pages.find((p) => p.dataset.page === state.moduleId)?.classList.add('app-main__page--active'); // review ① 防御：无对应页则跳过
   renderRight();
   applyRightOpen();
   renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
@@ -746,6 +926,10 @@ function renderOverview() {
                 ${icon(m.icon, 20)}
                 <span class="app-main__shortcut-name">${m.name}</span>
               </button>`).join('')}
+            <button class="app-main__shortcut" data-shortcut="__nav-mgmt__"> <!-- 0.1.2：管理入口 → 设置导航分区（不进 MODULES） -->
+              ${icon('layout', 20)}
+              <span class="app-main__shortcut-name">管理入口</span>
+            </button>
           </div>
         </div>
         <div class="app-main__card app-main__theme-status">

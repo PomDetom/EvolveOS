@@ -68,7 +68,7 @@ export function mountClipboardFloat(root) {
     <section class="cfloat">
       <header class="cfloat__header">
         <h3>剪贴板悬浮窗</h3>
-        <p>浏览器内模拟悬浮窗；Tauri 接入见 <code>docs/tauri-integration.md</code>。</p>
+        <p>浏览器内模拟悬浮窗；Tauri 接入见 <code>docs/integration/tauri-integration.md</code>。</p>
       </header>
       ${renderFloatingWindow({
         title: '剪贴板',

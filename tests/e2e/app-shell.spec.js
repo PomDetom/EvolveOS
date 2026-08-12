@@ -7,14 +7,16 @@ import { test, expect } from '@playwright/test';
 
 const APP_URL = '/?mode=app';
 
-test('壳结构：标题栏/左窗 8 模块/单窗口态右窗隐藏/内容区概览页', async ({ page }) => {
+test('壳结构：标题栏/左窗模块（≥8）/单窗口态右窗隐藏/内容区概览页', async ({ page }) => {
   await page.goto(APP_URL);
   await expect(page.locator('.app-main')).toBeVisible();
   // 标题栏存在（app 模式唯一实例）
   await expect(page.locator('.app-main .c-titlebar')).toHaveCount(1);
   await expect(page.locator('.app-main [data-ctx]')).toBeVisible();
-  // 左窗 8 个模块项
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
+  // 左窗模块数动态（home + 应用，新增应用不破断言）；home 必在（先等挂载再 count）
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  const navCount = await page.locator('.app-main__nav-l .c-navwheel__item').count();
+  expect(navCount).toBeGreaterThanOrEqual(8);
   // 单窗口态：右窗隐藏
   await expect(page.locator('.app-main__nav-r')).toBeHidden();
   // 内容区：概览页为默认 active 页
@@ -26,22 +28,22 @@ test('壳结构：标题栏/左窗 8 模块/单窗口态右窗隐藏/内容区�
 test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
   await page.goto(APP_URL);
   // 点击左窗第 2 项（剪贴板）
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   // 右窗展开且含剪贴板目录 3 项
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['历史', '固定', '分组']);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['全部', '分组']);
   // 内容区切到剪贴板首屏
   const active = page.locator('.app-main__page--active');
-  await expect(active).toHaveAttribute('data-page', 'clipboard');
-  await expect(active).toContainText('剪贴板');
+  await expect(active).toHaveAttribute('data-page', 'key');
+  await expect(active).toContainText('密码');
   await expect(active).toContainText('功能开发中');
 });
 
 test('收起通道一：右窗顶部返回按钮', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await page.locator('.app-main__nav-r-back').click();
@@ -51,18 +53,18 @@ test('收起通道一：右窗顶部返回按钮', async ({ page }) => {
 
 test('收起通道二：再次点击左窗已选中项', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   // 再次点击已选中左项 → 收起（toggle）
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeHidden();
 });
 
 test('收起通道三：Esc', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -72,22 +74,22 @@ test('收起通道三：Esc', async ({ page }) => {
 
 test('换应用：右窗目录内容切换（不收起）', async ({ page }) => {
   await page.goto(APP_URL);
-  // 剪贴板（目录：历史/固定/分组）
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  // 密码（目录：全部/分组/回收站）
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
-  // 换到密码（目录：全部/分组/回收站）→ 右窗保持展开，目录内容切换
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(2).click();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="all"]')).toHaveCount(1);
+  // 换到智能备忘（目录：全部/归档）→ 右窗保持展开，目录内容切换
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="memo"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(0);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="all"]')).toHaveCount(1);
-  // 内容区切到密码页
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(2);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]')).toHaveCount(0);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="archived"]')).toHaveCount(1);
+  // 内容区切到智能备忘页
   const active = page.locator('.app-main__page--active');
-  await expect(active).toHaveAttribute('data-page', 'key');
-  await expect(active).toContainText('密码');
+  await expect(active).toHaveAttribute('data-page', 'memo');
+  await expect(active).toContainText('智能备忘');
 });
 
 test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ page }) => {
@@ -96,27 +98,28 @@ test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ 
   // 单窗口态：只有应用名
   await expect(ctx).toHaveText('概览');
   // 选中剪贴板 → 右窗展开 → 应用名 › 首目录项
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
-  await expect(ctx).toHaveText('剪贴板 › 历史');
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await expect(ctx).toHaveText('密码 › 全部');
   // 选中右窗目录项「固定」→ 页面名联动
-  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="pinned"]').click();
-  await expect(ctx).toHaveText('剪贴板 › 固定');
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]').click();
+  await expect(ctx).toHaveText('密码 › 分组');
   // 收起右窗 → 回到单窗口态（只有应用名）
   await page.locator('.app-main__nav-r-back').click();
-  await expect(ctx).toHaveText('剪贴板');
+  await expect(ctx).toHaveText('密码');
 });
 
-test('概览页结构：欢迎卡 + 8 快捷入口 + 主题状态卡', async ({ page }) => {
+test('概览页结构：欢迎卡 + 快捷入口（≥8） + 主题状态卡', async ({ page }) => {
   await page.goto(APP_URL);
   const overview = page.locator('.app-main__page[data-page="home"]');
   await expect(overview.locator('.app-main__welcome')).toBeVisible();
-  await expect(overview.locator('.app-main__shortcut')).toHaveCount(8);
+  const shortcutCount = await overview.locator('.app-main__shortcut').count();
+  expect(shortcutCount).toBeGreaterThanOrEqual(8);
   await expect(overview.locator('.app-main__theme-status')).toBeVisible();
   // 快捷入口点击 = 展开右窗 + 切到该应用（点击剪贴板入口）
-  await overview.locator('.app-main__shortcut[data-shortcut="clipboard"]').click();
+  await overview.locator('.app-main__shortcut[data-shortcut="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'clipboard');
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'key');
 });
 
 // —— 设置模式（Task A4：⚙ 按钮 + 右窗设置目录 + 设置页共享）——
@@ -127,11 +130,11 @@ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活�
   await expect(settingsBtn).toHaveCount(1);
   // 初始未激活
   await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
-  // 点击 ⚙ → 右窗展开 + 10 项设置目录（APP_SECTIONS：共享 8 + 组件/动效）+ 内容区显示通用设置页
+  // 点击 ⚙ → 右窗展开 + 11 项设置目录（APP_SECTIONS：共享 9 + 组件/动效）+ 内容区显示通用设置页
   await settingsBtn.click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'settings');
   await expect(active).toContainText('通用');
@@ -167,15 +170,15 @@ test('设置模式：左栏应用仍可选（点应用切回应用模式）', as
   await page.goto(APP_URL);
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
   const active = page.locator('.app-main__page--active');
-  await expect(active).toHaveAttribute('data-page', 'clipboard');
-  await expect(active).toContainText('剪贴板');
+  await expect(active).toHaveAttribute('data-page', 'key');
+  await expect(active).toContainText('密码');
   await expect(page.locator('.app-main .c-titlebar__control--settings')).not.toHaveClass(/settings-toggle--active/);
 });
 
@@ -217,13 +220,13 @@ test('冷启动应用持久化配置：localStorage theme=dark → reload → �
 test('左窗对已选中项拖拽（位移 >10px）松手不触发收起（拖拽阈值，与 dock 同机制）', async ({ page }) => {
   await page.goto(APP_URL);
   // 选中剪贴板（右窗展开）
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   // 在已选中项上慢速拖拽 ~15px（>10px 阈值、<半项 32px）——模拟浏览滑动后松手。
   // 慢速步进（间隔 50ms）令速度 <0.3 不触发惯性；scroll 位移不足半项，吸附仍回剪贴板
   // （避免 snap 换项干扰断言 —— 换到有目录的项右窗仍开，只有 home 会收起）。
-  const item = page.locator('.app-main__nav-l .c-navwheel__item').nth(1);
+  const item = page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]');
   const box = await item.boundingBox();
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
@@ -237,53 +240,77 @@ test('左窗对已选中项拖拽（位移 >10px）松手不触发收起（拖�
   await page.waitForTimeout(400); // 覆盖吸附 150ms + 余量
   // 拖拽不得误收起右窗：仍为剪贴板目录
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="all"]')).toHaveCount(1);
 });
 
 test('设置模式退出后右窗目录轮回归：exit settings → same-app re-click → 右窗显示应用目录', async ({ page }) => {
   await page.goto(APP_URL);
   // 应用模式：选中剪贴板（右窗 = 剪贴板目录 3 项）
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  // 进入设置模式（右窗 = 设置目录 10 项）
+  // 进入设置模式（右窗 = 设置目录 11 项）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 退出设置模式（⚙ 再点 → 右窗收起）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeHidden();
   // 再次点击仍选中的剪贴板项 → 右窗重开：应显示剪贴板目录，而非残留的设置目录轮
-  await page.locator('.app-main__nav-l .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="history"]')).toHaveCount(1);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="all"]')).toHaveCount(1);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="general"]')).toHaveCount(0);
   // 上下文为应用模式（剪贴板 › 历史）
-  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 历史');
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('密码 › 全部');
 });
 
-// —— 设置分区扩展（Task B1-1：APP_SECTIONS 10 分区 + 组件/动效分区惰性挂载展示内容）——
+// —— 设置分区扩展（Task B1-1：APP_SECTIONS 11 分区 + 组件/动效分区惰性挂载展示内容；0.1.2 增导航分区）——
 
 test('设置分区包含组件/动效且挂载展示内容', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  // 10 分区（共享 8 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  // 11 分区（共享 9 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 组件分区：点击「组件」→ 内容区出现组件矩阵组 + 剪贴板悬浮窗组合示例
-  // APP_SECTIONS 实际序：通用0/外观1/界面2/快捷键3/通知4/数据5/高级6/关于7/组件8/动效9
+  // APP_SECTIONS 实际序：通用0/导航1/外观2/界面3/快捷键4/通知5/数据6/高级7/关于8/组件9/动效10
   // （[...SECTIONS, components, motion] 追加到尾部 —— 索引以实现核对为准）
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
   // 7 个 .csg：6 组矩阵（核心导航/表单/数据/浮层/辅助/悬浮窗专属）+ 1 个交互悬浮窗实例块（csg csg-fwin）
   await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
   await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
   // 动效分区
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(10).click();
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
+});
+
+// —— 0.1.2 设置内置模块（Task 2）：左窗设置项 = 触发设置模式（等同标题栏 ⚙）——
+// 再点一次：设置项已是设置模式 → no-op（不 toggle 收起）—— 与「已选中应用再点收起」路径
+// 不同（设置模式不写 state.moduleId，左窗 pointerdown 的 active 判定为 false，click 分支不触发），
+// 故断言「设置目录保持展开 + 内容区仍为设置页」这一稳定项。
+test('左窗「设置」入口：右窗展开设置目录 + 内容区设置页 + 左窗项 active（再点 no-op 保持）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const settingsItem = page.locator('.app-main__nav-l .c-navwheel__item[data-id="settings"]');
+  await settingsItem.click();
+  await page.waitForTimeout(400);
+  // 右窗展开 = 设置目录 11 项（APP_SECTIONS：通用0/导航1/外观2/…/组件9/动效10）
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  // 内容区 active 页 = 设置页
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+  // 左窗设置项 active 高亮（setSettingsMode → leftWheel.setActive('settings')）
+  await expect(settingsItem).toHaveClass(/c-navwheel__item--active/);
+  // 再点一次：已在设置模式 → no-op（设置目录保持展开、内容区仍为设置页）
+  await settingsItem.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r')).toBeVisible();
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
 });
 
 // —— 窗口控制双通道（Task B1-2：浏览器降级）——
@@ -378,7 +405,7 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
   // 外观分区切换背景预设
   await page.locator('.c-titlebar__control--settings').click();
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click(); // 外观（0.1.2 起 index 2，改 data-id 定位）
   await page.locator('.app-main__backdrop-card[data-bd="geo"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
   // 关闭背景：data-backdrop=none → 背景层平铺实底（无渐变装饰）
@@ -456,7 +483,9 @@ test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) 
   await page.goto('/?mode=app');
   // 先等导航轮挂载（8 项）再断言：若在挂载前断言，toHaveCount(0) 会在空 DOM 上通过，
   // 失去「删光晕」的真门禁（挂载后仍有 glow 时也必须失败）
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  const navCount = await page.locator('.app-main__nav-l .c-navwheel__item').count();
+  expect(navCount).toBeGreaterThanOrEqual(8);
   await expect(page.locator('.c-navwheel__glow')).toHaveCount(0);
   const bg = await page.locator('.app-main__nav-l .c-navwheel__item--active .c-navwheel__icon')
     .evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -472,7 +501,10 @@ test('图标选中态：无光晕层、衬底为选中底色', async ({ page }) 
 
 test('导航栏顶部无叠加遮罩色带（内容遮罩）', async ({ page }) => {
   await page.goto('/?mode=app');
-  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(8);
+  // 先等导航轮挂载（home 项）再断言 count 0：若在挂载前断言，空 DOM 上 toHaveCount(0) 会真空通过
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  const navCount = await page.locator('.app-main__nav-l .c-navwheel__item').count();
+  expect(navCount).toBeGreaterThanOrEqual(8);
   // 顶部遮罩不再是叠加渐变层（.c-navwheel__mask 元素不存在）
   await expect(page.locator('.c-navwheel__mask')).toHaveCount(0);
   // 竖向列表有 mask-image 内容遮罩
@@ -680,9 +712,132 @@ test('设置→关于：应用信息卡渲染（版本号动态读 package.json�
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(7).click(); // 关于（APP_SECTIONS index 7）
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click(); // 关于（APP_SECTIONS index 8，0.1.2 增导航后）
   const about = page.locator('.app-main__settings [data-page="about"]');
   await expect(about).toBeVisible();
   await expect(about.locator('.csettings__name')).toHaveText('EvolveOS');
   await expect(about.locator('.csettings__ver')).toHaveText(/版本 \d+\.\d+\.\d+/);
+});
+
+// —— 0.1.2 Final Fix（评审 Critical 1 / Important 2 / Minor M7）——
+// M7：导航分区排序/隐藏链路此前完全无 e2e。本用例覆盖三条链路：
+// ① 排序（下移/上移）→ saveConfig → subscribe → rebuildNav 同步左窗项序；
+// ② 隐藏 → 左窗项移除 + 护栏（逐个隐藏至仅 1 可见 → 最后可见项隐藏按钮禁用）；
+// ③ reload 持久化（nav.order/hidden 写 store → 冷启动保持）。
+const NAV_DEFAULT = ['home', 'key', 'token-tool', 'memo', 'sync', 'notes', 'knowledge', 'assistant', 'account', 'settings'];
+
+test('导航分区：排序重排左窗 + 隐藏移出左窗 + 护栏 + reload 持久化', async ({ page }) => {
+  const leftIds = () => page.locator('.app-main__nav-l .c-navwheel__item')
+    .evaluateAll((els) => els.map((el) => el.dataset.id));
+  const navRows = () => page.locator('.app-main__settings [data-page="nav"] [data-nav-mgmt] .csettings__nav-row');
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  expect(await leftIds()).toEqual(NAV_DEFAULT);
+  // 进入设置 → 导航分区（10 行 = home + 8 应用 + settings）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await expect(navRows()).toHaveCount(10);
+  // 排序①：sync 下移（与 notes 互换）→ 左窗项序同步（rebuildNav）
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(250);
+  let order = [...NAV_DEFAULT];
+  [order[4], order[5]] = [order[5], order[4]];
+  expect(await leftIds()).toEqual(order);
+  // 排序②：memo 上移（与 token-tool 互换）→ 左窗项序再同步
+  await page.locator('[data-nav-id="memo"] [data-nav-move="up"]').click();
+  await page.waitForTimeout(250);
+  [order[2], order[3]] = [order[3], order[2]];
+  expect(await leftIds()).toEqual(order);
+  // 隐藏：memo 隐藏 → 左窗项移除（9 项）+ 分区行 data-hidden=true
+  await page.locator('[data-nav-id="memo"] [data-nav-hide]').click();
+  await page.waitForTimeout(250);
+  expect(await leftIds()).toEqual(order.filter((id) => id !== 'memo'));
+  await expect(page.locator('[data-nav-id="memo"]')).toHaveAttribute('data-hidden', 'true');
+  // 退出设置 → 左窗保持新排序/显隐
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  const persisted = order.filter((id) => id !== 'memo');
+  expect(await leftIds()).toEqual(persisted);
+  // reload 持久化：冷启动保持（memo 仍隐藏 + 新排序）
+  await page.reload();
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  expect(await leftIds()).toEqual(persisted);
+  // 护栏：再入导航分区，逐个隐藏剩余可见（除 settings）→ 仅 1 可见 → settings 隐藏按钮禁用
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await expect(navRows()).toHaveCount(10);
+  for (const id of persisted) {
+    if (id === 'settings') continue;
+    await page.locator(`[data-nav-id="${id}"] [data-nav-hide]`).click();
+    await page.waitForTimeout(150);
+  }
+  await expect(page.locator('[data-nav-id="settings"] [data-nav-hide]')).toBeDisabled();
+});
+
+// Important 2：损坏配置（nav.hidden 覆盖全部 10 入口 → MODULES=[]）冷启动挂空轮即崩（修复前
+// nav-wheel itemEls[0] getComputedStyle TypeError）。修复后空轮 no-op 句柄：不崩 + ⚙ 恢复路径可用
+// + 手机 dock 空挂载不崩。pageerror 监听抓任何未捕获异常。
+test('损坏配置冷启动不崩：全隐藏 → 空轮挂载 + ⚙ 恢复路径 + 手机 dock 空挂载', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e.message)));
+  await page.addInitScript(() => {
+    localStorage.setItem('ui-design-config', JSON.stringify({
+      nav: { order: [], hidden: ['home', 'key', 'token-tool', 'memo', 'sync', 'notes', 'knowledge', 'assistant', 'account', 'settings'] },
+    }));
+  });
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main')).toBeVisible();
+  // 左窗轮挂空（MODULES=[] → items=[]）不崩：0 导航项 + 无 pageerror
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item')).toHaveCount(0);
+  expect(errors).toEqual([]);
+  // 恢复路径：⚙ 标题栏恒可用 → 设置右窗 11 分区正常挂载
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
+  expect(errors).toEqual([]);
+  // 缩到手机视口 + reload → isMobile() 路径 dock 空轮挂载不崩
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.locator('.app-main')).toBeVisible();
+  await expect(page.locator('.app-main__dock')).toBeVisible();
+  await expect(page.locator('.app-main__dock .c-navwheel__item')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+// Critical 1：nav-wheel 把 6 个 DOM 监听器（scroll/click/pointerdown/move/up/cancel）挂在持久 list 上，
+// 修复前 destroy() 只 disconnect ResizeObserver → rebuildNav/mountDock(true) 每次重挂在同一容器
+// 累积 N 套监听器 → 拖拽灵敏度 N×。本用例触发 2 次 rebuildNav 后做精确拖拽：
+// 拖 -50px → scrollTop 应 +50（单倍）；若监听器累积 3 套 → +150。行为级验证（getEventListeners 不可靠）。
+test('重复 nav 重配后左窗拖拽灵敏度仍单倍（监听器不随重挂累积）', async ({ page }) => {
+  await page.goto(APP_URL);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveCount(1);
+  // 触发 2 次 rebuildNav（每次排序点击 = saveConfig → subscribe → rebuildNav 重挂左窗轮）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="nav"]').click();
+  await page.waitForTimeout(250);
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('[data-nav-id="sync"] [data-nav-move="down"]').click();
+  await page.waitForTimeout(200);
+  // 退出设置（左窗轮保留最后一次重挂；重建路径须已移除旧监听器）
+  await page.locator('.c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  // 精确拖拽：scrollTop 置 120 → 指针拖 -50px → 应 +50（单倍灵敏度）
+  const list = page.locator('.app-main__nav-l .c-navwheel__list');
+  await list.evaluate((el) => { el.scrollTop = 120; });
+  await page.waitForTimeout(100);
+  const before = await list.evaluate((el) => el.scrollTop);
+  const box = await list.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 50, { steps: 6 }); // 6 步向上拖共 50px
+  const during = await list.evaluate((el) => el.scrollTop); // 松手前测量（排除惯性影响）
+  await page.mouse.up();
+  await page.waitForTimeout(400); // 惯性/吸附沉降
+  expect(Math.abs((during - before) - 50)).toBeLessThan(10);
 });

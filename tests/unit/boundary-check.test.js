@@ -37,4 +37,40 @@ describe('边界检查（G2：框架/应用门禁）', () => {
     const r = assessBranchChanges('feature/foo', ['src/styles/themes.css']);
     expect(r.ok).toBe(false);
   });
+  // —— 并行治理（2026-08-12）：前缀全集 + 分支名校验 + 基分支跳过 ——
+  it('docs 分支纯文档 → 通过（docs/ + 根 *.md）', () => {
+    const r = assessBranchChanges('docs/parallel-governance', ['docs/specs/x.md', 'CLAUDE.md']);
+    expect(r.ok).toBe(true);
+    expect(r.kind).toBe('docs');
+  });
+  it('docs 分支触碰 src → 失败', () => {
+    const r = assessBranchChanges('docs/parallel-governance', ['src/components/button/button.css']);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContain('src/components/button/button.css');
+  });
+  it('chore 分支触碰 scripts/锁文件/.gitignore/tests → 通过', () => {
+    const r = assessBranchChanges('chore/boundary-prefixes',
+      ['scripts/check-boundary.js', 'package-lock.json', '.gitignore', 'tests/unit/boundary-check.test.js']);
+    expect(r.ok).toBe(true);
+    expect(r.kind).toBe('chore');
+  });
+  it('chore 分支触碰 src → 失败', () => {
+    const r = assessBranchChanges('chore/boundary-prefixes', ['src/config/defaults.js']);
+    expect(r.ok).toBe(false);
+  });
+  it('hotfix 分支触碰任意 → 通过（标记同步回 dev）', () => {
+    const r = assessBranchChanges('hotfix/crash', ['src/components/button/button.css', 'package.json']);
+    expect(r.ok).toBe(true);
+    expect(r.kind).toBe('hotfix');
+    expect(r.note).toContain('同步回 dev');
+  });
+  it('未知前缀分支仅触碰 docs → 仍因分支名不合规失败', () => {
+    const r = assessBranchChanges('feature/foo', ['docs/readme.md']);
+    expect(r.ok).toBe(false);
+    expect(r.kind).toBe('invalid');
+  });
+  it('基分支 dev/main → 跳过门禁', () => {
+    expect(assessBranchChanges('dev', ['src/components/x.js']).ok).toBe(true);
+    expect(assessBranchChanges('main', ['src/components/x.js']).kind).toBe('base');
+  });
 });

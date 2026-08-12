@@ -10,14 +10,16 @@ const APP_URL = '/?mode=app';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('手机形态：底部横滑应用栏可见（8 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
+test('手机形态：底部横滑应用栏可见（≥8 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
   await page.goto(APP_URL);
   await expect(page.locator('.app-main')).toBeVisible();
-  // 底部 dock 可见且含 8 个应用项，沿 x 轴横排（位置递增）
+  // 底部 dock 可见且含 ≥8 个应用项，沿 x 轴横排（位置递增）
   const dock = page.locator('.app-main__dock');
   await expect(dock).toBeVisible();
   const items = dock.locator('.c-navwheel__item');
-  await expect(items).toHaveCount(8);
+  await expect(dock.locator('.c-navwheel__item[data-id="home"]')).toHaveCount(1); // 先等 dock 挂载
+  const dockCount = await items.count();
+  expect(dockCount).toBeGreaterThanOrEqual(8);
   const xs = await items.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
   for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
   // 桌面双窗隐藏
@@ -31,37 +33,37 @@ test('手机形态：底部横滑应用栏可见（8 icon 横排）+ 桌面双�
 test('点击应用 → 目录页推入（页面栈）', async ({ page }) => {
   await page.goto(APP_URL);
   // 点击 dock 第 2 项（剪贴板）→ 目录页推入
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(350); // slide 240ms
   const pages = page.locator('.app-main__stack-page');
   await expect(pages).toHaveCount(2);
   const top = pages.last();
   await expect(top).toHaveAttribute('data-stack', 'dir');
-  await expect(top).toContainText('剪贴板');
+  await expect(top).toContainText('密码');
   await expect(top.locator('.app-main__dir-item')).toHaveCount(3);
   // 标题栏上下文联动
-  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板');
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('密码');
 });
 
 test('点击目录项 → 详情页推入', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="key"]').click(); // 剪贴板
   await page.waitForTimeout(350);
-  await page.locator('.app-main__dir-item[data-dir="pinned"]').click();
+  await page.locator('.app-main__dir-item[data-dir="all"]').click();
   await page.waitForTimeout(350);
   const pages = page.locator('.app-main__stack-page');
   await expect(pages).toHaveCount(3);
   const top = pages.last();
   await expect(top).toHaveAttribute('data-stack', 'detail');
-  await expect(top).toContainText('固定');
-  await expect(page.locator('.app-main [data-ctx]')).toHaveText('剪贴板 › 固定');
+  await expect(top).toContainText('全部');
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('密码 › 全部');
 });
 
 test('返回回退：返回按钮逐步 pop 页面栈', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板目录
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="key"]').click(); // 剪贴板目录
   await page.waitForTimeout(350);
-  await page.locator('.app-main__dir-item[data-dir="pinned"]').click(); // 详情
+  await page.locator('.app-main__dir-item[data-dir="all"]').click(); // 详情
   await page.waitForTimeout(350);
   let pages = page.locator('.app-main__stack-page');
   await expect(pages).toHaveCount(3);
@@ -95,6 +97,20 @@ test('设置推入：标题栏 ⚙ → 设置页推入 + toggle 弹回', async (
   await page.waitForTimeout(350);
   await expect(page.locator('.app-main__stack-page')).toHaveCount(1);
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('概览');
+});
+
+// 0.1.2 设置内置模块（Task 2）：底部 dock 设置项 = 触发设置模式（等同标题栏 ⚙ 移动端行为）——
+// 点击 → 设置页推入（data-stack="settings"，含 11 分区 tab）。
+test('设置入口：dock 点「设置」→ 设置页推入（等同标题栏 ⚙）', async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="settings"]').click();
+  await page.waitForTimeout(350);
+  const pages = page.locator('.app-main__stack-page');
+  await expect(pages).toHaveCount(2);
+  await expect(pages.last()).toHaveAttribute('data-stack', 'settings');
+  await expect(pages.last()).toContainText('通用');
+  await expect(page.locator('.app-main__settings-tab')).toHaveCount(11);
+  await expect(page.locator('.app-main [data-ctx]')).toHaveText('设置 › 通用');
 });
 
 // —— 收尾评审修复覆盖：I1 手机动效分区订阅退订（闭环 I1）——
