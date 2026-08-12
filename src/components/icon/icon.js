@@ -59,8 +59,10 @@ const PATHS = {
   list: '<path d="M3 6h.01M3 12h.01M3 18h.01"/><path d="M8 6h13M8 12h13M8 18h13"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
 };
-export function icon(name, size = 18, stroke = 1.8) {
+export function icon(name, size = 18, stroke = 1.8, icons) {
+  // 并行治理 a1：icons 为应用级自持图标表，查找顺序 应用级 → 全局 PATHS → monitor（向后兼容）
+  const path = (icons && icons[name]) || PATHS[name] || PATHS.monitor;
   return `<svg class="c-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"
-    aria-hidden="true">${PATHS[name] ?? PATHS.monitor}</svg>`;
+    aria-hidden="true">${path}</svg>`;
 }

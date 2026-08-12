@@ -6,6 +6,7 @@
 - JS 导出 `render(opts): string`（HTML 字符串）+ 可选 `mount(root)`（交互挂载）。
 - 类名 BEM 风格、`c-` 前缀（`c-btn__icon`、`c-btn--primary`）。
 - 图标：全部内联 SVG（24×24、stroke 1.8、Lucide 风格、currentColor、aria-hidden），统一经 `icon(name, size)`。
+- `icon(name, size, stroke, icons)` 第四参 `icons` = 应用级自持图标表（查找顺序 应用级 → 全局 PATHS → monitor）；应用自持图标必须 Lucide 风格（24×24/stroke 1.8/round），否则评审打回。
 
 ## 样式与令牌
 
