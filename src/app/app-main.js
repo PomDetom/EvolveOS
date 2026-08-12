@@ -183,8 +183,12 @@ export function mountAppMode(root) {
   // 设置模式进出（exitSettingsMode/collapseRight 时激活应用被隐藏）。返回 true = 发生切换。
   function ensureActiveModule() {
     if (MODULES.some((m) => m.id === state.moduleId)) return false;
-    const fallback = MODULES.find((m) => !m.special && m.render);
-    if (!fallback) return false; // 病态配置（可见应用模块为空）：保持原 id，由 renderPages 空页守卫兜底
+    // 优先切到首个可见应用模块；全部非 special 都被隐藏（仅设置可见）时回退到始终可见的
+    // settings 模块 —— settings 页硬编码存在于页面区，renderPages/守卫路径安全
+    // （review ①：逐个隐藏 8 应用 + home 后退出设置/冷启动 reload 不得 crash）。
+    const fallback = MODULES.find((m) => !m.special && m.render)
+      ?? MODULES.find((m) => m.id === 'settings');
+    if (!fallback) return false; // 病态配置（MODULES 为空，连 settings 也被隐藏）：保持原 id，由各处空页守卫兜底
     state.moduleId = fallback.id;
     state.dirId = fallback.dir.length ? fallback.dir[0].id : null;
     return true;
@@ -229,6 +233,11 @@ export function mountAppMode(root) {
       return wheel;
     }
     const mod = MODULES.find((m) => m.id === state.moduleId);
+    if (!mod) {
+      // review ①：病态配置（MODULES 为空/激活模块被隐藏且无可切模块）→ 渲染空态，防 mod.dir TypeError
+      navRBody.innerHTML = `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无可用入口</span></div>`;
+      return null;
+    }
     navRBody.innerHTML = mod.dir.length
       ? `<nav class="app-main__nav-r-wheel c-navwheel__list"></nav>`
       : `<div class="app-main__nav-r-empty">${icon('box', 18)}<span>无子目录</span></div>`;
@@ -396,6 +405,7 @@ export function mountAppMode(root) {
     if (id === state.settingsId) return;
     state.settingsId = id;
     setSettingsPageActive();
+    rightWheel?.setActive(id); // review ②：右窗设置轮高亮同步（概览「管理入口」跳转时 rightWheel 已挂，防残留旧分区高亮）
     updateCtx();
   }
 
@@ -430,8 +440,9 @@ export function mountAppMode(root) {
   // 若当前处于设置模式则一并切回应用模式（左栏应用恒可选中，规格 §5）
   function setModule(id) {
     if (id === state.moduleId) return;
-    state.moduleId = id;
     const mod = MODULES.find((m) => m.id === id);
+    if (!mod) return; // review ① 防御：id 对应模块被隐藏/缺失（正常路径恒存在，来自 MODULES 轮项）
+    state.moduleId = id;
     state.dirId = mod.dir.length ? mod.dir[0].id : null;
     state.rightMode = 'apps';
     state.rightOpen = mod.dir.length > 0;
@@ -524,19 +535,23 @@ export function mountAppMode(root) {
       body = renderOverview();
     } else if (entry.type === 'dir') {
       const mod = MODULES.find((m) => m.id === entry.moduleId);
-      if (!mod) return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}"></section>`; // 0.1.2 兜底：模块被隐藏
-      body = `
-        <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
-        <div class="app-main__dir-list">
-          ${mod.dir.map((d) => `
-            <button class="app-main__dir-item" data-dir="${d.id}">
-              ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
-            </button>`).join('')}
-        </div>`;
+      // review ③ 兜底：模块被隐藏 → 空目录 body（head/back 保留，可返回），不渲染无返回按钮空白页
+      body = mod
+        ? `
+          <h2 class="app-main__page-title app-main__stack-title">${mod.name}</h2>
+          <div class="app-main__dir-list">
+            ${mod.dir.map((d) => `
+              <button class="app-main__dir-item" data-dir="${d.id}">
+                ${icon(d.icon, 18)}<span class="app-main__dir-name">${d.name}</span>${icon('chevron-right', 14)}
+              </button>`).join('')}
+          </div>`
+        : '';
     } else if (entry.type === 'detail') {
       const mod = MODULES.find((m) => m.id === entry.moduleId);
-      if (!mod || typeof mod.render !== 'function') return `<section class="app-main__stack-page${cls}" data-stack="${entry.type}"></section>`; // 0.1.2 兜底
-      body = mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName });
+      // review ③ 兜底：模块被隐藏/无 render → 空详情 body（head/back 保留，可返回）
+      body = mod && typeof mod.render === 'function'
+        ? mod.render({ module: mod, dirId: entry.dirId, dirName: entry.dirName })
+        : '';
     } else if (entry.type === 'settings') {
       body = `
         <div class="app-main__settings-tabs">
@@ -574,7 +589,8 @@ export function mountAppMode(root) {
     if (topEntry?.type === 'detail' && topEl && topEl.dataset.stack === 'detail') {
       const topMod = MODULES.find((m) => m.id === topEntry.moduleId);
       const body = topEl.querySelector('.app-main__stack-body');
-      if (body) topMod.mount?.(body, { module: topMod, dirId: topEntry.dirId, dirName: topEntry.dirName });
+      // review ③ 防御：模块被隐藏（topMod undefined）→ 跳过挂载钩子（renderStackPage 已渲染空 body + 返回按钮）
+      if (body) topMod?.mount?.(body, { module: topMod, dirId: topEntry.dirId, dirName: topEntry.dirName });
     }
   }
 
@@ -758,7 +774,7 @@ export function mountAppMode(root) {
       // 设置模式：再次点击左窗已选中项 = 退出设置模式（收起）
       if (state.rightMode === 'settings') { exitSettingsMode(); return; }
       const mod = MODULES.find((m) => m.id === state.moduleId);
-      if (mod.dir.length) {
+      if (mod?.dir.length) { // review ① 防御：active 已保证 mod 存在，`?.` 双保险
         state.rightOpen = !state.rightOpen;
         applyRightOpen();
       }
@@ -831,9 +847,9 @@ export function mountAppMode(root) {
   pages.forEach((page) => {
     if (page.dataset.page === 'settings') return;
     const mod = MODULES.find((m) => m.id === page.dataset.page);
-    page.innerHTML = mod.render(modCtx(mod));
+    if (mod?.render) page.innerHTML = mod.render(modCtx(mod)); // review ① 防御：模块缺失则留空
   });
-  pages.find((p) => p.dataset.page === state.moduleId).classList.add('app-main__page--active');
+  pages.find((p) => p.dataset.page === state.moduleId)?.classList.add('app-main__page--active'); // review ① 防御：无对应页则跳过
   renderRight();
   applyRightOpen();
   renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
