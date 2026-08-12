@@ -187,6 +187,7 @@ function aboutPage() {
       <div class="csettings__meta">
         <div class="csettings__row"><span>技术栈</span><span>Tauri 2 · 原生 Web</span></div>
         <div class="csettings__row"><span>设计语言</span><span>亚克力质感 · 深/浅双主题 · 12 主题色</span></div>
+        <div class="csettings__row"><span>仓库</span><span>github.com/PomDetom/EvolveOS</span></div>
       </div>
       <button type="button" class="csettings__link" data-open-source>${icon('globe', 16)}开源仓库</button>
     </div>`;
@@ -276,9 +277,9 @@ export function mountSettingsInteractions(root) {
     });
   });
 
-  // 关于分区：开源链接占位
+  // 关于分区：开源按钮打开真实远端仓库
   root.querySelector('[data-open-source]')?.addEventListener('click', () => {
-    toast('开源仓库链接占位：接入 Tauri 后指向真实仓库');
+    window.open('https://github.com/PomDetom/EvolveOS', '_blank');
   });
 
   // 开关视觉（通用分区动效 / 界面分区模块显隐）
