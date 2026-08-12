@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { openSettingsPartition } from './helpers.js';
 
-// B1-3 迁移：docs `#components` 展示区 → 应用壳「组件」设置分区（APP_SECTIONS index 8）。
+// B1-3 迁移：docs `#components` 展示区 → 应用壳「组件」设置分区（APP_SECTIONS index 9）。
 // 变体矩阵内容不变，计数限定在分区容器内。
 
 test('开关切换 aria-checked 并带动画类', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   const sw = comp.locator('.c-switch').first();
   await sw.click();
   await expect(sw).toHaveAttribute('aria-checked', 'true');
@@ -16,7 +16,7 @@ test('开关切换 aria-checked 并带动画类', async ({ page }) => {
 test('滑杆使用主题强调色', async ({ page }) => {
   // 环境说明：共享 checkout（tauri dev + 陈旧 5173 server + MCP）资源紧张，截图型用例放宽时限
   test.setTimeout(60000);
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   const slider = comp.locator('.c-slider').first();
   // B5-2 适配：滑杆自绘胶囊化后不再用原生 accent-color（appearance:none + 自绘 track/thumb），
   // accent 消费在 track 填充渐变（paint-only，经 --accent 变量）与 thumb 边框。
@@ -41,7 +41,7 @@ test('滑杆使用主题强调色', async ({ page }) => {
 });
 
 test('表单组件结构完整', async ({ page }) => {
-  const comp = await openSettingsPartition(page, 8);
+  const comp = await openSettingsPartition(page, 9);
   // 变体矩阵（Task 15）：各表单组件在矩阵内多变体渲染，断言数量与矩阵一致
   await expect(comp.locator('.c-input')).toHaveCount(4);
   await expect(comp.locator('.c-textarea')).toHaveCount(2);

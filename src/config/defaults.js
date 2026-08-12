@@ -7,6 +7,7 @@ export const DEFAULTS = {
   motion: { enabled: true, durationScale: 1, springStrength: 0.6 },
   shadow: 0.5,
   closeBehavior: 'exit', // 主窗关闭：exit=退出应用 / background=保留后台（悬浮窗常驻）
+  nav: { order: [], hidden: [] }, // 0.1.2 入口排序/隐藏（功能性配置，非样式参数，不入 apply）
 };
 
 export const RANGES = {

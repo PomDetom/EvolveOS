@@ -39,7 +39,7 @@ export const module = {
 };
 ```
 
-> **边界红线**：应用只允许修改 `src/apps/<id>/` 自己目录（+ 该应用测试 + docs），**禁止触碰框架目录**（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。合并前跑 `npm run check:boundary`；违反即失败。框架需修改 → 单独 `ui/` 分支。分支规范（前缀全集/生命周期/回归单点化）见 `docs/superpowers/specs/2026-08-12-parallel-branch-governance-design.md`。
+> **边界红线**：应用只允许修改 `src/apps/<id>/` 自己目录（+ 该应用测试 + docs），**禁止触碰框架目录**（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。合并前跑 `npm run check:boundary`；违反即失败。框架需修改 → 单独 `ui/` 分支。分支规范（前缀全集/生命周期/回归单点化）见 `docs/superpowers/specs/2026-08-12-parallel-branch-governance-design.md`。0.1.2 起应用清单/设置内置模块/导航管理见 `docs/superpowers/specs/2026-08-12-012-app-shell-release-design.md`。
 
 ---
 
@@ -52,7 +52,7 @@ export const module = {
 | `id` | string | 模块唯一标识（data-page、右键目录、上下文 data-module 用） |
 | `name` | string | 左窗 aria-label / 标题栏上下文 / 概览快捷入口名 |
 | `icon` | string | `icon.js` 的 `PATHS` 键（Lucide 风格 24×24 stroke 1.8） |
-| `order` | number | 左窗排序（home=0，应用按 order 递增） |
+| `order` | number | 左窗排序（home=0，应用按 order 递增）。0.1.2 起左窗排序可被 `nav.order` 覆盖、`nav.hidden` 隐藏 |
 | `dir` | array | 右窗目录项 `[{ id, name, icon }]`；空数组 = 无目录单页（点击直接进首屏） |
 | `render` | fn | `render(ctx) => string`，页面 HTML |
 

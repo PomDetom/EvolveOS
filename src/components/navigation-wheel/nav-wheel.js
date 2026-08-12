@@ -31,6 +31,11 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
       <span class="c-navwheel__icon">${icon(it.icon, i === 0 ? 24 : 20, i === 0 ? 2.2 : 1.8)}</span>
       <span class="c-navwheel__name">${it.name}</span>
     </div>`).join('');
+  // 空列表早返回（0.1.2 Final Fix Important 2）：items=[] 时访问 itemEls[0] →
+  // getComputedStyle(undefined) TypeError（病态配置 nav.hidden 覆盖全部入口 → MODULES=[]，
+  // 冷启动挂空轮即崩）。早返回不渲染/不碰几何与监听器，返回 no-op 句柄保持宿主
+  // setActive/scrollToIndex/destroy 调用安全（各重挂路径 destroy?.() 幂等）。
+  if (items.length === 0) return { setActive: () => {}, scrollToIndex: () => {}, destroy: () => {} };
   // B2-R8：顶部/底部内容遮罩改用 CSS mask-image（nav-wheel.css 竖向列表规则），
   // 不再插入叠加渐变 div —— 叠加层把导航栏自身 48% 半透明背景双倍着色洗白，
   // 与标题栏割裂成色带。横向 dock 无竖向遮罩需求，列表规则以 :not(--horizontal) 排除。
@@ -152,10 +157,14 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     })(t0);
   }
   list.addEventListener('scroll', onScroll);
-  list.addEventListener('click', (e) => {
+  // click/pointer 处理器抽具名（0.1.2 Final Fix Critical 1）：destroy 需按引用移除 —— 否则
+  // 同一持久 list 重挂（rebuildNav / mountDock(true)）时旧监听器残留，N 次重配 = N 套监听器
+  // （拖拽灵敏度 N×、pointerup 惯性多套 rAF 混沌、旧 handler 用陈旧 items 冗余 setModule）。
+  const onClick = (e) => {
     const el = e.target.closest('.c-navwheel__item'); if (!el) return;
     select(Number(el.dataset.index));
-  });
+  };
+  list.addEventListener('click', onClick);
   itemEls.forEach((el) => el.addEventListener('keydown', (e) => {
     // preventDefault：阻止方向键触发容器的原生滚动，与锚定动画竞争
     if (e.key === AXIS.next) { e.preventDefault(); select(Math.min(items.length - 1, active + 1)); }
@@ -172,7 +181,7 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
       else scheduleSnap();
     })();
   }
-  list.addEventListener('pointerdown', (e) => {
+  const onPointerDown = (e) => {
     // 只响应主键（左键 0）：右键/中键不进入拖拽/点击选择（Task 12 收尾守卫）
     if (e.button !== 0) return;
     // 抓取/点击都打断惯性或待吸附，避免吸附跳到新位置
@@ -182,8 +191,8 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     velocity = 0; // EMA 首样本直接采用（见 pointermove）
     downItem = e.target.closest('.c-navwheel__item'); // 点击回退目标（位移 < 5px 视为点击）
     list.setPointerCapture(e.pointerId); // 拖出列表仍持续接收 pointermove
-  });
-  list.addEventListener('pointermove', (e) => {
+  };
+  const onPointerMove = (e) => {
     if (e.pointerId !== pointerId) return;
     const dPos = e[AXIS.pointer] - lastPos;
     lastPos = e[AXIS.pointer];
@@ -196,8 +205,8 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     velocity = velocity === 0 ? sample : velocity * 0.7 + sample * 0.3; lastT = now;
     list[AXIS.scroll] -= dPos; moved += Math.abs(dPos);
     setFocal(); // 实时跟手变形
-  });
-  list.addEventListener('pointerup', (e) => {
+  };
+  const onPointerUp = (e) => {
     if (e.pointerId !== pointerId || e.button !== 0) return;
     pointerId = null;
     // 位移 < 5px = 点击：指针捕获使原生 click 落在 list 上（target=list，找不到项），
@@ -205,13 +214,17 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     if (moved <= 5 && downItem) { select(Number(downItem.dataset.index)); return; }
     if (moved > 5 && Math.abs(velocity) > 0.3) startInertia();
     else scheduleSnap();
-  });
-  list.addEventListener('pointercancel', () => {
+  };
+  const onPointerCancel = () => {
     if (pointerId === null) return;
     pointerId = null;
     cancelAnimationFrame(inertiaRaf);
     scheduleSnap();
-  });
+  };
+  list.addEventListener('pointerdown', onPointerDown);
+  list.addEventListener('pointermove', onPointerMove);
+  list.addEventListener('pointerup', onPointerUp);
+  list.addEventListener('pointercancel', onPointerCancel);
 
   setFocal();
   return {
@@ -222,8 +235,23 @@ export function mountNavWheel(root, { items, onChange = () => {}, anchorRatio = 
     },
     // 对外：场景模板按索引滚动选中（含锚定动画），越界 clamp
     scrollToIndex: (i) => select(Math.max(0, Math.min(items.length - 1, i))),
-    // 断开 ResizeObserver（防右窗重挂泄漏；左窗/横向 dock 常驻挂载无需调用）
-    destroy: () => ro.disconnect(),
+    // 完全销毁（0.1.2 Final Fix Critical 1）：同一持久 list 重挂（rebuildNav /
+    // mountDock(true)）前必须移除全部 DOM 监听器 + 取消挂起动画 —— 否则 N 次重配 = N 套
+    // 监听器（左窗/dock 拖拽灵敏度 N×、pointerup 惯性多套 rAF 混沌、旧 handler 用陈旧
+    // items 冗余 setModule）。右窗路径 destroy 后重挂新容器 = 干净；左窗/dock 路径
+    // destroy 后同一容器重挂 = 干净。空列表 no-op 句柄的 destroy 幂等（无监听器可移除）。
+    destroy: () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(inertiaRaf);
+      clearTimeout(snapTimer);
+      list.removeEventListener('scroll', onScroll);
+      list.removeEventListener('click', onClick);
+      list.removeEventListener('pointerdown', onPointerDown);
+      list.removeEventListener('pointermove', onPointerMove);
+      list.removeEventListener('pointerup', onPointerUp);
+      list.removeEventListener('pointercancel', onPointerCancel);
+      ro.disconnect();
+    },
   };
 }
 // cubic-bezier 求值：解析 --ease-spring 曲线，对输入 t ∈ [0,1] 用二分求 x(u)=t 的 u，再返回 y(u)

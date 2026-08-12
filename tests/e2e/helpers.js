@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 
 /**
  * 进入应用壳设置分区（B1-3 迁移入口）：goto `?mode=app` → 点 ⚙（设置）→ 点第 index 个分区项。
- * 分区索引以 APP_SECTIONS 实际序为准（B1-1 实测：通用0/外观1/…/组件8/动效9）。
+ * 分区索引以 APP_SECTIONS 实际序为准（0.1.2 增导航后实测：通用0/导航1/外观2/…/组件9/动效10）。
  *
  * 相对任务计划书基线 helper 的两处必要微调：
  * - `.csettings__page--active` 限定在桌面设置页 section[data-page="settings"] 内，防与手机
