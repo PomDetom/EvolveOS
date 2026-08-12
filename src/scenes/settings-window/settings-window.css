@@ -103,6 +103,28 @@
   gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .csettings__hotkey + .csettings__hotkey { border-top: 1px solid var(--glass-border); }
 
+/* 导航分区（0.1.2 Task 5）：入口排序/隐藏管理列表 —— 惰性挂载于 .app-partition[data-partition="nav"]。
+   外层用 .csettings__nav-partition 而非 .csettings__nav（后者为场景设置窗左侧导航列的既有类，
+   含 grid 定位 + border-right，直接复用会把分区内容挤坏）。 */
+.csettings__nav-partition { max-width: 460px; }
+.csettings__nav-partition .csettings__field-desc { margin-bottom: var(--space-2); }
+.csettings__nav-list { display: flex; flex-direction: column;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  background: var(--surface-1); overflow: hidden; }
+.csettings__nav-row { display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-4); min-height: 42px; }
+.csettings__nav-row + .csettings__nav-row { border-top: 1px solid var(--glass-border); }
+.csettings__nav-row[data-hidden="true"] { opacity: 0.55; }
+.csettings__nav-icon { color: var(--text-2); display: grid; place-items: center; flex: none; }
+.csettings__nav-name { flex: 1; min-width: 0; font-size: var(--font-size-sm);
+  color: var(--text-1); }
+.csettings__nav-actions { display: flex; gap: 4px; flex: none; }
+.csettings__nav-btn { display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: var(--radius-xs); color: var(--text-2); }
+.csettings__nav-btn:hover:not(:disabled) { color: var(--text-1); background: var(--surface-hover); }
+.csettings__nav-btn:disabled { opacity: 0.35; cursor: default; }
+.csettings__nav-btn--off { color: var(--accent); }
+
 /* 占位分区（通知/数据/高级）：空态填满页面高度，居中展示 */
 .csettings__empty { height: 100%; }
 

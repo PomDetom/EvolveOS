@@ -2,13 +2,14 @@ import { test, expect } from '@playwright/test';
 import { openSettingsPartition, measureSliderFill } from './helpers.js';
 
 // B1-3 迁移：docs 定制器抽屉（.topbar__customizer → .cust-panel）→ 应用壳「外观」设置分区
-// （APP_SECTIONS index 1）。外观分区为定制器整页形态（renderCustomizerGroups 惰性挂载，
+// （APP_SECTIONS index 2，0.1.2 增导航后；本文件用 data-id / openSettingsPartition(2) 定位）。
+// 外观分区为定制器整页形态（renderCustomizerGroups 惰性挂载，
 // 6 组 .cust-group 与抽屉面板共用同一实现 + 同一份 store），滑杆实时链路不变。
 // 取舍：导出（.cust-export）与重置（.cust-reset）在分区整页形态无对应（footer 为抽屉面板
 // 专属），相应用例删除，保留滑杆 → CSS 变量实时生效的核心行为验证。
 
 test('调整亚克力透明度实时生效', async ({ page }) => {
-  const appr = await openSettingsPartition(page, 1);
+  const appr = await openSettingsPartition(page, 2); // 外观（0.1.2 增导航后 index 2）
   const slider = appr.locator('.cust-row:has-text("透明度") input[type="range"]');
   await slider.fill('0.8');
   const bgOpacity = await page.evaluate(() =>
@@ -17,7 +18,7 @@ test('调整亚克力透明度实时生效', async ({ page }) => {
 });
 
 test('外观分区：色彩微调滑杆已移除，强调色预设保留', async ({ page }) => {
-  const appr = await openSettingsPartition(page, 1);
+  const appr = await openSettingsPartition(page, 2); // 外观（0.1.2 增导航后 index 2）
   await expect(appr.locator('.c-slider[data-key="hue"]')).toHaveCount(0);
   await expect(appr.locator('.c-slider[data-key="saturation"]')).toHaveCount(0);
   await expect(appr.locator('.c-slider[data-key="temperature"]')).toHaveCount(0);
@@ -32,7 +33,7 @@ test('外观分区：色彩微调滑杆已移除，强调色预设保留', async
 });
 
 test('强调色预设扩至 12 套，新预设可切换', async ({ page }) => {
-  const appr = await openSettingsPartition(page, 1);
+  const appr = await openSettingsPartition(page, 2); // 外观（0.1.2 增导航后 index 2）
   await expect(appr.locator('.cust-accent-card')).toHaveCount(12);
   await appr.locator('.cust-accent-card[data-accent="rose"]').click();
   const accent = await page.evaluate(() =>
@@ -46,7 +47,7 @@ test('强调色预设扩至 12 套，新预设可切换', async ({ page }) => {
 test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click(); // 外观（0.1.2 起 index 2，改 data-id 定位）
   await expect(page.locator('.cust-group').nth(1).locator('.cust-group__title')).toContainText('表面质感');
   await expect(page.locator('[data-glass-switch]')).toContainText('亚克力材质');
   await expect(page.locator('.c-slider[data-key="noise"]')).toBeVisible();
@@ -55,7 +56,7 @@ test('外观分区：表面质感组标题 + 亚克力开关 + 噪点滑杆', as
 test('外观分组标题体现全局语义（重命名 + desc）', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click(); // 外观（0.1.2 起 index 2，改 data-id 定位）
   const group = page.locator('.cust-group');
   await expect(group).toHaveCount(6);
   await expect(group.nth(0).locator('.cust-group__title')).toHaveText('整体色调');
@@ -78,7 +79,7 @@ test('外观分组标题体现全局语义（重命名 + desc）', async ({ page
 test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动）', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click(); // 外观（0.1.2 起 index 2，改 data-id 定位）
   const overview = page.locator('.cust-overview');
   await expect(overview).toBeVisible();
   // 切强调色 → 预览卡强调色同步变化
@@ -94,7 +95,7 @@ test('外观分区顶部有实时整体预览卡（强调色/圆角实时联动�
 });
 
 test('文字排版：baseSize/scale 滑杆真实全局缩放字号', async ({ page }) => {
-  const appr = await openSettingsPartition(page, 1);
+  const appr = await openSettingsPartition(page, 2); // 外观（0.1.2 增导航后 index 2）
   const readFont = () => page.evaluate(() => {
     const body = parseFloat(getComputedStyle(document.body).fontSize);
     const sm = parseFloat(getComputedStyle(document.querySelector('.c-titlebar__title')).fontSize);
@@ -159,7 +160,7 @@ test('B5-5：外观页控件行对齐统一（标签基线 + 行距一致）', a
 // 本测试把 noise 推到非 50% 值，实测渲染填充比例随值变化（若 --fill 未接线则恒 50%，断言必红）。
 test('B5-final：滑杆 --fill 按值渲染（非 50% 兜底，像素级）', async ({ page }) => {
   test.setTimeout(60000);
-  const appr = await openSettingsPartition(page, 1);
+  const appr = await openSettingsPartition(page, 2); // 外观（0.1.2 增导航后 index 2）
   // noise RANGES [0, 0.12]，默认 0.06 = 恰 50%（与兜底重合，不能用于判别）→ 推到 25% / 75%
   const slider = appr.locator('.c-slider[data-key="noise"]');
   await slider.fill('0.03'); // 25% 填充

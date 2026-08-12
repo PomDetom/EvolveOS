@@ -130,11 +130,11 @@ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活�
   await expect(settingsBtn).toHaveCount(1);
   // 初始未激活
   await expect(settingsBtn).not.toHaveClass(/settings-toggle--active/);
-  // 点击 ⚙ → 右窗展开 + 10 项设置目录（APP_SECTIONS：共享 8 + 组件/动效）+ 内容区显示通用设置页
+  // 点击 ⚙ → 右窗展开 + 11 项设置目录（APP_SECTIONS：共享 9 + 组件/动效）+ 内容区显示通用设置页
   await settingsBtn.click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'settings');
   await expect(active).toContainText('通用');
@@ -170,7 +170,7 @@ test('设置模式：左栏应用仍可选（点应用切回应用模式）', as
   await page.goto(APP_URL);
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 设置模式点左窗第 2 项（剪贴板）→ 切回应用模式：右窗变应用目录 + 内容区剪贴板页
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
@@ -249,10 +249,10 @@ test('设置模式退出后右窗目录轮回归：exit settings → same-app re
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  // 进入设置模式（右窗 = 设置目录 10 项）
+  // 进入设置模式（右窗 = 设置目录 11 项）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 退出设置模式（⚙ 再点 → 右窗收起）
   await page.locator('.app-main .c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
@@ -268,23 +268,23 @@ test('设置模式退出后右窗目录轮回归：exit settings → same-app re
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('密码 › 全部');
 });
 
-// —— 设置分区扩展（Task B1-1：APP_SECTIONS 10 分区 + 组件/动效分区惰性挂载展示内容）——
+// —— 设置分区扩展（Task B1-1：APP_SECTIONS 11 分区 + 组件/动效分区惰性挂载展示内容；0.1.2 增导航分区）——
 
 test('设置分区包含组件/动效且挂载展示内容', async ({ page }) => {
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  // 10 分区（共享 8 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(10);
+  // 11 分区（共享 9 + 组件 + 动效 —— 应用壳专用 APP_SECTIONS）
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(11);
   // 组件分区：点击「组件」→ 内容区出现组件矩阵组 + 剪贴板悬浮窗组合示例
-  // APP_SECTIONS 实际序：通用0/外观1/界面2/快捷键3/通知4/数据5/高级6/关于7/组件8/动效9
+  // APP_SECTIONS 实际序：通用0/导航1/外观2/界面3/快捷键4/通知5/数据6/高级7/关于8/组件9/动效10
   // （[...SECTIONS, components, motion] 追加到尾部 —— 索引以实现核对为准）
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
   // 7 个 .csg：6 组矩阵（核心导航/表单/数据/浮层/辅助/悬浮窗专属）+ 1 个交互悬浮窗实例块（csg csg-fwin）
   await expect(page.locator('.app-main__settings [data-page="components"] .csg')).toHaveCount(7);
   await expect(page.locator('.app-main__settings [data-page="components"] .cfloat')).toBeVisible();
   // 动效分区
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(9).click();
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(10).click();
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-grid')).toBeVisible();
   await expect(page.locator('.app-main__settings [data-page="motion"] .ml-card')).toHaveCount(5);
 });
@@ -381,7 +381,7 @@ test('浏览器装饰背景层存在且可切换预设', async ({ page }) => {
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'gradient');
   // 外观分区切换背景预设
   await page.locator('.c-titlebar__control--settings').click();
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(1).click(); // 外观
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="appearance"]').click(); // 外观（0.1.2 起 index 2，改 data-id 定位）
   await page.locator('.app-main__backdrop-card[data-bd="geo"]').click();
   await expect(page.locator('.app-main')).toHaveAttribute('data-backdrop', 'geo');
   // 关闭背景：data-backdrop=none → 背景层平铺实底（无渐变装饰）
@@ -688,7 +688,7 @@ test('设置→关于：应用信息卡渲染（版本号动态读 package.json�
   await page.goto('/?mode=app');
   await page.locator('.c-titlebar__control--settings').click();
   await page.waitForTimeout(400);
-  await page.locator('.app-main__nav-r .c-navwheel__item').nth(7).click(); // 关于（APP_SECTIONS index 7）
+  await page.locator('.app-main__nav-r .c-navwheel__item').nth(8).click(); // 关于（APP_SECTIONS index 8，0.1.2 增导航后）
   const about = page.locator('.app-main__settings [data-page="about"]');
   await expect(about).toBeVisible();
   await expect(about.locator('.csettings__name')).toHaveText('EvolveOS');

@@ -18,10 +18,11 @@ import { applyConfig } from '../../config/apply.js';
 import { toast } from '../../components/toast/toast.js';
 import './settings-window.css';
 
-// 8 分区（pre-flight 修订）：8×64px = 512px > 列表视口 424px，滑动选择真实生效。
-// 界面类模块（原第 3 分区）统一收纳于「界面」分区，其余沿用原分区结构。
+// 9 分区（0.1.2 起）：通用/导航/外观/界面/快捷键/通知/数据/高级/关于。
+// 导航分区（Task 5）管理入口排序/隐藏（功能配置 nav {order,hidden}，非样式参数）。
 export const SECTIONS = [
   { id: 'general',    name: '通用',   icon: 'home' },
+  { id: 'nav',        name: '导航',   icon: 'layout' },
   { id: 'appearance', name: '外观',   icon: 'palette' },
   { id: 'interface',  name: '界面',   icon: 'layout' },
   { id: 'shortcuts',  name: '快捷键', icon: 'key' },
@@ -31,9 +32,10 @@ export const SECTIONS = [
   { id: 'about',      name: '关于',   icon: 'info' },
 ];
 
-// 应用壳专用：共享 8 分区 + 组件/动效（Task B1-1）。
+// 应用壳专用：共享 9 分区 + 组件/动效（Task B1-1）。
 // 组件/动效分区为应用壳内化展示内容（B1-4 起 docs 渲染已删除），
 // pageBody 分支返回含 .app-partition 容器（场景不渲染这两 id，仅应用壳触发惰性挂载）。
+// 导航分区（0.1.2 Task 5）同为惰性挂载容器，内容由 app-main 填充（mountNavPartition）。
 export const APP_SECTIONS = [
   ...SECTIONS,
   { id: 'components', name: '组件', icon: 'box' },
@@ -206,6 +208,7 @@ export function pageBody(id) {
     case 'advanced':   return emptyPage('shield', '高级设置', '实验性功能与调试选项将在接入应用后开放');
     case 'about':      return aboutPage();
     // 应用壳专用分区（Task B1-1）：空 .app-partition 容器，展示内容由 app-main.js 首次激活时惰性挂载
+    case 'nav':        return `<div class="app-partition" data-partition="nav"></div>`;
     case 'components': return `<div class="app-partition" data-partition="components"></div>`;
     case 'motion':     return `<div class="app-partition" data-partition="motion"></div>`;
     default: return '';
@@ -213,9 +216,9 @@ export function pageBody(id) {
 }
 
 /**
- * 页面栈 HTML：8 个 .csettings__page（首项 active，类名不变）。
+ * 页面栈 HTML：多个 .csettings__page（首项 active，类名不变）。
  * 调用方负责包一层 .csettings__pages 容器（场景 820×520 网格 / 应用壳内容区各自接管尺寸）。
- * @param {Array} [sections=SECTIONS] 分区列表 —— docs 场景不传（8 分区）；应用壳传 APP_SECTIONS（10 分区）
+ * @param {Array} [sections=SECTIONS] 分区列表 —— docs 场景不传（9 分区）；应用壳传 APP_SECTIONS（11 分区）
  * @returns {string} 分区页的 HTML 拼接
  */
 export function renderSettingsPages(sections = SECTIONS) {
