@@ -23,7 +23,7 @@
 - **滑动导航选中锚点为黄金比例 0.382**（非居中）：几何参数 `anchorRatio`，垂直/水平方向经 `direction` 参数化；新导航实例禁止硬编码中心语义。
 - **滑动窗口纯图标**：栏内不显示文字名称，上下文由标题栏「应用名 › 页面名」承担。
 - 双窗口级联：左栏恒为全局目录（应用列表），右栏为当前域目录（应用内/设置）；右窗状态为纯 UI 态（会话内），不进配置存储。
-- 模式入口：`resolveMode` 只返回 `'app'|'strip'`（`?mode=app|strip` 显式优先；无参数/非法值/`?mode=docs` → `'app'`）；应用壳/悬浮条代码在 `src/app/`，docs 渲染已删除（B1-4 起浏览器与 Tauri 一致直进应用壳）。
+- 模式入口：`resolveMode` 只返回 `'app'|'strip'`（`?mode=app|strip` 显式优先；无参数/非法值/`?mode=docs` → `'app'`）；应用壳/悬浮条代码在 `src/app/`，docs 渲染已删除。
 - FloatStrip 悬浮条：常态无边框内容优先，hover 浮现控制；横竖形态经 `--strip-orientation`；四边磁吸（transform 定位，不触发 layout 动画）。
 
 ## 动画红线

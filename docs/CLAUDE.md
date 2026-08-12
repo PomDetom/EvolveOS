@@ -25,7 +25,7 @@
 - **每任务必须有独立评审**（规格符合 + 质量）。
 - Critical/Important 进入修复循环（≤5 轮：前 3 轮续派原实施者，后 2 轮换更强模型）；Minor 记入执行留痕留给收尾。
 - 铁律：任务间禁止并行派发实施子代理；控制器不直接修改代码；不接受无评审的自评报告。
-- **任务直接在共享 checkout（主工作目录）执行，不用 git worktree 隔离**（B5 确立：worktree 引发沙箱隔离 + 共享 checkout 同步/合并复杂化）。
+- **任务直接在共享 checkout（主工作目录）执行，不用 git worktree 隔离**（worktree 引发沙箱隔离 + 共享 checkout 同步/合并复杂化）。
 - 留痕：每一步的计划、工作内容、提交记录写入执行留痕，随代码提交。
 - **边界门禁**：应用任务合并前跑 `npm run check:boundary`（禁触框架目录）；框架任务须全量回归 + 框架 owner 评审。设计规格：`docs/superpowers/specs/2026-08-09-app-shell-dev-governance-design.md`。
 - **派发实施子代理前先做 pre-flight 计划-现实冲突扫描**：对照计划代码段与当前代码/测试 mock 的实际签名与成员形态（含 LogicalSize/CSS import 等），发现计划缺陷先呈报用户裁定再派发，避免评审期才发现返工。
