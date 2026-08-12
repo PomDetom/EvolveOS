@@ -9,13 +9,22 @@ export const FRAMEWORK_FILE_RE = [
   /^vite\.config/, /^vitest\.config/, /^index\.html/,
   /^package\.json/, /^package-lock\.json/, /^playwright\.config/,
 ];
+// —— 并行治理（2026-08-12）：前缀全集 + 分支名校验 + 基分支跳过 ——
+// 文档分支允许：docs/ 目录 + 仓库根 *.md（README/CHANGELOG/CLAUDE）。
+const ROOT_MD_RE = /^[^/]+\.md$/;
+// 维护分支允许：scripts/ tests/ src-tauri/ + 锁文件/.gitignore/package.json/构建配置（不碰 src/）。
+const CHORE_PREFIXES = ['scripts/', 'tests/', 'src-tauri/'];
+const CHORE_FILE_RE = [
+  /\.lock$/, /^package-lock\.json$/, /^\.gitignore$/, /^package\.json$/,
+  /^vite\.config/, /^vitest\.config/, /^playwright\.config/,
+];
 
 export function assessBranchChanges(branch, files) {
+  // 基分支（dev/main）不是特性分支，跳过门禁
+  if (branch === 'dev' || branch === 'main') {
+    return { kind: 'base', ok: true, violations: [], note: '基分支，跳过门禁' };
+  }
   const appMatch = branch.match(/^app\/([^/]+)\//); // app/<id>/<name>
-  const isUi = /^ui\//.test(branch);
-  const inFramework = (f) =>
-    FRAMEWORK_PREFIXES.some((p) => f.startsWith(p)) || FRAMEWORK_FILE_RE.some((r) => r.test(f));
-
   if (appMatch) {
     const appId = appMatch[1];
     const allowed = (f) =>
@@ -31,15 +40,41 @@ export function assessBranchChanges(branch, files) {
     };
   }
 
-  if (isUi) {
-    return { kind: 'ui', ok: true, violations: [], note: '框架改动：须全量回归 + 框架 owner 评审' };
+  if (/^ui\//.test(branch)) {
+    return { kind: 'ui', ok: true, violations: [], note: '框架改动：分支上受影响子系统定向回归；全量仅 dev→main/hotfix→main；框架 owner 评审' };
   }
 
-  const violations = files.filter((f) => inFramework(f));
+  if (/^docs\//.test(branch)) {
+    const violations = files.filter((f) => !(f.startsWith('docs/') || ROOT_MD_RE.test(f)));
+    return {
+      kind: 'docs',
+      ok: violations.length === 0,
+      violations,
+      note: violations.length === 0 ? '文档改动，边界通过' : `文档分支触碰非文档文件 ${violations.length} 个`,
+    };
+  }
+
+  if (/^chore\//.test(branch)) {
+    const inChore = (f) =>
+      CHORE_PREFIXES.some((p) => f.startsWith(p)) || CHORE_FILE_RE.some((r) => r.test(f));
+    const violations = files.filter((f) => !inChore(f));
+    return {
+      kind: 'chore',
+      ok: violations.length === 0,
+      violations,
+      note: violations.length === 0 ? '维护改动，边界通过' : `维护分支触碰非维护文件 ${violations.length} 个`,
+    };
+  }
+
+  if (/^hotfix\//.test(branch)) {
+    return { kind: 'hotfix', ok: true, violations: [], note: '紧急修复：合并 main 后必须同步回 dev + main 全量回归' };
+  }
+
+  // 未知前缀：分支名不合规（不再按 mixed 检查文件，直接 fail 给示例）
   return {
-    kind: 'mixed',
-    ok: violations.length === 0,
-    violations,
-    note: violations.length === 0 ? '非应用/框架前缀分支，边界通过' : '未知分支触碰框架文件',
+    kind: 'invalid',
+    ok: false,
+    violations: [branch],
+    note: '分支名不合规，须用 app/<id>/<name> | ui/<name> | docs/<name> | chore/<name> | hotfix/<name>',
   };
 }

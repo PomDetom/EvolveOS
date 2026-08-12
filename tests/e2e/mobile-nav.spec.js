@@ -10,14 +10,16 @@ const APP_URL = '/?mode=app';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('手机形态：底部横滑应用栏可见（8 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
+test('手机形态：底部横滑应用栏可见（≥8 icon 横排）+ 桌面双窗隐藏', async ({ page }) => {
   await page.goto(APP_URL);
   await expect(page.locator('.app-main')).toBeVisible();
-  // 底部 dock 可见且含 8 个应用项，沿 x 轴横排（位置递增）
+  // 底部 dock 可见且含 ≥8 个应用项，沿 x 轴横排（位置递增）
   const dock = page.locator('.app-main__dock');
   await expect(dock).toBeVisible();
   const items = dock.locator('.c-navwheel__item');
-  await expect(items).toHaveCount(8);
+  await expect(dock.locator('.c-navwheel__item[data-id="home"]')).toHaveCount(1); // 先等 dock 挂载
+  const dockCount = await items.count();
+  expect(dockCount).toBeGreaterThanOrEqual(8);
   const xs = await items.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
   for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
   // 桌面双窗隐藏
@@ -31,7 +33,7 @@ test('手机形态：底部横滑应用栏可见（8 icon 横排）+ 桌面双�
 test('点击应用 → 目录页推入（页面栈）', async ({ page }) => {
   await page.goto(APP_URL);
   // 点击 dock 第 2 项（剪贴板）→ 目录页推入
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click();
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="clipboard"]').click();
   await page.waitForTimeout(350); // slide 240ms
   const pages = page.locator('.app-main__stack-page');
   await expect(pages).toHaveCount(2);
@@ -45,7 +47,7 @@ test('点击应用 → 目录页推入（页面栈）', async ({ page }) => {
 
 test('点击目录项 → 详情页推入', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="clipboard"]').click(); // 剪贴板
   await page.waitForTimeout(350);
   await page.locator('.app-main__dir-item[data-dir="pinned"]').click();
   await page.waitForTimeout(350);
@@ -59,7 +61,7 @@ test('点击目录项 → 详情页推入', async ({ page }) => {
 
 test('返回回退：返回按钮逐步 pop 页面栈', async ({ page }) => {
   await page.goto(APP_URL);
-  await page.locator('.app-main__dock .c-navwheel__item').nth(1).click(); // 剪贴板目录
+  await page.locator('.app-main__dock .c-navwheel__item[data-id="clipboard"]').click(); // 剪贴板目录
   await page.waitForTimeout(350);
   await page.locator('.app-main__dir-item[data-dir="pinned"]').click(); // 详情
   await page.waitForTimeout(350);

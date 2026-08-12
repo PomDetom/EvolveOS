@@ -14,10 +14,10 @@
 ## 核心铁律
 
 - 零运行时依赖，组件无抽象封装，遵循现有代码风格。
-- **任务直接在共享 checkout（主工作目录）执行，不用 git worktree 隔离**（worktree 引发沙箱隔离 + 同步/合并复杂化）。
+- **开发用 git worktree 并行**：每个特性分支在**仓库根同级目录**的独立 worktree（`evolveos-<slug>`，如 `evolveos-app-clipboard-history`）执行；主 checkout 常驻 main（发版合并点）。分支规范/生命周期/回归/边界全集见 `docs/superpowers/specs/2026-08-12-parallel-branch-governance-design.md`。
 - **测试与验证仅在 Web 环境执行**（单测 + Playwright 浏览器测试），不做 webview 真机验证。
 - 禁止升级核心依赖、禁止删除用户已有改动。
-- **框架 vs 应用边界**：UI 框架（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）修改走 `ui/` 分支（全量回归 + 框架 owner 评审）；应用（`src/apps/<id>/`）只做自己的页面，**禁止修改框架目录**，合并前跑 `npm run check:boundary`。详规：`docs/superpowers/specs/2026-08-09-app-shell-dev-governance-design.md`。
+- **框架 vs 应用边界**：UI 框架（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）修改走 `ui/` 分支（框架 owner 评审）；应用（`src/apps/<id>/`）只做自己的页面，**禁止修改框架目录**，合并前跑 `npm run check:boundary`。详规：`docs/superpowers/specs/2026-08-12-parallel-branch-governance-design.md`。
 - 开发遵循子代理驱动流程（TDD、独立评审、修复循环），每步计划/工作内容/提交留痕入 `docs/`（详见 `docs/CLAUDE.md`）。
 
 ## 常用命令
@@ -27,7 +27,8 @@
 
 ## 发版与版本治理
 
-- **分支**：feature（`ui/*`、`app/<id>/*`）从 dev 检出、**只合入 dev**；dev 稳定后 `--no-ff` 合入 main（=一次发版）；**main 只接受 dev 合入 + `hotfix/*` 直合**（随后回 dev）；docs 也走 dev。feature 分支合并进 main 前须全量回归（`npm test` + `npm run test:e2e` + `npm run build`），通过后删分支。
+- **分支**：前缀全集 `app/<id>/*`、`ui/*`、`docs/*`、`chore/*`、`hotfix/*`，**一律从 dev 检出**（hotfix 例外可从 main），完成后合 dev 删分支；main **只从 dev `--no-ff` 合并**（=一次发版），`hotfix/*` 唯一直合 main 豁免随后同步回 dev；未知前缀 `check:boundary` 拒绝。
+- **回归**：全量回归**只在 dev→main 与 hotfix→main 两个点跑**；dev 阶段只跑改动影响面定向测试（+ build + 壳冒烟）。
 - **版本**：package.json 为唯一版本源；`npm run set-version -- X.Y.Z` 同步 3 个 manifest（package.json / Cargo.toml / tauri.conf.json）；设置「关于」页版本号动态读 package.json。
 - **发版**：`npm run release -- [patch|minor|major]`（bump → CHANGELOG → npm test+build 门禁 → 提交 → 打印后续）；dev→main 前全量回归（npm test + test:e2e + build + cargo test）；合并后打 tag `vX.Y.Z`。
 

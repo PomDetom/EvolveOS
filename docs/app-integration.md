@@ -39,7 +39,7 @@ export const module = {
 };
 ```
 
-> **边界红线**：应用只允许修改 `src/apps/<id>/` 自己目录（+ 该应用测试 + docs），**禁止触碰框架目录**（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。合并前跑 `npm run check:boundary`；违反即失败。框架需修改 → 单独 `ui/` 分支。
+> **边界红线**：应用只允许修改 `src/apps/<id>/` 自己目录（+ 该应用测试 + docs），**禁止触碰框架目录**（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。合并前跑 `npm run check:boundary`；违反即失败。框架需修改 → 单独 `ui/` 分支。分支规范（前缀全集/生命周期/回归单点化）见 `docs/superpowers/specs/2026-08-12-parallel-branch-governance-design.md`。
 
 ---
 
@@ -196,7 +196,7 @@ mountInput(pageEl.querySelector('.c-input'));
 
 ### 5.5 图标
 
-全部内联 SVG（Lucide 风格、currentColor、aria-hidden），统一 `icon(name, size, stroke)`。新图标先在 `icon.js` 的 `PATHS` 加路径（与既有 Lucide 风格一致：24×24 viewBox、stroke 1.8、round cap/join），**不要在页面里内联手写 SVG**。
+全部内联 SVG（Lucide 风格、currentColor、aria-hidden），统一 `icon(name, size, stroke)`。**新图标默认复用既有 `PATHS`（`src/components/icon/icon.js`，47 个）**；确实需要新图标时用**应用自持图标**：`module` 导出 `icons: { <name>: '<svg path>' }`，页面里 `icon(name, size, stroke, ctx.module.icons)`（查找顺序 应用级 → 全局 → monitor）。**禁止在页面里内联手写 SVG、禁止为加图标改 `src/components/`**；应用自持图标必须 Lucide 风格（24×24、stroke 1.8、round cap/join），否则评审打回。
 
 ### 5.6 类名约定
 
