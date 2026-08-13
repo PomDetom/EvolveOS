@@ -438,8 +438,8 @@ export function mountAppMode(root) {
   // —— 级联联动 ——
   // 左窗选中新应用 → 右窗推入 + 载入该应用目录 + 内容区切到首屏（不收起）；
   // 若当前处于设置模式则一并切回应用模式（左栏应用恒可选中，规格 §5）
-  function setModule(id) {
-    if (id === state.moduleId) return;
+  function setModule(id, force = false) {
+    if (id === state.moduleId && !force) return;
     const mod = MODULES.find((m) => m.id === id);
     if (!mod) return; // review ① 防御：id 对应模块被隐藏/缺失（正常路径恒存在，来自 MODULES 轮项）
     state.moduleId = id;
@@ -498,7 +498,11 @@ export function mountAppMode(root) {
   // 避免 nav-wheel 对同 id 的补发 onChange 误触发收起。
   function onLeftSelect(id) {
     if (id === 'settings') { setSettingsMode(); return; }
-    if (id !== state.moduleId) setModule(id);
+    const wasSettings = state.rightMode === 'settings';
+    // 设置模式下选择任意模块（含滚动回当前激活模块）都必须退出设置并切换到该模块——
+    // onChange 是明确导航意图，不能被 id===moduleId 守卫挡住（否则内容停在设置页，0.1.2 bug）。
+    if (wasSettings && id === state.moduleId) setModule(id, true);
+    else if (id !== state.moduleId) setModule(id);
   }
 
   // 收起右窗（返回按钮 / Esc；二次点击走 onLeftSelect 的 toggle）。设置模式收起 = 退出设置模式
