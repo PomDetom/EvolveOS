@@ -10,7 +10,7 @@
 
 | 决策 | 选型 |
 |---|---|
-| 后端复用 | **复制 `pwm-core` 源码进 `src-tauri/src/pwm/`**（password-management 已停止维护，EvolveOS 继续完善；保留全部单测）。前端经 `window.__TAURI__.core.invoke` 调 12 命令 |
+| 后端复用 | **复制 `pwm-core` 源码进 `src-tauri/src/pwm/`**（password-management 已停止维护，EvolveOS 继续完善；保留全部单测）。前端经 `window.__TAURI__.core.invoke` 调 13 命令 |
 | 保险库路径 | **预填应用数据目录默认路径**：新增 `default_vault_path` 命令返回 `app_data_dir()/vault.json`，创建/解锁表单预填可编辑；另 localStorage 记上次路径（**绝不存主密码**） |
 | v1 功能 | 核心（解锁/创建/锁定、条目增删改查 + 搜索 + 标签筛选、编辑器内嵌密码生成、复制/显示密码）+ 导出 / 导入 / 记住上次路径 |
 | 右窗目录 | **全部（box）/ 数据管理（folder）/ 设置（settings）** 三个**功能独立**目录；搜索/标签筛选/排序全部并入「全部」内部（不设筛选型目录） |
@@ -26,8 +26,8 @@
 src-tauri/src/              ← 后端移植（chore/pwm-backend 分支）
   pwm/                      ← 复制 pwm-core 源码（lib/models/crypto/vault/generator/error）
   pwm_state.rs              ← PwmState { session: Mutex<Option<PwmSession>> } + PwmSession { vault_path, vault, key }
-  pwm_commands.rs           ← 12 命令（含 default_vault_path）
-  lib.rs                    ← mod pwm / pwm_state / pwm_commands + manage(PwmState) + 注册 12 命令
+  pwm_commands.rs           ← 13 命令（含 default_vault_path / current_vault_path）
+  lib.rs                    ← mod pwm / pwm_state / pwm_commands + manage(PwmState) + 注册 13 命令
 src/apps/key/               ← 前端应用（app/key/password-manager 分支）
   index.js                  ← module { id:'key', name:'密码', icon:'key', order:1, dir: 全部/数据管理/设置, render, mount }
   key.js                    ← 页面渲染 + 交互（锁定屏 / 三目录页 / 条目编辑器对话框）
@@ -39,7 +39,7 @@ tests/e2e/app-shell.spec.js     ← 更新 key 占位断言（功能开发中 �
 docs/                       ← 本规格 + 实施计划 + 执行留痕账本
 ```
 
-**数据流**：密码学全在 Rust（Argon2id KDF + AES-256-GCM，主密码只经命令参数，派生密钥 `zeroize` 清零，会话存内存）。前端只 invoke 12 命令，不碰加密细节；浏览器态零密码数据。
+**数据流**：密码学全在 Rust（Argon2id KDF + AES-256-GCM，主密码只经命令参数，派生密钥 `zeroize` 清零，会话存内存）。前端只 invoke 13 命令，不碰加密细节；浏览器态零密码数据。
 
 ## 3. 后端移植（Rust，chore/pwm-backend 分支）
 
@@ -74,6 +74,7 @@ docs/                       ← 本规格 + 实施计划 + 执行留痕账本
 | `export_vault` | `path` | `()`（明文 JSON 数组） |
 | `import_vault` | `path` | `usize`（合并条数，原子校验空名） |
 | `default_vault_path` | — | `String`（`app.path().app_data_dir()/vault.json`，`use tauri::Manager`） |
+| `current_vault_path` | — | `String`（当前会话保险库路径；锁定时报「vault locked」） |
 
 - 会话：`PwmState` 独立 `.manage()`，**不动** token-tool 的 `AppState`；`with_session` 守卫「vault locked」错误 → 前端据此显示锁定屏。
 - 每次写操作（create/update/delete/import）后 `save_vault_file` 落盘（沿用 pwm-core 既有命令层逻辑）。
