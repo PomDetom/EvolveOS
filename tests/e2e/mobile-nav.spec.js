@@ -55,7 +55,8 @@ test('点击目录项 → 详情页推入', async ({ page }) => {
   await expect(pages).toHaveCount(3);
   const top = pages.last();
   await expect(top).toHaveAttribute('data-stack', 'detail');
-  await expect(top).toContainText('全部');
+  // key 浏览器态（无 __TAURI__）渲染「需桌面端使用」空态（无目录名副标题）；上下文联动仍为「密码 › 全部」
+  await expect(top).toContainText('需桌面端使用');
   await expect(page.locator('.app-main [data-ctx]')).toHaveText('密码 › 全部');
 });
 
