@@ -15,8 +15,8 @@ test('tokenTool：浏览器空态 + 左窗 token-tool 模块 + 概览快捷卡',
   await expect(active).toContainText('需桌面端使用');
 });
 
-// mock __TAURI__：验证桌面端 invoke 调用形态 + 账户卡渲染 + 立即刷新
-test('tokenTool：桌面端（mock __TAURI__）加载账户、渲染卡片、触发刷新', async ({ page }) => {
+// mock __TAURI__：桌面端进入 token-tool → 余量页（只读卡片）+ 账户管理页（行操作）
+test('tokenTool：桌面端（mock __TAURI__）余量页只读渲染 + 账户管理页操作', async ({ page }) => {
   await page.addInitScript(() => {
     const invokes = [];
     window.__TAURI__ = {
@@ -61,11 +61,13 @@ test('tokenTool：桌面端（mock __TAURI__）加载账户、渲染卡片、触
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
 
-  // 两账户卡渲染（DeepSeek 余额 + OpenCode 三窗口）
+  // 默认落余量页：只读卡片（两账户数据渲染，无操作按钮）
   await expect(page.locator('.tt__card')).toHaveCount(2);
   await expect(page.locator('.tt__card', { hasText: 'DeepSeek 主号' })).toContainText('88.50');
   await expect(page.locator('.tt__card', { hasText: 'OpenCode Go' })).toContainText('29.2%');
   await expect(page.locator('.tt__card', { hasText: 'OpenCode Go' })).toContainText('剩余 $8.50 / $12');
+  // 只读：余量页不出现任何 data-tt-action 操作按钮
+  await expect(page.locator('[data-tt-action]')).toHaveCount(0);
 
   // 挂载即拉配置 + 快照
   let invokes = await page.evaluate(() => window.__tokenToolInvokes__);
@@ -77,12 +79,17 @@ test('tokenTool：桌面端（mock __TAURI__）加载账户、渲染卡片、触
   await page.waitForTimeout(100);
   invokes = await page.evaluate(() => window.__tokenToolInvokes__);
   expect(invokes.map((i) => i.cmd)).toContain('refresh_all');
+
+  // 右窗目录切到「账户管理」→ 账户行（含测试/编辑/删除）
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.tt__row')).toHaveCount(2);
+  await expect(page.locator('.tt__row', { hasText: 'DeepSeek 主号' }).locator('[data-tt-action="edit"]')).toBeVisible();
+  await expect(page.locator('.tt__row', { hasText: 'OpenCode Go' }).locator('[data-tt-action="test"]')).toBeVisible();
 });
 
 // 编辑对话框表单值转义：账户名含 `"` 时，name 输入框 value 必须完整回显且原始属性为转义形态
-// （旧代码直接插值破坏属性 → 自 XSS 路径 + 编辑回显错误；浏览器实体解码属性值，
-// 故解码后 getAttribute('value') = `a"b`，原始转义形态看序列化 outerHTML）
-test('tokenTool：编辑对话框表单值转义（含引号账户名不破坏属性）', async ({ page }) => {
+test('tokenTool：账户管理页编辑对话框表单值转义（含引号账户名）', async ({ page }) => {
   await page.addInitScript(() => {
     window.__TAURI__ = {
       window: {
@@ -109,19 +116,18 @@ test('tokenTool：编辑对话框表单值转义（含引号账户名不破坏�
   await page.goto(APP_URL);
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(400);
 
   // 打开含引号账户的编辑对话框 → 名称值完整回显 + 原始属性为转义形态。
-  // 注：浏览器解析 HTML 时实体解码属性值，getAttribute('value') 返回解码后的 `a"b`；
-  // 原始转义形态需看序列化 outerHTML（`"` → `&quot;`）。旧代码属性被 `"` 截断为 `a`。
-  await page.locator('.tt__card', { hasText: 'a"b' }).locator('[data-tt-action="edit"]').click();
+  await page.locator('.tt__row', { hasText: 'a"b' }).locator('[data-tt-action="edit"]').click();
   const nameInput = page.locator('[data-tt-field="name"] .c-input');
   await expect(nameInput).toHaveAttribute('value', 'a"b');
   expect(await nameInput.evaluate((el) => el.outerHTML)).toContain('value="a&quot;b"');
 });
 
-// 零账户空态：「添加账户」CTA 必须打开添加账户编辑对话框（修复波覆盖——旧 onGrid 只匹配
-// [data-tt-action]，空态 CTA 渲染的 .c-btn 无该属性 → 点击无反应）
-test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', async ({ page }) => {
+// 零账户：余量页空态引导去账户管理；账户管理页空态 CTA 打开添加账户编辑对话框
+test('tokenTool：零账户余量页空态 + 账户管理页 CTA 打开编辑对话框', async ({ page }) => {
   await page.addInitScript(() => {
     window.__TAURI__ = {
       window: {
@@ -143,11 +149,16 @@ test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', a
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
   await page.waitForTimeout(400);
 
-  // 空状态 CTA 可见
-  const cta = page.locator('.tt__grid .c-btn', { hasText: '添加账户' });
-  await expect(cta).toBeVisible();
+  // 余量页空态：暂无账户，无操作按钮
+  const usageEmpty = page.locator('.tt__grid');
+  await expect(usageEmpty).toContainText('暂无账户');
+  await expect(page.locator('[data-tt-action]')).toHaveCount(0);
 
-  // 点击 → 添加账户编辑对话框出现
+  // 切到账户管理页：空态 CTA「添加账户」→ 打开添加账户编辑对话框
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(400);
+  const cta = page.locator('.tt__accounts .c-btn', { hasText: '添加账户' });
+  await expect(cta).toBeVisible();
   await cta.click();
   await expect(page.locator('.c-dialog')).toBeVisible();
   await expect(page.locator('.c-dialog__header')).toContainText('添加账户');
@@ -155,7 +166,7 @@ test('tokenTool：零账户空态「添加账户」CTA 打开编辑对话框', a
 
 // 回归（用户报 bug）：新增账户选 OpenCode 必须带出 workspace + cookie 字段；
 // 编辑器对话框为实底材质（非透明毛玻璃，与主页面一致）。
-test('tokenTool：新增账户选 OpenCode 带出 workspace+cookie；对话框实底材质', async ({ page }) => {
+test('tokenTool：账户管理页新增账户选 OpenCode 带出 workspace+cookie；对话框实底材质', async ({ page }) => {
   await page.addInitScript(() => {
     window.__TAURI__ = {
       window: {
@@ -175,6 +186,8 @@ test('tokenTool：新增账户选 OpenCode 带出 workspace+cookie；对话框�
   });
   await page.goto(APP_URL);
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
   await page.waitForTimeout(400);
   // 打开「添加账户」
   await page.locator('.tt__toolbar .c-btn', { hasText: '添加账户' }).click();

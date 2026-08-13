@@ -137,6 +137,50 @@
   transform-origin: bottom;
 }
 
+/* —— token 实时监测内容（strip-main.js renderStripToken，真实账户数据）——
+   每账户一行 chip = 状态点 + 名称 + 值；横向排列随 strip 形态，名称超长省略号。 */
+.c-strip-tk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+}
+.c-strip-tk__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+  min-width: 0;
+}
+.c-strip-tk__name {
+  color: var(--text-2);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c-strip-tk__value {
+  color: var(--text-1);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.c-strip-tk__muted {
+  color: var(--text-3);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+.c-strip-tk__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--success-500);
+}
+.c-strip-tk__dot--warn { background: var(--warning-500); }
+.c-strip-tk__dot--err { background: var(--danger-500); }
+.c-strip-tk__dot--none { background: var(--text-3); }
+
 /* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位；
    同时禁用 backdrop-filter：透明窗口内无可模糊对象，且 WebView2 下 backdrop-filter 会渲染成
    未按 border-radius 裁剪的方形图层（竖排时底部圆角被遮成直角），禁用后仅留玻璃底色 + 圆角 */

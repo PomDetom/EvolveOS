@@ -9,17 +9,63 @@ import { test, expect } from '@playwright/test';
 const STRIP_URL = '/?mode=strip';
 const SETTLE_MS = 400; // 覆盖 300ms 磁吸 + 200ms 浮现/旋转相位
 
-test('渲染：.c-strip 存在 + token 监测内容（数值/状态点/趋势条）', async ({ page }) => {
+test('渲染：.c-strip 存在 + token 实时监测（浏览器无后端 → 暂无账户占位）', async ({ page }) => {
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
   await expect(strip).toHaveCount(1);
   // 浏览器 ?mode=strip 路径不渲染「恢复主窗」按钮（showRestore 仅 Tauri 独立窗口为 true）——
   // 在 .c-strip 已确认存在后断言，避免空 DOM 上 toHaveCount(0) 真空通过
   await expect(page.locator('.c-strip__restore')).toHaveCount(0);
-  await expect(strip.locator('.c-tmon__value')).toContainText('97.2%');
-  await expect(strip.locator('.c-tmon__dot.c-tmon__dot--ok')).toHaveCount(1);
-  await expect(strip.locator('.c-tmon__trend-bar')).toHaveCount(7);
-  await expect(strip.locator('.c-tmon__trend-bar').first()).toBeVisible();
+  // 内容走真实数据路径：浏览器无 Tauri 后端 → 「暂无账户」占位
+  await expect(strip.locator('.c-strip-tk')).toBeVisible();
+  await expect(strip.locator('.c-strip-tk')).toContainText('暂无账户');
+});
+
+test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balances 快照）', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
+        getCurrentWindow: () => ({
+          setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
+          onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+        }),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') {
+            return {
+              accounts: [
+                { id: 'a1', name: 'DeepSeek 主号', kind: 'deepseek', baseUrl: 'https://api.deepseek.com', apiKey: 'sk-x', workspaceId: null, authCookie: null, refreshIntervalSecs: 300, warnThreshold: 10 },
+                { id: 'a2', name: 'OpenCode Go', kind: 'opencode_go', baseUrl: 'https://opencode.ai', apiKey: '', workspaceId: 'wrk', authCookie: 'ck', refreshIntervalSecs: 300, warnThreshold: 10 },
+              ],
+            };
+          }
+          if (cmd === 'get_balances') {
+            return [
+              { accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: 0 },
+              { accountId: 'a2', balance: null, currency: null, windows: [
+                  { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: '' },
+                  { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
+                ], ok: true, error: null, lastUpdated: 0 },
+            ];
+          }
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(STRIP_URL);
+  const strip = page.locator('.c-strip');
+  const chips = strip.locator('.c-strip-tk__chip');
+  await expect(chips).toHaveCount(2);
+  await expect(chips.nth(0)).toContainText('DeepSeek 主号');
+  await expect(chips.nth(0)).toContainText('88.50');
+  await expect(chips.nth(0)).toContainText('CNY');
+  await expect(chips.nth(1)).toContainText('OpenCode Go');
+  await expect(chips.nth(1)).toContainText('本月 80%');
+  await expect(chips.nth(1).locator('.c-strip-tk__dot')).not.toHaveClass(/dot--err/);
 });
 
 test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类翻转 + 内容布局变化', async ({ page }) => {
