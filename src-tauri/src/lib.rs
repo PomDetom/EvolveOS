@@ -17,6 +17,9 @@ mod commands;
 mod config;
 mod crypto;
 mod models;
+mod pwm; // 密码管理器核心（移植 pwm-core）
+mod pwm_commands; // 密码管理器 Tauri 命令
+mod pwm_state;    // 密码管理器会话状态
 mod scheduler;
 mod state;
 
@@ -25,6 +28,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(CloseBehaviorState { close_behavior: Mutex::new("exit".into()) })
         .manage(state::AppState::new())
+        .manage(pwm_state::PwmState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -49,6 +53,19 @@ pub fn run() {
             commands::refresh_all,
             commands::get_balances,
             commands::test_account,
+            pwm_commands::create_vault,
+            pwm_commands::unlock_vault,
+            pwm_commands::lock_vault,
+            pwm_commands::list_entries,
+            pwm_commands::get_entry,
+            pwm_commands::create_entry,
+            pwm_commands::update_entry,
+            pwm_commands::delete_entry,
+            pwm_commands::generate_password,
+            pwm_commands::export_vault,
+            pwm_commands::import_vault,
+            pwm_commands::default_vault_path,
+            pwm_commands::current_vault_path,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
