@@ -841,3 +841,24 @@ test('重复 nav 重配后左窗拖拽灵敏度仍单倍（监听器不随重挂
   await page.waitForTimeout(400); // 惯性/吸附沉降
   expect(Math.abs((during - before) - 50)).toBeLessThan(10);
 });
+
+// —— 0.1.2 bug 回归：设置模式后滚轮回当前激活模块须退出设置（onChange 路径，非 click）——
+// 复现：滚轮到设置（进设置模式，state.moduleId 不变仍为 home）→ 滚轮回 home → onChange('home')
+// 被 onLeftSelect 的 id===moduleId 守卫挡住 → 内容停在设置页。纯滚轮（不触发 navL click 的
+// 设置退出兜底）暴露该缺陷。wheelUntil 辅助：滚轮直到指定 data-id 为 active（含 snap 沉降）。
+test('0.1.2 bug：设置模式滚轮回已选中模块须退出设置（onChange 路径）', async ({ page }) => {
+  await page.goto('/?mode=app');
+  const list = page.locator('.app-main__nav-l .c-navwheel__list');
+  const box = await list.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // 单次大步滚到「设置」（底部）→ snap 直达，仅 onChange('settings') 进设置模式，moduleId 保持 home
+  await page.mouse.wheel(0, 5000);
+  await page.waitForTimeout(600); // 惯性/吸附沉降
+  await expect(list.locator('.c-navwheel__item--active')).toHaveAttribute('data-id', 'settings');
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'settings');
+  // 单次大步滚回「概览」（顶部）→ snap 直达，仅 onChange('home') → id===moduleId 被守卫挡住（bug）
+  await page.mouse.wheel(0, -5000);
+  await page.waitForTimeout(600);
+  await expect(list.locator('.c-navwheel__item--active')).toHaveAttribute('data-id', 'home');
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'home');
+});
