@@ -27,18 +27,18 @@ test('壳结构：标题栏/左窗模块（≥8）/单窗口态右窗隐藏/内�
 
 test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
   await page.goto(APP_URL);
-  // 点击左窗第 2 项（剪贴板）
+  // 点击左窗第 2 项（密码）
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
-  // 右窗展开且含剪贴板目录 3 项
+  // 右窗展开且含密码目录 3 项
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['全部', '分组']);
-  // 内容区切到剪贴板首屏
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['全部', '数据管理']);
+  // 内容区切到密码首屏
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'key');
   await expect(active).toContainText('密码');
-  await expect(active).toContainText('功能开发中');
+  await expect(active).toContainText('需桌面端使用');
 });
 
 test('收起通道一：右窗顶部返回按钮', async ({ page }) => {
@@ -74,7 +74,7 @@ test('收起通道三：Esc', async ({ page }) => {
 
 test('换应用：右窗目录内容切换（不收起）', async ({ page }) => {
   await page.goto(APP_URL);
-  // 密码（目录：全部/分组/回收站）
+  // 密码（目录：全部/数据管理/设置）
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
@@ -84,7 +84,7 @@ test('换应用：右窗目录内容切换（不收起）', async ({ page }) => 
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(2);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]')).toHaveCount(0);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="data"]')).toHaveCount(0);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="archived"]')).toHaveCount(1);
   // 内容区切到智能备忘页
   const active = page.locator('.app-main__page--active');
@@ -97,12 +97,12 @@ test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ 
   const ctx = page.locator('.app-main [data-ctx]');
   // 单窗口态：只有应用名
   await expect(ctx).toHaveText('概览');
-  // 选中剪贴板 → 右窗展开 → 应用名 › 首目录项
+  // 选中密码 → 右窗展开 → 应用名 › 首目录项
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await expect(ctx).toHaveText('密码 › 全部');
-  // 选中右窗目录项「固定」→ 页面名联动
-  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]').click();
-  await expect(ctx).toHaveText('密码 › 分组');
+  // 选中右窗目录项「数据管理」→ 页面名联动
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="data"]').click();
+  await expect(ctx).toHaveText('密码 › 数据管理');
   // 收起右窗 → 回到单窗口态（只有应用名）
   await page.locator('.app-main__nav-r-back').click();
   await expect(ctx).toHaveText('密码');
