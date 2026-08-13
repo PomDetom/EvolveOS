@@ -18,6 +18,8 @@ mod config;
 mod crypto;
 mod models;
 mod pwm; // 密码管理器核心（移植 pwm-core）
+mod pwm_commands; // 密码管理器 Tauri 命令
+mod pwm_state;    // 密码管理器会话状态
 mod scheduler;
 mod state;
 
