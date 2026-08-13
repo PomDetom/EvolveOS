@@ -36,6 +36,7 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 
 - **分支**：前缀 `app/<id>/*` `ui/*` `docs/*` `chore/*` `hotfix/*`，一律从 dev 检出（hotfix 例外可从 main），完成后合 dev 删分支（`git branch -d` + `git worktree remove`）；main 只从 dev `--no-ff` 合并（=一次发版），hotfix 唯一直合 main 豁免随后同步回 dev；未知前缀 `check:boundary` 拒绝。
 - **回归**：全量回归只在 dev→main / hotfix→main 两个点跑；dev 阶段只跑改动影响面定向测试 + build + 壳冒烟。
+- **发版前必先征询用户意见**：dev→main / hotfix→main / bump / tag / push 等任一发版动作前，先列出版本号、范围、验证证据，等用户明确同意再执行（任何发版都需询问意见，不自动发版）。
 - 合并前 `npm run check:boundary`（分支名 + 边界双校验）。
 - 提交前 `npm run build`；逻辑改动 TDD（红→绿→提交）。
 - `ui/*` 框架改动全局串行（同一时刻只一个 ui 分支）+ 框架 owner 评审。
