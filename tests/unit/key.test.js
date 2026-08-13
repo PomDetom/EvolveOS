@@ -4,6 +4,8 @@ import {
   escapeHtml, matchesQuery, matchesAnyTag, filterEntries,
   allTags, sortByName, splitTags, isRememberPathEnabled,
 } from '../../src/apps/key/key-utils.js';
+import { keyPage } from '../../src/apps/key/key.js';
+import { module } from '../../src/apps/key/index.js';
 
 const gh = { id: '1', name: 'GitHub', url: 'https://github.com', username: 'alice', password: 'p1', notes: null, tags: ['work', 'dev'], created_at: 1000, updated_at: 1000 };
 const em = { id: '2', name: 'Email', url: 'https://mail.example.com', username: 'a@x.com', password: 'p2', notes: null, tags: ['personal'], created_at: 1000, updated_at: 2000 };
@@ -65,5 +67,35 @@ describe('key-utils', () => {
   it('常量名', () => {
     expect(VAULT_PATH_KEY).toBe('pwm.vaultPath');
     expect(REMEMBER_PATH_KEY).toBe('pwm.rememberPath');
+  });
+});
+
+describe('key page', () => {
+  it('浏览器（无 __TAURI__）：需桌面端空态', () => {
+    expect(keyPage({ module, dirName: '全部' })).toContain('需桌面端使用');
+  });
+
+  it('桌面（有 __TAURI__）：头部 + 可挂载 body', () => {
+    globalThis.window.__TAURI__ = { core: {} };
+    const html = keyPage({ module, dirId: 'all', dirName: '全部' });
+    expect(html).toContain('data-key-body');
+    expect(html).toContain('密码');
+    delete globalThis.window.__TAURI__;
+  });
+});
+
+describe('key module 契约', () => {
+  it('导出 module 字段齐全', () => {
+    expect(module.id).toBe('key');
+    expect(module.name).toBe('密码');
+    expect(module.icon).toBe('key');
+    expect(module.order).toBe(1);
+    expect(module.dir).toEqual([
+      { id: 'all', name: '全部', icon: 'box' },
+      { id: 'data', name: '数据管理', icon: 'folder' },
+      { id: 'settings', name: '设置', icon: 'settings' },
+    ]);
+    expect(typeof module.render).toBe('function');
+    expect(typeof module.mount).toBe('function');
   });
 });
