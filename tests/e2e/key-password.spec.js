@@ -6,14 +6,14 @@ const SEED = [
   { id: 'e2', name: 'Email', url: 'https://mail.example.com', username: 'a@x.com', password: 'secret-mail', notes: null, tags: ['personal'], created_at: 1000, updated_at: 2000 },
 ];
 
-// mock __TAURI__：内存 vault 实现 13 命令，记录 invokes 供断言
-function installMock() {
+// mock __TAURI__：内存 vault 实现 13 命令，记录 invokes 供断言；seed 可覆盖（独立用例）
+function installMock(seed = SEED) {
   return `
   const state = { session: null, defaultPath: 'C:/mock/appdata/vault.json' };
   const invokes = [];
   window.__keyInvokes__ = invokes;
   window.__keyMock__ = state;
-  const seed = ${JSON.stringify(SEED)};
+  const seed = ${JSON.stringify(seed)};
   window.__TAURI__ = {
     window: {
       getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
@@ -101,6 +101,16 @@ test('密码：mock 桌面解锁 → 列表 → 添加/编辑/删除 → 锁定�
   await active.locator('.key__tag', { hasText: 'work' }).click();
   await expect(active.locator('.key__row')).toHaveCount(1);
   await active.locator('.key__tag', { hasText: 'work' }).click();
+  await expect(active.locator('.key__row')).toHaveCount(2);
+  // 标签切换后搜索框值与过滤保持（评审 Fix 3：renderAll 重建后保留 query）
+  await active.locator('.c-search-bar__input').fill('git');
+  await expect(active.locator('.key__row')).toHaveCount(1);
+  await active.locator('.key__tag', { hasText: 'work' }).click();
+  await expect(active.locator('.c-search-bar__input')).toHaveValue('git');
+  await expect(active.locator('.key__row')).toHaveCount(1); // 'git' + tag work → GitHub
+  await active.locator('.key__tag', { hasText: 'work' }).click();
+  await expect(active.locator('.key__row')).toHaveCount(1); // 仅 'git' 仍过滤 → GitHub
+  await active.locator('.c-search-bar__input').fill('');
   await expect(active.locator('.key__row')).toHaveCount(2);
   // 显示密码
   await active.locator('.key__row', { hasText: 'GitHub' }).locator('[data-key-act="reveal"]').click();
@@ -190,4 +200,43 @@ test('密码：设置记住路径开关 + 清除', async ({ page }) => {
   // 清除记住的路径按钮
   await active.locator('.key__cards .c-btn', { hasText: '清除' }).click();
   await expect(page.locator('.c-toast')).toContainText('已清除');
+});
+
+test('密码：对话框点击遮罩（backdrop）关闭', async ({ page }) => {
+  await page.addInitScript(installMock());
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  const active = page.locator('.app-main__page--active');
+  await active.locator('.key__lock .c-input').nth(1).fill('master');
+  await active.locator('.key__lock .c-btn').click();
+  await expect(active.locator('.key__row')).toHaveCount(2);
+  // 打开添加对话框
+  await active.locator('.key__toolbar-actions .c-btn', { hasText: '添加' }).click();
+  await expect(page.locator('.c-dialog')).toBeVisible();
+  // 点击面板外暗区（backdrop 左上角，非对话框面板）→ 关闭
+  await page.locator('.key__editor .c-dialog__mask').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('.c-dialog')).toHaveCount(0);
+  await expect(active.locator('.key__row')).toHaveCount(2); // 未保存，列表不变
+});
+
+test('密码：条目 id 含引号正常渲染与操作', async ({ page }) => {
+  const seed = [
+    { id: 'e"x', name: 'Quote', url: 'https://q.example', username: 'u', password: 'pw-secret', notes: null, tags: ['work'], created_at: 0, updated_at: 0 },
+  ];
+  await page.addInitScript(installMock(seed));
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  const active = page.locator('.app-main__page--active');
+  await active.locator('.key__lock .c-input').nth(1).fill('master');
+  await active.locator('.key__lock .c-btn').click();
+  const row = active.locator('.key__row');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Quote');
+  // data-key-id 属性转义后解析 round-trip 回原值
+  await expect(row).toHaveAttribute('data-key-id', 'e"x');
+  // 行操作可用：reveal 证明 dataset.keyId → entries.find 查找正常
+  await row.locator('[data-key-act="reveal"]').click();
+  await expect(row).toContainText('pw-secret');
 });

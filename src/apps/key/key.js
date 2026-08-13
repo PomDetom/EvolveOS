@@ -150,7 +150,7 @@ export function mountKey(pageEl, ctx) {
 
   // —— 全部：工具栏 + 搜索 + 标签筛选 + 列表 ——
   const entryRow = (e) => `
-    <div class="key__row" data-key-id="${e.id}">
+    <div class="key__row" data-key-id="${escapeHtml(e.id)}">
       <div class="key__row-main">
         <div class="key__row-name">${escapeHtml(e.name)}</div>
         <div class="key__row-meta">
@@ -195,6 +195,11 @@ export function mountKey(pageEl, ctx) {
       ${tags.length ? `<div class="key__tags">${tags.map((t) => `<button type="button" class="key__tag${activeTags.includes(t) ? ' is-active' : ''}" data-key-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
       <div class="key__list" data-key-list></div>`;
     mountSearchBar(body, { onQuery: (q) => { query = q; renderList(); } });
+    const searchInput = body.querySelector('.c-search-bar__input');
+    if (searchInput && query) {
+      searchInput.value = query;
+      searchInput.closest('.c-search-bar').classList.add('c-search-bar--has-input');
+    }
     renderList();
   };
 
@@ -365,7 +370,7 @@ export function mountKey(pageEl, ctx) {
       mask.querySelector('[data-action="cancel"]').addEventListener('click', () => done(null));
       mask.querySelector('.c-dialog__footer .c-btn').addEventListener('click', () => done(null));
       mask.querySelector('.c-dialog__footer .c-btn:last-child').addEventListener('click', save);
-      mask.addEventListener('click', (e) => { if (e.target === mask) done(null); });
+      mask.addEventListener('click', (e) => { if (e.target !== dialog && !dialog.contains(e.target)) done(null); });
       document.addEventListener('keydown', onKey);
       document.body.appendChild(mask);
       dialog.querySelector('.c-dialog__close').focus();
