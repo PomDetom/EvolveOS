@@ -1,1 +1,206 @@
-/* 密码管理器局部样式（Task A3 填充） */
+/* 密码管理器局部样式（令牌驱动；类名 key__* 防全页计数断言冲突） */
+.key__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* —— 锁定屏 —— */
+.key__lock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 460px;
+  margin: var(--space-6) auto;
+  padding: var(--space-6);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-lg) * var(--radius-scale, 1));
+  box-shadow: var(--shadow-sm);
+}
+.key__lock-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: calc(var(--radius-full) * var(--radius-scale, 1));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.key__lock-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-1);
+}
+.key__lock-desc {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.key__mode {
+  display: flex;
+  gap: var(--space-2);
+}
+.key__mode-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.key__mode-btn.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+}
+.key__mode-btn:hover {
+  border-color: var(--glass-border);
+  background: var(--surface-hover);
+}
+
+/* —— 通用表单字段 —— */
+.key__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.key__field-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-2);
+}
+
+/* —— 工具栏 + 标签筛选 —— */
+.key__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.key__toolbar-search { flex: 1; min-width: 240px; }
+.key__toolbar-actions { display: flex; gap: var(--space-2); }
+.key__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.key__tag {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-full) * var(--radius-scale, 1));
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.key__tag.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+}
+
+/* —— 条目列表 —— */
+.key__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.key__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.key__row:hover { border-color: var(--glass-border); background: var(--surface-hover); }
+.key__row-main { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.key__row-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-1);
+}
+.key__row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-2);
+}
+.key__row-url { opacity: 0.75; }
+.key__row-pass {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-1);
+  word-break: break-all;
+}
+.key__row-actions { display: flex; gap: var(--space-1); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.key__row:hover .key__row-actions,
+.key__row:focus-within .key__row-actions { opacity: 1; }
+.key__act {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.key__act:hover { background: var(--surface-hover); color: var(--text-1); }
+.key__act--danger:hover { color: var(--danger-500); }
+
+/* —— 数据管理 / 设置 —— */
+.key__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.key__cards .app-main__card { display: flex; flex-direction: column; gap: var(--space-3); }
+.key__info { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--font-size-sm); color: var(--text-2); }
+.key__info code { font-size: var(--font-size-xs); color: var(--text-1); word-break: break-all; text-align: right; }
+.key__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.key__setting:last-of-type { border-bottom: none; }
+.key__setting-text { display: flex; flex-direction: column; gap: var(--space-1); }
+.key__setting-name { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-1); }
+.key__setting-desc { font-size: var(--font-size-xs); color: var(--text-2); }
+
+/* —— 编辑器表单 —— */
+.key__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.key__pass-row { display: flex; gap: var(--space-2); align-items: center; }
+.key__pass-row .c-input { flex: 1; }
+.key__gen-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  font-size: var(--font-size-xs);
+  color: var(--text-2);
+}
+.key__gen-opt { display: inline-flex; align-items: center; gap: var(--space-1); }
+.key__gen-opt input[type="number"] { width: 64px; }
