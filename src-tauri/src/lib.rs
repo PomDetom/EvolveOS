@@ -17,6 +17,7 @@ mod commands;
 mod config;
 mod crypto;
 mod models;
+mod pwm; // 密码管理器核心（移植 pwm-core）
 mod scheduler;
 mod state;
 
