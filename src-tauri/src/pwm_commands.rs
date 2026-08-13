@@ -202,15 +202,6 @@ mod tests {
         std::env::temp_dir().join(format!("pwm-evo-{}-{}", std::process::id(), name))
     }
 
-    fn unlocked_state(name: &str, master: &str) -> PwmState {
-        let path = temp_path(name);
-        let _ = fs::remove_file(&path);
-        let (vault, key) = vault::create_vault_file(&path, master).unwrap();
-        let st = PwmState::default();
-        *st.session.lock().unwrap() = Some(PwmSession { vault_path: path, vault, key });
-        st
-    }
-
     fn input(name: &str) -> EntryInput {
         EntryInput {
             name: name.to_string(),
@@ -258,7 +249,7 @@ mod tests {
         assert_eq!(get_entry_impl(&st, &e.id).unwrap().password, "newpass");
 
         // 落盘验证：用同一主密码重开
-        lock_vault_impl(&st);
+        let _ = lock_vault_impl(&st);
         unlock_vault_impl(&st, path.to_str().unwrap(), "master").unwrap();
         assert_eq!(list_entries_impl(&st, None, &[]).unwrap().len(), 1);
 
@@ -273,7 +264,7 @@ mod tests {
         let _ = fs::remove_file(&path);
         let st = PwmState::default();
         create_vault_impl(&st, path.to_str().unwrap(), "master").unwrap();
-        lock_vault_impl(&st);
+        let _ = lock_vault_impl(&st);
         let err = unlock_vault_impl(&st, path.to_str().unwrap(), "nope").unwrap_err();
         assert!(err.contains("password"), "错误信息应含 password: {err}");
         fs::remove_file(&path).ok();
@@ -285,7 +276,7 @@ mod tests {
         let _ = fs::remove_file(&path);
         let st = PwmState::default();
         create_vault_impl(&st, path.to_str().unwrap(), "master").unwrap();
-        lock_vault_impl(&st);
+        let _ = lock_vault_impl(&st);
         assert!(create_vault_impl(&st, path.to_str().unwrap(), "master").is_err());
         fs::remove_file(&path).ok();
     }
@@ -317,7 +308,7 @@ mod tests {
         assert_eq!(list_entries_impl(&st, None, &[]).unwrap().len(), 2);
 
         // 导入已随会话持久化
-        lock_vault_impl(&st);
+        let _ = lock_vault_impl(&st);
         unlock_vault_impl(&st, path.to_str().unwrap(), "master").unwrap();
         assert_eq!(list_entries_impl(&st, None, &[]).unwrap().len(), 2);
 

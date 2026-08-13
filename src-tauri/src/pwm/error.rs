@@ -7,6 +7,7 @@ pub enum Error {
     #[error("invalid vault file")]
     InvalidVaultFile,
     #[error("vault is locked")]
+    #[allow(dead_code)]
     VaultLocked,
     #[error("entry not found: {0}")]
     NotFound(String),

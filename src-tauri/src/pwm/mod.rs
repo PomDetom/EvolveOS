@@ -7,6 +7,8 @@ pub mod generator;
 pub mod models;
 pub mod vault;
 
+#[allow(unused_imports)]
 pub use error::{Error, Result};
 pub use models::{Entry, EntryInput, Vault};
+#[allow(unused_imports)]
 pub use vault::SessionKey;
