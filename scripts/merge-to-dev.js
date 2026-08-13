@@ -14,7 +14,8 @@ import { execSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseArgs } from './merge-to-dev-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -31,15 +32,6 @@ function mergeWithMessage(cwd, cmd, msg) {
   const f = path.join(os.tmpdir(), `merge-to-dev-${process.pid}.txt`);
   writeFileSync(f, msg, 'utf8');
   try { sh(cwd, `${cmd} -F "${f}"`); } finally { try { unlinkSync(f); } catch { /* noop */ } }
-}
-
-function parseArgs(argv) {
-  return {
-    branch: argv.find((a) => !a.startsWith('--')),
-    message: (argv.find((a) => a.startsWith('--message=')) ?? '').slice('--message='.length) || null,
-    noSync: argv.includes('--no-sync'),
-    noCleanup: argv.includes('--no-cleanup'),
-  };
 }
 
 // 分支上挂载的 worktree 路径（porcelain 块：worktree <path> / branch refs/heads/<name>）
@@ -99,4 +91,5 @@ function main() {
   console.log(`✓ 已删除分支：${branch}`);
 }
 
-main();
+// 直接执行时跑主流程；被单测 import 时不执行（parseArgs 等纯函数可测）
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
