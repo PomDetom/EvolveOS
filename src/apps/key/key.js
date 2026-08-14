@@ -94,7 +94,10 @@ export function mountKey(pageEl, ctx) {
         <p class="key__lock-desc">输入主密码解锁现有保险库，或创建一个新的。主密码仅本次会话使用，绝不保存。</p>
         <div class="key__field">
           <label class="key__field-label" for="key-path">保险库文件路径</label>
-          ${renderInput({ value: escapeHtml(remembered), placeholder: 'vault.json 的完整路径', label: '保险库文件路径' })}
+          <div class="key__path-row">
+            ${renderInput({ value: escapeHtml(remembered), placeholder: 'vault.json 的完整路径', label: '保险库文件路径' })}
+            <button type="button" class="key__act" data-key-pick title="选择保存位置" aria-label="选择保存位置">${icon('folder', 15)}</button>
+          </div>
         </div>
         <div class="key__field">
           <label class="key__field-label" for="key-pwd">主密码</label>
@@ -112,6 +115,13 @@ export function mountKey(pageEl, ctx) {
     const pathInput = body.querySelector('.c-input');
     const pwdInput = body.querySelectorAll('.c-input')[1];
     const submitBtn = body.querySelector('.key__lock .c-btn');
+
+    body.querySelector('[data-key-pick]').addEventListener('click', async () => {
+      try {
+        const p = await api.invoke('pick_vault_path');
+        if (p) pathInput.value = p;
+      } catch (err) { toast(`选择路径失败: ${errMsg(err)}`, { variant: 'danger' }); }
+    });
 
     const syncMode = (m) => {
       mode = m;
@@ -212,7 +222,10 @@ export function mountKey(pageEl, ctx) {
           <h3 class="app-main__card-title">导出备份</h3>
           <p class="app-main__card-desc">导出为明文 JSON（含密码），请妥善保管。</p>
           <div class="key__field">
-            ${renderInput({ value: escapeHtml(remembered), placeholder: '导出文件路径', label: '导出路径' })}
+            <div class="key__path-row">
+              ${renderInput({ value: escapeHtml(remembered), placeholder: '导出文件路径', label: '导出路径' })}
+              <button type="button" class="key__act" data-key-pick-export title="选择保存位置" aria-label="选择保存位置">${icon('folder', 15)}</button>
+            </div>
           </div>
           ${renderButton({ label: '导出备份', variant: 'primary', iconName: 'download' })}
         </div>
@@ -220,7 +233,10 @@ export function mountKey(pageEl, ctx) {
           <h3 class="app-main__card-title">导入恢复</h3>
           <p class="app-main__card-desc">从明文 JSON 合并导入条目（新增，不覆盖）。</p>
           <div class="key__field">
-            ${renderInput({ value: '', placeholder: '导入文件路径', label: '导入路径' })}
+            <div class="key__path-row">
+              ${renderInput({ value: '', placeholder: '导入文件路径', label: '导入路径' })}
+              <button type="button" class="key__act" data-key-pick-import title="选择保存位置" aria-label="选择保存位置">${icon('folder', 15)}</button>
+            </div>
           </div>
           ${renderButton({ label: '导入恢复', variant: 'secondary', iconName: 'upload' })}
         </div>
@@ -233,6 +249,16 @@ export function mountKey(pageEl, ctx) {
     const inputs = body.querySelectorAll('.key__cards .key__field .c-input');
     const exportBtn = body.querySelectorAll('.key__cards .c-btn')[0];
     const importBtn = body.querySelectorAll('.key__cards .c-btn')[1];
+    const pickExport = body.querySelector('[data-key-pick-export]');
+    const pickImport = body.querySelector('[data-key-pick-import]');
+    pickExport.addEventListener('click', async () => {
+      try { const p = await api.invoke('pick_vault_path'); if (p) inputs[0].value = p; }
+      catch (err) { toast(`选择路径失败: ${errMsg(err)}`, { variant: 'danger' }); }
+    });
+    pickImport.addEventListener('click', async () => {
+      try { const p = await api.invoke('pick_vault_path'); if (p) inputs[1].value = p; }
+      catch (err) { toast(`选择路径失败: ${errMsg(err)}`, { variant: 'danger' }); }
+    });
     exportBtn.addEventListener('click', async () => {
       const p = inputs[0].value.trim();
       if (!p) { toast('请填写导出路径', { variant: 'danger' }); return; }
