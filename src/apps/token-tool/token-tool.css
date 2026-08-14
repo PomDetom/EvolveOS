@@ -134,6 +134,16 @@
 .tt__editor .c-dialog {
   background: var(--surface-solid);
   backdrop-filter: none;
+  /* 高度适配（与 key 编辑器同步）：表单字段多时不高出视口，body 可滚动、底部按钮常驻；
+     窄窗（480）曾溢出、底部贴边 */
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+}
+.tt__editor .c-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 /* —— 编辑器表单字段（与 key 编辑器 .key__field 同构：纵向 flex + gap）—— */
 .tt__form { display: flex; flex-direction: column; gap: var(--space-4); }

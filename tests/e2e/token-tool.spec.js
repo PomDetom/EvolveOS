@@ -200,3 +200,44 @@ test('tokenTool：账户管理页新增账户选 OpenCode 带出 workspace+cooki
   await expect(page.locator('[data-tt-field="workspace"]')).toBeVisible();
   await expect(page.locator('[data-tt-field="cookie"]')).toBeVisible();
 });
+
+// 新增账户弹窗在窄窗（960×480，桌面主窗最小高度）内适配：不高出视口 + 表单可滚动。
+// 回归：.c-dialog 无 max-height + body 不滚动时，弹窗 490px 在 480 视口溢出、底部按钮贴边
+//（与密码管理器 key 编辑器弹窗同类缺陷，同步修复）。
+test('tokenTool：新增账户弹窗窄窗适配（不高出视口 + 表单可滚动）', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 480 });
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') return { accounts: [] };
+          if (cmd === 'get_balances') return [];
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.tt__toolbar .c-btn', { hasText: '添加账户' }).click();
+  await expect(page.locator('.c-dialog')).toBeVisible();
+  await page.waitForTimeout(400); // 等 dialog-in 动画结束再量几何
+  const metrics = await page.evaluate(() => {
+    const d = document.querySelector('.c-dialog').getBoundingClientRect();
+    const body = document.querySelector('.c-dialog__body');
+    return {
+      fits: d.top >= 0 && d.bottom <= window.innerHeight,
+      scrollable: body.scrollHeight > body.clientHeight,
+    };
+  });
+  expect(metrics.fits).toBe(true);
+  expect(metrics.scrollable).toBe(true);
+});
