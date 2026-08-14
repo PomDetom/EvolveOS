@@ -461,12 +461,23 @@ export function mountAppMode(root) {
   }
 
   // —— 设置模式（⚙）：进入 = 右窗切为设置目录（内容区设置页）；再次点击/收起 = 退出回应用模式 ——
+  // 左窗滚动聚焦 helper：设置模式进入/退出时左窗须滚动聚焦目标项（非仅高亮）。
+  // 左窗点击走 onClick → select(i, true) 带动画滚动；而 ⚙/退出路径若只 setActive
+  // （select(i, false)）则左窗停在原位 —— 目标项虽加高亮类但未滚到锚线，
+  // 即「⚙ 有高亮但未聚焦设置菜单」缺陷。目标项被 nav.hidden 隐藏（MODULES 无此项）
+  // 时回退 setActive 仅高亮（防 scrollToIndex(-1) clamp 到首项误跳转）。
+  function focusLeftItem(id) {
+    const i = MODULES.findIndex((m) => m.id === id);
+    if (i >= 0) leftWheel.scrollToIndex(i);
+    else leftWheel.setActive(id);
+  }
+
   function setSettingsMode() {
     if (state.rightMode === 'settings') return;
     state.rightMode = 'settings';
     state.rightOpen = true;
     ensureActiveModule(); // 0.1.2 兜底：进入设置前保证激活模块可见（防御性，正常路径恒有效）
-    leftWheel.setActive('settings'); // 左窗高亮同步：设置内置模块项
+    focusLeftItem('settings'); // 左窗滚动聚焦设置项（高亮 + 滚到锚线；替代仅 setActive）
     renderRight();
     renderPages();
     applyRightOpen();
@@ -477,7 +488,7 @@ export function mountAppMode(root) {
     state.rightMode = 'apps';
     state.rightOpen = false;
     ensureActiveModule(); // 0.1.2 兜底：当前激活应用若在设置期间被隐藏 → 切到首个可见，防 setActive/render 崩溃
-    leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
+    focusLeftItem(state.moduleId); // 左窗滚动聚焦恢复：回到左窗选中应用项（滚回锚线，替代仅 setActive）
     renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
     renderPages(); // 内容区回到左窗选中应用页
     applyRightOpen();
@@ -514,7 +525,7 @@ export function mountAppMode(root) {
     if (wasSettings) {
       state.rightMode = 'apps';
       ensureActiveModule(); // 0.1.2 兜底：同 exitSettingsMode —— 退出设置时激活应用被隐藏则切走
-      leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
+      focusLeftItem(state.moduleId); // 左窗滚动聚焦恢复：回到左窗选中应用项（滚回锚线，替代仅 setActive）
       renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
       renderPages();
     }
@@ -728,8 +739,8 @@ export function mountAppMode(root) {
       onChange: (item) => onLeftSelect(item.id),
       anchorRatio: 0.382,
     });
-    // 若设置模式激活，左窗高亮 settings；否则保持当前 moduleId
-    leftWheel.setActive(state.rightMode === 'settings' ? 'settings' : state.moduleId);
+    // 若设置模式激活，左窗聚焦 settings；否则聚焦当前 moduleId（重建后须滚动聚焦锚线，防只高亮不可见）
+    focusLeftItem(state.rightMode === 'settings' ? 'settings' : state.moduleId);
     // 手机 dock 重建（若已挂载）
     if (dockMounted) mountDock(true); // 强制重挂（dockMounted 保持 true）
     if (state.rightMode === 'settings') return; // 设置轮不受 moduleId 影响；退出时按新 moduleId 重渲

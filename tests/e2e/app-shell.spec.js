@@ -156,6 +156,61 @@ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活�
   await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
 });
 
+test('设置模式：⚙ 进入后左窗设置项滚动聚焦锚线（非仅高亮）', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 前置：先滚左窗到某个应用（account），制造「左窗不在设置项」状态
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]').click();
+  await page.waitForTimeout(400);
+  // 点击标题栏 ⚙
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  // 断言：左窗 settings 项 active 且滚动聚焦到锚线（38.2% 视口；正常聚焦偏移 ≈ itemH/2）
+  const focused = await page.evaluate(() => {
+    const navL = document.querySelector('.app-main__nav-l');
+    if (!navL) return { ok: false, reason: 'no navL' };
+    const anchor = navL.clientHeight * 0.382;
+    const item = document.querySelector('.app-main__nav-l .c-navwheel__item[data-id="settings"]');
+    if (!item) return { ok: false, reason: 'no settings item' };
+    const center = item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+    return {
+      ok: Math.abs(center - anchor) < 60,
+      center,
+      anchor,
+      active: item.classList.contains('c-navwheel__item--active'),
+    };
+  });
+  expect(focused.ok, `settings 未聚焦锚线: ${JSON.stringify(focused)}`).toBe(true);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="settings"]')).toHaveClass(/c-navwheel__item--active/);
+});
+
+test('设置模式：退出 ⚙ 后左窗滚回原应用项聚焦锚线（对称）', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 前置：滚左窗到 account，进入设置，再退出 —— 左窗应从 settings 滚回 account
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]').click();
+  await page.waitForTimeout(400);
+  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  const focused = await page.evaluate(() => {
+    const navL = document.querySelector('.app-main__nav-l');
+    if (!navL) return { ok: false, reason: 'no navL' };
+    const anchor = navL.clientHeight * 0.382;
+    const item = document.querySelector('.app-main__nav-l .c-navwheel__item[data-id="account"]');
+    if (!item) return { ok: false, reason: 'no account item' };
+    const center = item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+    return {
+      ok: Math.abs(center - anchor) < 60,
+      center,
+      anchor,
+      active: item.classList.contains('c-navwheel__item--active'),
+    };
+  });
+  expect(focused.ok, `account 未聚焦锚线: ${JSON.stringify(focused)}`).toBe(true);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]')).toHaveClass(/c-navwheel__item--active/);
+});
+
 test('设置模式：选择「外观」→ 内容区设置页含 cust-group 6', async ({ page }) => {
   await page.goto(APP_URL);
   await page.locator('.app-main .c-titlebar__control--settings').click();
