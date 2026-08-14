@@ -124,7 +124,8 @@ test('密码：mock 桌面解锁 → 列表 → 添加/编辑/删除 → 锁定�
   await page.locator('[data-key-field="username"] .c-input').fill('bob');
   await page.locator('[data-key-field="tags"] .c-input').fill('work, dev');
   await page.locator('[data-key-gen]').click();
-  await expect(page.locator('[data-key-field="password"] .c-input[type="password"]')).toHaveValue('Abc123!xyz789#');
+  // 生成后输入框转 type=text 预览生成的随机密码（原 type=password 被遮罩无法预览——用户反馈缺陷）
+  await expect(page.locator('[data-key-field="password"] .c-input[type="text"]')).toHaveValue('Abc123!xyz789#');
   await page.locator('.c-dialog__footer .c-btn:last-child').click();
   await expect(active.locator('.key__row')).toHaveCount(3);
   await expect(active.locator('.key__row', { hasText: 'GitLab' })).toBeVisible();
@@ -140,6 +141,34 @@ test('密码：mock 桌面解锁 → 列表 → 添加/编辑/删除 → 锁定�
   // 锁定
   await active.locator('.key__toolbar-actions .c-btn', { hasText: '锁定' }).click();
   await expect(active.locator('.key__lock')).toBeVisible();
+});
+
+// 添加条目弹窗在窄窗（960×560，对应桌面主窗）内适配：不高出视口 + 表单区可滚动 + 底部按钮未被裁。
+// 回归：.c-dialog 无 max-height 且 body 不滚动时，弹窗 652px 超出 560 视口、保存/取消被裁不可达。
+test('密码：添加条目弹窗窄窗适配（不高出视口 + 表单可滚动 + 保存按钮可见）', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 560 });
+  await page.addInitScript(installMock());
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  const active = page.locator('.app-main__page--active');
+  await active.locator('.key__lock .c-input').nth(1).fill('master');
+  await active.locator('.key__lock .c-btn').click();
+  await active.locator('.key__toolbar-actions .c-btn', { hasText: '添加' }).click();
+  await expect(page.locator('.c-dialog')).toBeVisible();
+  await page.waitForTimeout(400); // 等 dialog-in 动画结束再量几何
+  const metrics = await page.evaluate(() => {
+    const d = document.querySelector('.c-dialog').getBoundingClientRect();
+    const body = document.querySelector('.c-dialog__body');
+    return {
+      fits: d.top >= 0 && d.bottom <= window.innerHeight,
+      scrollable: body.scrollHeight > body.clientHeight,
+      dialogBottom: Math.round(d.bottom),
+      viewportH: window.innerHeight,
+    };
+  });
+  expect(metrics.fits).toBe(true);
+  expect(metrics.scrollable).toBe(true);
 });
 
 test('密码：锁定屏选择路径按钮填充（mock pick_vault_path）', async ({ page }) => {

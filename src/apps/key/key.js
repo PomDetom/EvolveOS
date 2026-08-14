@@ -347,6 +347,8 @@ export function mountKey(pageEl, ctx) {
         try {
           const pw = await api.invoke('generate_password', opts);
           pwdInput.value = pw;
+          // 生成后转 type=text 预览随机密码（原 type=password 被遮罩，用户看不到生成结果）
+          pwdInput.type = 'text';
         } catch (err) { toast(`生成失败: ${errMsg(err)}`, { variant: 'danger' }); }
       };
 
