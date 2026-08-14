@@ -1,14 +1,13 @@
 # 统一行尾策略（根治 Windows 下 CRLF/LF 幻影改动）
 #
-# 背景：仓库无行尾规约时，git 依赖 core.autocrlf 猜测，工具/代理以 LF 覆盖
-# Windows 检出（CRLF）的文本文件后，git status 会误报 modified（内容逐字节相同）。
-# 本文件显式声明：文本入库统一 LF；检出遵循 core.autocrlf（Windows 出 CRLF）。
+# 背景：仓库无行尾规约时，git 依赖 core.autocrlf 猜测。autocrlf=true 下 git 期望
+# Windows 工作区为 CRLF；工具/代理以 LF 覆盖后 git status 误报 modified（内容逐字节相同）。
+# 实测 `* text=auto` 单独仍复发（autocrlf=true 记录 CRLF 期望），故强制 `eol=lf`：
+# 文本入库与出库一律 LF（跨平台一致），与工具/编辑器产出天然一致，两端都不再幻影。
 # 提交前核对 git status / git diff --stat，防纯 EOL 噪声混入提交（见 AGENTS.md）。
 
-* text=auto
-
-# 脚本类强制 LF（shebang / 跨平台兼容；仓库暂未含，预留）
-*.sh text eol=lf
+# 文本：入库 LF + 出库 LF（Windows 也不例外，覆盖 core.autocrlf 的 CRLF 期望）
+* text=auto eol=lf
 
 # 二进制显式声明，防 text 误判损坏
 *.png binary
