@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeFitSize,
+  formatRelative,
   renderStripToken,
   stripAccountStatus,
   stripAccountValue,
@@ -45,6 +46,38 @@ describe('strip-main 悬浮条 token 渲染', () => {
     );
     expect(html).toContain('5h29% 周50% 月80%');
     expect(html).not.toContain('本月 80%'); // 旧口径：不再只显示最高用量窗口
+  });
+
+  it('formatRelative：各档位（刚刚/N分钟前/N小时前/N天前/超7天回退日期/未来截断）', () => {
+    const now = Math.floor(Date.now() / 1000);
+    expect(formatRelative(now - 30)).toBe('刚刚');
+    expect(formatRelative(now - 60)).toBe('1分钟前');
+    expect(formatRelative(now - 2 * 3600)).toBe('2小时前');
+    expect(formatRelative(now - 3 * 86400)).toBe('3天前');
+    const past = Math.floor(new Date(2026, 7, 1).getTime() / 1000); // 本地 2026-08-01，超 7 天
+    expect(formatRelative(past)).toBe('2026-08-01');
+    expect(formatRelative(now + 99999)).toBe('刚刚'); // 未来时间（时钟偏移）→ diff 0 截断
+  });
+
+  it('renderStripToken：chip 含名称 + 值 + 相对时间列（seed lastUpdated，与 TokenTool 口径一致）', () => {
+    const html = renderStripToken(
+      { accounts: [ACC()] },
+      [{ accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 120 }],
+    );
+    expect(html).toContain('主号');
+    expect(html).toContain('88.50');
+    expect(html).toContain('c-strip-tk__time');
+    expect(html).toContain(' · 2分钟前');
+  });
+
+  it('renderStripToken：无 lastUpdated → 不渲染时间列', () => {
+    const html = renderStripToken(
+      { accounts: [ACC()] },
+      [{ accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: null }],
+    );
+    expect(html).toContain('88.50');
+    expect(html).not.toContain('c-strip-tk__time');
+    expect(html).not.toContain(' · ');
   });
 
   it('账户名转义：<b> 不得注入', () => {

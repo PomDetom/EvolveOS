@@ -12,7 +12,6 @@
   bottom: var(--strip-gap, var(--space-4));
   z-index: var(--z-float);
   --strip-gap: var(--space-4);
-  --strip-thick: 48px;
   --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
   display: flex;
   align-items: center; /* 横排内容垂直居中（子项默认 stretch 会撑满交叉轴） */
@@ -35,8 +34,9 @@
     box-shadow var(--dur-base) var(--ease-out);
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
-.c-strip--horizontal { min-height: var(--strip-thick); width: max-content; }
-.c-strip--vertical { min-width: var(--strip-thick); height: max-content; }
+/* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
+.c-strip--horizontal { padding: var(--space-2) var(--space-3); width: max-content; }
+.c-strip--vertical { padding: var(--space-3) var(--space-2); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
@@ -88,9 +88,9 @@ html[data-strip-material="none"] .c-strip {
   pointer-events: auto;
   border-color: var(--glass-border);
 }
-/* horizontal：控制条竖排在内容右侧；vertical：控制条横排在内容下侧 */
-.c-strip--horizontal .c-strip__ctrl { flex-direction: column; }
-.c-strip--vertical .c-strip__ctrl { flex-direction: row; }
+/* 控制条方向随形态对调：横排时 ctrl 为横排按钮列（不撑高横条），竖排时 ctrl 为竖排按钮列（不撑宽竖条） */
+.c-strip--horizontal .c-strip__ctrl { flex-direction: row; }
+.c-strip--vertical .c-strip__ctrl { flex-direction: column; }
 
 .c-strip__ctrl button {
   width: 26px;
@@ -111,7 +111,6 @@ html[data-strip-material="none"] .c-strip {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
   line-height: 1;
   white-space: nowrap;
@@ -143,12 +142,11 @@ html[data-strip-material="none"] .c-strip {
 }
 
 /* —— token 实时监测内容（strip-main.js renderStripToken，真实账户数据）——
-   每账户一行 chip = 状态点 + 名称 + 值；横向排列随 strip 形态，名称超长省略号。 */
+   每账户一行 chip = 状态点 + 名称 + 值 + 上次刷新时间；横向排列随 strip 形态，名称固定列宽对齐。 */
 .c-strip-tk {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-3);
 }
 /* 竖排：每行一个账户（chip 纵向堆叠，左对齐）；横排保持单行横向排列 */
 .c-strip[data-orientation="vertical"] .c-strip-tk {
@@ -164,15 +162,21 @@ html[data-strip-material="none"] .c-strip {
   white-space: nowrap;
   min-width: 0;
 }
+/* 名称固定列宽 64px：各 chip 余额起始对齐（超长省略号） */
 .c-strip-tk__name {
   color: var(--text-2);
-  max-width: 96px;
+  width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .c-strip-tk__value {
   color: var(--text-1);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.c-strip-tk__time {
+  color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 .c-strip-tk__muted {

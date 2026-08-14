@@ -59,7 +59,26 @@ export function stripAccountValue(account, balance) {
 }
 
 /**
- * 悬浮条 token 内容模板：每账户一行 chip = 状态点 + 名称 + 值。
+ * 上次刷新相对时间（与 TokenTool 用量页口径一致）：epoch 秒 → 刚刚/N分钟前/N小时前/N天前，
+ * 超 7 天回退 YYYY-MM-DD。输出为数字/日期（安全，不转义）。
+ */
+export function formatRelative(epochSecs) {
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - epochSecs);
+  if (diff < 60) return '刚刚';
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}分钟前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}小时前`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}天前`;
+  const dt = new Date(epochSecs * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
+/**
+ * 悬浮条 token 内容模板：每账户一行 chip = 状态点 + 名称 + 值 + 上次刷新时间（结构化排版：
+ * 名称固定列宽对齐，各 chip 余额起始对齐；时间列随 lastUpdated 显示，无则不渲染）。
  * config 为空（未加载）→ 加载占位；无账户 → 暂无账户占位。
  */
 export function renderStripToken(config, balances) {
@@ -70,11 +89,14 @@ export function renderStripToken(config, balances) {
     const bal = balances.find((b) => b.accountId === acc.id);
     const st = stripAccountStatus(acc, bal);
     const dotCls = st === 'err' ? ' c-strip-tk__dot--err' : st === 'warn' ? ' c-strip-tk__dot--warn' : st === 'none' ? ' c-strip-tk__dot--none' : '';
+    const time = bal?.lastUpdated != null
+      ? `<span class="c-strip-tk__time"> · ${formatRelative(bal.lastUpdated)}</span>`
+      : '';
     return `
       <div class="c-strip-tk__chip" title="${escapeHtml(acc.name)}">
         <span class="c-strip-tk__dot${dotCls}"></span>
         <span class="c-strip-tk__name">${escapeHtml(acc.name)}</span>
-        <span class="c-strip-tk__value">${stripAccountValue(acc, bal)}</span>
+        <span class="c-strip-tk__value">${stripAccountValue(acc, bal)}</span>${time}
       </div>`;
   }).join('');
   return `<div class="c-strip-tk">${chips}</div>`;
@@ -128,12 +150,17 @@ export function mountStripMode() {
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
   // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
+  // 双通道（覆盖隐藏→唤起）：① 先写 ui-jump-intent（主窗 visibilitychange visible 时消费）再 show+setFocus，
+  // ② emit jump-to-tokentool 事件（主窗已可见时直接 setModule）。
   const jumpBtn = root.querySelector('.c-strip__jump');
   jumpBtn?.addEventListener('click', () => {
     window.__TAURI__.window.getAllWindows()
       .then((wins) => {
         const main = wins.find((w) => w.label === 'main');
-        if (main) { main.show().catch(() => {}); main.setFocus().catch(() => {}); }
+        if (main) {
+          localStorage.setItem('ui-jump-intent', 'token-tool');
+          main.show().catch(() => {}); main.setFocus().catch(() => {});
+        }
         window.__TAURI__.event.emit('jump-to-tokentool').catch(() => {});
       })
       .catch(() => {});
