@@ -168,19 +168,19 @@ html[data-strip-material="none"] .c-strip {
   white-space: nowrap;
   min-width: 0;
 }
-/* 名称固定列宽 64px：各 chip 余额起始对齐（超长省略号）；大两号加粗 */
+/* 名称固定列宽 96px：各 chip 余额起始对齐（超长省略号）；加粗突出 */
 .c-strip-tk__name {
   color: var(--text-2);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
-  width: 64px;
+  width: 96px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .c-strip-tk__value {
   color: var(--text-1);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-regular);
   font-variant-numeric: tabular-nums;
 }
