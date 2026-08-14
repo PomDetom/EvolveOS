@@ -2,8 +2,8 @@
 
 - **任务**: ① 桌面右下角系统托盘图标（后台隐藏后可唤回主窗 / 退出）② 主窗口尺寸/位置/最大化跨启动记忆
 - **分支**: `ui/tray-window-state`（从 dev 检出，共享 checkout，无 worktree）
-- **提交**: `8ecef39` — `feat: 系统托盘唤回主窗 + 主窗口尺寸/位置跨启动记忆`
-- **状态**: 已实现并验证，**待合入 dev**（dev 当前被并行 worktree `evolveos-pwm-mgmt` 持有，按并行治理不抢分支；待其释放后主 checkout 检回 dev 执行 `npm run merge-to-dev -- ui/tray-window-state`）
+- **提交**: `8ecef39` — `feat: 系统托盘唤回主窗 + 主窗口尺寸/位置跨启动记忆`；`b7a3896` — 进度账本记录
+- **状态**: **已合入 dev**（`4297c1b` merge: 系统托盘唤回主窗 + 主窗几何记忆 合入 dev；基线同步 `e4bd18f` 无冲突；合并后 `cargo check` 通过）
 
 ## 设计决策
 
