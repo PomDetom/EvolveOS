@@ -43,11 +43,11 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
           }
           if (cmd === 'get_balances') {
             return [
-              { accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: 0 },
+              { accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 30 },
               { accountId: 'a2', balance: null, currency: null, windows: [
                   { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: '' },
                   { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
-                ], ok: true, error: null, lastUpdated: 0 },
+                ], ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 30 },
             ];
           }
           return null;
@@ -66,6 +66,9 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
   await expect(chips.nth(1)).toContainText('OpenCode Go');
   await expect(chips.nth(1)).toContainText('5h29% 月80%');
   await expect(chips.nth(1).locator('.c-strip-tk__dot')).not.toHaveClass(/dot--err/);
+  // 时间列：chip 在值后带相对刷新时间（seed lastUpdated=30s 前 → 刚刚/分钟前，跨时区与页面加载耗时均稳）
+  await expect(chips.nth(0).locator('.c-strip-tk__time')).toBeVisible();
+  await expect(chips.nth(0)).toContainText(/· (刚刚|\d+分钟前)/);
 });
 
 test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类翻转 + 内容布局变化', async ({ page }) => {
@@ -174,8 +177,8 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
   await page.waitForTimeout(350); // 去抖 200ms
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-strip-pos')));
   expect(saved).toEqual({ x: 300, y: 200 });
-  // 拖动 → startDragging（内容区 pointerdown 通道；拖动手柄已移除）
-  await page.locator('.c-strip__content').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
+  // 拖动 → startDragging（整条 strip pointerdown 通道，跳控制条；控制按钮可点不拖）
+  await page.locator('.c-strip').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
   calls = await page.evaluate(() => window.__stripWinCalls__);
   expect(calls).toContain('startDragging');
   // 旋转 → setSize 贴合（先 hover 使控制条浮现可点，与既有用例同模式；
@@ -225,6 +228,9 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
   expect(calls).toContain('main.show');
   expect(calls).toContain('main.setFocus');
   expect(calls).toContainEqual(['emit', 'jump-to-tokentool']);
+  // 双通道：show 前先写 ui-jump-intent（主窗隐藏→visibilitychange 唤起时消费；事件通道已覆盖可见态）
+  const intent = await page.evaluate(() => localStorage.getItem('ui-jump-intent'));
+  expect(intent).toBe('token-tool');
 });
 
 test('材质：默认实底 → 点击材质按钮切换 data-strip-material（solid ↔ none）', async ({ page }) => {

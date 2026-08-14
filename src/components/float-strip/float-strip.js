@@ -52,7 +52,6 @@ export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } =
 export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windowMode = false, onResize = () => {} } = {}) {
   const strip = root.classList.contains('c-strip') ? root : root.querySelector('.c-strip');
   if (!strip) return null;
-  const content = strip.querySelector('.c-strip__content');
   const rotateBtn = strip.querySelector('.c-strip__rotate');
   const closeBtn = strip.querySelector('.c-strip__close');
 
@@ -160,8 +159,18 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windo
   }
 
   rotateBtn?.addEventListener('click', toggleOrientation);
-  content?.addEventListener('pointerdown', startDrag);
-  content?.addEventListener('dblclick', toggleOrientation);
+  // 整窗拖动：拖拽绑定从 content 扩到整个 strip 元素（跳过控制条 —— 控制按钮可点，不拖）。
+  // startDrag 逻辑不变：窗口模式 startDragging 拖整窗，浏览器模式 transform 拖整条。
+  strip.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.c-strip__ctrl')) return; // 控制按钮可点，不拖
+    startDrag(e);
+  });
+  // 双击旋转（第二通道）：拖拽 pointerdown 的 setPointerCapture 会把后续 click/dblclick 重定向到
+  // strip（捕获目标），故 dblclick 也必须绑在 strip 上并跳过控制条 —— 否则内容区双击不再触发旋转。
+  strip.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.c-strip__ctrl')) return; // 控制按钮可点，不触发旋转
+    toggleOrientation();
+  });
   closeBtn?.addEventListener('click', () => {
     if (onClose) onClose(strip);
     else strip.remove();

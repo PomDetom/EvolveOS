@@ -847,10 +847,22 @@ export function mountAppMode(root) {
   bindWindowControls();
 
   // FloatStrip 跳转通道（ui/strip-ui-opt）：strip 窗口「跳转到 TokenTool」按钮 →
-  // 主窗 setModule('token-tool')（自动落到首目录 usage=余量页，并切回应用模式）
+  // 主窗 setModule('token-tool')（自动落到首目录 usage=余量页，并切回应用模式）。
+  // 双通道（覆盖隐藏→唤起）：① jump-to-tokentool 事件（主窗可见时直接 setModule）；
+  // ② ui-jump-intent（strip 先写 intent 再 show 主窗，主窗 visibilitychange visible 时消费）
+  // —— 任一通道消费后先清 intent，防陈旧 intent 在主窗后续被唤起点亮时误跳转。
   if (typeof window.__TAURI__ !== 'undefined') {
-    window.__TAURI__.event.listen('jump-to-tokentool', () => setModule('token-tool')).catch(() => {});
+    window.__TAURI__.event.listen('jump-to-tokentool', () => {
+      localStorage.removeItem('ui-jump-intent');
+      setModule('token-tool');
+    }).catch(() => {});
   }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && localStorage.getItem('ui-jump-intent') === 'token-tool') {
+      localStorage.removeItem('ui-jump-intent');
+      setModule('token-tool');
+    }
+  });
 
   // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
   //   设置页（第 8 区）已随模板渲染，此处跳过 ——
