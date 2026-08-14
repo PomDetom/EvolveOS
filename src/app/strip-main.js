@@ -41,19 +41,37 @@ export function stripAccountStatus(account, balance) {
   return balance?.balance != null ? 'ok' : 'none';
 }
 
-/** OpenCode 三窗口短标记（key → 短标记，常量安全；未知 key 回落 label 并转义） */
-const STRIP_WINDOW_MARKS = { rolling: '5h', weekly: '周', monthly: '月' };
+/**
+ * OpenCode rolling 窗口剩余时间倒计时（混合格式）：ISO 字符串 → '<1m' | 'Nm' | 'N.Nh'。
+ * 无效/缺失时间返回空串（倒计时 span 留白）；输出纯数字/字母安全，不转义。
+ */
+export function formatCountdown(resetsAt) {
+  const end = resetsAt ? new Date(resetsAt).getTime() : NaN;
+  if (!Number.isFinite(end)) return '';
+  const diff = Math.max(0, Math.floor((end - Date.now()) / 1000));
+  if (diff < 60) return '<1m';
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m`;
+  const h = m / 60;
+  return `${Math.round(h * 10) / 10}h`;
+}
 
-/** 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode=全部窗口短标记 + 百分比（空格拼接，如 5h29% 周50% 月80%） */
+/**
+ * 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode=rolling 实时倒计时 + 周/月窗口百分比
+ * （空格拼接，如 1.5h29% 周50% 月80%；rolling 输出含 HTML 倒计时 span，插入 innerHTML）。
+ */
 export function stripAccountValue(account, balance) {
   const isOpen = account?.kind === 'opencode_go';
   if (isOpen) {
     const wins = balance?.windows ?? [];
     if (!wins.length) return '—';
-    return wins.map((w) => {
-      const mark = STRIP_WINDOW_MARKS[w.key] ?? escapeHtml(w.label ?? '');
-      return `${mark}${(w.usedPct ?? 0).toFixed(0)}%`;
-    }).join(' ');
+    const byKey = (k) => wins.find((w) => w.key === k);
+    const rolling = byKey('rolling'), weekly = byKey('weekly'), monthly = byKey('monthly');
+    const parts = [];
+    if (rolling) parts.push(`<span class="c-strip-tk__countdown" data-resets-at="${escapeHtml(rolling.resetsAt ?? '')}">${formatCountdown(rolling.resetsAt)}</span>${(rolling.usedPct ?? 0).toFixed(0)}%`);
+    if (weekly) parts.push(`周${(weekly.usedPct ?? 0).toFixed(0)}%`);
+    if (monthly) parts.push(`月${(monthly.usedPct ?? 0).toFixed(0)}%`);
+    return parts.join(' ');
   }
   return balance?.balance != null ? `${balance.balance.toFixed(2)} ${escapeHtml(balance.currency ?? '')}` : '—';
 }
@@ -90,7 +108,7 @@ export function renderStripToken(config, balances) {
     const st = stripAccountStatus(acc, bal);
     const dotCls = st === 'err' ? ' c-strip-tk__dot--err' : st === 'warn' ? ' c-strip-tk__dot--warn' : st === 'none' ? ' c-strip-tk__dot--none' : '';
     const time = bal?.lastUpdated != null
-      ? `<span class="c-strip-tk__time"> · ${formatRelative(bal.lastUpdated)}</span>`
+      ? `<span class="c-strip-tk__time" data-last-refresh="${escapeHtml(String(bal.lastUpdated))}"> · ${formatRelative(bal.lastUpdated)}</span>`
       : '';
     return `
       <div class="c-strip-tk__chip" title="${escapeHtml(acc.name)}">
@@ -136,6 +154,21 @@ export function mountStripToken(content, { onData = () => {} } = {}) {
     balances = e.payload ?? [];
     if (config) render(); // config 未加载完时不刷新占位
   }).catch(() => {});
+  // 实时自动更新：倒计时每秒 + 刷新相对时间 30s —— 原地更新 span 文本，不整窗重渲染/不重贴窗口
+  // （窗口尺寸不随每秒文本微变重贴，避免抖动）；content 脱离 DOM 后（窗口关闭）不再更新。
+  const updateDynamic = () => {
+    if (!content.isConnected) return;
+    content.querySelectorAll('[data-resets-at]').forEach((el) => {
+      const next = formatCountdown(el.dataset.resetsAt);
+      if (el.textContent !== next) el.textContent = next;
+    });
+    content.querySelectorAll('[data-last-refresh]').forEach((el) => {
+      const next = ` · ${formatRelative(Number(el.dataset.lastRefresh))}`;
+      if (el.textContent !== next) el.textContent = next;
+    });
+  };
+  const countdownTimer = window.setInterval(updateDynamic, 1000); // 倒计时每秒
+  const refreshTimer = window.setInterval(updateDynamic, 30000);  // 刷新时间 30s
 }
 
 export function mountStripMode() {
@@ -159,6 +192,8 @@ export function mountStripMode() {
         const main = wins.find((w) => w.label === 'main');
         if (main) {
           localStorage.setItem('ui-jump-intent', 'token-tool');
+          // 解最小化：最小化态主窗先 unminimize 再 show（?.() 兼容 mock；catch?. 防 mock 缺方法时抛错）
+          main.unminimize?.().catch?.(() => {});
           main.show().catch(() => {}); main.setFocus().catch(() => {});
         }
         window.__TAURI__.event.emit('jump-to-tokentool').catch(() => {});

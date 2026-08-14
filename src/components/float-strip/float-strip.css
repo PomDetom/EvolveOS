@@ -27,7 +27,7 @@
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: none;
+  box-shadow: var(--shadow-md); /* 实底默认突出（无背景态由下方 none 规则清除） */
   /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
   transition: transform var(--dur-slow) var(--ease-spring),
     border-color var(--dur-base) var(--ease-out),
@@ -36,7 +36,7 @@
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
 /* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
 .c-strip--horizontal { padding: var(--space-2) var(--space-3); width: max-content; }
-.c-strip--vertical { padding: var(--space-3) var(--space-2); height: max-content; }
+.c-strip--vertical { padding: var(--space-2) var(--space-3); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
@@ -88,8 +88,12 @@ html[data-strip-material="none"] .c-strip {
   pointer-events: auto;
   border-color: var(--glass-border);
 }
-/* 控制条方向随形态对调：横排时 ctrl 为横排按钮列（不撑高横条），竖排时 ctrl 为竖排按钮列（不撑宽竖条） */
-.c-strip--horizontal .c-strip__ctrl { flex-direction: row; }
+/* 控制条方向随形态对调：横排时 ctrl 为 2×2 按钮方阵（4 按钮一行两个），竖排时 ctrl 为竖排按钮列（不撑宽竖条） */
+.c-strip--horizontal .c-strip__ctrl {
+  display: grid;
+  grid-template-columns: repeat(2, 26px);
+  flex-direction: unset;
+}
 .c-strip--vertical .c-strip__ctrl { flex-direction: column; }
 
 .c-strip__ctrl button {
@@ -153,6 +157,8 @@ html[data-strip-material="none"] .c-strip {
   flex-direction: column;
   align-items: flex-start;
 }
+/* 横排账户间距双倍（12→24px，观感拉开；竖排保持原 gap） */
+.c-strip[data-orientation="horizontal"] .c-strip-tk { gap: var(--space-5); }
 .c-strip-tk__chip {
   display: flex;
   align-items: center;
@@ -162,9 +168,11 @@ html[data-strip-material="none"] .c-strip {
   white-space: nowrap;
   min-width: 0;
 }
-/* 名称固定列宽 64px：各 chip 余额起始对齐（超长省略号） */
+/* 名称固定列宽 64px：各 chip 余额起始对齐（超长省略号）；大两号加粗 */
 .c-strip-tk__name {
   color: var(--text-2);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
   width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -172,7 +180,8 @@ html[data-strip-material="none"] .c-strip {
 }
 .c-strip-tk__value {
   color: var(--text-1);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
   font-variant-numeric: tabular-nums;
 }
 .c-strip-tk__time {
