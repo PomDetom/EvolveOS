@@ -25,6 +25,20 @@ test('壳结构：标题栏/左窗模块（≥8）/单窗口态右窗隐藏/内�
   await expect(active).toContainText('概览');
 });
 
+test('懒渲染：启动只渲染激活页，其余页首激活时渲染', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 非激活应用页未渲染（空 section，等挂载后断言）
+  await expect(page.locator('.app-main__page[data-page="key"]')).toBeEmpty();
+  await expect(page.locator('.app-main__page[data-page="memo"]')).toBeEmpty();
+  // 激活概览页已渲染
+  await expect(page.locator('.app-main__page[data-page="home"]')).not.toBeEmpty();
+  // 切到密码 → 该页首激活渲染（懒渲染路径）
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.app-main__page[data-page="key"]')).not.toBeEmpty();
+  await expect(page.locator('.app-main__page[data-page="key"]')).toContainText('密码');
+});
+
 test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
   await page.goto(APP_URL);
   // 点击左窗第 2 项（密码）
@@ -575,6 +589,7 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；配置同步 se
           setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
         }]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__stripShown__ = shown;
@@ -625,6 +640,7 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
         getAllWindows: () => Promise.resolve([]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__closeBehaviorInvokes__ = invokes;
