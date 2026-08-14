@@ -589,6 +589,7 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；配置同步 se
           setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
         }]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__stripShown__ = shown;
@@ -639,6 +640,7 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
         getAllWindows: () => Promise.resolve([]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__closeBehaviorInvokes__ = invokes;
