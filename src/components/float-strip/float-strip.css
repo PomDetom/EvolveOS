@@ -35,8 +35,8 @@
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
 /* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
-.c-strip--horizontal { padding: var(--space-2) var(--space-3); width: max-content; }
-.c-strip--vertical { padding: var(--space-2) var(--space-3); height: max-content; }
+.c-strip--horizontal { padding: var(--space-1) var(--space-3); width: max-content; }
+.c-strip--vertical { padding: var(--space-1) var(--space-3); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
@@ -155,7 +155,7 @@ html[data-strip-material="none"] .c-strip {
 /* 竖排：每行一个账户（chip 纵向堆叠，左对齐）；横排保持单行横向排列 */
 .c-strip[data-orientation="vertical"] .c-strip-tk {
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch; /* 行拉伸填宽：配合 .c-strip-tk__time margin-left:auto 使时间右缘对齐 */
 }
 /* 横排账户间距双倍（12→24px，观感拉开；竖排保持原 gap） */
 .c-strip[data-orientation="horizontal"] .c-strip-tk { gap: var(--space-5); }
@@ -168,12 +168,12 @@ html[data-strip-material="none"] .c-strip {
   white-space: nowrap;
   min-width: 0;
 }
-/* 名称固定列宽 96px：各 chip 余额起始对齐（超长省略号）；加粗突出 */
+/* 名称固定列宽 72px：各 chip 余额起始对齐（超长省略号 + hover title 看全名）；加粗突出 */
 .c-strip-tk__name {
   color: var(--text-2);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
-  width: 96px;
+  width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -187,6 +187,7 @@ html[data-strip-material="none"] .c-strip {
 .c-strip-tk__time {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
+  margin-left: auto; /* 右对齐：竖排堆叠行拉伸后时间右缘对齐 */
 }
 .c-strip-tk__muted {
   color: var(--text-3);
