@@ -45,7 +45,7 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
             return [
               { accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 30 },
               { accountId: 'a2', balance: null, currency: null, windows: [
-                  { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: '' },
+                  { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: new Date(Date.now() + 90 * 60 * 1000).toISOString() },
                   { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
                 ], ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 30 },
             ];
@@ -64,11 +64,72 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
   await expect(chips.nth(0)).toContainText('88.50');
   await expect(chips.nth(0)).toContainText('CNY');
   await expect(chips.nth(1)).toContainText('OpenCode Go');
-  await expect(chips.nth(1)).toContainText('5h29% 月80%');
+  await expect(chips.nth(1)).toContainText('1.5h29% 月80%');
+  await expect(chips.nth(1).locator('.c-strip-tk__countdown')).toHaveAttribute('data-resets-at', /.+/);
   await expect(chips.nth(1).locator('.c-strip-tk__dot')).not.toHaveClass(/dot--err/);
   // 时间列：chip 在值后带相对刷新时间（seed lastUpdated=30s 前 → 刚刚/分钟前，跨时区与页面加载耗时均稳）
   await expect(chips.nth(0).locator('.c-strip-tk__time')).toBeVisible();
   await expect(chips.nth(0)).toContainText(/· (刚刚|\d+分钟前)/);
+});
+
+test('strip：OpenCode rolling 倒计时每秒递减（data-resets-at 定时器原地更新，不整窗重渲染）', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
+        getCurrentWindow: () => ({
+          setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
+          onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+        }),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') {
+            return { accounts: [
+              { id: 'a2', name: 'OpenCode Go', kind: 'opencode_go', baseUrl: 'https://opencode.ai', apiKey: '', workspaceId: 'wrk', authCookie: 'ck', refreshIntervalSecs: 300, warnThreshold: 10 },
+            ] };
+          }
+          if (cmd === 'get_balances') {
+            // resetsAt 在 invoke 时取 now（距渲染仅毫秒级）+ 59min + 0.5s 缓冲：
+            // 初值稳定落在 59m 档，约 1s 后跨过分钟边界 → 58m（每秒递减，原地更新文本）
+            const resetsAt = new Date(Date.now() + 59 * 60 * 1000 + 500).toISOString();
+            return [
+              { accountId: 'a2', balance: null, currency: null, windows: [
+                  { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt },
+                  { key: 'weekly', label: '本周', limit: 40, used: 20, usedPct: 50, resetsIn: 604800, resetsAt: '' },
+                  { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
+                ], ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) - 30 },
+            ];
+          }
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(STRIP_URL);
+  const strip = page.locator('.c-strip');
+  const chips = strip.locator('.c-strip-tk__chip');
+  await expect(chips).toHaveCount(1);
+  const countdown = chips.nth(0).locator('.c-strip-tk__countdown');
+  await expect(countdown).toBeVisible();
+  await expect(countdown).toHaveAttribute('data-resets-at', /.+/);
+  // 周/月静态百分比同 chip 展示（rolling 倒计时 + 周/月）
+  await expect(chips.nth(0)).toContainText('周50% 月80%');
+  // 初值 59m（渲染距 invoke 毫秒级；慢渲染已过一次 tick 则容差 58m）
+  const initialText = (await countdown.textContent()).trim();
+  expect(initialText).toMatch(/^5[89]m$/);
+  // 每秒递减：1.1s 后必然跨过分钟边界 → 分钟数减一（59m→58m；初值已是 58m 则保持 58m）
+  await page.waitForTimeout(1100);
+  const afterText = (await countdown.textContent()).trim();
+  expect(afterText).toMatch(/^5[78]m$/);
+  const n0 = Number(initialText.slice(0, -1));
+  const n1 = Number(afterText.slice(0, -1));
+  expect(n1).toBeGreaterThanOrEqual(n0 - 1);
+  expect(n1).toBeLessThanOrEqual(n0);
+  // 时间 span 存在（data-last-refresh 定时器种子）
+  await expect(chips.nth(0).locator('.c-strip-tk__time')).toBeVisible();
+  await expect(chips.nth(0).locator('.c-strip-tk__time')).toHaveAttribute('data-last-refresh', /.+/);
 });
 
 test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类翻转 + 内容布局变化', async ({ page }) => {
@@ -213,6 +274,7 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
       }),
       getAllWindows: () => Promise.resolve([{
         label: 'main',
+        unminimize: () => { calls.push('main.unminimize'); return Promise.resolve(); },
         show: () => { calls.push('main.show'); return Promise.resolve(); },
         setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
       }]),
@@ -225,6 +287,9 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
   await page.waitForTimeout(300);
   await page.locator('.c-strip__jump').click();
   const calls = await page.evaluate(() => window.__jumpCalls__);
+  // 解最小化先于 show：最小化态主窗唤起（unminimize → show → setFocus）
+  expect(calls.indexOf('main.unminimize')).toBeGreaterThan(-1);
+  expect(calls.indexOf('main.unminimize')).toBeLessThan(calls.indexOf('main.show'));
   expect(calls).toContain('main.show');
   expect(calls).toContain('main.setFocus');
   expect(calls).toContainEqual(['emit', 'jump-to-tokentool']);

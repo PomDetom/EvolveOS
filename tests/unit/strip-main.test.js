@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeFitSize,
+  formatCountdown,
   formatRelative,
   renderStripToken,
   stripAccountStatus,
@@ -34,17 +35,20 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(html).not.toContain('c-strip-tk__dot--err');
   });
 
-  it('OpenCode Go：三窗口用量全展示（短标记 + 百分比空格拼接）', () => {
+  it('OpenCode Go：rolling 倒计时 span + 周/月窗口用量全展示（空格拼接）', () => {
     const acc = ACC({ id: 'a2', kind: 'opencode_go', workspaceId: 'wrk', authCookie: 'ck' });
     const html = renderStripToken(
       { accounts: [acc] },
       [{ accountId: 'a2', balance: null, currency: null, windows: [
-          { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: '' },
+          { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: new Date(Date.now() + 90 * 60 * 1000).toISOString() },
           { key: 'weekly', label: '本周', limit: 40, used: 20, usedPct: 50, resetsIn: 604800, resetsAt: '' },
           { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
         ], ok: true, error: null, lastUpdated: 0 }],
     );
-    expect(html).toContain('5h29% 周50% 月80%');
+    expect(html).toContain('c-strip-tk__countdown');
+    expect(html).toContain('data-resets-at');
+    expect(html).toContain('>1.5h</span>'); // rolling 90min → 1.5h
+    expect(html).toContain('29% 周50% 月80%');
     expect(html).not.toContain('本月 80%'); // 旧口径：不再只显示最高用量窗口
   });
 
@@ -67,6 +71,7 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(html).toContain('主号');
     expect(html).toContain('88.50');
     expect(html).toContain('c-strip-tk__time');
+    expect(html).toContain('data-last-refresh'); // 定时器原地更新的种子属性
     expect(html).toContain(' · 2分钟前');
   });
 
@@ -99,23 +104,38 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(stripAccountStatus(oc, { accountId: 'a1', windows: [{ usedPct: 40, label: '本周' }] })).toBe('ok');
   });
 
-  it('stripAccountValue：DeepSeek 余额 / OpenCode 最高窗口 / 空数据占位', () => {
+  it('stripAccountValue：DeepSeek 余额 / OpenCode 倒计时 + 周月百分比 / 空数据占位', () => {
     const ds = ACC();
     const oc = ACC({ kind: 'opencode_go' });
     expect(stripAccountValue(ds, { accountId: 'a1', balance: 12.345, currency: 'CNY' })).toBe('12.35 CNY');
     expect(stripAccountValue(ds, null)).toBe('—');
-    expect(stripAccountValue(oc, { accountId: 'a1', windows: [
+    const openVal = stripAccountValue(oc, { accountId: 'a1', windows: [
       { key: 'rolling', usedPct: 29.2, label: '5小时' },
       { key: 'weekly', usedPct: 50, label: '本周' },
       { key: 'monthly', usedPct: 80, label: '本月' },
-    ] })).toBe('5h29% 周50% 月80%');
+    ] });
+    expect(openVal).toContain('data-resets-at'); // rolling 倒计时 span 属性
+    expect(openVal).toContain('29% 周50% 月80%');
+    expect(openVal).not.toContain('5h'); // 旧短标记口径移除
     expect(stripAccountValue(oc, null)).toBe('—');
   });
 
-  it('stripAccountValue：OpenCode 未知 key 回落 label 并转义（label 来自外部 API，非用户输入也不得注入）', () => {
+  it('stripAccountValue：OpenCode 未知 key 窗口被忽略（仅 rolling/weekly/monthly 三窗口，label 不再渲染）', () => {
     const oc = ACC({ kind: 'opencode_go' });
-    expect(stripAccountValue(oc, { accountId: 'a1', windows: [{ usedPct: 50, label: '<b>恶意</b>' }] }))
-      .toBe('&lt;b&gt;恶意&lt;/b&gt;50%');
+    // 未知 key（无 rolling/weekly/monthly）→ 无已知窗口 → 空串；恶意 label 不进入输出（无 XSS sink）
+    expect(stripAccountValue(oc, { accountId: 'a1', windows: [{ usedPct: 50, label: '<b>恶意</b>' }] })).toBe('');
+  });
+
+  it('formatCountdown：各档位（<1m/Nm/N.Nh/已过截断/缺失空串）', () => {
+    const now = Date.now();
+    // 偏移含 30s 缓冲：floor 秒粒度的分钟边界恰逢整数分钟时 +1ms 即落到前一档，缓冲避开抖动
+    expect(formatCountdown(new Date(now + 30 * 1000).toISOString())).toBe('<1m');          // 30s 余量
+    expect(formatCountdown(new Date(now + 45.5 * 60 * 1000).toISOString())).toBe('45m');   // 45.5min → 45m
+    expect(formatCountdown(new Date(now + 90.5 * 60 * 1000).toISOString())).toBe('1.5h');  // 90.5min → 90m → 1.5h
+    expect(formatCountdown(new Date(now + 123.5 * 60 * 1000).toISOString())).toBe('2.1h'); // 123.5min → 123m → 2.1h
+    expect(formatCountdown(new Date(now - 5 * 1000).toISOString())).toBe('<1m');           // 已过 → diff 0 截断
+    expect(formatCountdown('')).toBe('');                                                    // 缺失 → 空串（span 留白）
+    expect(formatCountdown(undefined)).toBe('');                                             // 未定义 → 空串
   });
 
   it('computeFitSize：ceil 到整数像素', () => {
