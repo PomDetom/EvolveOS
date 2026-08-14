@@ -35,8 +35,8 @@
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
 /* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
-.c-strip--horizontal { padding: var(--space-1) var(--space-3); width: max-content; }
-.c-strip--vertical { padding: var(--space-1) var(--space-3); height: max-content; }
+.c-strip--horizontal { padding: calc(var(--space-1) / 2) var(--space-3); width: max-content; }
+.c-strip--vertical { padding: calc(var(--space-1) / 2) var(--space-3); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
@@ -168,14 +168,12 @@ html[data-strip-material="none"] .c-strip {
   white-space: nowrap;
   min-width: 0;
 }
-/* 名称固定列宽 72px：各 chip 余额起始对齐（超长省略号 + hover title 看全名）；加粗突出 */
+/* 名称 min-width 72px：常见短名对齐；超长名完整显示不省略（仅超 viewport 才被 strip 裁切） */
 .c-strip-tk__name {
   color: var(--text-2);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
-  width: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 72px;
   white-space: nowrap;
 }
 .c-strip-tk__value {
