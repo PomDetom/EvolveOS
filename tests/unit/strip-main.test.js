@@ -33,17 +33,18 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(html).not.toContain('c-strip-tk__dot--err');
   });
 
-  it('OpenCode Go：取最高用量窗口（label + 百分比）', () => {
+  it('OpenCode Go：三窗口用量全展示（短标记 + 百分比空格拼接）', () => {
     const acc = ACC({ id: 'a2', kind: 'opencode_go', workspaceId: 'wrk', authCookie: 'ck' });
     const html = renderStripToken(
       { accounts: [acc] },
       [{ accountId: 'a2', balance: null, currency: null, windows: [
           { key: 'rolling', label: '5小时', limit: 12, used: 3.5, usedPct: 29.2, resetsIn: 3600, resetsAt: '' },
+          { key: 'weekly', label: '本周', limit: 40, used: 20, usedPct: 50, resetsIn: 604800, resetsAt: '' },
           { key: 'monthly', label: '本月', limit: 60, used: 48, usedPct: 80, resetsIn: 99999, resetsAt: '' },
         ], ok: true, error: null, lastUpdated: 0 }],
     );
-    expect(html).toContain('本月');
-    expect(html).toContain('80%');
+    expect(html).toContain('5h29% 周50% 月80%');
+    expect(html).not.toContain('本月 80%'); // 旧口径：不再只显示最高用量窗口
   });
 
   it('账户名转义：<b> 不得注入', () => {
@@ -70,14 +71,18 @@ describe('strip-main 悬浮条 token 渲染', () => {
     const oc = ACC({ kind: 'opencode_go' });
     expect(stripAccountValue(ds, { accountId: 'a1', balance: 12.345, currency: 'CNY' })).toBe('12.35 CNY');
     expect(stripAccountValue(ds, null)).toBe('—');
-    expect(stripAccountValue(oc, { accountId: 'a1', windows: [{ usedPct: 29.2, label: '5小时' }, { usedPct: 80, label: '本月' }] })).toBe('本月 80%');
+    expect(stripAccountValue(oc, { accountId: 'a1', windows: [
+      { key: 'rolling', usedPct: 29.2, label: '5小时' },
+      { key: 'weekly', usedPct: 50, label: '本周' },
+      { key: 'monthly', usedPct: 80, label: '本月' },
+    ] })).toBe('5h29% 周50% 月80%');
     expect(stripAccountValue(oc, null)).toBe('—');
   });
 
-  it('stripAccountValue：OpenCode 窗口 label 转义（label 来自外部 API，非用户输入也不得注入）', () => {
+  it('stripAccountValue：OpenCode 未知 key 回落 label 并转义（label 来自外部 API，非用户输入也不得注入）', () => {
     const oc = ACC({ kind: 'opencode_go' });
     expect(stripAccountValue(oc, { accountId: 'a1', windows: [{ usedPct: 50, label: '<b>恶意</b>' }] }))
-      .toBe('&lt;b&gt;恶意&lt;/b&gt; 50%');
+      .toBe('&lt;b&gt;恶意&lt;/b&gt;50%');
   });
 
   it('computeFitSize：ceil 到整数像素', () => {

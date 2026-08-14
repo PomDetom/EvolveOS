@@ -13,9 +13,9 @@ test('渲染：.c-strip 存在 + token 实时监测（浏览器无后端 → 暂
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
   await expect(strip).toHaveCount(1);
-  // 浏览器 ?mode=strip 路径不渲染「恢复主窗」按钮（showRestore 仅 Tauri 独立窗口为 true）——
+  // 浏览器 ?mode=strip 路径不渲染「跳转到 TokenTool」按钮（showJump 仅 Tauri 独立窗口为 true）——
   // 在 .c-strip 已确认存在后断言，避免空 DOM 上 toHaveCount(0) 真空通过
-  await expect(page.locator('.c-strip__restore')).toHaveCount(0);
+  await expect(page.locator('.c-strip__jump')).toHaveCount(0);
   // 内容走真实数据路径：浏览器无 Tauri 后端 → 「暂无账户」占位
   await expect(strip.locator('.c-strip-tk')).toBeVisible();
   await expect(strip.locator('.c-strip-tk')).toContainText('暂无账户');
@@ -64,7 +64,7 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
   await expect(chips.nth(0)).toContainText('88.50');
   await expect(chips.nth(0)).toContainText('CNY');
   await expect(chips.nth(1)).toContainText('OpenCode Go');
-  await expect(chips.nth(1)).toContainText('本月 80%');
+  await expect(chips.nth(1)).toContainText('5h29% 月80%');
   await expect(chips.nth(1).locator('.c-strip-tk__dot')).not.toHaveClass(/dot--err/);
 });
 
@@ -73,6 +73,9 @@ test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类�
   const strip = page.locator('.c-strip');
   await expect(strip).toHaveClass(/c-strip--horizontal/);
   await expect(strip).toHaveAttribute('data-orientation', 'horizontal');
+  // 横排内容垂直居中：.c-strip 交叉轴 align-items: center（子项默认 stretch 会撑满交叉轴）
+  const ai = await strip.evaluate((el) => getComputedStyle(el).alignItems);
+  expect(ai).toBe('center');
   // hover 使控制条浮现（pointer-events none → auto）后再点旋转按钮
   await strip.hover();
   await page.waitForTimeout(SETTLE_MS);
@@ -83,6 +86,9 @@ test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类�
   // 内容布局随形态变化：flex-direction 横向 → 纵向
   const dir = await strip.locator('.c-strip__content').evaluate((el) => getComputedStyle(el).flexDirection);
   expect(dir).toBe('column');
+  // 竖排每行一个账户：.c-strip-tk 也随形态纵向堆叠
+  const tkDir = await strip.locator('.c-strip-tk').evaluate((el) => getComputedStyle(el).flexDirection);
+  expect(tkDir).toBe('column');
 });
 
 test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效（transform 定位）', async ({ page }) => {
@@ -168,8 +174,8 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
   await page.waitForTimeout(350); // 去抖 200ms
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ui-design-strip-pos')));
   expect(saved).toEqual({ x: 300, y: 200 });
-  // 拖动 → startDragging（不跟踪指针/不磁吸）
-  await page.locator('.c-strip__drag').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
+  // 拖动 → startDragging（内容区 pointerdown 通道；拖动手柄已移除）
+  await page.locator('.c-strip__content').dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
   calls = await page.evaluate(() => window.__stripWinCalls__);
   expect(calls).toContain('startDragging');
   // 旋转 → setSize 贴合（先 hover 使控制条浮现可点，与既有用例同模式；
@@ -193,7 +199,7 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
   expect(calls).toContain('hide');
 });
 
-test('strip 窗口：恢复主窗按钮 → main show+setFocus', async ({ page }) => {
+test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentool', async ({ page }) => {
   await page.addInitScript(() => {
     const calls = [];
     window.__TAURI__ = { window: {
@@ -207,15 +213,39 @@ test('strip 窗口：恢复主窗按钮 → main show+setFocus', async ({ page }
         show: () => { calls.push('main.show'); return Promise.resolve(); },
         setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
       }]),
-    } };
-    window.__restoreCalls__ = calls;
+    }, event: { emit: (name) => { calls.push(['emit', name]); return Promise.resolve(); } } };
+    window.__jumpCalls__ = calls;
   });
   await page.goto('/?mode=strip');
-  await expect(page.locator('.c-strip__restore')).toBeVisible();
+  await expect(page.locator('.c-strip__jump')).toBeVisible();
   await page.locator('.c-strip').hover();
   await page.waitForTimeout(300);
-  await page.locator('.c-strip__restore').click();
-  const calls = await page.evaluate(() => window.__restoreCalls__);
+  await page.locator('.c-strip__jump').click();
+  const calls = await page.evaluate(() => window.__jumpCalls__);
   expect(calls).toContain('main.show');
   expect(calls).toContain('main.setFocus');
+  expect(calls).toContainEqual(['emit', 'jump-to-tokentool']);
+});
+
+test('材质：默认实底 → 点击材质按钮切换 data-strip-material（solid ↔ none）', async ({ page }) => {
+  await page.goto(STRIP_URL);
+  const strip = page.locator('.c-strip');
+  await expect(strip).toBeVisible();
+  await expect(strip.locator('.c-strip__material')).toHaveCount(1);
+  // 默认实底：data-strip-material=solid，背景不透明
+  expect(await page.evaluate(() => document.documentElement.dataset.stripMaterial)).toBe('solid');
+  const solidBg = await strip.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(solidBg).not.toBe('rgba(0, 0, 0, 0)');
+  // 点击 → 无背景（仅文字）
+  await strip.hover();
+  await page.waitForTimeout(SETTLE_MS);
+  await strip.locator('.c-strip__material').click();
+  await page.waitForTimeout(SETTLE_MS);
+  expect(await page.evaluate(() => document.documentElement.dataset.stripMaterial)).toBe('none');
+  const noneBg = await strip.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(noneBg).toBe('rgba(0, 0, 0, 0)');
+  // 再点 → 回到实底
+  await strip.locator('.c-strip__material').click();
+  await page.waitForTimeout(SETTLE_MS);
+  expect(await page.evaluate(() => document.documentElement.dataset.stripMaterial)).toBe('solid');
 });

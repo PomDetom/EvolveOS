@@ -15,14 +15,15 @@
   --strip-thick: 48px;
   --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
   display: flex;
+  align-items: center; /* 横排内容垂直居中（子项默认 stretch 会撑满交叉轴） */
   box-sizing: border-box;
   max-width: calc(100vw - var(--strip-gap) * 2);
   max-height: calc(100vh - var(--strip-gap) * 2);
   overflow: hidden;
   border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 静态材质，永不动画 */
+  background: var(--surface-solid); /* 实底材质（默认）：无透明、无模糊；无背景态由 html[data-strip-material="none"] 覆盖 */
+  backdrop-filter: none;
   color: var(--text-1);
   cursor: grab;
   user-select: none;
@@ -41,6 +42,13 @@
 .c-strip:hover {
   border-color: var(--glass-border);
   box-shadow: var(--glass-shadow);
+}
+/* 无背景材质（stripMaterial: none）：仅文字，无底/边/影 —— 特异性高于 .c-strip:hover 的 box-shadow/border-color */
+html[data-strip-material="none"] .c-strip {
+  background: transparent;
+  backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* —— 内容区（可拖）——
@@ -84,7 +92,7 @@
 .c-strip--horizontal .c-strip__ctrl { flex-direction: column; }
 .c-strip--vertical .c-strip__ctrl { flex-direction: row; }
 
-.c-strip__ctrl button, .c-strip__drag {
+.c-strip__ctrl button {
   width: 26px;
   height: 26px;
   display: grid;
@@ -96,9 +104,6 @@
 }
 .c-strip__ctrl button:hover { color: var(--text-1); background: var(--surface-hover); }
 .c-strip__close:hover { color: var(--danger-500); }
-.c-strip__drag { cursor: grab; touch-action: none; }
-.c-strip__drag:hover { color: var(--text-1); background: var(--surface-hover); }
-.c-strip__drag:active { cursor: grabbing; }
 
 /* —— token 监测内容模板（renderTokenMonitor，供后续应用复用）——
    数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY，红线段）。 */
@@ -144,6 +149,11 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-3);
+}
+/* 竖排：每行一个账户（chip 纵向堆叠，左对齐）；横排保持单行横向排列 */
+.c-strip[data-orientation="vertical"] .c-strip-tk {
+  flex-direction: column;
+  align-items: flex-start;
 }
 .c-strip-tk__chip {
   display: flex;

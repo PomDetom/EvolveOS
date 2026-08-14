@@ -846,6 +846,12 @@ export function mountAppMode(root) {
   mountTitleBar(appMain);
   bindWindowControls();
 
+  // FloatStrip 跳转通道（ui/strip-ui-opt）：strip 窗口「跳转到 TokenTool」按钮 →
+  // 主窗 setModule('token-tool')（自动落到首目录 usage=余量页，并切回应用模式）
+  if (typeof window.__TAURI__ !== 'undefined') {
+    window.__TAURI__.event.listen('jump-to-tokentool', () => setModule('token-tool')).catch(() => {});
+  }
+
   // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
   //   设置页（第 8 区）已随模板渲染，此处跳过 ——
   pages.forEach((page) => {

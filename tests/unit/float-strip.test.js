@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderTokenMonitor } from '../../src/components/float-strip/float-strip.js';
+import { renderFloatStrip, renderTokenMonitor } from '../../src/components/float-strip/float-strip.js';
 
 // FloatStrip token 监测内容模板（闭环 M2）：作为「供后续应用复用」的公开模板，
 // value/status 必须转义/白名单 —— 未来传用户数据不得成为 XSS sink。
@@ -29,5 +29,36 @@ describe('renderTokenMonitor', () => {
     const html = renderTokenMonitor({ value: '1', status: 'warn' });
     expect(html).toContain('c-tmon__dot--warn');
     expect(html).toContain('aria-label="状态：告警"');
+  });
+});
+
+// FloatStrip 控制条（ui/strip-ui-opt）：跳转 / 材质 / 旋转 / 关闭；无拖动手柄。
+describe('renderFloatStrip', () => {
+  it('默认：材质/旋转/关闭恒在，无跳转按钮/恢复按钮/拖动手柄', () => {
+    const html = renderFloatStrip({ content: '<i>x</i>' });
+    expect(html).toContain('c-strip__material');
+    expect(html).toContain('c-strip__rotate');
+    expect(html).toContain('c-strip__close');
+    expect(html).not.toContain('c-strip__jump');
+    expect(html).not.toContain('c-strip__restore');
+    expect(html).not.toContain('c-strip__drag');
+  });
+
+  it('showJump:true → 渲染跳转按钮（bolt 图标）', () => {
+    const html = renderFloatStrip({ content: '<i>x</i>', showJump: true });
+    expect(html).toContain('c-strip__jump');
+    expect(html).toContain('跳转到 TokenTool 余量页');
+  });
+
+  it('控制条顺序：跳转 → 材质 → 旋转 → 关闭', () => {
+    const html = renderFloatStrip({ content: '<i>x</i>', showJump: true });
+    const idxJump = html.indexOf('c-strip__jump');
+    const idxMaterial = html.indexOf('c-strip__material');
+    const idxRotate = html.indexOf('c-strip__rotate');
+    const idxClose = html.indexOf('c-strip__close');
+    expect(idxJump).toBeGreaterThan(-1);
+    expect(idxMaterial).toBeGreaterThan(idxJump);
+    expect(idxRotate).toBeGreaterThan(idxMaterial);
+    expect(idxClose).toBeGreaterThan(idxRotate);
   });
 });

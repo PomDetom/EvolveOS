@@ -5,7 +5,7 @@
 // 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
 import { renderFloatStrip, mountFloatStrip } from '../components/float-strip/float-strip.js';
 import '../components/float-strip/float-strip.css';
-import { getConfig } from '../config/store.js';
+import { getConfig, saveConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
 
 /** 悬浮窗窗口尺寸（纯函数，可单测）：CSS 像素 → {width,height}（ceil + 至少 1px） */
@@ -41,14 +41,19 @@ export function stripAccountStatus(account, balance) {
   return balance?.balance != null ? 'ok' : 'none';
 }
 
-/** 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode=最高用量窗口 label + 百分比 */
+/** OpenCode 三窗口短标记（key → 短标记，常量安全；未知 key 回落 label 并转义） */
+const STRIP_WINDOW_MARKS = { rolling: '5h', weekly: '周', monthly: '月' };
+
+/** 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode=全部窗口短标记 + 百分比（空格拼接，如 5h29% 周50% 月80%） */
 export function stripAccountValue(account, balance) {
   const isOpen = account?.kind === 'opencode_go';
   if (isOpen) {
     const wins = balance?.windows ?? [];
     if (!wins.length) return '—';
-    const top = [...wins].sort((a, b) => (b.usedPct ?? 0) - (a.usedPct ?? 0))[0];
-    return `${escapeHtml(top.label)} ${top.usedPct.toFixed(0)}%`;
+    return wins.map((w) => {
+      const mark = STRIP_WINDOW_MARKS[w.key] ?? escapeHtml(w.label ?? '');
+      return `${mark}${(w.usedPct ?? 0).toFixed(0)}%`;
+    }).join(' ');
   }
   return balance?.balance != null ? `${balance.balance.toFixed(2)} ${escapeHtml(balance.currency ?? '')}` : '—';
 }
@@ -112,25 +117,33 @@ export function mountStripToken(content, { onData = () => {} } = {}) {
 }
 
 export function mountStripMode() {
-  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色（Fix 3）
+  applyConfig(getConfig()); // 独立 strip 窗口跟随保存的主题/强调色/材质（Fix 3）
   const win = window.__TAURI__?.window?.getCurrentWindow?.() ?? null;
   const root = document.createElement('div');
   root.className = 'strip-root';
   root.innerHTML = renderFloatStrip({
     content: '<div class="c-strip-tk"><span class="c-strip-tk__muted">加载中…</span></div>',
-    showRestore: !!win, // 仅 Tauri 独立窗口渲染「恢复主窗」按钮
+    showJump: !!win, // 仅 Tauri 独立窗口渲染「跳转到 TokenTool 余量页」按钮
   });
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
-  // 恢复主窗按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main show+setFocus）
-  const restoreBtn = root.querySelector('.c-strip__restore');
-  restoreBtn?.addEventListener('click', () => {
+  // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
+  const jumpBtn = root.querySelector('.c-strip__jump');
+  jumpBtn?.addEventListener('click', () => {
     window.__TAURI__.window.getAllWindows()
       .then((wins) => {
         const main = wins.find((w) => w.label === 'main');
         if (main) { main.show().catch(() => {}); main.setFocus().catch(() => {}); }
+        window.__TAURI__.event.emit('jump-to-tokentool').catch(() => {});
       })
       .catch(() => {});
+  });
+  // 材质按钮：实底 ↔ 无背景（走配置链路 saveConfig → applyConfig，不绕过）
+  const materialBtn = root.querySelector('.c-strip__material');
+  materialBtn?.addEventListener('click', () => {
+    const cfg = getConfig();
+    saveConfig({ ...cfg, stripMaterial: cfg.stripMaterial === 'solid' ? 'none' : 'solid' });
+    applyConfig(getConfig());
   });
   let fit = () => {};
   if (win) {
