@@ -12,6 +12,8 @@ export function applyConfig(cfg, root = document.documentElement) {
   // 玻璃开关：CSS 降级用 data-glass 属性选择器（:root[data-glass="off"]），
   // --glass-enabled 为机器可读值（1|0），供脚本/工具消费
   root.dataset.glass = cfg.glass.blurEnabled ? 'on' : 'off';
+  // 悬浮窗材质（stripMaterial: solid|none）：CSS 用 html[data-strip-material] 属性选择器切换
+  root.dataset.stripMaterial = cfg.stripMaterial;
 
   const s = root.style;
   s.setProperty('--glass-enabled', cfg.glass.blurEnabled ? '1' : '0');
