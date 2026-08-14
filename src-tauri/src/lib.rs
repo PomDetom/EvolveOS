@@ -66,6 +66,7 @@ pub fn run() {
             pwm_commands::import_vault,
             pwm_commands::default_vault_path,
             pwm_commands::current_vault_path,
+            pwm_commands::pick_vault_path,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
