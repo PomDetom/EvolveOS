@@ -189,8 +189,23 @@ fn import_vault_impl(state: &PwmState, path: &str) -> Result<usize, String> {
 
 #[tauri::command]
 pub fn default_vault_path(app: AppHandle) -> Result<String, String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = app.path().executable_dir().map_err(|e| e.to_string())?;
     Ok(dir.join("vault.json").to_string_lossy().to_string())
+}
+
+/// 原生「保存」对话框选保险库位置（默认文件名 vault.json），取消返回 null
+#[tauri::command]
+pub async fn pick_vault_path() -> Result<Option<String>, String> {
+    let picked = tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new()
+            .set_title("选择保险库保存位置")
+            .set_file_name("vault.json")
+            .add_filter("Vault", &["json"])
+            .save_file()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(picked.map(|p| p.to_string_lossy().to_string()))
 }
 
 #[cfg(test)]
