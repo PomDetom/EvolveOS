@@ -135,3 +135,14 @@
   background: var(--surface-solid);
   backdrop-filter: none;
 }
+/* —— 编辑器表单字段（与 key 编辑器 .key__field 同构：纵向 flex + gap）—— */
+.tt__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.tt__field { display: flex; flex-direction: column; gap: var(--space-2); }
+/* .tt__field 的 display:flex 会覆盖 [hidden] 的 UA display:none，必须显式恢复隐藏语义
+   （OpenCode/DeepSeek 联动字段靠 hidden 切换显隐） */
+.tt__field[hidden] { display: none; }
+.tt__field-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-2);
+}
