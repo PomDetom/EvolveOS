@@ -35,8 +35,8 @@
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
 /* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
-.c-strip--horizontal { padding: calc(var(--space-1) / 4) var(--space-3); width: max-content; }
-.c-strip--vertical { padding: calc(var(--space-1) / 4) var(--space-3); height: max-content; }
+.c-strip--horizontal { padding: calc(var(--space-1) / 2) var(--space-3); width: max-content; }
+.c-strip--vertical { padding: calc(var(--space-1) / 2) var(--space-3); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
