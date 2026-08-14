@@ -26,6 +26,7 @@ function installMock(seed = SEED) {
         const s = state.session;
         switch (cmd) {
           case 'default_vault_path': return state.defaultPath;
+          case 'pick_vault_path': return 'C:/mock/picked/vault.json';
           case 'current_vault_path':
             if (!s) throw 'vault locked';
             return s.path;
@@ -118,6 +119,7 @@ test('密码：mock 桌面解锁 → 列表 → 添加/编辑/删除 → 锁定�
   // 添加条目（生成器 + 保存）
   await active.locator('.key__toolbar-actions .c-btn', { hasText: '添加' }).click();
   await expect(page.locator('.c-dialog')).toBeVisible();
+  await expect(page.locator('.key__editor .c-dialog')).toHaveCSS('backdrop-filter', 'none');
   await page.locator('[data-key-field="name"] .c-input').fill('GitLab');
   await page.locator('[data-key-field="username"] .c-input').fill('bob');
   await page.locator('[data-key-field="tags"] .c-input').fill('work, dev');
@@ -138,6 +140,17 @@ test('密码：mock 桌面解锁 → 列表 → 添加/编辑/删除 → 锁定�
   // 锁定
   await active.locator('.key__toolbar-actions .c-btn', { hasText: '锁定' }).click();
   await expect(active.locator('.key__lock')).toBeVisible();
+});
+
+test('密码：锁定屏选择路径按钮填充（mock pick_vault_path）', async ({ page }) => {
+  await page.addInitScript(installMock());
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  const active = page.locator('.app-main__page--active');
+  const pathInput = active.locator('.key__lock .c-input').first();
+  await active.locator('[data-key-pick]').click();
+  await expect(pathInput).toHaveValue('C:/mock/picked/vault.json');
 });
 
 test('密码：创建新保险库模式（空库）', async ({ page }) => {
@@ -168,6 +181,11 @@ test('密码：数据管理导出/导入 + 保险库信息', async ({ page }) =>
   await expect(active.locator('.key__cards')).toBeVisible();
   await expect(active).toContainText('C:/mock/appdata/vault.json'); // 保险库信息路径
   await expect(active).toContainText('2'); // 条目数
+  // 选择路径按钮（mock pick_vault_path）填充输入框
+  await active.locator('[data-key-pick-export]').click();
+  await expect(active.locator('.key__cards .key__field .c-input').first()).toHaveValue('C:/mock/picked/vault.json');
+  await active.locator('[data-key-pick-import]').click();
+  await expect(active.locator('.key__cards .key__field .c-input').nth(1)).toHaveValue('C:/mock/picked/vault.json');
   // 导出
   await active.locator('.key__cards .key__field .c-input').first().fill('C:/mock/export.json');
   await active.locator('.key__cards .c-btn', { hasText: '导出备份' }).click();

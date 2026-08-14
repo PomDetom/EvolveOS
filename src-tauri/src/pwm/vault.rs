@@ -19,6 +19,16 @@ impl Drop for SessionKey {
     }
 }
 
+/// 写文件前确保父目录存在（递归创建缺失的中间目录）。
+fn ensure_parent(path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| Error::Io(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
 pub fn create_vault_file(path: &Path, master_password: &str) -> Result<(Vault, SessionKey)> {
     let salt = crate::pwm::crypto::random_salt();
     let key = crate::pwm::crypto::derive_key(master_password, &salt, KDF_M_COST, KDF_T_COST, KDF_P_COST)?;
@@ -26,6 +36,7 @@ pub fn create_vault_file(path: &Path, master_password: &str) -> Result<(Vault, S
     let json = serde_json::to_vec(&vault).map_err(|e| Error::Serialization(e.to_string()))?;
     let file = crate::pwm::crypto::encrypt_to_disk(&json, &key, &salt)?;
     let bytes = serde_json::to_vec_pretty(&file).map_err(|e| Error::Serialization(e.to_string()))?;
+    ensure_parent(path)?;
     let mut f = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -58,6 +69,7 @@ pub fn save_vault_file(path: &Path, vault: &Vault, sk: &SessionKey) -> Result<()
     let json = serde_json::to_vec(vault).map_err(|e| Error::Serialization(e.to_string()))?;
     let file = crate::pwm::crypto::encrypt_to_disk(&json, &sk.key, &sk.salt)?;
     let bytes = serde_json::to_vec_pretty(&file).map_err(|e| Error::Serialization(e.to_string()))?;
+    ensure_parent(path)?;
     std::fs::write(path, bytes).map_err(|e| Error::Io(e.to_string()))?;
     Ok(())
 }
@@ -154,6 +166,7 @@ pub fn list_entries(vault: &Vault, query: Option<&str>, tags: &[String]) -> Vec<
 
 pub fn export_to_file(vault: &Vault, path: &Path) -> Result<()> {
     let json = serde_json::to_string_pretty(&vault.entries).map_err(|e| Error::Serialization(e.to_string()))?;
+    ensure_parent(path)?;
     std::fs::write(path, json).map_err(|e| Error::Io(e.to_string()))?;
     Ok(())
 }
@@ -447,5 +460,34 @@ mod tests {
         assert!(matches!(import_from_file(&mut vault2, &path), Err(Error::Validation(_))));
         assert!(vault2.entries.is_empty(), "原子性：整体拒绝");
         std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn create_vault_file_creates_missing_parent_dirs() {
+        let base = std::env::temp_dir().join(format!("pwm-evo-parent-{}", std::process::id()));
+        let path = base.join("a").join("b").join("vault.json");
+        let _ = std::fs::remove_dir_all(&base);
+        let (vault, _k) = create_vault_file(&path, PASSWORD).unwrap();
+        assert!(vault.entries.is_empty());
+        assert!(path.exists(), "嵌套缺失父目录应被自动创建");
+        // 落盘后重开
+        let (v2, _k2) = open_vault_file(&path, PASSWORD).unwrap();
+        assert!(v2.entries.is_empty());
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn save_and_export_create_missing_parent_dirs() {
+        let base = std::env::temp_dir().join(format!("pwm-evo-saveexp-{}", std::process::id()));
+        let vpath = base.join("x").join("vault.json");
+        let _ = std::fs::remove_dir_all(&base);
+        let (_vault, key) = create_vault_file(&vpath, PASSWORD).unwrap();
+        let mut vault = Vault::new();
+        vault.entries.push(Entry { id: "e1".into(), name: "GitHub".into(), url: Some("https://github.com".into()), username: "u".into(), password: "p".into(), notes: None, tags: vec![], created_at: 1, updated_at: 1 });
+        save_vault_file(&vpath, &vault, &key).unwrap(); // 已存在目录，save 不应报错
+        let epath = base.join("y").join("export.json");
+        export_to_file(&vault, &epath).unwrap(); // 嵌套缺失父目录自动创建
+        assert!(epath.exists());
+        std::fs::remove_dir_all(&base).ok();
     }
 }

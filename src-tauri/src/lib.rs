@@ -78,6 +78,7 @@ pub fn run() {
             pwm_commands::import_vault,
             pwm_commands::default_vault_path,
             pwm_commands::current_vault_path,
+            pwm_commands::pick_vault_path,
         ])
         .on_window_event(|window, event| {
             // 主窗几何变更 → 防抖持久化（移动/缩放尾部落盘一次）
