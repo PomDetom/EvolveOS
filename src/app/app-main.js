@@ -20,6 +20,7 @@ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '..
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
 import { resolveNav } from '../config/nav.js';
 import { applyConfig, prefersDark } from '../config/apply.js';
+import { signalWhenPainted } from './startup-signal.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
 import './partitions.css';
@@ -864,14 +865,10 @@ export function mountAppMode(root) {
     }
   });
 
-  // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
-  //   设置页（第 8 区）已随模板渲染，此处跳过 ——
-  pages.forEach((page) => {
-    if (page.dataset.page === 'settings') return;
-    const mod = MODULES.find((m) => m.id === page.dataset.page);
-    if (mod?.render) page.innerHTML = mod.render(modCtx(mod)); // review ① 防御：模块缺失则留空
-  });
-  pages.find((p) => p.dataset.page === state.moduleId)?.classList.add('app-main__page--active'); // review ① 防御：无对应页则跳过
+  // —— 初始渲染：懒渲染（ui/startup-opt）—— 启动只渲染激活页（概览），
+  //   其余应用页首激活时经 renderPages 渲染（原全页预渲染在冷启动把 7 页 render 全跑一遍）；
+  //   设置页（第 8 区）已随模板渲染，此处跳过。renderPages 负责 active 类 + render + mount。 ——
+  renderPages(); // 懒渲染：仅激活页渲染
   renderRight();
   applyRightOpen();
   renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
@@ -926,6 +923,16 @@ export function mountAppMode(root) {
   };
   syncCloseBehavior(getConfig());
   subscribe((cfg) => { syncCloseBehavior(cfg); });
+
+  // 主窗 hidden-until-ready（ui/startup-opt）：首帧绘制后通知 Rust 恢复几何并显示。
+  // 主窗 tauri.conf.json 设 visible:false，此处为唯一显示信号 —— 消除白屏与位置跳变；
+  // Rust 侧另有 10s 兜底（前端异常时也恢复几何并显示，防隐形窗口）。浏览器（无 __TAURI__）no-op。
+  if (typeof window.__TAURI__ !== 'undefined') {
+    signalWhenPainted(
+      (cb) => requestAnimationFrame(cb),
+      () => window.__TAURI__.core.invoke('main_window_ready').catch(() => {}),
+    );
+  }
 }
 
 // —— 概览页：欢迎卡 + 7 快捷入口卡（点击 = 展开右窗 + 切到该应用）+ 主题状态卡 ——

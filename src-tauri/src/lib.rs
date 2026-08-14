@@ -11,6 +11,30 @@ fn set_close_behavior(state: tauri::State<'_, CloseBehaviorState>, behavior: Str
     *state.close_behavior.lock().unwrap() = behavior;
 }
 
+// —— 主窗启动时序（ui/startup-opt）：hidden-until-ready ——
+// 主窗 tauri.conf.json 设 visible:false；前端 mountAppMode 首帧绘制后 invoke main_window_ready
+// → 隐藏态恢复上次几何（尺寸/位置/最大化）→ show。窗口首次可见帧即「保存位置 + 已渲染内容」，
+// 消除「先按默认几何显示、加载到某阶段才跳保存位置」与白屏。setup 内另起 10s 兜底（前端异常时
+// 仍恢复几何并显示，防隐形窗口）。Tauri 特有路径：仅 mock 不能证明窗口创建/权限/几何生效，
+// 须桌面真机目检 [win-state] 面诊日志。
+
+#[tauri::command]
+fn main_window_ready(app: tauri::AppHandle) {
+    restore_and_show(&app, "内容就绪");
+}
+
+/// 恢复主窗几何（隐藏态执行，无可见跳变）并显示 + 聚焦。
+fn restore_and_show(app: &tauri::AppHandle, cause: &str) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Err(e) = app.state::<window_state::WindowStateStore>().restore(&win) {
+            log::warn!("[win-state] 恢复主窗口几何失败: {e}");
+        }
+        let _ = win.show();
+        let _ = win.set_focus();
+        log::info!("[win-state] 主窗口已显示（{cause}）");
+    }
+}
+
 // tokenTool 后端：账户余额监测（适配器/调度器/DPAPI 配置存储）
 mod adapters;
 mod commands;
@@ -32,15 +56,25 @@ pub fn run() {
         .manage(pwm_state::PwmState::default())
         .manage(window_state::WindowStateStore::new())
         .setup(|app| {
-            // 恢复主窗口上次几何（尺寸/位置/最大化）
-            if let Some(win) = app.get_webview_window("main") {
-                if let Err(e) = app.state::<window_state::WindowStateStore>().restore(&win) {
-                    log::warn!("恢复主窗口几何失败: {e}");
-                }
-            }
             // 系统托盘（右下角）：closeBehavior=background 隐藏主窗后仍可唤回 / 退出
             if let Err(e) = setup_tray(app) {
                 log::error!("创建系统托盘失败: {e}");
+            }
+            // 主窗 hidden-until-ready 兜底（ui/startup-opt）：主窗 visible:false，前端首帧
+            // 绘制后 invoke main_window_ready 恢复几何并显示；若前端异常未就绪（JS 错误 /
+            // dev server 未起），10s 后仍恢复几何并显示，防「隐形窗口」这一更糟的失败模式。
+            {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                    let already_shown = handle
+                        .get_webview_window("main")
+                        .map(|w| w.is_visible().unwrap_or(true))
+                        .unwrap_or(true);
+                    if !already_shown {
+                        restore_and_show(&handle, "10s 兜底");
+                    }
+                });
             }
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -60,6 +94,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_close_behavior,
+            main_window_ready,
             commands::get_config,
             commands::save_config,
             commands::refresh_all,
