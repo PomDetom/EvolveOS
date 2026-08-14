@@ -329,3 +329,39 @@ test('材质：默认实底 → 点击材质按钮切换 data-strip-material（s
   await page.waitForTimeout(SETTLE_MS);
   expect(await page.evaluate(() => document.documentElement.dataset.stripMaterial)).toBe('solid');
 });
+
+// 回归（用户 bug）：余额变化触发重渲染 + fit，但字体异步加载 / 刷新时间原地变宽（「刚刚」→「1分钟前」）
+// 会使内容宽度漂移，窗口尺寸是上次 fit 快照 → strip 右缘溢出窗口、圆角被裁成直角。
+// 修复：挂载后 document.fonts.ready 重贴 + 1s 漂移检测定时器重贴 → 窗口宽度应 ≥ strip 实际宽度。
+test('strip 窗口：余额变宽后窗口贴合 ≥ strip 宽度（防右缘裁切）', async ({ page }) => {
+  await page.addInitScript(() => {
+    const sizes = [];
+    window.__TAURI__ = {
+      window: {
+        LogicalSize: class { constructor(w, h) { this.width = w; this.height = h; } },
+        getCurrentWindow: () => ({
+          setSize: (s) => { sizes.push([s.width, s.height]); return Promise.resolve(); },
+          setPosition: () => Promise.resolve(), onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+        }),
+      },
+      core: { invoke: async (cmd) => {
+        if (cmd === 'get_config') return { accounts: [{ id: 'a1', name: 'DeepSeek', kind: 'deepseek', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, refreshIntervalSecs: 300, warnThreshold: 10 }] };
+        if (cmd === 'get_balances') return [{ accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) }];
+        return null;
+      } },
+      event: { listen: async (ev, cb) => { window.__stripListen__ = { ev, cb }; return () => {}; } },
+    };
+    window.__stripSizes__ = sizes;
+  });
+  await page.goto(STRIP_URL);
+  await page.waitForTimeout(400);
+  // 余额变宽（88.50 → 12345.67）→ balances-updated → 重渲染 + fit
+  await page.evaluate(() => window.__stripListen__.cb({ payload: [{ accountId: 'a1', balance: 12345.67, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) }] }));
+  // 等字体加载 + 1s 漂移检测定时器重贴
+  await page.waitForTimeout(2000);
+  const box2 = await page.locator('.c-strip').boundingBox();
+  const sizes = await page.evaluate(() => window.__stripSizes__);
+  const lastSize = sizes[sizes.length - 1];
+  expect(lastSize).toBeTruthy();
+  expect(lastSize[0]).toBeGreaterThanOrEqual(Math.ceil(box2.width)); // 窗口宽度应 ≥ strip 宽度
+});

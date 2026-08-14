@@ -154,8 +154,11 @@ export function mountStripToken(content, { onData = () => {} } = {}) {
     balances = e.payload ?? [];
     if (config) render(); // config 未加载完时不刷新占位
   }).catch(() => {});
-  // 实时自动更新：倒计时每秒 + 刷新相对时间 30s —— 原地更新 span 文本，不整窗重渲染/不重贴窗口
-  // （窗口尺寸不随每秒文本微变重贴，避免抖动）；content 脱离 DOM 后（窗口关闭）不再更新。
+  // 实时自动更新：倒计时每秒 + 刷新相对时间 30s —— 原地更新 span 文本，不整窗重渲染；
+  // content 脱离 DOM 后（窗口关闭）不再更新。
+  // 防右缘裁切：字体异步加载 / 刷新时间原地变宽（「刚刚」→「1分钟前」）会使内容宽度漂移，
+  // 窗口尺寸是上次 fit 的快照 —— 漂移 >1px 时重贴（fit），保证窗口始终 ≥ 内容宽度（圆角不被裁方）。
+  let lastFitWidth = content.parentElement?.getBoundingClientRect().width ?? 0;
   const updateDynamic = () => {
     if (!content.isConnected) return;
     content.querySelectorAll('[data-resets-at]').forEach((el) => {
@@ -166,6 +169,11 @@ export function mountStripToken(content, { onData = () => {} } = {}) {
       const next = ` · ${formatRelative(Number(el.dataset.lastRefresh))}`;
       if (el.textContent !== next) el.textContent = next;
     });
+    const stripEl = content.parentElement;
+    if (stripEl) {
+      const w = stripEl.getBoundingClientRect().width;
+      if (Math.abs(w - lastFitWidth) > 1) { lastFitWidth = w; onData(); }
+    }
   };
   const countdownTimer = window.setInterval(updateDynamic, 1000); // 倒计时每秒
   const refreshTimer = window.setInterval(updateDynamic, 30000);  // 刷新时间 30s
@@ -236,6 +244,8 @@ export function mountStripMode() {
       }).catch(() => {});
     };
     fit(); // 首次显示尺寸由挂载时 fit() 确定，桌面目检通过 [strip] fit 诊断 log 确认
+    // 字体异步加载（普惠体 ~5MB）会让文字在 fit 后变宽 → 重贴一次，防右缘圆角被窗口裁方
+    document.fonts?.ready?.then(() => fit()).catch(() => {});
     // 位置持久化（去抖 200ms）
     let saveTimer = null;
     win.onMoved?.(() => {
