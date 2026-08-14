@@ -69,31 +69,28 @@ html[data-strip-material="none"] .c-strip {
 /* 旋转中：内容淡出 + 轻微缩放（只动 transform/opacity），翻转到新形态后淡入 */
 .c-strip--rotating .c-strip__content { opacity: 0; transform: scale(0.95); }
 
-/* —— hover 浮现控制条（旋转/拖动/关闭）——
-   常态 opacity:0 + pointer-events:none（无边框内容优先）；hover 浮现半透明细边框 + 控制条。 */
+/* —— hover 浮出控制块（旋转/拖动/关闭）——
+   控制块 idle display:none（不占布局空间 → 悬浮条=内容高度，最薄）；hover 浮出
+   display:flex/grid（悬浮条/窗口容纳控制块）。display 切换无淡入，过渡只留 border-color。 */
 .c-strip__ctrl {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 2px;
   padding: 2px;
-  opacity: 0;
-  pointer-events: none;
   border: 1px solid transparent;
-  transition: opacity var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--ease-out),
-    border-color var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out);
 }
 .c-strip:hover .c-strip__ctrl {
-  opacity: 1;
-  pointer-events: auto;
+  display: flex;
   border-color: var(--glass-border);
 }
-/* 控制条方向随形态对调：横排时 ctrl 为 2×2 按钮方阵（4 按钮一行两个），竖排时 ctrl 为竖排按钮列（不撑宽竖条） */
+/* 控制块方向随形态对调：横排时 ctrl 为 2×2 按钮方阵（4 按钮一行两个），竖排时 ctrl 为竖排按钮列（不撑宽竖条）。
+   display 走通用 hover flex；横排 hover 覆盖为 grid（0,3,0 同特异度，置于 hover flex 规则后生效）。 */
 .c-strip--horizontal .c-strip__ctrl {
-  display: grid;
   grid-template-columns: repeat(2, 26px);
   flex-direction: unset;
 }
+.c-strip--horizontal:hover .c-strip__ctrl { display: grid; }
 .c-strip--vertical .c-strip__ctrl { flex-direction: column; }
 
 .c-strip__ctrl button {

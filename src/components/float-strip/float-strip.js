@@ -175,6 +175,11 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windo
     if (onClose) onClose(strip);
     else strip.remove();
   });
+  // hover 控制块浮出 → 窗口重贴合（idle 薄条 ↔ hover 容纳控制块）
+  if (windowMode) {
+    strip.addEventListener('mouseenter', () => requestAnimationFrame(() => onResize()));
+    strip.addEventListener('mouseleave', () => requestAnimationFrame(() => onResize()));
+  }
 
   return {
     setOrientation: (o) => { if ((o === 'vertical' || o === 'horizontal') && o !== orientation) toggleOrientation(); },

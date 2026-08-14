@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 // FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
 // 入口 `?mode=strip`（body 级独立渲染）；app 壳演示经 `?mode=app`（右下 FloatBall → 展开）。
 // 动画时长：旋转/浮现 --dur-base 200ms、磁吸 --dur-slow 300ms，点击后 waitForTimeout 覆盖。
-// 红线：旋转/磁吸/浮现只动 transform/opacity —— 断言走 data-orientation 类翻转 +
-// flex-direction（transform 计算值恒为 matrix，见 src/CLAUDE.md 常见坑）。
+// 红线：旋转/磁吸只动 transform/opacity，浮现为 display 切换（idle 隐藏/hover 浮出）—— 断言走
+// data-orientation 类翻转 + flex-direction（transform 计算值恒为 matrix，见 src/CLAUDE.md 常见坑）。
 
 const STRIP_URL = '/?mode=strip';
 const SETTLE_MS = 400; // 覆盖 300ms 磁吸 + 200ms 浮现/旋转相位
@@ -158,10 +158,13 @@ test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类�
 test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效（transform 定位）', async ({ page }) => {
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
-  const box = await strip.boundingBox();
-  // 从内容区左侧（可拖区域）拖到视口左边缘
-  const startX = box.x + 20;
-  const startY = box.y + box.height / 2;
+  // 控制块 hover 浮出会改变 strip 尺寸（idle 薄条 ↔ hover 容纳控制块）：先 hover 稳定尺寸，
+  // 再从内容区（可拖区域，跳过控制块）取实际起点 —— idle 几何取点会落在浮出的控制块上（被跳拖）
+  await strip.hover();
+  await page.waitForTimeout(SETTLE_MS);
+  const contentBox = await strip.locator('.c-strip__content').boundingBox();
+  const startX = contentBox.x + 20;
+  const startY = contentBox.y + contentBox.height / 2;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(12, startY, { steps: 10 });
@@ -172,21 +175,26 @@ test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效
   expect(Math.abs(after.x)).toBeLessThanOrEqual(2); // 贴左边缘
 });
 
-test('无边框 hover 浮现：默认无边框 → hover 出现控制条/边框', async ({ page }) => {
+test('无边框 hover 浮出：默认无边框 + 控制块隐藏 → hover 出现控制块/边框', async ({ page }) => {
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
   const ctrl = strip.locator('.c-strip__ctrl');
-  // Playwright toBeVisible 对 opacity:0 仍判可见，改用计算样式断言
-  const defaultOpacity = await ctrl.evaluate((el) => getComputedStyle(el).opacity);
-  expect(Number(defaultOpacity)).toBe(0);
+  // idle 控制块 display:none（不占布局空间 → 悬浮条=内容高度）；hover display 浮出
+  const defaultDisplay = await ctrl.evaluate((el) => getComputedStyle(el).display);
+  expect(defaultDisplay).toBe('none');
   const defaultBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
   expect(defaultBorder).toBe('rgba(0, 0, 0, 0)'); // transparent 常态零边框
+  const idleBox = await strip.boundingBox();
   await strip.hover();
   await page.waitForTimeout(SETTLE_MS);
-  const hoverOpacity = await ctrl.evaluate((el) => getComputedStyle(el).opacity);
-  expect(Number(hoverOpacity)).toBe(1);
+  // 横排 hover 控制块为 2×2 grid 方阵（.c-strip--horizontal:hover 同特异度覆盖通用 hover flex）
+  const hoverDisplay = await ctrl.evaluate((el) => getComputedStyle(el).display);
+  expect(hoverDisplay).toBe('grid');
   const hoverBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
-  expect(hoverBorder).not.toBe('rgba(0, 0, 0, 0)'); // hover 浮现半透明细边框
+  expect(hoverBorder).not.toBe('rgba(0, 0, 0, 0)'); // hover 浮出半透明细边框
+  // hover 容纳控制块 → 悬浮条变高（idle 薄条 = 内容高度）
+  const hoverBox = await strip.boundingBox();
+  expect(hoverBox.height).toBeGreaterThan(idleBox.height);
 });
 
 test('双击内容区旋转（第二通道）', async ({ page }) => {
@@ -282,7 +290,8 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
     window.__jumpCalls__ = calls;
   });
   await page.goto('/?mode=strip');
-  await expect(page.locator('.c-strip__jump')).toBeVisible();
+  // idle 控制块 display:none：跳转按钮在 DOM 但不可见，hover 后才可点（故此处断言 count 而非 visible）
+  await expect(page.locator('.c-strip__jump')).toHaveCount(1);
   await page.locator('.c-strip').hover();
   await page.waitForTimeout(300);
   await page.locator('.c-strip__jump').click();
