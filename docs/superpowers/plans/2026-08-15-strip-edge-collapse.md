@@ -29,7 +29,7 @@
 - Test: `tests/unit/strip-edge.test.js`
 
 **Interfaces:**
-- Produces: `DOCK_TOLERANCE=6`、`SLIVER=20`、`edgeDistances(rect, monitor)`、`detectOverflow(rect, monitor)`、`primaryOverflow(rect, monitor)`、`computeCorrectionTarget(rect, monitor)`、`resolveDock(rect, monitor, tolerance?)`、`computeCollapseTarget(pos, size, monitor, edge, sliver?)`、`gripDirection(edge)`
+- Produces: `DOCK_TOLERANCE=0`、`SLIVER=20`、`edgeDistances(rect, monitor)`、`detectOverflow(rect, monitor)`、`primaryOverflow(rect, monitor)`、`computeCorrectionTarget(rect, monitor)`、`resolveDock(rect, monitor, tolerance?)`、`computeCollapseTarget(pos, size, monitor, edge, sliver?)`、`gripDirection(edge)`
 - rect/monitor 形状：`{ x, y, width, height }`（物理像素）；edge：`'top'|'bottom'|'left'|'right'`
 
 - [ ] **Step 1: Write the failing test**
@@ -71,10 +71,12 @@ describe('strip-edge 贴边几何（物理像素口径）', () => {
       .toEqual({ x: 500, y: 300 });
   });
 
-  it('resolveDock：贴靠边（≤6px 且完整可见）/ 溢出 / 居中', () => {
+  it('resolveDock：贴靠边（精确贴齐或溢出校正）/ 溢出 / 居中', () => {
     expect(resolveDock({ x: 100, y: 660, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'bottom', overflow: [] });
     expect(resolveDock({ x: 4, y: 100, width: 300, height: 60 }, MON))
+      .toEqual({ edge: null, overflow: [] });
+    expect(resolveDock({ x: 0, y: 100, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'left', overflow: [] });
     expect(resolveDock({ x: -100, y: 100, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'left', overflow: ['left'] });
@@ -97,8 +99,8 @@ describe('strip-edge 贴边几何（物理像素口径）', () => {
     expect(gripDirection('right')).toBe('left');
   });
 
-  it('常量：DOCK_TOLERANCE=6、SLIVER=20', () => {
-    expect(DOCK_TOLERANCE).toBe(6);
+  it('常量：DOCK_TOLERANCE=0、SLIVER=20', () => {
+    expect(DOCK_TOLERANCE).toBe(0);
     expect(SLIVER).toBe(20);
   });
 });
@@ -116,7 +118,7 @@ Create `src/app/strip-edge.js`:
 ```js
 // 悬浮窗贴边收起几何（ui/strip-edge-collapse）：纯函数，可单测。
 // 坐标口径：窗口 rect 与 monitor bounds 均为物理像素（outerPosition/outerSize 与 currentMonitor 一致）。
-export const DOCK_TOLERANCE = 6; // 贴靠容差（px）：边与 monitor 边 ≤ 此值且完整可见 = 贴边
+export const DOCK_TOLERANCE = 0; // 贴边判定阈值：0 = 仅精确贴齐（距离 0）；溢出经 computeCorrectionTarget 校正后同样贴齐；不做 6px 磁吸容差（用户口径）
 export const SLIVER = 20;        // 收起后屏幕内可见窄条宽度（px）
 
 export function edgeDistances(rect, monitor) {

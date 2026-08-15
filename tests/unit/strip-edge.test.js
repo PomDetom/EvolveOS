@@ -32,10 +32,12 @@ describe('strip-edge 贴边几何（物理像素口径）', () => {
       .toEqual({ x: 500, y: 300 });
   });
 
-  it('resolveDock：贴靠边（≤6px 且完整可见）/ 溢出 / 居中', () => {
+  it('resolveDock：贴靠边（精确贴齐或溢出校正）/ 溢出 / 居中', () => {
     expect(resolveDock({ x: 100, y: 660, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'bottom', overflow: [] });
     expect(resolveDock({ x: 4, y: 100, width: 300, height: 60 }, MON))
+      .toEqual({ edge: null, overflow: [] });
+    expect(resolveDock({ x: 0, y: 100, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'left', overflow: [] });
     expect(resolveDock({ x: -100, y: 100, width: 300, height: 60 }, MON))
       .toEqual({ edge: 'left', overflow: ['left'] });
@@ -58,8 +60,8 @@ describe('strip-edge 贴边几何（物理像素口径）', () => {
     expect(gripDirection('right')).toBe('left');
   });
 
-  it('常量：DOCK_TOLERANCE=6、SLIVER=20', () => {
-    expect(DOCK_TOLERANCE).toBe(6);
+  it('常量：DOCK_TOLERANCE=0、SLIVER=20', () => {
+    expect(DOCK_TOLERANCE).toBe(0);
     expect(SLIVER).toBe(20);
   });
 });
