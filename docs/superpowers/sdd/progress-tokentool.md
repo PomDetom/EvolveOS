@@ -156,3 +156,10 @@
 - Important 2: plan/设计规格文档未提交到分支（在 main 66b9cfc/59c9152/57a2578），账本引用需显式说明（不重复提交以免合并冲突）。
 - Minor 清扫（修复波含）：commands.rs 未用 `Manager` 导入、models.rs `AccountKind::label()` 死代码（Rust 警告清扫）；`unlisten` 赋值竞态（trivial）。
 - Minor（deferred，账本已有 + 新增）：编辑对话框缺 Tab 焦点圈定（a11y 低影响）；`config-updated`/`balance-updated`(单数) 事件发射但前端未监听（无害）；`test_one` spawn 失败兜底 `last_updated:0` 显示 1970 日期（罕见路径）；Cargo.toml `tokio full`/`reqwest json` 特性可裁剪（编译时间）；ledger Task 9 块待填（修复波后控制器补）。
+
+## 悬浮条优化轮（2026-08-15，ui/strip-ui-m9，用户 2 项）
+
+- **Bug（唤回最小化主窗）**：跳转余量页在 UI 最小化后只后台跳页、不唤出主窗。根因双因：① `capabilities/default.json` 缺 `core:window:allow-unminimize`，`main.unminimize()` 被静默拒绝（JS `.catch` 吞错）；② unminimize/show/setFocus 三个 promise 未 await，Windows 下对最小化窗 setFocus 唤不回。修复：补 `allow-unminimize` + `allow-is-minimized` 权限；跳转处理器加 `isMinimized` 守卫（非最小化跳过 unminimize，防 SW_RESTORE 把最大化主窗还原）+ 顺序 await。e2e 新断言：isMinimized 先于 unminimize；新增「非最小化跳过 unminimize」用例锁防回归。
+- **优化（实底阴影落窗）**：实底材质 box-shadow 落在透明窗口边界外被裁（窗口按 strip border-box 贴合、body margin 0）→ 观感平底。修复：themes.css 新增双层浮起令牌 `--shadow-float`（接触影 + 环境影，亮/暗两档，复用 `--shadow-intensity`）；`.strip-root--window` 加 `--strip-shadow-room: 32px`（padding + `width:max-content` 单源决定窗口尺寸）；`fit()` 改量 root（含留白）→ 阴影落在窗口内可见。e2e 新用例：贴合尺寸含 2×room + 计算样式为双层阴影。视觉基线零漂移（`.c-strip` 不在基线截图内）。
+- 验证：单测 23/23（含 capabilities 补权限断言）；floatstrip e2e 14/14；app-shell 冒烟 43/43；`npm run build` 通过。
+- 待桌面真机验证：真实 unminimize 唤起路径（mock 只验 JS 调用形态）。

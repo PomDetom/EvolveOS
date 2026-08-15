@@ -282,6 +282,7 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
       }),
       getAllWindows: () => Promise.resolve([{
         label: 'main',
+        isMinimized: () => { calls.push('main.isMinimized'); return Promise.resolve(true); },
         unminimize: () => { calls.push('main.unminimize'); return Promise.resolve(); },
         show: () => { calls.push('main.show'); return Promise.resolve(); },
         setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
@@ -296,7 +297,9 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
   await page.waitForTimeout(300);
   await page.locator('.c-strip__jump').click();
   const calls = await page.evaluate(() => window.__jumpCalls__);
-  // 解最小化先于 show：最小化态主窗唤起（unminimize → show → setFocus）
+  // 解最小化先于 show：最小化态主窗唤起（isMinimized 守卫 → unminimize → show → setFocus）
+  expect(calls.indexOf('main.isMinimized')).toBeGreaterThan(-1);
+  expect(calls.indexOf('main.isMinimized')).toBeLessThan(calls.indexOf('main.unminimize'));
   expect(calls.indexOf('main.unminimize')).toBeGreaterThan(-1);
   expect(calls.indexOf('main.unminimize')).toBeLessThan(calls.indexOf('main.show'));
   expect(calls).toContain('main.show');
@@ -305,6 +308,38 @@ test('strip 窗口：跳转按钮 → main show+setFocus + emit jump-to-tokentoo
   // 双通道：show 前先写 ui-jump-intent（主窗隐藏→visibilitychange 唤起时消费；事件通道已覆盖可见态）
   const intent = await page.evaluate(() => localStorage.getItem('ui-jump-intent'));
   expect(intent).toBe('token-tool');
+});
+
+test('strip 窗口：主窗非最小化 → 跳过 unminimize（防 SW_RESTORE 还原最大化主窗）', async ({ page }) => {
+  await page.addInitScript(() => {
+    const calls = [];
+    window.__TAURI__ = { window: {
+      LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
+      getCurrentWindow: () => ({
+        setSize: () => Promise.resolve(), setPosition: () => Promise.resolve(),
+        onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+      }),
+      getAllWindows: () => Promise.resolve([{
+        label: 'main',
+        isMinimized: () => { calls.push('main.isMinimized'); return Promise.resolve(false); },
+        unminimize: () => { calls.push('main.unminimize'); return Promise.resolve(); },
+        show: () => { calls.push('main.show'); return Promise.resolve(); },
+        setFocus: () => { calls.push('main.setFocus'); return Promise.resolve(); },
+      }]),
+    }, event: { emit: (name) => { calls.push(['emit', name]); return Promise.resolve(); } } };
+    window.__jumpCalls__ = calls;
+  });
+  await page.goto('/?mode=strip');
+  await page.locator('.c-strip').hover();
+  await page.waitForTimeout(300);
+  await page.locator('.c-strip__jump').click();
+  const calls = await page.evaluate(() => window.__jumpCalls__);
+  // 非最小化（含最大化）：跳过 unminimize，仅 show + setFocus 唤回（不还原成普通窗）
+  expect(calls).toContain('main.isMinimized');
+  expect(calls).not.toContain('main.unminimize');
+  expect(calls).toContain('main.show');
+  expect(calls).toContain('main.setFocus');
+  expect(calls).toContainEqual(['emit', 'jump-to-tokentool']);
 });
 
 test('材质：默认实底 → 点击材质按钮切换 data-strip-material（solid ↔ none）', async ({ page }) => {
@@ -364,4 +399,45 @@ test('strip 窗口：余额变宽后窗口贴合 ≥ strip 宽度（防右缘裁
   const lastSize = sizes[sizes.length - 1];
   expect(lastSize).toBeTruthy();
   expect(lastSize[0]).toBeGreaterThanOrEqual(Math.ceil(box2.width)); // 窗口宽度应 ≥ strip 宽度
+});
+
+// 回归（用户优化）：实底材质 box-shadow 原本落在窗口边界外被裁（窗口按 strip border-box 贴合、body margin 0），
+// 观感为平底。修复：.strip-root--window 加 --strip-shadow-room 阴影留白（padding + width:max-content），
+// fit() 改量 root（含留白）→ 窗口比 strip 大 2×room，阴影落在窗口内可见。
+test('strip 窗口：贴合尺寸含阴影留白 + 实底为双层浮起阴影（阴影落在窗口内可见）', async ({ page }) => {
+  await page.addInitScript(() => {
+    const sizes = [];
+    window.__TAURI__ = {
+      window: {
+        LogicalSize: class { constructor(w, h) { this.width = w; this.height = h; } },
+        getCurrentWindow: () => ({
+          setSize: (s) => { sizes.push([s.width, s.height]); return Promise.resolve(); },
+          setPosition: () => Promise.resolve(), onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
+        }),
+      },
+      core: { invoke: async () => null },
+      event: { listen: async () => () => {} },
+    };
+    window.__stripSizes__ = sizes;
+  });
+  await page.goto(STRIP_URL);
+  await page.waitForTimeout(400);
+  const strip = page.locator('.c-strip');
+  const box = await strip.boundingBox();
+  // 阴影留白生效：.strip-root--window 的 padding（单一来源 --strip-shadow-room）> 0
+  const room = await page.evaluate(() => {
+    const r = document.querySelector('.strip-root');
+    return parseFloat(getComputedStyle(r).paddingLeft) || 0;
+  });
+  expect(room).toBeGreaterThan(0);
+  // fit 量 root（含留白）：窗口 ≥ strip 尺寸 + 2×room
+  const sizes = await page.evaluate(() => window.__stripSizes__);
+  const lastSize = sizes[sizes.length - 1];
+  expect(lastSize).toBeTruthy();
+  expect(lastSize[0]).toBeGreaterThanOrEqual(Math.ceil(box.width) + 2 * room - 1);
+  expect(lastSize[1]).toBeGreaterThanOrEqual(Math.ceil(box.height) + 2 * room - 1);
+  // 实底材质 box-shadow 为双层浮起阴影（--shadow-float，非 none）
+  const shadow = await strip.evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(shadow).not.toBe('none');
+  expect(shadow).toContain('8px 24px');
 });

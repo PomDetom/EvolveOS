@@ -196,13 +196,19 @@ export function mountStripMode() {
   const jumpBtn = root.querySelector('.c-strip__jump');
   jumpBtn?.addEventListener('click', () => {
     window.__TAURI__.window.getAllWindows()
-      .then((wins) => {
+      .then(async (wins) => {
         const main = wins.find((w) => w.label === 'main');
         if (main) {
           localStorage.setItem('ui-jump-intent', 'token-tool');
-          // 解最小化：最小化态主窗先 unminimize 再 show（?.() 兼容 mock；catch?. 防 mock 缺方法时抛错）
-          main.unminimize?.().catch?.(() => {});
-          main.show().catch(() => {}); main.setFocus().catch(() => {});
+          // 解最小化：最小化态主窗先 unminimize 再 show 再 setFocus —— 顺序 await 防竞态
+          // （Windows 下对最小化窗 setFocus 唤不回，必须先 unminimize 完成）。isMinimized 守卫：
+          // 非最小化（含最大化）跳过 unminimize，防 SW_RESTORE 把最大化主窗还原成普通窗。
+          // unminimize/isMinimized 须在 capabilities/default.json 授权（core:window:allow-*），
+          // 缺失时 JS .catch 吞错 = 只后台跳页、不唤出（本 bug 根因）。?.() 兼容 mock 缺方法。
+          const isMin = await main.isMinimized?.().catch?.(() => false);
+          if (isMin) await main.unminimize?.().catch?.(() => {});
+          await main.show().catch(() => {});
+          await main.setFocus().catch(() => {});
         }
         window.__TAURI__.event.emit('jump-to-tokentool').catch(() => {});
       })
@@ -230,9 +236,11 @@ export function mountStripMode() {
         if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
-    // 尺寸贴合内容（初始 + 数据到达 + 旋转）
+    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。量 root 而非 strip：`.strip-root--window` 的
+    // padding（--strip-shadow-room，CSS 单一来源）为实底 box-shadow 留落点 —— 透明窗按 strip
+    // border-box 贴合会把阴影裁在窗口外（观感平底），含留白后阴影落在窗口内可见。
     fit = () => {
-      const r = strip.getBoundingClientRect();
+      const r = root.getBoundingClientRect();
       const { LogicalSize } = window.__TAURI__.window;
       const size = computeFitSize(r);
       win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});
