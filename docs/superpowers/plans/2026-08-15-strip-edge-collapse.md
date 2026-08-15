@@ -14,7 +14,7 @@
 
 - 零运行时依赖、零框架（AGENTS.md）；禁止引入 npm 依赖。
 - 坐标口径：窗口 `outerPosition`/`outerSize` 与 `screen.currentMonitor()` 均为物理像素。
-- 权限：`core:screen:allow-current-monitor` + `core:window:allow-outer-size` 加入 `src-tauri/capabilities/default.json`（缺失会被 `.catch` 吞错 = 静默失效）。
+- 权限：`core:window:allow-current-monitor` + `core:window:allow-outer-size` 加入 `src-tauri/capabilities/default.json`（缺失会被 `.catch` 吞错 = 静默失效）。
 - 动画红线：位移走 `setPosition`（OS 层）；CSS 只动 `transform`/`opacity`，grip 旋转是静态类切换非动画；时长走 CSS 变量 `--strip-dur-collapse`，`data-motion="off"` / reduced-motion 时归零。
 - TDD：每任务 红→绿→提交；提交信息中文、前缀。
 - 测试仅 Web 环境；Tauri 真机行为（真实 setPosition 滑出屏 / monitor bounds / 屏外 hover）标注待 `npm run tauri:dev`。
@@ -202,7 +202,7 @@ git commit -m "feat: 悬浮窗贴边收起几何纯函数（边缘/溢出/收起
 
 **Interfaces:**
 - Consumes: 无
-- Produces: 权限 `core:screen:allow-current-monitor`、`core:window:allow-outer-size` 生效（Task 4 的 `screen.currentMonitor()` / `win.outerSize()` 不再被静默拒绝）
+- Produces: 权限 `core:window:allow-current-monitor`、`core:window:allow-outer-size` 生效（Task 4 的 `screen.currentMonitor()` / `win.outerSize()` 不再被静默拒绝）
 
 - [ ] **Step 1: Write the failing test**
 
@@ -218,7 +218,7 @@ In `tests/unit/window-capabilities.test.js`，第二个 `it('授权 strip 悬浮
       'core:window:allow-outer-size',
       'core:window:allow-set-size',
       'core:window:allow-set-focus',
-      'core:screen:allow-current-monitor',
+      'core:window:allow-current-monitor',
     ];
 ```
 
@@ -237,7 +237,7 @@ Expected: FAIL（两个权限缺失）
 ```
 以及
 ```json
-    "core:screen:allow-current-monitor",
+    "core:window:allow-current-monitor",
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -249,7 +249,7 @@ Expected: PASS
 
 ```bash
 git add src-tauri/capabilities/default.json tests/unit/window-capabilities.test.js
-git commit -m "feat: 悬浮窗贴边收起所需权限（core:screen:allow-current-monitor + core:window:allow-outer-size）"
+git commit -m "feat: 悬浮窗贴边收起所需权限（core:window:allow-current-monitor + core:window:allow-outer-size）"
 ```
 
 ---
@@ -527,7 +527,7 @@ Expected: FAIL（`__stripEdge__` 未定义 → evaluateDock 抛错 / 无收起�
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
-      const m = await window.__TAURI__.screen?.currentMonitor?.().catch?.(() => null);
+      const m = await win.currentMonitor?.().catch?.(() => null);
       return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
     };
     const getRect = async () => {

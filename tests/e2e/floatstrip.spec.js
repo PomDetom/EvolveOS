@@ -406,7 +406,8 @@ test('strip 窗口：余额变宽后窗口贴合 ≥ strip 宽度（防右缘裁
 });
 
 // —— 贴边收起（ui/strip-edge-collapse）：先决校正 / 空闲1s收起 / hover取消 / 弹回 / grip ——
-// mock：可原位改 pos 模拟拖后窗口位置；screen.currentMonitor 固定 1280×720@1；窗口 300×60。
+// mock：可原位改 pos 模拟拖后窗口位置；Monitor API 在 Window 类（win.currentMonitor，无独立 screen
+// 模块），固定 1280×720@1；窗口 300×60。
 // 挂载后光标默认(0,0)在 strip 上 → 各用例先 mouse.move 移开，再经 mock 的 __stripMoved__ 驱动
 // 真实 onMoved 路径（150ms 去抖 → evaluateDock）。无生产测试缝。
 async function mountEdgeMock(page, seedPos) {
@@ -424,11 +425,11 @@ async function mountEdgeMock(page, seedPos) {
           outerSize: () => Promise.resolve({ ...size }),
           setSize: () => Promise.resolve(),
           setFocus: () => Promise.resolve(),
+          currentMonitor: () => Promise.resolve({ position: { x: 0, y: 0 }, size: { width: 1280, height: 720 }, scaleFactor: 1 }),
           onMoved: (fn) => { window.__stripMoved__ = fn; return Promise.resolve(() => {}); },
           hide: () => Promise.resolve(),
         }),
       },
-      screen: { currentMonitor: () => Promise.resolve({ position: { x: 0, y: 0 }, size: { width: 1280, height: 720 }, scaleFactor: 1 }) },
       core: { invoke: async () => null },
       event: { listen: async () => () => {} },
     };
@@ -447,13 +448,13 @@ test('贴边收起：半出屏 → 先决校正拉回贴齐，贴边 1s 后缓�
     Object.assign(window.__mockPos__, { x: -100, y: 300 });
     window.__stripMoved__();
   });
-  await page.waitForTimeout(700); // 去抖 150ms + 校正 tween ~500ms
+  await page.waitForTimeout(1200); // 去抖 150ms + 校正 tween ~500ms（余量防冷启动 rAF 延迟）
   let c = await page.evaluate(() => window.__edgeCalls__);
   let last = c.filter((x) => x[0] === 'setPosition').pop();
-  expect(last[1].x).toBe(0);
+  expect(Math.abs(last[1].x)).toBe(0); // tween 中间帧可能 Math.round(-0.4) → -0，取绝对值
   expect(last[1].y).toBe(300);
   // 贴左 1s 空闲 → 向左滑出留 20px → x = 0+20-300 = -280
-  await page.waitForTimeout(1600);
+  await page.waitForTimeout(2500); // 校正完成(650) + 1s 计时 + 500ms 收起 tween ≈2150，余量防 rAF 延迟
   c = await page.evaluate(() => window.__edgeCalls__);
   last = c.filter((x) => x[0] === 'setPosition').pop();
   expect(last[1].x).toBe(-280);
@@ -470,17 +471,17 @@ test('贴边收起：hover 取消计时，移开后 1s 缓收起（标准自动�
     Object.assign(window.__mockPos__, { x: 490, y: 660 });
     window.__stripMoved__();
   });
-  await page.waitForTimeout(300); // 去抖 150ms → docked 计时已起
+  await page.waitForTimeout(400); // 去抖 150ms → docked 计时已起
   // hover 取消计时
   await page.locator('.c-strip').hover();
-  await page.waitForTimeout(1300); // 若未取消，此窗口应已收起（y→700）
+  await page.waitForTimeout(1600); // 若未取消，此窗口应已收起（y→700）
   let c = await page.evaluate(() => window.__edgeCalls__);
   let last = c.filter((x) => x[0] === 'setPosition').pop();
   // 未收起（hover 取消）：贴边评估本身不产 setPosition → last 可空（空即从未位移，等价停在 660）
   expect(last ? last[1].y : 660).toBe(660);
   // 移开 → 重新 1s 计时 → 收起
   await page.mouse.move(600, 200); // 明确远离 strip 的坐标（不依赖 (0,0) 恰好不命中 border-radius 裁角）
-  await page.waitForTimeout(1700);
+  await page.waitForTimeout(2500); // 移开后 1s 计时 + 500ms 收起 tween，余量防 rAF 延迟
   c = await page.evaluate(() => window.__edgeCalls__);
   last = c.filter((x) => x[0] === 'setPosition').pop();
   expect(last[1].y).toBe(700); // 贴底向下滑出留 20px
@@ -492,12 +493,12 @@ test('贴边收起：贴底 1s 自动收起 → hover 窄条弹回贴边完整�
     Object.assign(window.__mockPos__, { x: 490, y: 660 });
     window.__stripMoved__();
   });
-  await page.waitForTimeout(2100); // 去抖 + 1s 计时 + 500ms 收起 tween
+  await page.waitForTimeout(2600); // 去抖 + 1s 计时 + 500ms 收起 tween（余量防 rAF 延迟）
   await expect(page.locator('.c-strip')).toHaveClass(/c-strip--collapsed/);
   await expect(page.locator('.c-strip')).toHaveAttribute('data-dock-edge', 'bottom');
   // hover 窄条 → 弹回 dockPos（y=660）
   await page.locator('.c-strip').hover();
-  await page.waitForTimeout(700); // 弹回 tween
+  await page.waitForTimeout(1000); // 弹回 tween ~500ms
   await expect(page.locator('.c-strip')).not.toHaveClass(/c-strip--collapsed/);
   const c = await page.evaluate(() => window.__edgeCalls__);
   const last = c.filter((x) => x[0] === 'setPosition').pop();

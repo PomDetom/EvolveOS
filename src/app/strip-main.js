@@ -273,7 +273,9 @@ export function mountStripMode() {
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
-      const m = await window.__TAURI__.screen?.currentMonitor?.().catch?.(() => null);
+      // Monitor API 挂在 Window 类（win.currentMonitor()），无独立 screen 模块；权限
+      // core:window:allow-current-monitor。缺失/降级时 .catch 吞错 = 静默失效（mock 掩盖真机 bug）。
+      const m = await win.currentMonitor?.().catch?.(() => null);
       return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
     };
     const getRect = async () => {

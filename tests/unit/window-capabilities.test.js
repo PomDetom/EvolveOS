@@ -34,7 +34,7 @@ describe('Tauri 窗口能力（B4-1）', () => {
       'core:window:allow-outer-size',
       'core:window:allow-set-size',
       'core:window:allow-set-focus',
-      'core:screen:allow-current-monitor',
+      'core:window:allow-current-monitor',
     ];
     for (const p of required) expect(caps.permissions).toContain(p);
   });
