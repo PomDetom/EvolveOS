@@ -211,7 +211,7 @@ mountInput(pageEl.querySelector('.c-input'));
 - 做法：应用局部前缀类（如 `<prefix>__editor`）包住 `renderDialog` 输出的遮罩（`mask.className = '<prefix>__editor'`），再按上例覆盖 `.c-dialog` / `.c-dialog__body`。
 - 表单字段样式与既有应用对齐：字段容器 `gap: var(--space-2)`、字段间 `gap: var(--space-4)`、label `--font-size-xs` + `--font-weight-semibold`。
 - 复用 `renderDialog` 结构 + 自行接线（`openDialog` 只适合简单确认框，表单编辑器须自接线以取表单值——见 `token-tool.js` 先例）。
-- **非表单型轻量浮层（确认框 / 提示 / 简单 popover）保持默认亚克力即可，无需覆盖。**
+- **应用内确认对话框（`openDialog` 确认框，如删除/覆盖/导入）与编辑器一致实底**——半透明确认框叠在实底编辑器上观感割裂；`openDialog` 无 class 透传，notes 用 body 标记类（`body.notes__confirm`）在确认弹窗打开期间施加作用域实底（见 `notes.js` `notesConfirm` 先例）。非面板轻提示（toast 等）保持亚克力默认。
 
 ### 5.5 交互红线（违反即失败）
 
