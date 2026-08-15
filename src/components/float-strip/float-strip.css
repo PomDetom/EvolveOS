@@ -228,7 +228,10 @@ html[data-strip-material="none"] .c-strip {
 }
 .c-strip__grip svg { width: 12px; height: 12px; }
 /* 收起态：strip 转相对定位容器（锚定 grip），grip 浮出 */
-.c-strip--collapsed { position: relative; }
+/* fix1：提特异性到窗口模式作用域 —— 收起只发生在窗口模式；裸 .c-strip--collapsed (0,1,0)
+   会被既有 .strip-root--window .c-strip { position: static } (0,2,0) 覆盖，grip 绝对定位
+   会锚到视口而非 strip（竖排 width:max-content 下 left:50% 相对视口必错位）。 */
+.strip-root--window .c-strip--collapsed { position: relative; }
 .c-strip--collapsed .c-strip__grip { display: grid; }
 /* 按贴靠边把 grip 放到屏幕内可见边（窗口靠中心一侧），chevron 指向拉出方向（朝屏幕中心） */
 .c-strip--collapsed[data-dock-edge="bottom"] .c-strip__grip { top: 2px; left: 50%; transform: translateX(-50%); }
