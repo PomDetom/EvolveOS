@@ -163,3 +163,9 @@
 - **优化（实底阴影落窗）**：实底材质 box-shadow 落在透明窗口边界外被裁（窗口按 strip border-box 贴合、body margin 0）→ 观感平底。修复：themes.css 新增双层浮起令牌 `--shadow-float`（接触影 + 环境影，亮/暗两档，复用 `--shadow-intensity`）；`.strip-root--window` 加 `--strip-shadow-room: 32px`（padding + `width:max-content` 单源决定窗口尺寸）；`fit()` 改量 root（含留白）→ 阴影落在窗口内可见。e2e 新用例：贴合尺寸含 2×room + 计算样式为双层阴影。视觉基线零漂移（`.c-strip` 不在基线截图内）。
 - 验证：单测 23/23（含 capabilities 补权限断言）；floatstrip e2e 14/14；app-shell 冒烟 43/43；`npm run build` 通过。
 - 待桌面真机验证：真实 unminimize 唤起路径（mock 只验 JS 调用形态）。
+
+## 悬浮条优化轮 2（2026-08-15，ui/strip-ui-m10，用户 2 项反馈）
+
+- **优化撤回（阴影→淡灰边框）**：m9 的阴影方案（`--shadow-float` + 窗口留白）用户目检后否决——阴影在透明窗外被裁无效果，且留白增大窗口脚掌。最终方案：**去 box-shadow**（idle none，过渡列表同步移除），改**淡灰边框**——idle `1px var(--text-3)`、hover 提一级 `var(--text-2)`（复用文本色令牌做主题感知边框，同 `layout.css` 先例）。回退 m9 的全部阴影面：themes.css 删 `--shadow-float`（两档）、`.strip-root--window` 去留白块、`fit()` 改回量 strip。e2e 用例改写：删「阴影留白」用例，原「无边框 hover 浮出」改为「边框对比度 + hover 控制块浮出」（idle 边框非透明 + box-shadow none + hover 边框变化）。
+- **Bug（跳转只切子菜单不切主菜单）**：m9 修复唤出后，用户反馈「主菜单没跳转、只有子菜单跳了」。根因：跳转通道直接 `setModule('token-tool')`——setModule 只切内容/右窗，左窗导航轮选中态是 nav-wheel 自管，程序化调用不经过左轮 → 左窗停在原项。修复：抽 `jumpToTokenTool()` = `setModule('token-tool', true)`（强制落 usage 余量页，含已在该应用时重置 dirId）+ `goToModule('token-tool')`（左轮 scrollToIndex → onChange → onLeftSelect 联动主菜单选中，幂等），双通道（emit / visibilitychange）统一走该 helper。e2e 新用例：jump-to-tokentool 事件后左窗 `[data-id=token-tool]` active + home 失活 + 内容 `data-page=token-tool` + 右窗 usage 选中。
+- 验证：floatstrip e2e 13/13；app-shell 跳转用例 1/1；单测 23/23；`npm run build` 通过。视觉基线零漂移（`.c-strip` 不在基线截图内；`--shadow-float` 无其他消费方）。
