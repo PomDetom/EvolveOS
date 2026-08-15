@@ -7,6 +7,7 @@ import { renderFloatStrip, mountFloatStrip } from '../components/float-strip/flo
 import '../components/float-strip/float-strip.css';
 import { getConfig, saveConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
+import { computeCorrectionTarget, computeCollapseTarget, resolveDock } from './strip-edge.js';
 
 /** 悬浮窗窗口尺寸（纯函数，可单测）：CSS 像素 → {width,height}（ceil + 至少 1px） */
 export function computeFitSize(rect) {
@@ -187,6 +188,7 @@ export function mountStripMode() {
   root.innerHTML = renderFloatStrip({
     content: '<div class="c-strip-tk"><span class="c-strip-tk__muted">加载中…</span></div>',
     showJump: !!win, // 仅 Tauri 独立窗口渲染「跳转到 TokenTool 余量页」按钮
+    collapsible: !!win,
   });
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
@@ -225,9 +227,17 @@ export function mountStripMode() {
   if (win) {
     // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
     root.classList.add('strip-root--window');
-    document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底（base.css body 背景），避免整窗半透明遮罩
+    document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底
     const strip = root.querySelector('.c-strip');
     const STORAGE_KEY = 'ui-design-strip-pos';
+
+    // —— 贴边收起状态（ui/strip-edge-collapse）——
+    const edge = { mode: 'free', dockEdge: null, dockPos: null }; // free | docked | collapsed
+    let collapsed = false;   // 收起/收起动画期间：挂起 fit、跳过持久化、onMoved 不评估
+    let collapseTimer = null;
+    let settleTimer = null;
+    let collapseRaf = null;
+
     // 位置恢复
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -236,33 +246,153 @@ export function mountStripMode() {
         if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
-    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。量 strip（border-box）—— 实底无 box-shadow，
-    // 窗口=内容尺寸即可（ui/strip-ui-m9：阴影在透明窗外被裁无效果，去阴影留白）。
+
+    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。收起/收起动画期间挂起：
+    // 防 hover 贴合 / 倒计时宽度漂移把滑出窗口重定位。量 strip（border-box）。
     fit = () => {
+      if (collapsed) return;
       const r = strip.getBoundingClientRect();
       const { LogicalSize } = window.__TAURI__.window;
       const size = computeFitSize(r);
       win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});
-      // 诊断（B4 收尾）：确认窗口尺寸与内容一致 + DPI 缩放
       win.outerSize?.().then((os) => {
         win.scaleFactor?.().then((sf) => {
           console.log('[strip] fit', JSON.stringify(size), 'outer', JSON.stringify(os), 'scaleFactor', sf);
         }).catch(() => {});
       }).catch(() => {});
     };
-    fit(); // 首次显示尺寸由挂载时 fit() 确定，桌面目检通过 [strip] fit 诊断 log 确认
-    // 字体异步加载（普惠体 ~5MB）会让文字在 fit 后变宽 → 重贴一次，防右缘圆角被窗口裁方
-    document.fonts?.ready?.then(() => fit()).catch(() => {});
-    // 位置持久化（去抖 200ms）
-    let saveTimer = null;
+    fit(); // 首次显示尺寸由挂载时 fit() 确定
+    document.fonts?.ready?.then(() => { fit(); evaluateDock(); }).catch(() => {}); // 字体加载后重贴 + 初始贴边评估
+
+    // —— 贴边收起机制（规格 §3）——
+    const readMotionDur = () => {
+      const off = document.documentElement.dataset.motion === 'off'
+        || (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false);
+      if (off) return 0;
+      const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--strip-dur-collapse'));
+      return Number.isFinite(v) ? v : 500;
+    };
+    const getMonitor = async () => {
+      const m = await window.__TAURI__.screen?.currentMonitor?.().catch?.(() => null);
+      return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
+    };
+    const getRect = async () => {
+      // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
+      const p = await win.outerPosition?.().catch?.(() => null);
+      const s = await win.outerSize?.().catch?.(() => null);
+      return (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
+    };
+    const setEdgeUI = (mode) => {
+      strip.classList.toggle('c-strip--collapsed', mode === 'collapsed');
+      strip.dataset.dockEdge = edge.dockEdge ?? '';
+    };
+    const persistPosition = (p) => localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: p.x, y: p.y }));
+    const tweenTo = (to, dur, onDone = () => {}) => {
+      if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
+      win.outerPosition().then((p) => {
+        const from = { x: p.x, y: p.y };
+        if (dur <= 0) { win.setPosition(to).catch(() => {}); onDone(); return; }
+        const start = performance.now();
+        const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
+        const step = (now) => {
+          const k = ease(Math.min(1, (now - start) / dur));
+          win.setPosition({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) }).catch(() => {});
+          if (k < 1) collapseRaf = requestAnimationFrame(step);
+          else { collapseRaf = null; onDone(); }
+        };
+        collapseRaf = requestAnimationFrame(step);
+      }).catch(() => {});
+    };
+    const cancelCollapse = () => { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } };
+    const startCollapseTimer = () => {
+      cancelCollapse();
+      if (edge.mode !== 'docked' || strip.matches(':hover')) return; // 非贴边或光标在条上不计时
+      collapseTimer = setTimeout(collapseNow, 1000);
+    };
+    const collapseNow = async () => {
+      const monitor = await getMonitor();
+      const rect = await getRect();
+      if (!monitor || !rect || !edge.dockEdge) return;
+      const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
+      edge.mode = 'collapsed';
+      collapsed = true;
+      setEdgeUI('collapsed');
+      tweenTo(target, readMotionDur());
+    };
+    const popOut = () => {
+      cancelCollapse();
+      if (edge.mode !== 'collapsed' || !edge.dockPos) return;
+      collapsed = false;
+      setEdgeUI('docked');
+      tweenTo(edge.dockPos, readMotionDur(), () => {
+        edge.mode = 'docked';
+        if (strip.isConnected) startCollapseTimer();
+      });
+    };
+    const evaluateDock = async () => {
+      const monitor = await getMonitor();
+      const rect = await getRect();
+      if (!monitor || !rect) return false; // 无能力（旧 mock/降级）→ 调用方兜底持久化
+      const dock = resolveDock(rect, monitor);
+      if (dock.overflow.length) {
+        // 先决校正：溢出边拉回贴齐完整可见 → 贴边
+        const target = computeCorrectionTarget(rect, monitor);
+        edge.dockEdge = dock.edge;
+        edge.dockPos = target;
+        edge.mode = 'docked';
+        collapsed = false;
+        setEdgeUI('docked');
+        await tweenTo(target, readMotionDur());
+        persistPosition(target);
+        if (strip.isConnected) startCollapseTimer();
+      } else if (dock.edge) {
+        edge.dockEdge = dock.edge;
+        edge.dockPos = { x: rect.x, y: rect.y };
+        edge.mode = 'docked';
+        collapsed = false;
+        setEdgeUI('docked');
+        persistPosition({ x: rect.x, y: rect.y });
+        startCollapseTimer();
+      } else {
+        edge.mode = 'free';
+        edge.dockEdge = null;
+        collapsed = false;
+        setEdgeUI('free');
+        cancelCollapse();
+        persistPosition({ x: rect.x, y: rect.y });
+      }
+      return true;
+    };
+
+    // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估。
+    // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
+    // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
     win.onMoved?.(() => {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        win.outerPosition?.().then(({ x, y }) => {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
-        }).catch(() => {});
-      }, 200);
+      if (collapsed || collapseRaf) return;
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(async () => {
+        const handled = await evaluateDock();
+        if (!handled) {
+          win.outerPosition?.().then(({ x, y }) => {
+            if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+          }).catch(() => {});
+        }
+      }, 150);
     });
+    // hover 触发：贴边态取消计时（标准自动隐藏）；收起态弹回
+    strip.addEventListener('mouseenter', () => {
+      if (edge.mode === 'collapsed') popOut();
+      else cancelCollapse();
+    });
+    strip.addEventListener('mouseleave', () => { if (edge.mode === 'docked') startCollapseTimer(); });
+    // 拖拽退出收起：pointerdown 取消计时/中止弹出动画/清收起态，交给系统拖拽（onMoved settle 再评估）
+    strip.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.c-strip__ctrl')) return;
+      cancelCollapse();
+      if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
+      if (edge.mode === 'collapsed') { edge.mode = 'free'; collapsed = false; setEdgeUI('free'); }
+    });
+
     mountFloatStrip(root, { windowMode: true, onResize: fit, onClose: () => win.hide().catch(() => {}) });
   } else {
     mountFloatStrip(root, { onClose: () => root.remove() });
