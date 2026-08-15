@@ -1,0 +1,57 @@
+/* 牛马笔记局部样式（notes__*，令牌驱动） */
+.notes__toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.notes__toolbar-hint { color: var(--text-3); font-size: var(--font-size-sm); }
+.notes__toolbar-actions { display: flex; align-items: center; gap: var(--space-2); }
+.notes__month-nav { display: flex; align-items: center; gap: var(--space-2); }
+.notes__month-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  color: var(--text-2); border: 1px solid var(--glass-border); background: transparent;
+}
+.notes__month-btn:hover { background: var(--surface-hover); color: var(--text-1); }
+.notes__month-label { min-width: 96px; text-align: center; font-weight: var(--font-weight-medium); color: var(--text-1); }
+
+.notes__report-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__report-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; text-align: left;
+  padding: var(--space-3) var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border); color: var(--text-1);
+}
+.notes__report-row:hover { background: var(--surface-hover); }
+.notes__report-date { min-width: 110px; font-size: var(--font-size-sm); color: var(--text-2); }
+.notes__report-primary { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.notes__badge {
+  padding: 1px 8px; border-radius: var(--radius-full); font-size: var(--font-size-xs);
+  color: var(--text-2); background: var(--surface-solid); white-space: nowrap;
+}
+.notes__badge--trip { color: var(--info-600); background: var(--info-50); }
+
+/* 出勤着色 tag（报告行 + 日历图例共用基底） */
+.notes__tag--normal { color: var(--success-600); background: var(--success-50); }
+.notes__tag--overtime { color: var(--accent); background: var(--accent-50); }
+.notes__tag--rest { color: var(--neutral-600); background: var(--neutral-100); }
+.notes__tag--leave-am, .notes__tag--leave-pm, .notes__tag--leave-full { color: var(--warning-600); background: var(--warning-50); }
+
+/* 编辑器 */
+.notes__editor-mask .c-dialog__body { max-height: 72vh; overflow-y: auto; }
+.notes__editor { display: flex; flex-direction: column; gap: var(--space-3); }
+.notes__field { display: flex; flex-direction: column; gap: var(--space-1); }
+.notes__field-head { display: flex; align-items: center; justify-content: space-between; }
+.notes__field-label { font-size: var(--font-size-sm); color: var(--text-2); }
+.notes__seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.notes__seg-item {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer; position: relative;
+  padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid var(--glass-border);
+  color: var(--text-2); font-size: var(--font-size-sm);
+}
+.notes__seg-item input { position: absolute; opacity: 0; }
+.notes__seg-item:has(input:checked) { color: var(--accent); border-color: var(--accent); background: var(--accent-50); }
+.notes__editor-del { align-self: flex-start; margin-top: var(--space-1); }
+.notes__tpl-picker { font-size: var(--font-size-sm); }
+.notes__tpl-item {
+  display: block; width: 100%; text-align: left; padding: 6px 10px;
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-1);
+  font-size: var(--font-size-sm);
+}
+.notes__tpl-item:hover { background: var(--surface-hover); }
+.notes__tpl-empty { padding: 6px 10px; color: var(--text-3); font-size: var(--font-size-sm); }

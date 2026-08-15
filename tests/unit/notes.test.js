@@ -6,6 +6,8 @@ import {
   todayISO, monthRange, fmtDate, escapeHtml,
   calcStats, buildMonthGrid, serializeExport, parseImport,
 } from '../../src/apps/notes/notes-utils.js';
+import { module } from '../../src/apps/notes/index.js';
+import { notesPage } from '../../src/apps/notes/notes.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -152,5 +154,34 @@ describe('notes-utils：导出/导入序列化', () => {
     expect(parseImport('{"app":"evolveos.notes","version":2,"reports":[],"templates":[]}').ok).toBe(false);
     expect(parseImport('{"app":"evolveos.notes","version":1,"reports":[{"date":"2026-08-01","attendance":"nope","phase":"intern","location":"qingdao"}],"templates":[]}').ok).toBe(false);
     expect(parseImport('{"app":"evolveos.notes","version":1,"reports":[],"templates":[{"id":"t1"}]}').ok).toBe(false);
+  });
+});
+
+describe('牛马笔记 module 契约', () => {
+  it('id/name/icon/order/dir/render/mount', () => {
+    expect(module.id).toBe('notes');
+    expect(module.name).toBe('牛马笔记');
+    expect(module.icon).toBe('clipboard');
+    expect(module.order).toBe(5);
+    expect(module.dir.map((d) => d.id)).toEqual(['report', 'templates', 'stats']);
+    expect(typeof module.render).toBe('function');
+    expect(typeof module.mount).toBe('function');
+  });
+});
+
+describe('牛马笔记 日报页渲染', () => {
+  it('渲染报告列表容器/月份导航/写日报按钮；seed 数据出行', () => {
+    localStorage.clear();
+    upsertReport({ date: todayISO(), attendance: 'normal', phase: 'intern', location: 'qingdao', primary: '需求联调', secondary: '' });
+    const html = notesPage({ dirId: 'report' });
+    expect(html).toContain('data-notes-report-list');
+    expect(html).toContain('data-notes-month');
+    expect(html).toContain('写日报');
+    expect(html).toContain('需求联调');
+    expect(html).toContain('data-notes-month-prev');
+  });
+  it('未选目录默认日报页', () => {
+    localStorage.clear();
+    expect(notesPage({}).includes('data-notes-report-list')).toBe(true);
   });
 });
