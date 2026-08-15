@@ -261,6 +261,14 @@ function renderTemplateTextarea({ dataTpl, value, placeholder, rows, label }) {
   return renderTextarea({ value, placeholder, rows, label }).replace('<textarea', `<textarea data-notes-tpl="${dataTpl}"`);
 }
 
+// 确认对话框实底：openDialog 无 class 透传，用 body 标记类在确认弹窗打开期间施加 notes 作用域实底（与编辑器一致）
+function notesConfirm(opts) {
+  document.body.classList.add('notes__confirm');
+  const p = openDialog(opts);
+  p.finally(() => document.body.classList.remove('notes__confirm'));
+  return p;
+}
+
 function editorFormHtml(existing, templates, date) {
   const e = existing ?? {};
   const tplList = templates.length
@@ -335,7 +343,7 @@ export function openReportEditor({ date, existing, onSaved }) {
     const existingForDate = U.loadReports().find((r) => r.date === v.date);
     if (existingForDate && !(isEdit && existingForDate.date === existing.date)) {
       subOpen = true;
-      const ok = await openDialog({ title: '覆盖确认', content: `<p>${U.fmtDate(v.date)} 已有一条日报，保存将覆盖。继续？</p>`, confirmLabel: '覆盖', danger: true });
+      const ok = await notesConfirm({ title: '覆盖确认', content: `<p>${U.fmtDate(v.date)} 已有一条日报，保存将覆盖。继续？</p>`, confirmLabel: '覆盖', danger: true });
       subOpen = false;
       if (!ok) return;
     }
@@ -359,7 +367,7 @@ export function openReportEditor({ date, existing, onSaved }) {
   const delBtn = body.querySelector('[data-notes-ed="del"]');
   if (delBtn) delBtn.addEventListener('click', async () => {
     subOpen = true;
-    const ok = await openDialog({ title: '删除确认', content: `<p>删除 ${U.fmtDate(existing.date)} 的日报？</p>`, confirmLabel: '删除', danger: true });
+    const ok = await notesConfirm({ title: '删除确认', content: `<p>删除 ${U.fmtDate(existing.date)} 的日报？</p>`, confirmLabel: '删除', danger: true });
     subOpen = false;
     if (!ok) return;
     U.deleteReport(existing.date);
@@ -378,7 +386,7 @@ export function openReportEditor({ date, existing, onSaved }) {
       const needsOverwrite = (t.primary && primary.value.trim()) || (t.secondary && secondary.value.trim());
       if (needsOverwrite) {
         subOpen = true;
-        const ok = await openDialog({ title: '替换内容', content: '<p>模板将覆盖已填写的字段内容。继续？</p>', confirmLabel: '替换' });
+        const ok = await notesConfirm({ title: '替换内容', content: '<p>模板将覆盖已填写的字段内容。继续？</p>', confirmLabel: '替换' });
         subOpen = false;
         if (!ok) return;
       }
@@ -448,7 +456,7 @@ function mountTemplatePage(pageEl, dis) {
         if (t) openTemplateEditor({ existing: t, onSaved: refresh });
       });
       row.querySelector('[data-notes-template-del]')?.addEventListener('click', async () => {
-        const ok = await openDialog({ title: '删除模板', content: '<p>删除该模板？</p>', confirmLabel: '删除', danger: true });
+        const ok = await notesConfirm({ title: '删除模板', content: '<p>删除该模板？</p>', confirmLabel: '删除', danger: true });
         if (!ok) return;
         U.deleteTemplate(id);
         toast('模板已删除', { variant: 'info' });
@@ -523,7 +531,7 @@ function bindIO(pageEl, refresh) {
       if (!file) return;
       const res = U.parseImport(await file.text());
       if (!res.ok) { toast(res.error, { variant: 'danger' }); return; }
-      const ok = await openDialog({ title: '导入确认', content: '<p>导入将<strong>全量覆盖</strong>当前所有日报与模板。继续？</p>', confirmLabel: '覆盖导入', danger: true });
+      const ok = await notesConfirm({ title: '导入确认', content: '<p>导入将<strong>全量覆盖</strong>当前所有日报与模板。继续？</p>', confirmLabel: '覆盖导入', danger: true });
       if (!ok) return;
       U.saveReports(res.data.reports);
       U.saveTemplates(res.data.templates);

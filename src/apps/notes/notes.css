@@ -46,6 +46,11 @@
   min-height: 0;
   overflow-y: auto;
 }
+/* 确认对话框实底（与编辑器一致）：body 标记类在 notes 确认弹窗打开期间生效（openDialog 无 class 透传） */
+body.notes__confirm .c-dialog__mask .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+}
 .notes__editor { display: flex; flex-direction: column; gap: var(--space-4); }
 .notes__field { display: flex; flex-direction: column; gap: var(--space-2); }
 .notes__field-head { display: flex; align-items: center; justify-content: space-between; }
