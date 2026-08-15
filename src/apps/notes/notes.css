@@ -55,3 +55,15 @@
 }
 .notes__tpl-item:hover { background: var(--surface-hover); }
 .notes__tpl-empty { padding: 6px 10px; color: var(--text-3); font-size: var(--font-size-sm); }
+
+/* 模板列表 */
+.notes__template-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__template-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border);
+}
+.notes__template-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notes__template-name { font-weight: var(--font-weight-medium); color: var(--text-1); }
+.notes__template-preview { font-size: var(--font-size-sm); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes__template-actions { display: flex; align-items: center; gap: var(--space-2); }

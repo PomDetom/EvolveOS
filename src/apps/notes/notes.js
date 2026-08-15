@@ -67,10 +67,94 @@ function reportRow(r) {
     </button>`;
 }
 
-// —— 模板 / 统计 占位（Task 4/5 实装替换）——
-function templatePage(ctx) {
-  return pageStub(ctx, '模板', '复制常用工作内容模板，写日报时一键填入', 'copy');
+// —— 模板页 ——
+export function templatePage(ctx) {
+  const templates = U.loadTemplates();
+  const head = `
+    <div class="app-main__page-head">
+      <h2 class="app-main__page-title">牛马笔记</h2>
+      <span class="app-main__page-sub">› 模板</span>
+    </div>`;
+  return `${head}
+    <div class="app-main__page-body">
+      <div class="notes__toolbar">
+        <span class="notes__toolbar-hint">可复用工作内容模板，写日报时一键填入</span>
+        <span class="notes__write">${renderButton({ label: '新建模板', iconName: 'plus' })}</span>
+      </div>
+      <div class="notes__template-list" data-notes-template-list>
+        ${templateListHtml(templates)}
+      </div>
+    </div>`;
 }
+
+function templateListHtml(templates) {
+  if (!templates.length) {
+    return renderEmptyState({ iconName: 'copy', title: '暂无模板', desc: '新建常用工作内容模板，写日报时一键填入' });
+  }
+  return templates.map(templateRow).join('');
+}
+
+// renderButton 不支持 data-* 透传，行内按钮外包一层 <span data-notes-template-*>，e2e/挂载经 span 冒泡命中
+function templateRow(t) {
+  const preview = t.primary || t.secondary || '（无内容）';
+  return `
+    <div class="notes__template-row" data-id="${U.escapeHtml(t.id)}">
+      <div class="notes__template-main">
+        <span class="notes__template-name">${U.escapeHtml(t.name)}</span>
+        <span class="notes__template-preview">${U.escapeHtml(preview)}</span>
+      </div>
+      <div class="notes__template-actions">
+        <span data-notes-template-edit>${renderButton({ label: '编辑', variant: 'secondary', iconName: 'edit' })}</span>
+        <span data-notes-template-del>${renderButton({ label: '删除', variant: 'danger', iconName: 'trash' })}</span>
+      </div>
+    </div>`;
+}
+
+function openTemplateEditor({ existing, onSaved }) {
+  const isEdit = Boolean(existing);
+  const mask = document.createElement('div');
+  mask.className = 'notes__editor-mask';
+  mask.innerHTML = renderDialog({
+    title: isEdit ? '编辑模板' : '新建模板',
+    confirmLabel: '保存',
+    cancelLabel: '取消',
+    content: `
+      <div class="notes__editor">
+        <div class="notes__field">
+          <label class="notes__field-label">模板名称</label>
+          <input class="c-input" type="text" data-notes-tpl="name" value="${U.escapeHtml(existing?.name ?? '')}" placeholder="如：需求开发">
+        </div>
+        <div class="notes__field">
+          <label class="notes__field-label">主要内容</label>
+          ${renderTemplateTextarea({ dataTpl: 'primary', value: existing?.primary ?? '', placeholder: '模板的主要工作内容', rows: 3, label: '主要内容' })}
+        </div>
+        <div class="notes__field">
+          <label class="notes__field-label">次要内容（可空）</label>
+          ${renderTemplateTextarea({ dataTpl: 'secondary', value: existing?.secondary ?? '', placeholder: '模板的次要工作内容', rows: 2, label: '次要内容' })}
+        </div>
+      </div>`,
+  });
+  document.body.appendChild(mask);
+  const body = mask.querySelector('.c-dialog__body');
+  const close = () => mask.remove();
+  const onSave = () => {
+    const name = body.querySelector('[data-notes-tpl="name"]').value.trim();
+    const primary = body.querySelector('[data-notes-tpl="primary"]').value.trim();
+    const secondary = body.querySelector('[data-notes-tpl="secondary"]').value.trim();
+    if (!name) { toast('请填写模板名称', { variant: 'warning' }); return; }
+    if (isEdit) U.upsertTemplate({ id: existing.id, name, primary, secondary });
+    else U.upsertTemplate({ name, primary, secondary });
+    toast(isEdit ? '模板已更新' : '模板已保存', { variant: 'success' });
+    close();
+    onSaved?.();
+  };
+  mask.querySelector('[data-action="cancel"]').addEventListener('click', close);
+  mask.querySelector('.c-dialog__footer .c-btn').addEventListener('click', close);
+  mask.querySelector('.c-dialog__footer .c-btn:last-child').addEventListener('click', onSave);
+  mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
+}
+
+// —— 统计 占位（Task 5 实装替换）——
 function statsPage(ctx) {
   return pageStub(ctx, '统计', '出勤统计与日历即将上线', 'layout');
 }
@@ -93,6 +177,11 @@ function segItem(name, opt, checked) {
 // renderTextarea 组件无 data-* 透传，本地包一层注入 data-notes-ed（编辑器 collect/模板填入依赖此选择器）
 function renderEditorTextarea({ dataEd, value, placeholder, rows, label }) {
   return renderTextarea({ value, placeholder, rows, label }).replace('<textarea', `<textarea data-notes-ed="${dataEd}"`);
+}
+
+// renderTextarea 组件无 data-* 透传，本地包一层注入 data-notes-tpl（模板编辑器字段依赖此选择器）
+function renderTemplateTextarea({ dataTpl, value, placeholder, rows, label }) {
+  return renderTextarea({ value, placeholder, rows, label }).replace('<textarea', `<textarea data-notes-tpl="${dataTpl}"`);
 }
 
 function editorFormHtml(existing, templates) {
@@ -268,6 +357,29 @@ function mountReportPage(pageEl, dis) {
   bindList();
 }
 
-// 占位 mount（Task 4/5 实装）
-function mountTemplatePage() {}
+// —— 模板页 mount ——
+function mountTemplatePage(pageEl, dis) {
+  const listEl = pageEl.querySelector('[data-notes-template-list]');
+  function refresh() { listEl.innerHTML = templateListHtml(U.loadTemplates()); bindList(); }
+  const bindList = () => {
+    listEl.querySelectorAll('.notes__template-row').forEach((row) => {
+      const id = row.dataset.id;
+      row.querySelector('[data-notes-template-edit]')?.addEventListener('click', () => {
+        const t = U.loadTemplates().find((x) => x.id === id);
+        if (t) openTemplateEditor({ existing: t, onSaved: refresh });
+      });
+      row.querySelector('[data-notes-template-del]')?.addEventListener('click', async () => {
+        const ok = await openDialog({ title: '删除模板', content: '<p>删除该模板？</p>', confirmLabel: '删除', danger: true });
+        if (!ok) return;
+        U.deleteTemplate(id);
+        toast('模板已删除', { variant: 'info' });
+        refresh();
+      });
+    });
+  };
+  pageEl.querySelector('.notes__write .c-btn')?.addEventListener('click', () => openTemplateEditor({ onSaved: refresh }));
+  bindList();
+}
+
+// 占位 mount（Task 5 实装）
 function mountStatsPage() {}

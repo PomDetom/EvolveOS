@@ -72,3 +72,48 @@ test.describe('牛马笔记：日报', () => {
     await expect(page.locator('.notes__report-row')).toHaveCount(2); // seed（本月1/2号）+ 今天
   });
 });
+
+test.describe('牛马笔记：模板', () => {
+  test('模板增删改 + 编辑器一键填入', async ({ page }) => {
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    // 进模板目录
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="templates"]').click();
+    await page.waitForTimeout(400);
+    await expect(page.locator('.notes__template-list')).toBeVisible();
+    await expect(page.locator('.notes__template-list .c-empty')).toBeVisible(); // 空态（壳内其它应用也有 .c-empty，须限定在模板列表内）
+
+    // 新建模板
+    await page.locator('.notes__write .c-btn').click();
+    await page.locator('[data-notes-tpl="name"]').fill('需求开发');
+    await page.locator('[data-notes-tpl="primary"]').fill('推进 XX 需求联调');
+    await page.locator('[data-notes-tpl="secondary"]').fill('整理技术方案');
+    await page.locator('.c-dialog__footer .c-btn:last-child').click();
+    await expect(page.locator('.notes__template-row')).toHaveCount(1);
+    await expect(page.locator('.notes__template-row')).toContainText('需求开发');
+
+    // 编辑模板
+    await page.locator('[data-notes-template-edit]').click();
+    await page.locator('[data-notes-tpl="name"]').fill('需求开发改');
+    await page.locator('.c-dialog__footer .c-btn:last-child').click();
+    await expect(page.locator('.notes__template-row')).toContainText('需求开发改');
+
+    // 写日报 → 从模板一键填入
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="report"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.notes__write .c-btn').click();
+    await page.locator('.notes__tpl-picker .c-popover__trigger').click(); // 打开模板 picker
+    await page.locator('[data-notes-template]').click(); // 填第一条模板
+    await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('推进 XX 需求联调');
+    await expect(page.locator('[data-notes-ed="secondary"]')).toHaveValue('整理技术方案');
+
+    // 删除模板
+    await page.locator('.c-dialog__footer .c-btn').first().click(); // 关编辑器
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="templates"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('[data-notes-template-del]').click();
+    await page.locator('.c-dialog__footer .c-btn:last-child').click(); // 删除确认
+    await expect(page.locator('.notes__template-row')).toHaveCount(0);
+  });
+});
