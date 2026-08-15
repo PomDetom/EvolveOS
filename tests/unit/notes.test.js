@@ -5,6 +5,7 @@ import {
   loadTemplates, saveTemplates, upsertTemplate, deleteTemplate, ensureSeedTemplates,
   todayISO, monthRange, fmtDate, escapeHtml,
   calcStats, buildMonthGrid, serializeExport, parseImport,
+  calendarMonthSpan, monthSeq, monthLabel,
 } from '../../src/apps/notes/notes-utils.js';
 import { module } from '../../src/apps/notes/index.js';
 import { notesPage } from '../../src/apps/notes/notes.js';
@@ -156,6 +157,26 @@ describe('notes-utils：日历网格', () => {
     expect(days.length).toBe(29);
     expect(days[0]).toBe('2024-02-01');
     expect(days[days.length - 1]).toBe('2024-02-29');
+  });
+});
+
+describe('notes-utils：竖向日历月份跨度', () => {
+  const reports = [
+    { date: '2026-03-05', attendance: 'normal', phase: 'intern', location: 'qingdao' },
+    { date: '2026-08-01', attendance: 'normal', phase: 'intern', location: 'qingdao' },
+  ];
+  it('calendarMonthSpan：最早记录月 → 当前月+1（覆盖最晚记录）', () => {
+    expect(calendarMonthSpan(reports, '2026-08-15')).toEqual({ start: { year: 2026, month: 2 }, end: { year: 2026, month: 8 } }); // 3月→9月（8月+1）
+    expect(calendarMonthSpan([], '2026-08-15')).toEqual({ start: { year: 2026, month: 7 }, end: { year: 2026, month: 8 } }); // 无记录仅当前月+1
+    expect(calendarMonthSpan([{ date: '2026-12-01', attendance: 'normal', phase: 'regular', location: 'xian' }], '2026-08-15'))
+      .toEqual({ start: { year: 2026, month: 7 }, end: { year: 2026, month: 11 } }); // 未来预填 12 月 → end 12 月
+  });
+  it('monthSeq：含两端升序 + 跨年', () => {
+    expect(monthSeq({ year: 2026, month: 11 }, { year: 2027, month: 1 }))
+      .toEqual([{ year: 2026, month: 11 }, { year: 2027, month: 0 }, { year: 2027, month: 1 }]);
+  });
+  it('monthLabel', () => {
+    expect(monthLabel(2026, 7)).toBe('2026年8月');
   });
 });
 
