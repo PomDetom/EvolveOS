@@ -13,9 +13,6 @@
   --shadow-sm: 0 1px 3px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5)));
   --shadow-md: 0 4px 16px rgba(20,24,40,calc(0.12 * var(--shadow-intensity, 0.5)));
   --shadow-lg: 0 12px 40px rgba(20,24,40,calc(0.18 * var(--shadow-intensity, 0.5)));
-  /* 浮起层级（悬浮窗/卡片）：接触影 + 环境影双层，观感上浮 */
-  --shadow-float: 0 2px 6px rgba(20,24,40,calc(0.10 * var(--shadow-intensity, 0.5))),
-                  0 8px 24px rgba(20,24,40,calc(0.16 * var(--shadow-intensity, 0.5)));
   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.55);
   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(0,0,0,0.18);
 }
@@ -35,9 +32,6 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,calc(0.35 * var(--shadow-intensity, 0.5)));
   --shadow-md: 0 4px 16px rgba(0,0,0,calc(0.42 * var(--shadow-intensity, 0.5)));
   --shadow-lg: 0 12px 40px rgba(0,0,0,calc(0.55 * var(--shadow-intensity, 0.5)));
-  /* 浮起层级（悬浮窗/卡片）：接触影 + 环境影双层，观感上浮 */
-  --shadow-float: 0 2px 6px rgba(0,0,0,calc(0.30 * var(--shadow-intensity, 0.5))),
-                  0 8px 24px rgba(0,0,0,calc(0.48 * var(--shadow-intensity, 0.5)));
   --shadow-inset-highlight: inset 0 1px 0 rgba(255,255,255,0.06);
   --scrollbar-track: transparent;  --scrollbar-thumb: rgba(255,255,255,0.16);
 }

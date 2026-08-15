@@ -236,11 +236,10 @@ export function mountStripMode() {
         if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
-    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。量 root 而非 strip：`.strip-root--window` 的
-    // padding（--strip-shadow-room，CSS 单一来源）为实底 box-shadow 留落点 —— 透明窗按 strip
-    // border-box 贴合会把阴影裁在窗口外（观感平底），含留白后阴影落在窗口内可见。
+    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。量 strip（border-box）—— 实底无 box-shadow，
+    // 窗口=内容尺寸即可（ui/strip-ui-m9：阴影在透明窗外被裁无效果，去阴影留白）。
     fit = () => {
-      const r = root.getBoundingClientRect();
+      const r = strip.getBoundingClientRect();
       const { LogicalSize } = window.__TAURI__.window;
       const size = computeFitSize(r);
       win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});

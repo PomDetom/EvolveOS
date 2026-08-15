@@ -719,6 +719,33 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
   await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
 });
 
+// —— 跳转通道（ui/strip-ui-m9 补全）：strip「跳转到 TokenTool」事件 → 主窗除内容/右窗外，
+// 主菜单（左窗导航轮）也必须切到 TokenTool —— 程序化跳转须经左轮 scrollToIndex → onChange 联动
+// （直接 setModule 只切内容/右窗，左窗选中态停在原项 = 「主菜单没跳、子菜单跳了」bug）。
+test('Tauri：jump-to-tokentool 事件 → 主菜单左窗也切到 TokenTool（内容+右窗+左窗选中一致）', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      event: { listen: async (ev, cb) => { if (ev === 'jump-to-tokentool') window.__jumpListener__ = cb; return () => {}; } },
+      core: { invoke: () => Promise.resolve() },
+    };
+  });
+  await page.goto('/?mode=app');
+  // 初始：主菜单停在概览（home），TokenTool 未选中
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]')).not.toHaveClass(/c-navwheel__item--active/);
+  // 触发 strip 跳转事件（真实链路：strip 按钮 → emit jump-to-tokentool）
+  await page.evaluate(() => window.__jumpListener__({ payload: null }));
+  // 主菜单（左窗）切到 TokenTool：高亮转移 + 内容切到 TokenTool 页 + 右窗目录轮 usage 选中
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]')).toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).not.toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'token-tool');
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="usage"]')).toHaveClass(/c-navwheel__item--active/);
+});
+
 // —— B5-4 自适应布局（Task B5-4：内容区限宽居中 + 展示分区撑满）——
 // 概览/应用页 data-layout="center"：max-width 1080 + margin-inline auto 限宽居中；
 // 设置页整体 data-layout="fluid"：max-width none 撑满内容区（表单分区靠 .csettings__field 420px 自限宽），
