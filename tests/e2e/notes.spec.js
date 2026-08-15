@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 
 const APP_URL = '/?mode=app';
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -167,5 +168,70 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('.c-dialog')).toBeVisible();
     await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('正常日');
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
+  });
+});
+
+test.describe('牛马笔记：导出/导入', () => {
+  test('导出下载 JSON → 清空后导入恢复', async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const d = new Date(y.getFullYear(), y.getMonth(), 1); // 本月 1 号，导入后日历格落当前月
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify([
+        { date: iso(d), primary: '导出的日报', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+      ]));
+      localStorage.setItem('evolveos.notes.templates', JSON.stringify([
+        { id: 't1', name: '导出模板', primary: 'p', secondary: 's', createdAt: 1, updatedAt: 1 },
+      ]));
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    // 导出
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('.notes__io .c-btn').first().click(),
+    ]);
+    const filePath = await download.path();
+    const json = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    expect(json.app).toBe('evolveos.notes');
+    expect(json.reports).toHaveLength(1);
+    expect(json.templates).toHaveLength(1);
+
+    // 清空数据（直接写 localStorage，模拟丢数据）
+    await page.evaluate(() => localStorage.removeItem('evolveos.notes.reports'));
+
+    // 导入恢复
+    const fcPromise = page.waitForEvent('filechooser');
+    await page.locator('.notes__io .c-btn').nth(1).click();
+    const fc = await fcPromise;
+    await fc.setFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(json)) });
+    // 覆盖确认
+    await expect(page.locator('.c-dialog')).toBeVisible();
+    await page.locator('.c-dialog__footer .c-btn:last-child').click();
+    // 日历恢复该日着色
+    await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(1);
+  });
+
+  test('导入非法文件：拒绝且数据不动', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('evolveos.notes.reports', '[]');
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    const fcPromise = page.waitForEvent('filechooser');
+    await page.locator('.notes__io .c-btn').nth(1).click();
+    const fc = await fcPromise;
+    await fc.setFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"app":"other"}') });
+    await expect(page.locator('.c-dialog')).toHaveCount(0); // 无覆盖确认 → 直接拒绝
+    await expect(page.locator('.c-toast--danger')).toBeVisible();
   });
 });

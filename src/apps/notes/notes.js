@@ -490,5 +490,43 @@ function mountStatsPage(pageEl, dis) {
   bindIO(pageEl, refresh);
 }
 
-// 导出/导入（Task 6 实装）
-function bindIO(pageEl, refresh) {}
+// 导出 / 导入（统计页工具栏）
+function bindIO(pageEl, refresh) {
+  const btns = pageEl.querySelectorAll('.notes__io .c-btn');
+  if (btns.length < 2) return;
+  const [exportBtn, importBtn] = btns;
+
+  exportBtn.addEventListener('click', () => {
+    const json = U.serializeExport(U.loadReports(), U.loadTemplates());
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `牛马笔记-${U.todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('已导出备份', { variant: 'success' });
+  });
+
+  importBtn.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) return;
+      const res = U.parseImport(await file.text());
+      if (!res.ok) { toast(res.error, { variant: 'danger' }); return; }
+      const ok = await openDialog({ title: '导入确认', content: '<p>导入将<strong>全量覆盖</strong>当前所有日报与模板。继续？</p>', confirmLabel: '覆盖导入', danger: true });
+      if (!ok) return;
+      U.saveReports(res.data.reports);
+      U.saveTemplates(res.data.templates);
+      toast('导入成功', { variant: 'success' });
+      refresh();
+    });
+    input.click();
+  });
+}
