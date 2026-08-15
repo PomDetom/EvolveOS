@@ -317,6 +317,11 @@ export function mountStripMode() {
       const monitor = await getMonitor();
       const rect = await getRect();
       if (!monitor || !rect || !edge.dockEdge) return;
+      // 收起间隙守卫：await getMonitor/getRect 期间鼠标可能进入 strip —— mouseenter 此时看到的
+      // mode 仍是 'docked'，只 cancelCollapse()（计时已触发，无效果），悬停下窗口仍会滑出。
+      // 这里在置 mode 前补 :hover 检查：命中则重启计时并返回（startCollapseTimer 自带 :hover
+      // 守卫，光标在条上不计时；mouseleave 会重启计时），不进入收起。
+      if (strip.matches(':hover')) { startCollapseTimer(); return; }
       const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
       edge.mode = 'collapsed';
       collapsed = true;

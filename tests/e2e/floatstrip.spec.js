@@ -479,7 +479,7 @@ test('贴边收起：hover 取消计时，移开后 1s 缓收起（标准自动�
   // 未收起（hover 取消）：贴边评估本身不产 setPosition → last 可空（空即从未位移，等价停在 660）
   expect(last ? last[1].y : 660).toBe(660);
   // 移开 → 重新 1s 计时 → 收起
-  await page.mouse.move(0, 0);
+  await page.mouse.move(600, 200); // 明确远离 strip 的坐标（不依赖 (0,0) 恰好不命中 border-radius 裁角）
   await page.waitForTimeout(1700);
   c = await page.evaluate(() => window.__edgeCalls__);
   last = c.filter((x) => x[0] === 'setPosition').pop();
