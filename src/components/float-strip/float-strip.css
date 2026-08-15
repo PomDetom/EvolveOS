@@ -1,9 +1,11 @@
-/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
+/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 实底边框对比度。
    定位模型：position:fixed 底右 dock（right/bottom = --strip-gap），全部位移经
    transform: translate(dx,dy)（红线段：不触发布局动画，磁吸贴边不 animate 宽/高/left/top）。
    形态：--strip-orientation 语义态（horizontal|vertical）+ data-orientation 翻转，
    flex-direction 随形态切换（布局属性瞬时切换，不做动画）。
-   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/阴影/背景为 paint-only 豁免
+   边框：实底常态 1px var(--text-3) 淡灰边框，hover 提至 --text-2 ——
+   不用 box-shadow（透明窗按 strip border-box 贴合，阴影落在窗外被裁、无效果，ui/strip-ui-m9）。
+   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/背景为 paint-only 豁免
    （hover 短暂状态过渡）；模糊（backdrop-filter）静态、永不动画；时长/曲线一律经 CSS 变量。 */
 
 .c-strip {
@@ -19,7 +21,7 @@
   max-width: calc(100vw - var(--strip-gap) * 2);
   max-height: calc(100vh - var(--strip-gap) * 2);
   overflow: hidden;
-  border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
+  border: 1px solid var(--text-3); /* 实底常态淡灰边框（对比度克制；border-width 恒定，hover 只换色，无布局位移） */
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
   background: var(--surface-solid); /* 实底材质（默认）：无透明、无模糊；无背景态由 html[data-strip-material="none"] 覆盖 */
   backdrop-filter: none;
@@ -27,11 +29,9 @@
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: var(--shadow-float); /* 实底默认突出（双层浮起阴影；无背景态由下方 none 规则清除） */
-  /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
+  /* 磁吸贴边位移 300ms spring + 边框 hover 过渡（paint-only 豁免） */
   transition: transform var(--dur-slow) var(--ease-spring),
-    border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out);
+    border-color var(--dur-base) var(--ease-out);
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
 /* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
@@ -40,8 +40,7 @@
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  border-color: var(--text-2); /* hover 边框提一级（--text-3 → --text-2） */
 }
 /* 无背景材质（stripMaterial: none）：仅文字，无底/边/影 —— 特异性高于 .c-strip:hover 的 box-shadow/border-color */
 html[data-strip-material="none"] .c-strip {
@@ -203,14 +202,6 @@ html[data-strip-material="none"] .c-strip {
 /* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位；
    同时禁用 backdrop-filter：透明窗口内无可模糊对象，且 WebView2 下 backdrop-filter 会渲染成
    未按 border-radius 裁剪的方形图层（竖排时底部圆角被遮成直角），禁用后仅留玻璃底色 + 圆角 */
-/* ui/strip-ui-m9：实底 box-shadow 落在窗口边界外会被裁（窗口按 strip border-box 贴合、body margin 0）
-   → --strip-shadow-room 给阴影留落点（padding + width:max-content 单源决定窗口尺寸），
-   fit() 量 root（含留白）后阴影落在窗口内可见；深色半透明边缘模糊最远端近不可见，留白可略小于 blur。 */
-.strip-root--window {
-  --strip-shadow-room: 32px;
-  width: max-content;
-  padding: var(--strip-shadow-room);
-}
 .strip-root--window .c-strip {
   position: static; right: auto; bottom: auto;
   max-width: none; max-height: none;

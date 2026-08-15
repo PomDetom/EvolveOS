@@ -859,20 +859,27 @@ export function mountAppMode(root) {
   bindWindowControls();
 
   // FloatStrip 跳转通道（ui/strip-ui-opt）：strip 窗口「跳转到 TokenTool」按钮 →
-  // 主窗 setModule('token-tool')（自动落到首目录 usage=余量页，并切回应用模式）。
-  // 双通道（覆盖隐藏→唤起）：① jump-to-tokentool 事件（主窗可见时直接 setModule）；
+  // 主窗跳到 TokenTool 余量页（usage）并切回应用模式。
+  // 双通道（覆盖隐藏→唤起）：① jump-to-tokentool 事件（主窗可见时直接消费）；
   // ② ui-jump-intent（strip 先写 intent 再 show 主窗，主窗 visibilitychange visible 时消费）
   // —— 任一通道消费后先清 intent，防陈旧 intent 在主窗后续被唤起点亮时误跳转。
+  // 跳转须「内容 + 主菜单」双落：直接 setModule 只切内容/右窗，左窗导航轮选中态停原项
+  // （= 主菜单不跳、子菜单跳了，ui/strip-ui-m9 用户反馈）；先强制落 usage（含已在该应用时
+  // 重置 dirId），再经左轮 scrollToIndex → onChange → onLeftSelect 联动主菜单选中（幂等）。
+  function jumpToTokenTool() {
+    setModule('token-tool', true);
+    goToModule('token-tool');
+  }
   if (typeof window.__TAURI__ !== 'undefined') {
     window.__TAURI__.event.listen('jump-to-tokentool', () => {
       localStorage.removeItem('ui-jump-intent');
-      setModule('token-tool');
+      jumpToTokenTool();
     }).catch(() => {});
   }
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && localStorage.getItem('ui-jump-intent') === 'token-tool') {
       localStorage.removeItem('ui-jump-intent');
-      setModule('token-tool');
+      jumpToTokenTool();
     }
   });
 

@@ -175,23 +175,27 @@ test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效
   expect(Math.abs(after.x)).toBeLessThanOrEqual(2); // 贴左边缘
 });
 
-test('无边框 hover 浮出：默认无边框 + 控制块隐藏 → hover 出现控制块/边框', async ({ page }) => {
+test('边框对比度 + hover 控制块浮出：实底常态可见边框（非透明/无阴影），hover 边框对比度更强 + 控制块出现', async ({ page }) => {
   await page.goto(STRIP_URL);
   const strip = page.locator('.c-strip');
   const ctrl = strip.locator('.c-strip__ctrl');
   // idle 控制块 display:none（不占布局空间 → 悬浮条=内容高度）；hover display 浮出
   const defaultDisplay = await ctrl.evaluate((el) => getComputedStyle(el).display);
   expect(defaultDisplay).toBe('none');
+  // 实底常态可见边框（用户优化：去掉阴影、改边框对比度）—— idle 边框非透明、无 box-shadow
   const defaultBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
-  expect(defaultBorder).toBe('rgba(0, 0, 0, 0)'); // transparent 常态零边框
+  expect(defaultBorder).not.toBe('rgba(0, 0, 0, 0)');
+  const defaultShadow = await strip.evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(defaultShadow).toBe('none');
   const idleBox = await strip.boundingBox();
   await strip.hover();
   await page.waitForTimeout(SETTLE_MS);
   // 横排 hover 控制块为 2×2 grid 方阵（.c-strip--horizontal:hover 同特异度覆盖通用 hover flex）
   const hoverDisplay = await ctrl.evaluate((el) => getComputedStyle(el).display);
   expect(hoverDisplay).toBe('grid');
+  // hover 边框对比度更强（--text-1 ≠ idle --text-2）
   const hoverBorder = await strip.evaluate((el) => getComputedStyle(el).borderColor);
-  expect(hoverBorder).not.toBe('rgba(0, 0, 0, 0)'); // hover 浮出半透明细边框
+  expect(hoverBorder).not.toBe(defaultBorder);
   // hover 容纳控制块 → 悬浮条变高（idle 薄条 = 内容高度）
   const hoverBox = await strip.boundingBox();
   expect(hoverBox.height).toBeGreaterThan(idleBox.height);
@@ -399,45 +403,4 @@ test('strip 窗口：余额变宽后窗口贴合 ≥ strip 宽度（防右缘裁
   const lastSize = sizes[sizes.length - 1];
   expect(lastSize).toBeTruthy();
   expect(lastSize[0]).toBeGreaterThanOrEqual(Math.ceil(box2.width)); // 窗口宽度应 ≥ strip 宽度
-});
-
-// 回归（用户优化）：实底材质 box-shadow 原本落在窗口边界外被裁（窗口按 strip border-box 贴合、body margin 0），
-// 观感为平底。修复：.strip-root--window 加 --strip-shadow-room 阴影留白（padding + width:max-content），
-// fit() 改量 root（含留白）→ 窗口比 strip 大 2×room，阴影落在窗口内可见。
-test('strip 窗口：贴合尺寸含阴影留白 + 实底为双层浮起阴影（阴影落在窗口内可见）', async ({ page }) => {
-  await page.addInitScript(() => {
-    const sizes = [];
-    window.__TAURI__ = {
-      window: {
-        LogicalSize: class { constructor(w, h) { this.width = w; this.height = h; } },
-        getCurrentWindow: () => ({
-          setSize: (s) => { sizes.push([s.width, s.height]); return Promise.resolve(); },
-          setPosition: () => Promise.resolve(), onMoved: () => Promise.resolve(() => {}), hide: () => Promise.resolve(),
-        }),
-      },
-      core: { invoke: async () => null },
-      event: { listen: async () => () => {} },
-    };
-    window.__stripSizes__ = sizes;
-  });
-  await page.goto(STRIP_URL);
-  await page.waitForTimeout(400);
-  const strip = page.locator('.c-strip');
-  const box = await strip.boundingBox();
-  // 阴影留白生效：.strip-root--window 的 padding（单一来源 --strip-shadow-room）> 0
-  const room = await page.evaluate(() => {
-    const r = document.querySelector('.strip-root');
-    return parseFloat(getComputedStyle(r).paddingLeft) || 0;
-  });
-  expect(room).toBeGreaterThan(0);
-  // fit 量 root（含留白）：窗口 ≥ strip 尺寸 + 2×room
-  const sizes = await page.evaluate(() => window.__stripSizes__);
-  const lastSize = sizes[sizes.length - 1];
-  expect(lastSize).toBeTruthy();
-  expect(lastSize[0]).toBeGreaterThanOrEqual(Math.ceil(box.width) + 2 * room - 1);
-  expect(lastSize[1]).toBeGreaterThanOrEqual(Math.ceil(box.height) + 2 * room - 1);
-  // 实底材质 box-shadow 为双层浮起阴影（--shadow-float，非 none）
-  const shadow = await strip.evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(shadow).not.toBe('none');
-  expect(shadow).toContain('8px 24px');
 });
