@@ -112,7 +112,7 @@ mountInput(pageEl.querySelector('.c-input'));
 ### 3.3 与既有设计语言对齐
 
 组件已内置「玻璃/浅色材质」观感（如按钮 = accent-100 浅 tint + 描边 + 上浮 hover；开关 = 胶囊滑杆）。
-**优先复用组件而非自绘**，风格天然统一。展示区/场景新增实例用**局部类名**（避免打破全页严格计数断言，见 §5.6）。
+**优先复用组件而非自绘**，风格天然统一。展示区/场景新增实例用**局部类名**（避免打破全页严格计数断言，见 §5.7）。
 
 ---
 
@@ -186,7 +186,34 @@ mountInput(pageEl.querySelector('.c-input'));
 - **空状态**：`renderEmptyState({ iconName, title, desc })`（占位页惯例）。
 - **主操作按钮**：`.c-btn--primary`（accent-100 浅 tint）；次操作 `.c-btn--secondary`；危险 `.c-btn--danger`。
 
-### 5.4 交互红线（违反即失败）
+### 5.4 对话框材质：表单编辑器实底（默认浮层为亚克力）
+
+**默认**：`dialog`/`popover` 等浮层组件面板为**亚克力半透明材质**（`--glass-bg` + `backdrop-filter`，见 B2 规格材质体系）。
+
+**表单型编辑器对话框（数据录入类，如写日报 / 密码 / TokenTool 账户编辑）必须覆盖为实底材质**——表单字段密集时，半透明 + blur 面板降低可读性，且高度适配依赖 flex 布局（header/footer 常驻、表单区滚动）。key / token-tool / notes 三个应用已收敛为同一模式（参考 `src/apps/key/key.css` 的 `.key__editor`、`src/apps/token-tool/token-tool.css` 的 `.tt__editor`、`src/apps/notes/notes.css` 的 `.notes__editor-mask`）：
+
+```css
+/* 编辑器对话框实底：默认 dialog 为亚克力半透明，表单密集须覆盖为实底 */
+.<prefix>__editor .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+}
+.<prefix>__editor .c-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+```
+
+- 做法：应用局部前缀类（如 `<prefix>__editor`）包住 `renderDialog` 输出的遮罩（`mask.className = '<prefix>__editor'`），再按上例覆盖 `.c-dialog` / `.c-dialog__body`。
+- 表单字段样式与既有应用对齐：字段容器 `gap: var(--space-2)`、字段间 `gap: var(--space-4)`、label `--font-size-xs` + `--font-weight-semibold`。
+- 复用 `renderDialog` 结构 + 自行接线（`openDialog` 只适合简单确认框，表单编辑器须自接线以取表单值——见 `token-tool.js` 先例）。
+- **非表单型轻量浮层（确认框 / 提示 / 简单 popover）保持默认亚克力即可，无需覆盖。**
+
+### 5.5 交互红线（违反即失败）
 
 - 布局/几何动画**只允许 `transform`/`opacity`**（合成器友好）；**禁止动画 layout 属性**（left/top/width/height/margin/padding）。
 - **模糊（backdrop-filter）永不动画**。
@@ -194,16 +221,16 @@ mountInput(pageEl.querySelector('.c-input'));
 - **paint-only 豁免**：`background`/`border-color`/`box-shadow`/`color`/`filter` 允许用于 hover/focus/active 短暂过渡（不做入场/离场主体）。
 - 超过 6 项同时动画必须 stagger；动效降级（reduced-motion/`data-motion=off`）时时长与 delay 一并归零。
 
-### 5.5 图标
+### 5.6 图标
 
 全部内联 SVG（Lucide 风格、currentColor、aria-hidden），统一 `icon(name, size, stroke)`。**新图标默认复用既有 `PATHS`（`src/components/icon/icon.js`，47 个）**；确实需要新图标时用**应用自持图标**：`module` 导出 `icons: { <name>: '<svg path>' }`，页面里 `icon(name, size, stroke, ctx.module.icons)`（查找顺序 应用级 → 全局 → monitor）。**禁止在页面里内联手写 SVG、禁止为加图标改 `src/components/`**；应用自持图标必须 Lucide 风格（24×24、stroke 1.8、round cap/join），否则评审打回。
 
-### 5.6 类名约定
+### 5.7 类名约定
 
 - 组件类 `c-` 前缀；壳局部类 `app-main__*`；场景/展示区新增实例用**局部类名**（如 `csg__*`、`cust-*`）——避免与全页严格计数断言（e2e）冲突。
 - 设置分区复用 `.csettings__*`（`settings-pages.js`），外观定制器用 `.cust-*`。
 
-### 5.7 参考实现
+### 5.8 参考实现
 
 - 占位页：`app-main.js` 的 `placeholderPage`（骨架 + 空状态）。
 - 概览页：`renderOverview`（欢迎卡 + 快捷入口网格 + 主题状态卡）。
@@ -278,3 +305,4 @@ npm run build           # 每次提交前必跑
 - **全局 `box-sizing: border-box`**（base.css）：给组件加 `border` 不改其盒高，尺寸计算按此。
 - **背景装饰预设为会话内 UI 态**：切换用 `data-backdrop` 直接设，不进 store（延续 B2 决策）。
 - **`--radius-*` 必须配 `--radius-scale`**（定制器缩放）：`calc(var(--radius-md) * var(--radius-scale, 1))`。
+- **新应用编辑器对话框忘了覆盖实底材质**：默认 `dialog` 为亚克力半透明，表单密集时难读——按 §5.4 覆盖 `<prefix>__editor .c-dialog` 为 `--surface-solid` + `backdrop-filter: none`。key / token-tool / notes 均已收敛此模式。
