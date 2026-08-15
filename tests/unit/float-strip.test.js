@@ -61,4 +61,13 @@ describe('renderFloatStrip', () => {
     expect(idxRotate).toBeGreaterThan(idxMaterial);
     expect(idxClose).toBeGreaterThan(idxRotate);
   });
+
+  it('collapsible:true → 渲染 grip（chevron，aria-hidden）；默认不渲染', () => {
+    const html = renderFloatStrip({ content: '<i>x</i>', collapsible: true });
+    expect(html).toContain('c-strip__grip');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('m18 15-6-6-6 6'); // icon('chevron-up', 12) 的 SVG path（icon() 输出不含图标名）
+    const no = renderFloatStrip({ content: '<i>x</i>' });
+    expect(no).not.toContain('c-strip__grip');
+  });
 });

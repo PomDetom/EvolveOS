@@ -210,3 +210,37 @@ html[data-strip-material="none"] .c-strip {
 /* 窗口模式下竖排也必须内容宽度（width:auto + position:static 会填满窗口，把控制条裁掉、
    并破坏底部圆角）—— 与横向 width:max-content 一致 */
 .strip-root--window .c-strip--vertical { width: max-content; }
+
+/* 贴边收起（ui/strip-edge-collapse）：收起态窗口经 setPosition 滑出屏，屏幕内只剩靠中心一侧
+   ~20px 边带；grip 仅收起态显示、绝对定位不占布局；chevron 按 data-dock-edge 静态旋转定向
+   （transform，非动画）。--strip-dur-collapse 供 strip-main.js 读取（JS tween 时长）。 */
+.c-strip {
+  --strip-dur-collapse: 500ms;
+}
+.c-strip__grip {
+  position: absolute;
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 16px;
+  color: var(--text-3);
+  pointer-events: none; /* 装饰元素：不拦截 hover/拖拽 */
+}
+.c-strip__grip svg { width: 12px; height: 12px; }
+/* 收起态：strip 转相对定位容器（锚定 grip），grip 浮出 */
+/* fix2：复合选择器真 (0,3,0) 特异性 —— 收起只发生在窗口模式；裸 .c-strip--collapsed (0,1,0)
+   会被既有 .strip-root--window .c-strip { position: static } (0,2,0) 覆盖，grip 绝对定位
+   会锚到视口而非 strip（竖排 width:max-content 下 left:50% 相对视口必错位）。
+   .c-strip.c-strip--collapsed 双类与容器类同现 → 特异度 (0,2,0)+(0,1,0)=(0,3,0)，不靠源序
+   压过 static 规则（抗未来重排），grip 恒锚 strip。 */
+.strip-root--window .c-strip.c-strip--collapsed { position: relative; }
+.c-strip--collapsed .c-strip__grip { display: grid; }
+/* 按贴靠边把 grip 放到屏幕内可见边（窗口靠中心一侧），chevron 指向拉出方向（朝屏幕中心） */
+.c-strip--collapsed[data-dock-edge="bottom"] .c-strip__grip { top: 2px; left: 50%; transform: translateX(-50%); }
+.c-strip--collapsed[data-dock-edge="bottom"] .c-strip__grip svg { transform: none; }        /* up */
+.c-strip--collapsed[data-dock-edge="top"] .c-strip__grip { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.c-strip--collapsed[data-dock-edge="top"] .c-strip__grip svg { transform: rotate(180deg); } /* down */
+.c-strip--collapsed[data-dock-edge="left"] .c-strip__grip { right: 2px; top: 50%; transform: translateY(-50%); }
+.c-strip--collapsed[data-dock-edge="left"] .c-strip__grip svg { transform: rotate(90deg); }  /* right */
+.c-strip--collapsed[data-dock-edge="right"] .c-strip__grip { left: 2px; top: 50%; transform: translateY(-50%); }
+.c-strip--collapsed[data-dock-edge="right"] .c-strip__grip svg { transform: rotate(-90deg); } /* left */
