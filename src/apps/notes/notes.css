@@ -32,12 +32,24 @@
 .notes__tag--rest { color: var(--neutral-600); background: var(--neutral-100); }
 .notes__tag--leave-am, .notes__tag--leave-pm, .notes__tag--leave-full { color: var(--warning-600); background: var(--warning-50); }
 
-/* 编辑器 */
-.notes__editor-mask .c-dialog__body { max-height: 72vh; overflow-y: auto; }
-.notes__editor { display: flex; flex-direction: column; gap: var(--space-3); }
-.notes__field { display: flex; flex-direction: column; gap: var(--space-1); }
+/* 编辑器对话框实底材质（与 key/.key__editor、token-tool/.tt__editor 一致）：
+   实底 surface-solid 替代默认玻璃；高度适配：头部/底部按钮常驻、中部表单区可滚动 */
+.notes__editor-mask .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+}
+.notes__editor-mask .c-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.notes__editor { display: flex; flex-direction: column; gap: var(--space-4); }
+.notes__field { display: flex; flex-direction: column; gap: var(--space-2); }
 .notes__field-head { display: flex; align-items: center; justify-content: space-between; }
-.notes__field-label { font-size: var(--font-size-sm); color: var(--text-2); }
+.notes__field-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--text-2); }
 .notes__seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .notes__seg-item {
   display: inline-flex; align-items: center; gap: 4px; cursor: pointer; position: relative;
