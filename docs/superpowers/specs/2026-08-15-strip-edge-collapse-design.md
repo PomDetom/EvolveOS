@@ -18,7 +18,7 @@
 | 收起动画 | 贴边空闲 1s → JS rAF 逐帧 tween `setPosition` 滑向贴靠边，留 ~20px；ease-out ~500ms（时长读 CSS 变量） |
 | 弹出 | 收起态 hover 可见窄条 → 反向 tween 回贴边完整位 |
 | 持久化 | 收起位置**瞬态不持久化**；贴边完整位 / 自由位才写 `localStorage` |
-| 权限 | capabilities 新增 `core:screen:allow-current-monitor`（schema 已存在，现未开启） |
+| 权限 | capabilities 新增 `core:window:allow-current-monitor`（schema 已存在，现未开启） |
 | 分支 | `ui/strip-edge-collapse`（从 dev 检出；`ui/*` 框架改动全局串行 + 框架 owner 评审） |
 
 ## 2. 总体架构
@@ -38,7 +38,7 @@
 **改动面**：
 - `src/app/strip-main.js`：状态机 + 边缘/溢出检测（`screen.currentMonitor`）+ rAF tween 收起/弹回 + 1s 计时器 + 权限调用；`fit()` 在收起/收起态**挂起**。
 - `src/components/float-strip/float-strip.js` / `.css`：`.c-strip__grip` 把手元素（绝对定位、仅收起态显示、`data-dock-edge` 定向）+ 收起态类 `.c-strip--collapsed`。
-- `src-tauri/capabilities/default.json`：`core:screen:allow-current-monitor`。
+- `src-tauri/capabilities/default.json`：`core:window:allow-current-monitor`。
 - 测试：`tests/unit/strip-edge.test.js`（纯函数）+ `tests/e2e/floatstrip.spec.js`（mock 交互）+ `tests/unit/window-capabilities.test.js`（补权限断言）。
 
 ## 3. 详细设计
@@ -46,7 +46,7 @@
 ### 3.1 边缘检测与坐标口径
 
 - 窗口 rect：`win.outerPosition()`（物理像素 `{x,y}`）+ `win.outerSize()`（物理像素 `{width,height}`）。
-- 显示器 bounds：`window.__TAURI__.screen.currentMonitor()` → `{ position:{x,y}, size:{width,height} }`（物理像素）。需权限 `core:screen:allow-current-monitor`。
+- 显示器 bounds：`win.currentMonitor()`（Monitor API 在 Window 类，无独立 screen 模块）→ `{ position:{x,y}, size:{width,height} }`（物理像素）。需权限 `core:window:allow-current-monitor`。
 - 四边距离 = 窗口 rect 到当前显示器 bounds 四边的距离。
 - 判定：
   - **溢出某边**：窗口该边越出 monitor bounds（如 `rect.left < m.left`）。
@@ -95,7 +95,7 @@
 
 - 纯函数单测 `tests/unit/strip-edge.test.js`：四边距离计算、溢出判定、贴靠边→滑出方向映射、收起目标位计算（`computeCollapseTarget` 等）。
 - e2e `tests/e2e/floatstrip.spec.js`（mock）：半出屏松手→校正贴齐；贴边 1s→收起（含 hover 取消计时）；收起态 hover→弹回；四边方向 + `data-dock-edge`；grip 仅收起态显示。
-- `tests/unit/window-capabilities.test.js`：补 `core:screen:allow-current-monitor` 断言。
+- `tests/unit/window-capabilities.test.js`：补 `core:window:allow-current-monitor` 断言。
 - Tauri 真机行为标注待 `npm run tauri:dev` 验证（web 测试只验 JS 调用形态，不验证真实 setPosition 滑出屏 / monitor bounds / 屏外 hover）。
 
 ## 6. 待真机验证
