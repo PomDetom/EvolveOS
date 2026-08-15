@@ -130,8 +130,8 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__cal-cell--normal { background: var(--success-50); color: var(--success-600); }
 .notes__cal-cell--overtime { background: var(--accent-50); color: var(--accent); }
 .notes__cal-cell--rest { background: var(--neutral-100); color: var(--neutral-600); }
-.notes__cal-cell--leave-am { background: linear-gradient(180deg, var(--warning-50) 50%, var(--success-50) 50%); color: var(--text-2); }
-.notes__cal-cell--leave-pm { background: linear-gradient(180deg, var(--success-50) 50%, var(--warning-50) 50%); color: var(--text-2); }
+.notes__cal-cell--leave-am { background: linear-gradient(180deg, var(--warning-50) 50%, var(--success-50) 50%); color: var(--neutral-600); }
+.notes__cal-cell--leave-pm { background: linear-gradient(180deg, var(--success-50) 50%, var(--warning-50) 50%); color: var(--neutral-600); }
 .notes__cal-cell--leave-full { background: var(--warning-50); color: var(--warning-600); }
 .notes__cal-cell--today { border-color: var(--accent); }
 .notes__cal-trip-dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--info-500); }

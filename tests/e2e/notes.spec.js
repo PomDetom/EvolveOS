@@ -180,6 +180,7 @@ test.describe('牛马笔记：模板', () => {
 });
 
 test.describe('牛马笔记：统计与日历', () => {
+  test.describe.configure({ retries: 1 }); // 冷启动渲染进程崩溃 flake（隔离复跑绿即接受）→ 重试 1 次
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

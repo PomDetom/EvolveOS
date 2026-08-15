@@ -523,6 +523,9 @@ function mountStatsPage(pageEl, dis) {
   };
   queryRefs();
   let pickerYear = uiState.stats.year;
+  // 平滑滚动期间冻结活动月联动：防 ‹ › / 面板跳转时 label 出现 departure → target → departure 抖动
+  let scrolling = false;
+  let scrollTimer = 0;
 
   const allMonths = () => {
     const all = U.loadReports();
@@ -561,7 +564,8 @@ function mountStatsPage(pageEl, dis) {
     return best;
   };
 
-  const onScroll = () => {
+  // 滚动联动：参考线 = 滚动容器顶 + 头高，取最近月块并设为活动月
+  const syncActiveFromScroll = () => {
     const refLine = calScroll.getBoundingClientRect().top + headHeight();
     const blocks = monthEls();
     if (!blocks.length) return;
@@ -575,6 +579,20 @@ function mountStatsPage(pageEl, dis) {
     const month = Number(best.dataset.month);
     if (uiState.stats.year === year && uiState.stats.month === month) return;
     setActive(year, month);
+  };
+  const endSmoothScroll = () => {
+    if (!scrolling) return;
+    clearTimeout(scrollTimer);
+    scrolling = false;
+    syncActiveFromScroll(); // 落定后执行一次最终联动
+  };
+  const onScroll = () => {
+    if (scrolling) {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(endSmoothScroll, 150); // 末次滚动后 ~150ms 落定（scrollend 兜底）
+      return;
+    }
+    syncActiveFromScroll();
   };
 
   const bindCal = () => {
@@ -592,6 +610,11 @@ function mountStatsPage(pageEl, dis) {
     }
     if (!block) return;
     setActive(y, m);
+    if (smooth) {
+      scrolling = true; // 冻结 onScroll 联动，label 在整个滑动过程保持目标月
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(endSmoothScroll, 400); // 兜底：scrollend 缺失或无需滚动（delta=0）
+    }
     scrollToMonth(block, smooth);
   };
 
@@ -607,6 +630,8 @@ function mountStatsPage(pageEl, dis) {
   const bindCalNav = () => {
     calScroll.addEventListener('scroll', onScroll, { passive: true });
     dis.push(() => calScroll.removeEventListener('scroll', onScroll));
+    calScroll.addEventListener('scrollend', endSmoothScroll);
+    dis.push(() => calScroll.removeEventListener('scrollend', endSmoothScroll));
     calWrap.querySelector('[data-notes-cal-prev]').addEventListener('click', () => {
       const { year, month } = uiState.stats;
       goToMonth(year, month - 1, true);
