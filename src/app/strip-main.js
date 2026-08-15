@@ -275,14 +275,19 @@ export function mountStripMode() {
     const getMonitor = async () => {
       // Monitor API 挂在 Window 类（win.currentMonitor()），无独立 screen 模块；权限
       // core:window:allow-current-monitor。缺失/降级时 .catch 吞错 = 静默失效（mock 掩盖真机 bug）。
-      const m = await win.currentMonitor?.().catch?.(() => null);
-      return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
+      // 诊断（真机定位）：currentMonitor 方法是否存在、screen 模块是否存在、返回什么。
+      const m = await win.currentMonitor?.().catch?.((err) => { console.warn('[strip] edge currentMonitor err', err); return null; });
+      const mon = m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
+      console.log('[strip] edge monitor', JSON.stringify(mon), '| api typeof win.currentMonitor =', typeof win.currentMonitor, '| typeof __TAURI__.screen =', typeof window.__TAURI__?.screen);
+      return mon;
     };
     const getRect = async () => {
       // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
-      const p = await win.outerPosition?.().catch?.(() => null);
-      const s = await win.outerSize?.().catch?.(() => null);
-      return (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
+      const p = await win.outerPosition?.().catch?.((err) => { console.warn('[strip] edge outerPosition err', err); return null; });
+      const s = await win.outerSize?.().catch?.((err) => { console.warn('[strip] edge outerSize err', err); return null; });
+      const rect = (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
+      console.log('[strip] edge rect', JSON.stringify(rect), '| api typeof outerPosition =', typeof win.outerPosition, '| typeof outerSize =', typeof win.outerSize);
+      return rect;
     };
     const setEdgeUI = (mode) => {
       strip.classList.toggle('c-strip--collapsed', mode === 'collapsed');
@@ -325,6 +330,7 @@ export function mountStripMode() {
       // 守卫，光标在条上不计时；mouseleave 会重启计时），不进入收起。
       if (strip.matches(':hover')) { startCollapseTimer(); return; }
       const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
+      console.log('[strip] edge collapse →', JSON.stringify(target), 'edge', edge.dockEdge);
       edge.mode = 'collapsed';
       collapsed = true;
       setEdgeUI('collapsed');
@@ -333,6 +339,7 @@ export function mountStripMode() {
     const popOut = () => {
       cancelCollapse();
       if (edge.mode !== 'collapsed' || !edge.dockPos) return;
+      console.log('[strip] edge popOut →', JSON.stringify(edge.dockPos));
       collapsed = false;
       setEdgeUI('docked');
       tweenTo(edge.dockPos, readMotionDur(), () => {
@@ -345,6 +352,7 @@ export function mountStripMode() {
       const rect = await getRect();
       if (!monitor || !rect) return false; // 无能力（旧 mock/降级）→ 调用方兜底持久化
       const dock = resolveDock(rect, monitor);
+      console.log('[strip] edge dock', JSON.stringify(dock), 'rect', JSON.stringify(rect), 'monitor', JSON.stringify(monitor), 'mode→', dock.overflow.length ? 'correct→docked' : dock.edge ? 'docked' : 'free');
       if (dock.overflow.length) {
         // 先决校正：溢出边拉回贴齐完整可见 → 贴边
         const target = computeCorrectionTarget(rect, monitor);
@@ -378,7 +386,9 @@ export function mountStripMode() {
     // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估。
     // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
     // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
+    console.log('[strip] edge active', 'win', !!win, 'strip', !!strip, 'evalType', typeof evaluateDock);
     win.onMoved?.(() => {
+      console.log('[strip] edge onMoved fired');
       if (collapsed || collapseRaf) return;
       clearTimeout(settleTimer);
       settleTimer = setTimeout(async () => {
