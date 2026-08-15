@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   ATTENDANCE_OPTIONS, ATTENDANCE_LABELS, PHASE_OPTIONS, LOCATION_OPTIONS,
   workDayFraction, loadReports, saveReports, upsertReport, deleteReport,
-  loadTemplates, saveTemplates, upsertTemplate, deleteTemplate,
+  loadTemplates, saveTemplates, upsertTemplate, deleteTemplate, ensureSeedTemplates,
   todayISO, monthRange, fmtDate, escapeHtml,
   calcStats, buildMonthGrid, serializeExport, parseImport,
 } from '../../src/apps/notes/notes-utils.js';
@@ -64,6 +64,30 @@ describe('notes-utils：模板数据层', () => {
     expect(loadTemplates()[0].primary).toBe('p2');
     deleteTemplate(t1.id);
     expect(loadTemplates()).toHaveLength(0);
+  });
+});
+
+describe('notes-utils：内置示例模板播种', () => {
+  it('key 从未初始化 → ensureSeedTemplates 播种 3 条内置示例', () => {
+    expect(localStorage.getItem('evolveos.notes.templates')).toBeNull();
+    ensureSeedTemplates();
+    const templates = loadTemplates();
+    expect(templates).toHaveLength(3);
+    expect(templates.map((t) => t.id)).toEqual(['tpl-seed-1', 'tpl-seed-2', 'tpl-seed-3']);
+    expect(templates.map((t) => t.name)).toEqual(['需求开发', '日常总结', '会议纪要']);
+    expect(typeof templates[0].createdAt).toBe('number');
+    expect(typeof templates[0].updatedAt).toBe('number');
+  });
+  it('key 为 []（用户删空）→ 不覆盖不重播种', () => {
+    saveTemplates([]);
+    ensureSeedTemplates();
+    expect(loadTemplates()).toEqual([]);
+  });
+  it('key 已有数据 → 不覆盖', () => {
+    saveTemplates([{ id: 't1', name: '自建', primary: 'p', secondary: 's' }]);
+    ensureSeedTemplates();
+    expect(loadTemplates()).toHaveLength(1);
+    expect(loadTemplates()[0].id).toBe('t1');
   });
 });
 
@@ -154,6 +178,12 @@ describe('notes-utils：导出/导入序列化', () => {
     expect(parseImport('{"app":"evolveos.notes","version":2,"reports":[],"templates":[]}').ok).toBe(false);
     expect(parseImport('{"app":"evolveos.notes","version":1,"reports":[{"date":"2026-08-01","attendance":"nope","phase":"intern","location":"qingdao"}],"templates":[]}').ok).toBe(false);
     expect(parseImport('{"app":"evolveos.notes","version":1,"reports":[],"templates":[{"id":"t1"}]}').ok).toBe(false);
+  });
+  it('parseImport 日期日历校验：拒绝不可能日期（2026-02-30），接受合法日期', () => {
+    const bad = '{"app":"evolveos.notes","version":1,"reports":[{"date":"2026-02-30","attendance":"normal","phase":"intern","location":"qingdao"}],"templates":[]}';
+    expect(parseImport(bad).ok).toBe(false);
+    const good = '{"app":"evolveos.notes","version":1,"reports":[{"date":"2026-08-15","attendance":"normal","phase":"intern","location":"qingdao"}],"templates":[]}';
+    expect(parseImport(good).ok).toBe(true);
   });
 });
 

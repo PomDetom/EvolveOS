@@ -14,6 +14,7 @@ const currentYM = () => { const d = new Date(); return { year: d.getFullYear(), 
 const uiState = { report: currentYM(), stats: currentYM() };
 
 export function notesPage(ctx) {
+  U.ensureSeedTemplates();
   const dirId = ctx?.dirId ?? 'report';
   if (dirId === 'templates') return templatePage(ctx);
   if (dirId === 'stats') return statsPage(ctx);
@@ -260,7 +261,7 @@ function renderTemplateTextarea({ dataTpl, value, placeholder, rows, label }) {
   return renderTextarea({ value, placeholder, rows, label }).replace('<textarea', `<textarea data-notes-tpl="${dataTpl}"`);
 }
 
-function editorFormHtml(existing, templates) {
+function editorFormHtml(existing, templates, date) {
   const e = existing ?? {};
   const tplList = templates.length
     ? templates.map((t) => `<button type="button" class="notes__tpl-item" data-notes-template="${U.escapeHtml(t.id)}">${U.escapeHtml(t.name)}</button>`).join('')
@@ -269,7 +270,7 @@ function editorFormHtml(existing, templates) {
   <div class="notes__editor">
     <div class="notes__field">
       <label class="notes__field-label">日期</label>
-      <input class="c-input" type="date" data-notes-ed="date" value="${U.escapeHtml(e.date ?? '')}">
+      <input class="c-input" type="date" data-notes-ed="date" value="${U.escapeHtml(e.date ?? date ?? U.todayISO())}">
     </div>
     <div class="notes__field">
       <label class="notes__field-label">出勤情况</label>
@@ -304,7 +305,7 @@ export function openReportEditor({ date, existing, onSaved }) {
   mask.className = 'notes__editor-mask';
   mask.innerHTML = renderDialog({
     title: isEdit ? '编辑日报' : '写日报',
-    content: editorFormHtml(existing, U.loadTemplates()),
+    content: editorFormHtml(existing, U.loadTemplates(), date),
     confirmLabel: '保存',
     cancelLabel: '取消',
   });
@@ -339,6 +340,8 @@ export function openReportEditor({ date, existing, onSaved }) {
       if (!ok) return;
     }
     U.upsertReport(v);
+    // 编辑且改了日期：新记录已落库，移除原日期旧记录，防重复
+    if (isEdit && existing.date !== v.date) U.deleteReport(existing.date);
     toast(isEdit ? '日报已更新' : '日报已保存', { variant: 'success' });
     close();
     onSaved?.();
@@ -502,7 +505,7 @@ function bindIO(pageEl, refresh) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `牛马笔记-${U.todayISO()}.json`;
+    a.download = `牛马笔记-${U.todayISO().replace(/-/g, '')}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast('已导出备份', { variant: 'success' });

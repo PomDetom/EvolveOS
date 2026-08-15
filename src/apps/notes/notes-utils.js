@@ -78,6 +78,18 @@ export function deleteTemplate(id) {
   return templates;
 }
 
+// 内置示例模板：仅在从未初始化（key 为 null）时播种；存过 []（用户删空）不覆盖
+export function ensureSeedTemplates() {
+  if (localStorage.getItem(TEMPLATES_KEY) !== null) return;
+  const now = Date.now();
+  const examples = [
+    { id: 'tpl-seed-1', name: '需求开发', primary: '推进 XX 需求开发与联调', secondary: '编写技术方案' },
+    { id: 'tpl-seed-2', name: '日常总结', primary: '总结当日工作进展', secondary: '整理待办事项' },
+    { id: 'tpl-seed-3', name: '会议纪要', primary: '参加 XX 会议并记录要点', secondary: '跟进会后待办' },
+  ].map((t, i) => ({ ...t, createdAt: now + i, updatedAt: now + i }));
+  saveTemplates(examples);
+}
+
 // —— 时间工具 ——
 export function todayISO() {
   const d = new Date();
@@ -146,6 +158,13 @@ const VALID_ATTENDANCE = new Set(ATTENDANCE_OPTIONS.map((o) => o.value));
 const VALID_PHASE = new Set(PHASE_OPTIONS.map((o) => o.value));
 const VALID_LOCATION = new Set(LOCATION_OPTIONS.map((o) => o.value));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// 日历往返校验：2026-02-30 之类格式合法但日历不存在的日期拒绝
+const isRealDate = (s) => {
+  if (!DATE_RE.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+};
 
 export function serializeExport(reports, templates) {
   return JSON.stringify({ app: 'evolveos.notes', version: 1, exportedAt: Date.now(), reports, templates }, null, 2);
@@ -155,7 +174,7 @@ export function parseImport(json) {
   try { data = JSON.parse(json); } catch { return { ok: false, error: '无法解析备份文件' }; }
   if (!data || data.app !== 'evolveos.notes' || data.version !== 1) return { ok: false, error: '文件不是有效的牛马笔记备份' };
   if (!Array.isArray(data.reports) || !Array.isArray(data.templates)) return { ok: false, error: '备份结构不完整' };
-  const validReport = (r) => r && typeof r.date === 'string' && DATE_RE.test(r.date)
+  const validReport = (r) => r && typeof r.date === 'string' && isRealDate(r.date)
     && VALID_ATTENDANCE.has(r.attendance) && VALID_PHASE.has(r.phase) && VALID_LOCATION.has(r.location);
   if (!data.reports.every(validReport)) return { ok: false, error: '备份含非法日报记录' };
   const validTemplate = (t) => t && typeof t.id === 'string' && typeof t.name === 'string';
