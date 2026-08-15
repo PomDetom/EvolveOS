@@ -117,3 +117,55 @@ test.describe('牛马笔记：模板', () => {
     await expect(page.locator('.notes__template-row')).toHaveCount(0);
   });
 });
+
+test.describe('牛马笔记：统计与日历', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const d1 = new Date(y.getFullYear(), y.getMonth(), 1);
+      const d2 = new Date(y.getFullYear(), y.getMonth(), 2);
+      const d3 = new Date(y.getFullYear(), y.getMonth(), 3);
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify([
+        { date: iso(d1), primary: '正常日', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+        { date: iso(d2), primary: '半天请假', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
+        { date: iso(d3), primary: '出差日', secondary: '', attendance: 'overtime', phase: 'regular', location: 'xian', updatedAt: 3 },
+      ]));
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+  });
+
+  test('统计卡：当月/累计牛马日(含0.5)/休息日/实习期/正式期/出差日 + 日历着色与角标', async ({ page }) => {
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    // 当月卡（本月 3 条）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
+    await expect(page.locator('.notes__stats-group').first()).toContainText('当月');
+    await expect(page.locator('.notes__stats-group').first()).toContainText('2.5');
+    await expect(page.locator('.notes__stats-group').first()).toContainText('实习期');
+    await expect(page.locator('.notes__stats-group').first()).toContainText('出差日');
+    // 累计卡 = 当月卡（无跨月数据）
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText('累计');
+
+    // 日历：3 个格子带对应着色类
+    await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(1);
+    await expect(page.locator('.notes__cal-cell--leave-am')).toHaveCount(1);
+    await expect(page.locator('.notes__cal-cell--overtime')).toHaveCount(1);
+    // 出差角标（xian）
+    await expect(page.locator('.notes__cal-cell--trip')).toHaveCount(1);
+    await expect(page.locator('.notes__cal-trip-dot')).toHaveCount(1);
+    // 今天描边
+    await expect(page.locator('.notes__cal-cell--today')).toHaveCount(1);
+    // 图例
+    await expect(page.locator('.notes__legend-item').first()).toBeVisible();
+
+    // 点日历格 → 打开该日编辑器
+    await page.locator('.notes__cal-cell--normal').click();
+    await expect(page.locator('.c-dialog')).toBeVisible();
+    await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('正常日');
+    await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
+  });
+});

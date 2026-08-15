@@ -154,19 +154,95 @@ function openTemplateEditor({ existing, onSaved }) {
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 }
 
-// —— 统计 占位（Task 5 实装替换）——
-function statsPage(ctx) {
-  return pageStub(ctx, '统计', '出勤统计与日历即将上线', 'layout');
-}
-function pageStub(ctx, sub, desc, iconName) {
-  return `
+// —— 统计页（Task 5 实装：统计卡 + 日历 + 图例 + 月联动）——
+export function statsPage(ctx) {
+  const { year, month } = uiState.stats;
+  const range = U.monthRange(year, month);
+  const all = U.loadReports();
+  const head = `
     <div class="app-main__page-head">
       <h2 class="app-main__page-title">牛马笔记</h2>
-      <span class="app-main__page-sub">› ${sub}</span>
-    </div>
-    <div class="app-main__page-body">
-      ${renderEmptyState({ iconName, title: sub, desc })}
+      <span class="app-main__page-sub">› 统计</span>
     </div>`;
+  return `${head}
+    <div class="app-main__page-body">
+      <div class="notes__toolbar">
+        <div class="notes__month-nav">
+          <button class="notes__month-btn" data-notes-month-prev aria-label="上个月" type="button">${icon('chevron-left', 16)}</button>
+          <span class="notes__month-label" data-notes-month>${year}年${month + 1}月</span>
+          <button class="notes__month-btn" data-notes-month-next aria-label="下个月" type="button">${icon('chevron-right', 16)}</button>
+        </div>
+        <div class="notes__toolbar-actions">
+          <span class="notes__io">${renderButton({ label: '导出', variant: 'secondary', iconName: 'download' })}</span>
+          <span class="notes__io">${renderButton({ label: '导入', variant: 'secondary', iconName: 'upload' })}</span>
+        </div>
+      </div>
+      <div class="notes__stats-groups" data-notes-stats>
+        ${statsGroupHtml('当月', U.calcStats(all, range))}
+        ${statsGroupHtml('累计', U.calcStats(all))}
+      </div>
+      <div class="notes__cal-wrap" data-notes-cal>
+        ${calendarHtml(year, month, all)}
+        ${legendHtml()}
+      </div>
+    </div>`;
+}
+
+function statsGroupHtml(title, s) {
+  return `
+    <div class="notes__stats-group">
+      <h3 class="notes__stats-title">${title}</h3>
+      <div class="notes__stats-cards">
+        ${statCard('牛马日', s.workDays)}
+        ${statCard('休息日', s.restDays)}
+        ${statCard('实习期', s.internDays)}
+        ${statCard('正式期', s.regularDays)}
+        ${statCard('出差日', s.tripDays)}
+      </div>
+      <div class="notes__stats-breakdown">
+        ${breakdownItem('正常', s.breakdown.normal)}
+        ${breakdownItem('加班', s.breakdown.overtime)}
+        ${breakdownItem('请假上午', s.breakdown.leaveAm)}
+        ${breakdownItem('请假下午', s.breakdown.leavePm)}
+        ${breakdownItem('请假全天', s.breakdown.leaveFull)}
+        ${breakdownItem('休息日', s.breakdown.rest)}
+      </div>
+    </div>`;
+}
+function statCard(label, value) {
+  return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
+}
+function breakdownItem(label, n) { return `<span class="notes__breakdown-item">${label} <b>${n}</b></span>`; }
+
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
+function calendarHtml(year, month, reports) {
+  const byDate = new Map(reports.map((r) => [r.date, r]));
+  const today = U.todayISO();
+  const grid = U.buildMonthGrid(year, month);
+  const headRow = `<div class="notes__cal-week notes__cal-week--head">${WEEKDAYS.map((w) => `<span class="notes__cal-weekday">${w}</span>`).join('')}</div>`;
+  const rows = grid.map((week) => `
+    <div class="notes__cal-week">
+      ${week.map((date) => {
+        if (!date) return '<span class="notes__cal-cell notes__cal-cell--blank"></span>';
+        const r = byDate.get(date);
+        const cls = ['notes__cal-cell'];
+        if (r) cls.push(`notes__cal-cell--${r.attendance}`);
+        if (r && r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
+        if (date === today) cls.push('notes__cal-cell--today');
+        const dayNum = Number(date.slice(8));
+        const dot = r && r.location !== 'qingdao' ? '<span class="notes__cal-trip-dot"></span>' : '';
+        return `<button class="${cls.join(' ')}" type="button" data-date="${date}">${dayNum}${dot}</button>`;
+      }).join('')}
+    </div>`).join('');
+  return `<div class="notes__cal">${headRow}${rows}</div>`;
+}
+
+function legendHtml() {
+  const items = U.ATTENDANCE_OPTIONS
+    .map((o) => `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--${o.value}"></i>${o.label}</span>`)
+    .join('');
+  const trip = `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--trip"></i>出差（西安）</span>`;
+  return `<div class="notes__legend">${items}${trip}</div>`;
 }
 
 // —— 编辑器（renderDialog 结构自行接线，token-tool 先例）——
@@ -381,5 +457,38 @@ function mountTemplatePage(pageEl, dis) {
   bindList();
 }
 
-// 占位 mount（Task 5 实装）
-function mountStatsPage() {}
+// —— 统计页 mount（Task 5 实装：月联动 + 日历格开编辑器）——
+function mountStatsPage(pageEl, dis) {
+  const calWrap = pageEl.querySelector('[data-notes-cal]');
+  const statsEl = pageEl.querySelector('[data-notes-stats]');
+  const labelEl = pageEl.querySelector('[data-notes-month]');
+  const openEditor = (date) => {
+    const existing = U.loadReports().find((r) => r.date === date) || null;
+    openReportEditor({ date, existing, onSaved: refresh });
+  };
+  function refresh() {
+    const { year, month } = uiState.stats;
+    const range = U.monthRange(year, month);
+    const all = U.loadReports();
+    statsEl.innerHTML = statsGroupHtml('当月', U.calcStats(all, range)) + statsGroupHtml('累计', U.calcStats(all));
+    calWrap.innerHTML = calendarHtml(year, month, all) + legendHtml();
+    bindCal();
+  }
+  const bindCal = () => {
+    calWrap.querySelectorAll('.notes__cal-cell[data-date]').forEach((cell) =>
+      cell.addEventListener('click', () => openEditor(cell.dataset.date)));
+  };
+  const goMonth = (delta) => {
+    const d = new Date(uiState.stats.year, uiState.stats.month + delta, 1);
+    uiState.stats = { year: d.getFullYear(), month: d.getMonth() };
+    labelEl.textContent = `${uiState.stats.year}年${uiState.stats.month + 1}月`;
+    refresh();
+  };
+  pageEl.querySelector('[data-notes-month-prev]')?.addEventListener('click', () => goMonth(-1));
+  pageEl.querySelector('[data-notes-month-next]')?.addEventListener('click', () => goMonth(1));
+  bindCal();
+  bindIO(pageEl, refresh);
+}
+
+// 导出/导入（Task 6 实装）
+function bindIO(pageEl, refresh) {}
