@@ -529,8 +529,9 @@ Expected: FAIL（`__stripEdge__` 未定义 → evaluateDock 抛错 / 无收起�
       return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
     };
     const getRect = async () => {
-      const p = await win.outerPosition().catch(() => null);
-      const s = await win.outerSize().catch(() => null);
+      // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
+      const p = await win.outerPosition?.().catch?.(() => null);
+      const s = await win.outerSize?.().catch?.(() => null);
       return (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
     };
     const setEdgeUI = (mode) => {
@@ -583,7 +584,7 @@ Expected: FAIL（`__stripEdge__` 未定义 → evaluateDock 抛错 / 无收起�
     const evaluateDock = async () => {
       const monitor = await getMonitor();
       const rect = await getRect();
-      if (!monitor || !rect) return;
+      if (!monitor || !rect) return false; // 无能力（旧 mock/降级）→ 调用方兜底持久化
       const dock = resolveDock(rect, monitor);
       if (dock.overflow.length) {
         // 先决校正：溢出边拉回贴齐完整可见 → 贴边
@@ -612,13 +613,23 @@ Expected: FAIL（`__stripEdge__` 未定义 → evaluateDock 抛错 / 无收起�
         cancelCollapse();
         persistPosition({ x: rect.x, y: rect.y });
       }
+      return true;
     };
 
-    // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估
+    // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估。
+    // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
+    // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
     win.onMoved?.(() => {
       if (collapsed || collapseRaf) return;
       clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => { evaluateDock(); }, 150);
+      settleTimer = setTimeout(async () => {
+        const handled = await evaluateDock();
+        if (!handled) {
+          win.outerPosition?.().then(({ x, y }) => {
+            if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+          }).catch(() => {});
+        }
+      }, 150);
     });
     // hover 触发：贴边态取消计时（标准自动隐藏）；收起态弹回
     strip.addEventListener('mouseenter', () => {
