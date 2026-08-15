@@ -99,3 +99,66 @@ export function escapeHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+// —— 统计（range 缺省 = 全量；出差日 = 所在地非青岛）——
+export function calcStats(reports, range) {
+  const stats = {
+    workDays: 0, restDays: 0, internDays: 0, regularDays: 0, tripDays: 0,
+    breakdown: { normal: 0, overtime: 0, rest: 0, leaveAm: 0, leavePm: 0, leaveFull: 0 },
+  };
+  for (const r of reports) {
+    if (range && (r.date < range.start || r.date > range.end)) continue;
+    stats.workDays += workDayFraction(r.attendance);
+    if (r.attendance === 'rest') stats.restDays += 1;
+    if (r.phase === 'intern') stats.internDays += 1;
+    if (r.phase === 'regular') stats.regularDays += 1;
+    if (r.location !== 'qingdao') stats.tripDays += 1;
+    const b = stats.breakdown;
+    if (r.attendance === 'normal') b.normal += 1;
+    else if (r.attendance === 'overtime') b.overtime += 1;
+    else if (r.attendance === 'rest') b.rest += 1;
+    else if (r.attendance === 'leave-am') b.leaveAm += 1;
+    else if (r.attendance === 'leave-pm') b.leavePm += 1;
+    else if (r.attendance === 'leave-full') b.leaveFull += 1;
+  }
+  return stats;
+}
+
+// —— 日历：周一起、6×7 定网格，格值为 ISO 日期串或 null ——
+export function buildMonthGrid(year, month) {
+  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const m = String(month + 1).padStart(2, '0');
+  const grid = [];
+  let week = [];
+  for (let i = 0; i < 42; i++) {
+    const dayNum = i - startOffset + 1;
+    week.push(dayNum >= 1 && dayNum <= daysInMonth
+      ? `${year}-${m}-${String(dayNum).padStart(2, '0')}`
+      : null);
+    if (week.length === 7) { grid.push(week); week = []; }
+  }
+  return grid;
+}
+
+// —— 序列化（导出/导入校验）——
+const VALID_ATTENDANCE = new Set(ATTENDANCE_OPTIONS.map((o) => o.value));
+const VALID_PHASE = new Set(PHASE_OPTIONS.map((o) => o.value));
+const VALID_LOCATION = new Set(LOCATION_OPTIONS.map((o) => o.value));
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function serializeExport(reports, templates) {
+  return JSON.stringify({ app: 'evolveos.notes', version: 1, exportedAt: Date.now(), reports, templates }, null, 2);
+}
+export function parseImport(json) {
+  let data;
+  try { data = JSON.parse(json); } catch { return { ok: false, error: '无法解析备份文件' }; }
+  if (!data || data.app !== 'evolveos.notes' || data.version !== 1) return { ok: false, error: '文件不是有效的牛马笔记备份' };
+  if (!Array.isArray(data.reports) || !Array.isArray(data.templates)) return { ok: false, error: '备份结构不完整' };
+  const validReport = (r) => r && typeof r.date === 'string' && DATE_RE.test(r.date)
+    && VALID_ATTENDANCE.has(r.attendance) && VALID_PHASE.has(r.phase) && VALID_LOCATION.has(r.location);
+  if (!data.reports.every(validReport)) return { ok: false, error: '备份含非法日报记录' };
+  const validTemplate = (t) => t && typeof t.id === 'string' && typeof t.name === 'string';
+  if (!data.templates.every(validTemplate)) return { ok: false, error: '备份含非法模板' };
+  return { ok: true, data: { reports: data.reports, templates: data.templates } };
+}
