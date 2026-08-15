@@ -269,7 +269,7 @@ export function mountStripMode() {
       const off = document.documentElement.dataset.motion === 'off'
         || (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false);
       if (off) return 0;
-      const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--strip-dur-collapse'));
+      const v = parseFloat(getComputedStyle(strip).getPropertyValue('--strip-dur-collapse'));
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
@@ -287,22 +287,26 @@ export function mountStripMode() {
       strip.dataset.dockEdge = edge.dockEdge ?? '';
     };
     const persistPosition = (p) => localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: p.x, y: p.y }));
-    const tweenTo = (to, dur, onDone = () => {}) => {
+    // tweenTo 返回 Promise：await 的调用方（evaluateDock 先决校正）等动画真正到位再起收起计时，
+    // 防「校正 tween 与 1s 计时并发」把贴边可见窗口期压缩。onDone 后 resolve；dur<=0 直落、
+    // outerPosition 失败都 resolve（防悬挂）。位移全走 setPosition（OS 层）。
+    const tweenTo = (to, dur, onDone = () => {}) => new Promise((resolve) => {
       if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
+      const finish = () => { try { onDone(); } finally { resolve(); } };
       win.outerPosition().then((p) => {
         const from = { x: p.x, y: p.y };
-        if (dur <= 0) { win.setPosition(to).catch(() => {}); onDone(); return; }
+        if (dur <= 0) { win.setPosition(to).catch(() => {}); finish(); return; }
         const start = performance.now();
         const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
         const step = (now) => {
           const k = ease(Math.min(1, (now - start) / dur));
           win.setPosition({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) }).catch(() => {});
           if (k < 1) collapseRaf = requestAnimationFrame(step);
-          else { collapseRaf = null; onDone(); }
+          else { collapseRaf = null; finish(); }
         };
         collapseRaf = requestAnimationFrame(step);
-      }).catch(() => {});
-    };
+      }).catch(() => finish());
+    });
     const cancelCollapse = () => { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } };
     const startCollapseTimer = () => {
       cancelCollapse();
