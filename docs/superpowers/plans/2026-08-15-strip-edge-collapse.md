@@ -13,8 +13,8 @@
 ## Global Constraints
 
 - 零运行时依赖、零框架（AGENTS.md）；禁止引入 npm 依赖。
-- 坐标口径：窗口 `outerPosition`/`outerSize` 与 `screen.currentMonitor()` 均为物理像素。
-- 权限：`core:window:allow-current-monitor` + `core:window:allow-outer-size` 加入 `src-tauri/capabilities/default.json`（缺失会被 `.catch` 吞错 = 静默失效）。
+- 坐标口径：窗口 `outerPosition`/`outerSize` 与 `get_current_monitor`（Rust 命令 `window.current_monitor()`）均为物理像素。
+- 权限：`core:window:allow-outer-size` 加入 `src-tauri/capabilities/default.json`（显示器 bounds 走 Rust 命令，无 JS 权限需求——全局 shim 无 monitor API，真机实测）。
 - 动画红线：位移走 `setPosition`（OS 层）；CSS 只动 `transform`/`opacity`，grip 旋转是静态类切换非动画；时长走 CSS 变量 `--strip-dur-collapse`，`data-motion="off"` / reduced-motion 时归零。
 - TDD：每任务 红→绿→提交；提交信息中文、前缀。
 - 测试仅 Web 环境；Tauri 真机行为（真实 setPosition 滑出屏 / monitor bounds / 屏外 hover）标注待 `npm run tauri:dev`。
@@ -117,7 +117,7 @@ Create `src/app/strip-edge.js`:
 
 ```js
 // 悬浮窗贴边收起几何（ui/strip-edge-collapse）：纯函数，可单测。
-// 坐标口径：窗口 rect 与 monitor bounds 均为物理像素（outerPosition/outerSize 与 currentMonitor 一致）。
+// 坐标口径：窗口 rect 与 monitor bounds 均为物理像素（outerPosition/outerSize 与 get_current_monitor 一致）。
 export const DOCK_TOLERANCE = 0; // 贴边判定阈值：0 = 仅精确贴齐（距离 0）；溢出经 computeCorrectionTarget 校正后同样贴齐；不做 6px 磁吸容差（用户口径）
 export const SLIVER = 20;        // 收起后屏幕内可见窄条宽度（px）
 
@@ -202,11 +202,11 @@ git commit -m "feat: 悬浮窗贴边收起几何纯函数（边缘/溢出/收起
 
 **Interfaces:**
 - Consumes: 无
-- Produces: 权限 `core:window:allow-current-monitor`、`core:window:allow-outer-size` 生效（Task 4 的 `screen.currentMonitor()` / `win.outerSize()` 不再被静默拒绝）
+- Produces: 权限 `core:window:allow-outer-size` 生效（Task 4 的 `win.outerSize()` 不再被静默拒绝；显示器 bounds 走 Rust 命令 `get_current_monitor`，无 JS 权限需求）
 
 - [ ] **Step 1: Write the failing test**
 
-In `tests/unit/window-capabilities.test.js`，第二个 `it('授权 strip 悬浮窗…')` 的 `required` 数组追加两项：
+In `tests/unit/window-capabilities.test.js`，第二个 `it('授权 strip 悬浮窗…')` 的 `required` 数组追加一项：
 
 ```js
     const required = [
@@ -218,26 +218,21 @@ In `tests/unit/window-capabilities.test.js`，第二个 `it('授权 strip 悬浮
       'core:window:allow-outer-size',
       'core:window:allow-set-size',
       'core:window:allow-set-focus',
-      'core:window:allow-current-monitor',
     ];
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/window-capabilities.test.js`
-Expected: FAIL（两个权限缺失）
+Expected: FAIL（`core:window:allow-outer-size` 缺失）
 
 - [ ] **Step 3: Implement**
 
-在 `src-tauri/capabilities/default.json` 的 `permissions` 数组加两项（保持字母序位置）：
+在 `src-tauri/capabilities/default.json` 的 `permissions` 数组加一项（保持字母序位置）：
 
 ```json
     "core:window:allow-outer-position",
     "core:window:allow-outer-size",
-```
-以及
-```json
-    "core:window:allow-current-monitor",
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -249,7 +244,7 @@ Expected: PASS
 
 ```bash
 git add src-tauri/capabilities/default.json tests/unit/window-capabilities.test.js
-git commit -m "feat: 悬浮窗贴边收起所需权限（core:window:allow-current-monitor + core:window:allow-outer-size）"
+git commit -m "feat: 悬浮窗贴边收起所需权限（core:window:allow-outer-size）+ Rust get_current_monitor 命令（显示器 bounds）"
 ```
 
 ---
@@ -367,7 +362,7 @@ git commit -m "feat: 悬浮窗收起 grip 渲染 + 收起态样式（--strip-dur
 
 ```js
 // —— 贴边收起（ui/strip-edge-collapse）：先决校正 / 空闲1s收起 / hover取消 / 弹回 / grip ——
-// mock：可原位改 pos 模拟拖后窗口位置；screen.currentMonitor 固定 1280×720@1；窗口 300×60。
+// mock：可原位改 pos 模拟拖后窗口位置；get_current_monitor 固定 1280×720@1；窗口 300×60。
 // 挂载后光标默认(0,0)在 strip 上 → 各用例先 mouse.move 移开，再经 mock 的 __stripMoved__ 驱动
 // 真实 onMoved 路径（150ms 去抖 → evaluateDock）。无生产测试缝。
 async function mountEdgeMock(page, seedPos) {
@@ -389,8 +384,10 @@ async function mountEdgeMock(page, seedPos) {
           hide: () => Promise.resolve(),
         }),
       },
-      screen: { currentMonitor: () => Promise.resolve({ position: { x: 0, y: 0 }, size: { width: 1280, height: 720 }, scaleFactor: 1 }) },
-      core: { invoke: async () => null },
+      core: { invoke: async (cmd) => {
+        if (cmd === 'get_current_monitor') return { x: 0, y: 0, width: 1280, height: 720 };
+        return null;
+      } },
       event: { listen: async () => () => {} },
     };
     window.__edgeCalls__ = calls;
@@ -527,7 +524,7 @@ Expected: FAIL（`__stripEdge__` 未定义 → evaluateDock 抛错 / 无收起�
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
-      const m = await win.currentMonitor?.().catch?.(() => null);
+      const m = await window.__TAURI__?.core?.invoke?.('get_current_monitor').catch?.(() => null);
       return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
     };
     const getRect = async () => {

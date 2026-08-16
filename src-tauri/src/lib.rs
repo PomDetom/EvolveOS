@@ -11,6 +11,28 @@ fn set_close_behavior(state: tauri::State<'_, CloseBehaviorState>, behavior: Str
     *state.close_behavior.lock().unwrap() = behavior;
 }
 
+// —— 贴边收起（ui/strip-edge-collapse）：当前显示器 bounds ——
+// JS 全局 shim 不暴露 monitor API（真机实测 win.currentMonitor / __TAURI__.screen 均 undefined，
+// web mock 掩盖了这点）→ 走 Rust 命令 `window.current_monitor()` 取物理像素 bounds，JS invoke 消费。
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorBounds {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[tauri::command]
+fn get_current_monitor(window: tauri::Window) -> Option<MonitorBounds> {
+    window.current_monitor().ok().flatten().map(|m| MonitorBounds {
+        x: m.position().x,
+        y: m.position().y,
+        width: m.size().width,
+        height: m.size().height,
+    })
+}
+
 // —— 主窗启动时序（ui/startup-opt）：hidden-until-ready ——
 // 主窗 tauri.conf.json 设 visible:false；前端 mountAppMode 首帧绘制后 invoke main_window_ready
 // → 隐藏态恢复上次几何（尺寸/位置/最大化）→ show。窗口首次可见帧即「保存位置 + 已渲染内容」，
@@ -95,6 +117,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_close_behavior,
             main_window_ready,
+            get_current_monitor,
             commands::get_config,
             commands::save_config,
             commands::refresh_all,

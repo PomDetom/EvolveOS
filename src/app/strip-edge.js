@@ -1,5 +1,5 @@
 // 悬浮窗贴边收起几何（ui/strip-edge-collapse）：纯函数，可单测。
-// 坐标口径：窗口 rect 与 monitor bounds 均为物理像素（outerPosition/outerSize 与 currentMonitor 一致）。
+// 坐标口径：窗口 rect 与 monitor bounds 均为物理像素（outerPosition/outerSize 与 get_current_monitor 一致）。
 export const DOCK_TOLERANCE = 0; // 贴边判定阈值：0 = 仅精确贴齐（距离 0）；溢出经 computeCorrectionTarget 校正后同样贴齐；不做 6px 磁吸容差（用户口径）
 export const SLIVER = 20;        // 收起后屏幕内可见窄条宽度（px）
 

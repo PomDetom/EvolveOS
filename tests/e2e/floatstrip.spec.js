@@ -425,12 +425,14 @@ async function mountEdgeMock(page, seedPos) {
           outerSize: () => Promise.resolve({ ...size }),
           setSize: () => Promise.resolve(),
           setFocus: () => Promise.resolve(),
-          currentMonitor: () => Promise.resolve({ position: { x: 0, y: 0 }, size: { width: 1280, height: 720 }, scaleFactor: 1 }),
           onMoved: (fn) => { window.__stripMoved__ = fn; return Promise.resolve(() => {}); },
           hide: () => Promise.resolve(),
         }),
       },
-      core: { invoke: async () => null },
+      core: { invoke: async (cmd) => {
+        if (cmd === 'get_current_monitor') return { x: 0, y: 0, width: 1280, height: 720 }; // 显示器 bounds（物理像素）
+        return null;
+      } },
       event: { listen: async () => () => {} },
     };
     window.__edgeCalls__ = calls;

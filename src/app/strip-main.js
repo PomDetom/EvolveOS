@@ -285,13 +285,12 @@ export function mountStripMode() {
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
-      // Monitor API 挂在 Window 类（win.currentMonitor()），无独立 screen 模块；权限
-      // core:window:allow-current-monitor。缺失/降级时 .catch 吞错 = 静默失效（mock 掩盖真机 bug）。
-      // 诊断（真机定位）：currentMonitor 方法是否存在、screen 模块是否存在、返回什么。
-      const m = await win.currentMonitor?.().catch?.((err) => { logEdge(`[edge] currentMonitor err ${err}`); return null; });
-      const mon = m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
-      logEdge(`[edge] monitor ${JSON.stringify(mon)} | currentMonitor=${typeof win.currentMonitor} screen=${typeof window.__TAURI__?.screen}`);
-      return mon;
+      // 全局 shim 无 monitor API（真机实测 win.currentMonitor / __TAURI__.screen 均 undefined）→
+      // 走 Rust 命令 get_current_monitor 取当前显示器 bounds（物理像素）。?.() 兼容旧 mock/降级
+      // 环境（无 core.invoke → null，评估 no-op，不抛错）。
+      const m = await window.__TAURI__?.core?.invoke?.('get_current_monitor').catch?.((err) => { logEdge(`[edge] monitor err ${err}`); return null; });
+      logEdge(`[edge] monitor ${JSON.stringify(m)} (invoke)`);
+      return m;
     };
     const getRect = async () => {
       // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
