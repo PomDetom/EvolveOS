@@ -180,6 +180,7 @@ test.describe('牛马笔记：模板', () => {
 });
 
 test.describe('牛马笔记：统计与日历', () => {
+  test.describe.configure({ retries: 1 }); // 冷启动渲染进程崩溃 flake（隔离复跑绿即接受）→ 重试 1 次
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -196,25 +197,43 @@ test.describe('牛马笔记：统计与日历', () => {
     });
   });
 
-  test('统计卡：当月/累计牛马日(含0.5)/休息日/实习期/正式期/出差日 + 日历着色与角标', async ({ page }) => {
+  test('布局：累计组顶 → 日历中 → 活动月组底 + 统计卡/日历着色/彩色 breakdown', async ({ page }) => {
     await page.goto(APP_URL);
     await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
     await page.waitForTimeout(400);
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
 
-    // 当月卡（本月 3 条）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
-    await expect(page.locator('.notes__stats-group').first()).toContainText('当月');
+    // 布局顺序：累计组 → 日历 → 活动月组
+    const order = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.app-main__page-body > *')).map((el) =>
+        el.matches('[data-notes-stats-total]') ? 'total' : el.matches('[data-notes-cal]') ? 'cal' : el.matches('[data-notes-stats-month]') ? 'month' : 'other'));
+    expect(order.indexOf('total')).toBeLessThan(order.indexOf('cal'));
+    expect(order.indexOf('cal')).toBeLessThan(order.indexOf('month'));
+
+    // 累计卡（本页数据全在当前月，累计=当月）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
+    await expect(page.locator('.notes__stats-group').first()).toContainText('累计');
     await expect(page.locator('.notes__stats-group').first()).toContainText('2.5');
     await expect(page.locator('.notes__stats-group').first()).toContainText('实习期');
     await expect(page.locator('.notes__stats-group').first()).toContainText('出差日');
-    // 累计卡 = 当月卡（无跨月数据）
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText('累计');
+    // 活动月组（默认当前月）：标题为月份名，数据同累计
+    const y = new Date();
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText('2.5');
 
-    // 日历：3 个格子带对应着色类
+    // 彩色 breakdown：正常/加班/休息日各自色类，请假三态统一 leave 色
+    await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--normal')).toHaveCount(1);
+    await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--overtime')).toHaveCount(1);
+    await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--rest')).toHaveCount(1);
+    await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--leave')).toHaveCount(3);
+
+    // 日历：3 个格子带对应着色类（竖向连续仍各 1）
     await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(1);
     await expect(page.locator('.notes__cal-cell--leave-am')).toHaveCount(1);
     await expect(page.locator('.notes__cal-cell--overtime')).toHaveCount(1);
+    // 请假半格：--leave-am/--leave-pm 用 linear-gradient（上半请假色/下半正常色）
+    const leaveBg = await page.locator('.notes__cal-cell--leave-am').evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(leaveBg).toContain('linear-gradient');
     // 出差角标（xian）
     await expect(page.locator('.notes__cal-cell--trip')).toHaveCount(1);
     await expect(page.locator('.notes__cal-trip-dot')).toHaveCount(1);
@@ -231,16 +250,16 @@ test.describe('牛马笔记：统计与日历', () => {
   });
 });
 
-test.describe('牛马笔记：统计月切换', () => {
-  test('月切换：当月/累计差分 + prev/next 联动', async ({ page }) => {
+test.describe('牛马笔记：统计滚动联动', () => {
+  test('滚动到上月块 → 底部组标题/统计跟随', async ({ page }) => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const y = new Date();
-      const cur = new Date(y.getFullYear(), y.getMonth(), 1); // 本月 1 号
-      const prev = new Date(y.getFullYear(), y.getMonth() - 1, 15); // 上月 15 号
+      const cur = new Date(y.getFullYear(), y.getMonth(), 1);
+      const prev = new Date(y.getFullYear(), y.getMonth() - 1, 15);
       localStorage.setItem('evolveos.notes.reports', JSON.stringify([
         { date: iso(cur), primary: '本月记录', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
-        { date: iso(prev), primary: '上月记录', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 2 },
+        { date: iso(prev), primary: '上月记录', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
       ]));
       localStorage.setItem('evolveos.notes.templates', '[]');
     });
@@ -252,21 +271,114 @@ test.describe('牛马笔记：统计月切换', () => {
 
     const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-value').first();
     const y = new Date();
-    // 初始本月：当月牛马日=1（本月仅 1 条 normal），累计=2（跨月 2 条 normal）→ 两卡组可区分
-    await expect(page.locator('[data-notes-month]')).toHaveText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
-    await expect(monthStat(0)).toHaveText('1天');
-    await expect(monthStat(1)).toHaveText('2天');
-    // 上个月：标签更新，当月卡变为上月记录值（1），累计仍 2
-    await page.locator('[data-notes-month-prev]').click();
     const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
-    await expect(page.locator('[data-notes-month]')).toHaveText(`${prevM.getFullYear()}年${prevM.getMonth() + 1}月`);
-    await expect(monthStat(0)).toHaveText('1天');
-    await expect(monthStat(1)).toHaveText('2天');
-    // 回本月：当月/累计恢复初始值
-    await page.locator('[data-notes-month-next]').click();
-    await expect(page.locator('[data-notes-month]')).toHaveText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
-    await expect(monthStat(0)).toHaveText('1天');
-    await expect(monthStat(1)).toHaveText('2天');
+    const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
+    const curLabel = `${y.getFullYear()}年${y.getMonth() + 1}月`;
+    // 上月块存在（跨度覆盖最早记录月）
+    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-month[data-year="${prevM.getFullYear()}"][data-month="${prevM.getMonth()}"]`)).toHaveCount(1);
+
+    // 初始：活动月=本月，底部组标题=本月，牛马日=1（normal）
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(curLabel);
+    await expect(monthStat(1)).toHaveText('1天');
+
+    // 滚动到上月块 → 联动更新底部组（上月 1 条 leave-am → 0.5）
+    await page.locator('[data-notes-cal-scroll]').evaluate((el, { year, month }) => {
+      const head = el.querySelector('.notes__cal-head');
+      const block = el.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
+      el.scrollTop = block.offsetTop - head.offsetHeight;
+      el.dispatchEvent(new Event('scroll'));
+    }, { year: prevM.getFullYear(), month: prevM.getMonth() });
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
+    await expect(monthStat(1)).toHaveText('0.5天');
+  });
+});
+
+test.describe('牛马笔记：统计月切换', () => {
+  test('日历 ‹ › 切换：标签/底部组联动', async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const cur = new Date(y.getFullYear(), y.getMonth(), 1);
+      const prev = new Date(y.getFullYear(), y.getMonth() - 1, 15);
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify([
+        { date: iso(cur), primary: '本月记录', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+        { date: iso(prev), primary: '上月记录', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
+      ]));
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-value').first();
+    const y = new Date();
+    const curLabel = `${y.getFullYear()}年${y.getMonth() + 1}月`;
+    const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
+    const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
+    // 初始本月：底部组标题=本月，牛马日=1
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
+    await expect(monthStat(1)).toHaveText('1天');
+    // ‹ 上月：标签/底部组更新为上月（0.5）
+    await page.locator('[data-notes-cal-prev]').click();
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
+    await expect(monthStat(1)).toHaveText('0.5天');
+    // › 回本月
+    await page.locator('[data-notes-cal-next]').click();
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
+    await expect(monthStat(1)).toHaveText('1天');
+  });
+
+  test('月标签弹面板：选上月 → 日历滚动 + 底部组联动', async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const cur = new Date(y.getFullYear(), y.getMonth(), 1);
+      const prev = new Date(y.getFullYear(), y.getMonth() - 1, 15);
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify([
+        { date: iso(cur), primary: '本月记录', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+        { date: iso(prev), primary: '上月记录', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
+      ]));
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-value').first();
+    const y = new Date();
+    const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
+    const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
+
+    // 打开月面板
+    await page.locator('[data-notes-cal-label]').click();
+    await expect(page.locator('[data-notes-cal-picker]')).toBeVisible();
+    await expect(page.locator('[data-cal-year-label]')).toHaveText(String(y.getFullYear()));
+    // 上月跨年时先退一年
+    if (prevM.getFullYear() !== y.getFullYear()) {
+      await page.locator('[data-cal-year-prev]').click();
+      await expect(page.locator('[data-cal-year-label]')).toHaveText(String(prevM.getFullYear()));
+    }
+    // 选上月 → 面板关闭 + 标签/底部组联动
+    await page.locator(`[data-cal-month="${prevM.getMonth()}"]`).click();
+    await expect(page.locator('[data-notes-cal-picker]')).toBeHidden();
+    await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
+    await expect(monthStat(1)).toHaveText('0.5天');
+    // 日历已滚动到该月块（块顶落入滚动视口；平滑滚动需轮询等待落定）
+    await expect.poll(() => page.evaluate(({ year, month }) => {
+      const scrollEl = document.querySelector('[data-notes-cal-scroll]');
+      const block = scrollEl.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
+      const s = scrollEl.getBoundingClientRect();
+      const b = block.getBoundingClientRect();
+      return b.top >= s.top && b.top < s.bottom;
+    }, { year: prevM.getFullYear(), month: prevM.getMonth() })).toBe(true);
   });
 });
 

@@ -153,6 +153,41 @@ export function buildMonthGrid(year, month) {
   return grid;
 }
 
+// —— 竖向连续日历的月份跨度 ——
+// 最早有记录月 → 当前月+1（未来 1 个月缓冲）；同时确保覆盖最晚记录月（防未来预填日期不可达）
+export function calendarMonthSpan(reports, todayISOStr) {
+  const [cy, cm] = todayISOStr.split('-').map(Number);
+  const cur = cm - 1; // ISO 月份 1 基 → 日历 0 基
+  const key = (y, m) => y * 12 + m;
+  let min = key(cy, cur), max = key(cy, cur + 1); // 默认 [当前月, 当前月+1]
+  for (const r of reports) {
+    const [y, m] = r.date.split('-').map(Number);
+    const month = m - 1;
+    if (key(y, month) < min) min = key(y, month);
+    if (key(y, month) > max) max = key(y, month);
+  }
+  return {
+    start: { year: Math.floor(min / 12), month: min % 12 },
+    end: { year: Math.floor(max / 12), month: max % 12 },
+  };
+}
+// 月份序列（含两端，升序）
+export function monthSeq(start, end) {
+  const out = [];
+  let y = start.year, m = start.month;
+  const endKey = end.year * 12 + end.month;
+  while (y * 12 + m <= endKey) {
+    out.push({ year: y, month: m });
+    m += 1;
+    if (m === 12) { m = 0; y += 1; }
+  }
+  return out;
+}
+// 中文月份标签：2026年8月
+export function monthLabel(year, month) {
+  return `${year}年${month + 1}月`;
+}
+
 // —— 序列化（导出/导入校验）——
 const VALID_ATTENDANCE = new Set(ATTENDANCE_OPTIONS.map((o) => o.value));
 const VALID_PHASE = new Set(PHASE_OPTIONS.map((o) => o.value));
