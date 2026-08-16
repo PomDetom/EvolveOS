@@ -211,6 +211,21 @@ html[data-strip-material="none"] .c-strip {
    并破坏底部圆角）—— 与横向 width:max-content 一致 */
 .strip-root--window .c-strip--vertical { width: max-content; }
 
+/* 真机调试读条（ui/strip-edge-debug，临时）：诊断日志渲染到 strip 内，壳层禁右键无 DevTools 可读 */
+.c-strip__debug {
+  font: 10px/1.3 var(--font-mono);
+  color: var(--text-3);
+  background: var(--surface-hover);
+  border-radius: calc(var(--radius-xs) * var(--radius-scale, 1));
+  padding: 2px 4px;
+  max-width: 280px;
+  max-height: 64px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  flex: none;
+}
+
 /* 贴边收起（ui/strip-edge-collapse）：收起态窗口经 setPosition 滑出屏，屏幕内只剩靠中心一侧
    ~20px 边带；grip 仅收起态显示、绝对定位不占布局；chevron 按 data-dock-edge 静态旋转定向
    （transform，非动画）。--strip-dur-collapse 供 strip-main.js 读取（JS tween 时长）。 */
