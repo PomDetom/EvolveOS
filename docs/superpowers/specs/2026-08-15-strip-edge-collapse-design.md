@@ -18,7 +18,7 @@
 | 收起动画 | 贴边空闲 1s → JS rAF 逐帧 tween `setPosition` 滑向贴靠边，留 ~20px；ease-out ~500ms（时长读 CSS 变量） |
 | 弹出 | 收起态 hover 可见窄条 → 反向 tween 回贴边完整位 |
 | 持久化 | 收起位置**瞬态不持久化**；贴边完整位 / 自由位才写 `localStorage` |
-| 权限 | capabilities 新增 `core:window:allow-current-monitor`（schema 已存在，现未开启） |
+| 权限 | 显示器 bounds 走 Rust 命令 `get_current_monitor`（`window.current_monitor()`，物理像素），无 JS 权限需求（Tauri 全局 shim 不暴露 monitor API：`win.currentMonitor` / `__TAURI__.screen` 均 undefined，真机实测） |
 | 分支 | `ui/strip-edge-collapse`（从 dev 检出；`ui/*` 框架改动全局串行 + 框架 owner 评审） |
 
 ## 2. 总体架构
@@ -36,34 +36,35 @@
 - **收起**：贴边 1s 空闲 → 缓滑出屏留 ~20px 窄条。
 
 **改动面**：
-- `src/app/strip-main.js`：状态机 + 边缘/溢出检测（`screen.currentMonitor`）+ rAF tween 收起/弹回 + 1s 计时器 + 权限调用；`fit()` 在收起/收起态**挂起**。
+- `src/app/strip-main.js`：状态机 + 边缘/溢出检测（Rust 命令 `get_current_monitor`）+ rAF tween 收起/弹回 + 1s 计时器 + 权限调用；`fit()` 在收起/收起态**挂起**。
 - `src/components/float-strip/float-strip.js` / `.css`：`.c-strip__grip` 把手元素（绝对定位、仅收起态显示、`data-dock-edge` 定向）+ 收起态类 `.c-strip--collapsed`。
-- `src-tauri/capabilities/default.json`：`core:window:allow-current-monitor`。
+- `src-tauri/capabilities/default.json`：`core:window:allow-outer-size`（显示器 bounds 走 Rust 命令，无需 JS 权限）。
 - 测试：`tests/unit/strip-edge.test.js`（纯函数）+ `tests/e2e/floatstrip.spec.js`（mock 交互）+ `tests/unit/window-capabilities.test.js`（补权限断言）。
 
 ## 3. 详细设计
 
 ### 3.1 边缘检测与坐标口径
 
-- 窗口 rect：`win.outerPosition()`（物理像素 `{x,y}`）+ `win.outerSize()`（物理像素 `{width,height}`）。
-- 显示器 bounds：`win.currentMonitor()`（Monitor API 在 Window 类，无独立 screen 模块）→ `{ position:{x,y}, size:{width,height} }`（物理像素）。需权限 `core:window:allow-current-monitor`。
+- 窗口 rect：`invoke('get_window_rect')`（Rust 命令 `window.outer_position()` + `outer_size()`）→ `{ x, y, width, height }`（物理像素）。**全局 shim 缺 read 方法**（`currentMonitor`/`screen`/`outerPosition`/`outerSize` 均 undefined，真机实测）→ 位置/尺寸读写全走 Rust 命令。
+- 显示器 bounds：`invoke('get_current_monitor')`（Rust 命令 `window.current_monitor()`）→ `{ x, y, width, height }`（物理像素）。同上走 Rust 命令。
+- 窗口移动：`invoke('set_window_pos', {x, y})`（Rust 命令 `window.set_position(PhysicalPosition)`）。
 - 四边距离 = 窗口 rect 到当前显示器 bounds 四边的距离。
 - 判定：
   - **溢出某边**：窗口该边越出 monitor bounds（如 `rect.left < m.left`）。
   - **贴靠边（贴边态）**：该边与 monitor 边距离 = 0（精确贴齐）且完整可见；溢出经校正后同样贴齐。
-- 多显示器：`currentMonitor()` 返回窗口所在显示器，边检测相对该显示器（含 scaleFactor 处理，物理/物理一致）。
+- 多显示器：`get_current_monitor` 返回窗口所在显示器，边检测相对该显示器（含 scaleFactor 处理，物理/物理一致）。
 
 ### 3.2 先决校正（进入贴边）
 
-- 拖拽结束检测：`onMoved` 去抖 ~150ms 无移动 = 松手。
-- 校正：若窗口某边**溢出** → `setPosition` 将该边对齐 monitor 边（拉回完整可见）→ 进入贴边态。
+- 拖拽结束检测：**后台轮询**（每 150ms 读 `get_window_rect`，连续两次位置相同 = 用户松手；参考 codeplan-usage legacy `COLLAPSE_POLL` —— 系统拖动期间 `WindowEvent::Moved` 不可靠，不依赖 onMoved）。
+- 校正：若窗口某边**溢出** → `set_window_pos` 将该边对齐 monitor 边（拉回完整可见）→ 进入贴边态。
 - **不做磁吸**：靠边但未溢出 → 不动，不进入收起计时。
 
 ### 3.3 收起动画
 
 - **方向**：贴靠边决定 —— 底→向下滑出、顶→向上、左→向左、右→向右。角位（贴两条边）选**主贴靠边**（距边最小者）。
 - **目标位**：贴边完整位 + 沿贴靠边方向位移 `(窗口该边尺寸 - SLIVER)`，使屏幕内仅剩 `SLIVER = 20px`。
-- **动画**：JS rAF 逐帧 `setPosition` tween，ease-out ~500ms（比 `--dur-slow` 300ms 更慢的「缓收起」节奏）。时长读 CSS 变量 `--strip-dur-collapse`（float-strip.css 定义，默认 500ms；JS 经 `getComputedStyle` 读取，同现有 `readDur` 模式），动效降级时归零。窗口移动是 OS 层 `setPosition`，**非 CSS 布局动画**（不触动画红线）。
+- **动画**：JS rAF 逐帧 `set_window_pos` tween，ease-out ~500ms（比 `--dur-slow` 300ms 更慢的「缓收起」节奏）。时长读 CSS 变量 `--strip-dur-collapse`（float-strip.css 定义，默认 500ms；JS 经 `getComputedStyle` 读取，同现有 `readDur` 模式），动效降级时归零。窗口移动是 OS 层（Rust `set_position`），**非 CSS 布局动画**（不触动画红线）。
 - **收起态协调**：挂起 `fit()`（现有 hover→onResize 贴合 + 倒计时宽度漂移重贴），防把滑出窗口重新顶回屏内；收起滑出期间不触发位置持久化。
 
 ### 3.4 收起形态 B（边缘小把手）
@@ -95,11 +96,11 @@
 
 - 纯函数单测 `tests/unit/strip-edge.test.js`：四边距离计算、溢出判定、贴靠边→滑出方向映射、收起目标位计算（`computeCollapseTarget` 等）。
 - e2e `tests/e2e/floatstrip.spec.js`（mock）：半出屏松手→校正贴齐；贴边 1s→收起（含 hover 取消计时）；收起态 hover→弹回；四边方向 + `data-dock-edge`；grip 仅收起态显示。
-- `tests/unit/window-capabilities.test.js`：补 `core:window:allow-current-monitor` 断言。
+- `tests/unit/window-capabilities.test.js`：补 `core:window:allow-outer-size` 断言。
 - Tauri 真机行为标注待 `npm run tauri:dev` 验证（web 测试只验 JS 调用形态，不验证真实 setPosition 滑出屏 / monitor bounds / 屏外 hover）。
 
 ## 6. 待真机验证
 
-- 真实显示器 bounds 与 DPI：`outerPosition`/`outerSize`（物理）与 `currentMonitor` bounds（物理）坐标口径一致。
+- 真实显示器 bounds 与 DPI：`outerPosition`/`outerSize`（物理）与 `get_current_monitor` bounds（物理）坐标口径一致。
 - 窗口大部分滑出屏后，可见窄条的 hover 事件可达性（Windows 命中测试）。
 - 角位主贴靠边选择与收起方向观感。

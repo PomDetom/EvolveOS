@@ -192,6 +192,9 @@ export function mountStripMode() {
   });
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
+  // 贴边诊断（ui/strip-edge-debug 收尾）：console.log 与既有 [strip] fit 一致；
+  // 真机调试时曾渲染 DOM 读条（壳层禁右键无 DevTools），现已移除。
+  const logEdge = (msg) => console.log(msg);
   // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
   // 双通道（覆盖隐藏→唤起）：① 先写 ui-jump-intent（主窗 visibilitychange visible 时消费）再 show+setFocus，
   // ② emit jump-to-tokentool 事件（主窗已可见时直接 setModule）。
@@ -243,7 +246,7 @@ export function mountStripMode() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const { x, y } = JSON.parse(saved);
-        if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
+        if (Number.isFinite(x) && Number.isFinite(y)) window.__TAURI__?.core?.invoke?.('set_window_pos', { x, y }).catch?.(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
 
@@ -273,16 +276,19 @@ export function mountStripMode() {
       return Number.isFinite(v) ? v : 500;
     };
     const getMonitor = async () => {
-      // Monitor API 挂在 Window 类（win.currentMonitor()），无独立 screen 模块；权限
-      // core:window:allow-current-monitor。缺失/降级时 .catch 吞错 = 静默失效（mock 掩盖真机 bug）。
-      const m = await win.currentMonitor?.().catch?.(() => null);
-      return m ? { x: m.position.x, y: m.position.y, width: m.size.width, height: m.size.height } : null;
+      // 全局 shim 无 monitor API（真机实测 win.currentMonitor / __TAURI__.screen 均 undefined）→
+      // 走 Rust 命令 get_current_monitor 取当前显示器 bounds（物理像素）。?.() 兼容旧 mock/降级
+      // 环境（无 core.invoke → null，评估 no-op，不抛错）。
+      const m = await window.__TAURI__?.core?.invoke?.('get_current_monitor').catch?.((err) => { logEdge(`[edge] monitor err ${err}`); return null; });
+      logEdge(`[edge] monitor ${JSON.stringify(m)} (invoke)`);
+      return m;
     };
     const getRect = async () => {
-      // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
-      const p = await win.outerPosition?.().catch?.(() => null);
-      const s = await win.outerSize?.().catch?.(() => null);
-      return (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
+      // 窗口位置/尺寸走 Rust 命令（全局 shim 缺 read 方法：outerPosition/outerSize 同 currentMonitor
+      // 均 undefined → 不能依赖 JS 对象）；?.() 兼容旧 mock/降级（无 invoke → null，评估 no-op）。
+      const rect = await window.__TAURI__?.core?.invoke?.('get_window_rect').catch?.((err) => { logEdge(`[edge] rect err ${err}`); return null; });
+      logEdge(`[edge] rect ${JSON.stringify(rect)}`);
+      return rect;
     };
     const setEdgeUI = (mode) => {
       strip.classList.toggle('c-strip--collapsed', mode === 'collapsed');
@@ -295,14 +301,17 @@ export function mountStripMode() {
     const tweenTo = (to, dur, onDone = () => {}) => new Promise((resolve) => {
       if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
       const finish = () => { try { onDone(); } finally { resolve(); } };
-      win.outerPosition().then((p) => {
-        const from = { x: p.x, y: p.y };
-        if (dur <= 0) { win.setPosition(to).catch(() => {}); finish(); return; }
+      // 移动走 Rust set_window_pos（全局 shim 无 outerPosition/setPosition 依赖面，统一经命令）
+      const setPos = (p) => window.__TAURI__?.core?.invoke?.('set_window_pos', { x: p.x, y: p.y }).catch?.(() => {});
+      getRect().then((rect) => {
+        if (!rect) { finish(); return; }
+        const from = { x: rect.x, y: rect.y };
+        if (dur <= 0) { setPos(to); finish(); return; }
         const start = performance.now();
         const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
         const step = (now) => {
           const k = ease(Math.min(1, (now - start) / dur));
-          win.setPosition({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) }).catch(() => {});
+          setPos({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) });
           if (k < 1) collapseRaf = requestAnimationFrame(step);
           else { collapseRaf = null; finish(); }
         };
@@ -312,7 +321,7 @@ export function mountStripMode() {
     const cancelCollapse = () => { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } };
     const startCollapseTimer = () => {
       cancelCollapse();
-      if (edge.mode !== 'docked' || strip.matches(':hover')) return; // 非贴边或光标在条上不计时
+      if (edge.mode !== 'docked' || strip.matches(':hover') || collapseRaf) return; // 弹出 tween 期间不计时
       collapseTimer = setTimeout(collapseNow, 1000);
     };
     const collapseNow = async () => {
@@ -325,6 +334,7 @@ export function mountStripMode() {
       // 守卫，光标在条上不计时；mouseleave 会重启计时），不进入收起。
       if (strip.matches(':hover')) { startCollapseTimer(); return; }
       const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
+      logEdge(`[edge] collapse from=${JSON.stringify({ x: rect.x, y: rect.y })} → ${JSON.stringify(target)} edge=${edge.dockEdge} mon=${JSON.stringify(monitor)}`);
       edge.mode = 'collapsed';
       collapsed = true;
       setEdgeUI('collapsed');
@@ -333,10 +343,11 @@ export function mountStripMode() {
     const popOut = () => {
       cancelCollapse();
       if (edge.mode !== 'collapsed' || !edge.dockPos) return;
+      logEdge(`[edge] popOut → ${JSON.stringify(edge.dockPos)}`);
       collapsed = false;
+      edge.mode = 'docked'; // 立即置 docked：tween 期间重复 mouseenter 不再触发 popOut（防反复重启 tween）
       setEdgeUI('docked');
       tweenTo(edge.dockPos, readMotionDur(), () => {
-        edge.mode = 'docked';
         if (strip.isConnected) startCollapseTimer();
       });
     };
@@ -345,6 +356,7 @@ export function mountStripMode() {
       const rect = await getRect();
       if (!monitor || !rect) return false; // 无能力（旧 mock/降级）→ 调用方兜底持久化
       const dock = resolveDock(rect, monitor);
+      logEdge(`[edge] dock ${JSON.stringify(dock)} → ${dock.overflow.length ? 'correct→docked' : dock.edge ? 'docked' : 'free'}`);
       if (dock.overflow.length) {
         // 先决校正：溢出边拉回贴齐完整可见 → 贴边
         const target = computeCorrectionTarget(rect, monitor);
@@ -378,18 +390,37 @@ export function mountStripMode() {
     // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估。
     // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
     // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
+    logEdge(`[edge] active win=${!!win} strip=${!!strip}`);
+    // onMoved：仅持久化当前位置（参考 codeplan-usage legacy floating：系统拖动期间
+    // WindowEvent::Moved 不可靠，评估不能依赖它；拖拽结束判定改走轮询）。
     win.onMoved?.(() => {
       if (collapsed || collapseRaf) return;
       clearTimeout(settleTimer);
-      settleTimer = setTimeout(async () => {
-        const handled = await evaluateDock();
-        if (!handled) {
-          win.outerPosition?.().then(({ x, y }) => {
-            if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
-          }).catch(() => {});
-        }
-      }, 150);
+      settleTimer = setTimeout(() => {
+        window.__TAURI__?.core?.invoke?.('get_window_rect').then?.((r) => {
+          if (r && !collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: r.x, y: r.y }));
+        }).catch?.(() => {});
+      }, 200);
     });
+    // 评估触发：后台轮询（每 150ms 读窗口位置；连续两次相同 = 用户松手 → 评估贴边一次）。
+    // 参考 codeplan-usage 的 COLLAPSE_POLL 实现，不依赖 Moved 事件。
+    let lastPos = null;
+    let stable = false;
+    const pollEdge = setInterval(async () => {
+      if (collapsed || collapseRaf) { lastPos = null; stable = false; return; }
+      const rect = await getRect();
+      if (!rect) return;
+      const pos = { x: rect.x, y: rect.y };
+      if (lastPos && lastPos.x === pos.x && lastPos.y === pos.y) {
+        if (!stable) {
+          stable = true;
+          logEdge(`[edge] released @ ${JSON.stringify(pos)}`);
+          await evaluateDock();
+        }
+      } else {
+        lastPos = pos; stable = false;
+      }
+    }, 150);
     // hover 触发：贴边态取消计时（标准自动隐藏）；收起态弹回
     strip.addEventListener('mouseenter', () => {
       if (edge.mode === 'collapsed') popOut();
