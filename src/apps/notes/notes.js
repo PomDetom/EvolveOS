@@ -155,13 +155,12 @@ function openTemplateEditor({ existing, onSaved }) {
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 }
 
-// —— 统计页（竖向连续日历：累计顶 → 日历中 → 活动月底；滚动联动 + 月标签弹面板）——
+// —— 统计页（连续周流日历：累计顶 → 日历中 → 活动月底；滚动联动 + 月标签弹面板）——
 export function statsPage(ctx) {
   const all = U.loadReports();
   const today = U.todayISO();
   const span = U.calendarMonthSpan(all, today);
-  const months = U.monthSeq(span.start, span.end);
-  const active = uiState.stats; // {year, month}，默认当前月；日历滚动/面板跳转会更新
+  const active = uiState.stats; // {year, month, selectedDate}，默认当前月；日历滚动/面板跳转会更新
   const activeRange = U.monthRange(active.year, active.month);
   const head = `
     <div class="app-main__page-head">
@@ -181,7 +180,7 @@ export function statsPage(ctx) {
         ${statsGroupHtml('累计', U.calcStats(all))}
       </div>
       <div class="notes__cal-wrap" data-notes-cal>
-        ${calendarHtml(all, months)}
+        ${calendarHtml(all, span, active)}
         ${legendHtml()}
       </div>
       <div class="notes__stats-groups" data-notes-stats-month>
@@ -219,49 +218,50 @@ function breakdownItem(label, n, cls) {
 }
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
-function calendarHtml(all, months) {
+// 连续周流日历：整段周行（无月块/月标题/分隔线）；活动月决定 inMonth 着色，相邻月灰化（--out，不可点）；
+// 今天=实心 accent 圆（--today），选中=描边圆环（--selected，持久）
+function calendarHtml(all, span, active) {
   const byDate = new Map(all.map((r) => [r.date, r]));
   const today = U.todayISO();
-  const [ty, tm] = today.split('-').map(Number);
+  const activeYM = `${active.year}-${active.month}`;
+  const weeks = U.buildContinuousWeeks(span);
   const headRow = `<div class="notes__cal-week notes__cal-week--head">${WEEKDAYS.map((w) => `<span class="notes__cal-weekday">${w}</span>`).join('')}</div>`;
-  const monthBlocks = months.map(({ year, month }) => {
-    const grid = U.buildMonthGrid(year, month);
-    const rows = grid.map((week) => `
-      <div class="notes__cal-week">
-        ${week.map((cell) => {
-          if (!cell.inMonth) return `<span class="notes__cal-cell notes__cal-cell--out">${Number(cell.date.slice(8))}</span>`;
-          const date = cell.date;
-          const r = byDate.get(date);
-          const cls = ['notes__cal-cell'];
-          if (r) cls.push(`notes__cal-cell--${r.attendance}`);
-          if (r && r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
-          if (date === today) cls.push('notes__cal-cell--today');
-          const dayNum = Number(date.slice(8));
-          const dot = r && r.location !== 'qingdao' ? '<span class="notes__cal-trip-dot"></span>' : '';
-          return `<button class="${cls.join(' ')}" type="button" data-date="${date}">${dayNum}${dot}</button>`;
-        }).join('')}
-      </div>`).join('');
-    return `
-      <div class="notes__cal-month" data-year="${year}" data-month="${month}">
-        <div class="notes__cal-month-title">${U.monthLabel(year, month)}</div>
-        ${headRow}${rows}
-      </div>`;
+  const rows = weeks.map((week) => {
+    const ym = `${week[6].year}-${week[6].month}`; // 周行所属月 = 末日（周日）所在月：跨月周归后者，月初日可达
+    const cells = week.map(({ date, year, month }) => {
+      const inMonth = `${year}-${month}` === activeYM;
+      const r = byDate.get(date);
+      const cls = ['notes__cal-cell'];
+      if (!inMonth) cls.push('notes__cal-cell--out');
+      else if (r) {
+        cls.push(`notes__cal-cell--${r.attendance}`);
+        if (r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
+      }
+      if (date === today) cls.push('notes__cal-cell--today');
+      if (date === uiState.stats.selectedDate) cls.push('notes__cal-cell--selected');
+      const dot = inMonth && r && r.location !== 'qingdao' ? '<span class="notes__cal-trip-dot"></span>' : '';
+      return `<button class="${cls.join(' ')}" type="button" data-date="${date}" data-ym="${year}-${month}"><span class="notes__cal-day">${Number(date.slice(8))}</span>${dot}</button>`;
+    }).join('');
+    return `<div class="notes__cal-week" data-ym="${ym}">${cells}</div>`;
   }).join('');
   const pickerMonths = Array.from({ length: 12 }, (_, m) =>
     `<button class="notes__cal-picker-month" type="button" data-cal-month="${m}">${m + 1}月</button>`).join('');
   return `
     <div class="notes__cal-scroll" data-notes-cal-scroll>
       <div class="notes__cal-head">
-        <button class="notes__cal-nav" type="button" data-notes-cal-prev aria-label="上个月">${icon('chevron-left', 16)}</button>
-        <button class="notes__cal-label" type="button" data-notes-cal-label>${U.monthLabel(ty, tm - 1)}</button>
-        <button class="notes__cal-nav" type="button" data-notes-cal-next aria-label="下个月">${icon('chevron-right', 16)}</button>
+        <div class="notes__cal-head-nav">
+          <button class="notes__cal-nav" type="button" data-notes-cal-prev aria-label="上个月">${icon('chevron-left', 16)}</button>
+          <button class="notes__cal-label" type="button" data-notes-cal-label>${U.monthLabel(active.year, active.month)}</button>
+          <button class="notes__cal-nav" type="button" data-notes-cal-next aria-label="下个月">${icon('chevron-right', 16)}</button>
+        </div>
+        ${headRow}
       </div>
-      <div class="notes__cal-months">${monthBlocks}</div>
+      ${rows}
     </div>
     <div class="notes__cal-picker" data-notes-cal-picker hidden>
       <div class="notes__cal-picker-year">
         <button class="notes__cal-nav" type="button" data-cal-year-prev aria-label="上一年">${icon('chevron-left', 14)}</button>
-        <span class="notes__cal-picker-year-label" data-cal-year-label>${ty}</span>
+        <span class="notes__cal-picker-year-label" data-cal-year-label>${active.year}</span>
         <button class="notes__cal-nav" type="button" data-cal-year-next aria-label="下一年">${icon('chevron-right', 14)}</button>
       </div>
       <div class="notes__cal-picker-months">${pickerMonths}</div>
@@ -558,7 +558,7 @@ function mountTemplatePage(pageEl, dis) {
   bindList();
 }
 
-// —— 统计页 mount（竖向连续日历：初始定位当前月 + 滚动联动 + ‹ › 切换 + 月标签弹面板 + 格开编辑器）——
+// —— 统计页 mount（连续周流日历：初始定位当前月 + 滚动联动（按周行）+ ‹ › 切换 + 月标签弹面板 + 格开编辑器 + 选中态）——
 function mountStatsPage(pageEl, dis) {
   const calWrap = pageEl.querySelector('[data-notes-cal]');
   const statsTotalEl = pageEl.querySelector('[data-notes-stats-total]');
@@ -588,8 +588,8 @@ function mountStatsPage(pageEl, dis) {
     const span = U.calendarMonthSpan(all, U.todayISO());
     return U.monthSeq(span.start, span.end);
   };
-  const monthEls = () => Array.from(calScroll.querySelectorAll('.notes__cal-month'));
-  const monthBlockEl = (year, month) => calScroll.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
+  const weekEls = () => Array.from(calScroll.querySelectorAll('.notes__cal-week[data-ym]'));
+  const weekRowEl = (year, month) => calScroll.querySelector(`.notes__cal-week[data-ym="${year}-${month}"]`);
   const headHeight = () => calHead.offsetHeight;
 
   const renderMonthGroup = (year, month) => {
@@ -597,14 +597,37 @@ function mountStatsPage(pageEl, dis) {
     const range = U.monthRange(year, month);
     statsMonthEl.innerHTML = statsGroupHtml(U.monthLabel(year, month), U.calcStats(all, range));
   };
+  // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标；今天/选中类不动（持久）
+  const applyActiveClasses = (year, month) => {
+    const activeYM = `${year}-${month}`;
+    const all = U.loadReports();
+    const byDate = new Map(all.map((r) => [r.date, r]));
+    calScroll.querySelectorAll('.notes__cal-cell').forEach((cell) => {
+      const inMonth = cell.dataset.ym === activeYM;
+      cell.classList.toggle('notes__cal-cell--out', !inMonth);
+      cell.classList.remove('notes__cal-cell--normal', 'notes__cal-cell--overtime', 'notes__cal-cell--rest', 'notes__cal-cell--leave-am', 'notes__cal-cell--leave-pm', 'notes__cal-cell--leave-full', 'notes__cal-cell--trip');
+      cell.querySelector('.notes__cal-trip-dot')?.remove();
+      if (inMonth) {
+        const r = byDate.get(cell.dataset.date);
+        if (r) {
+          cell.classList.add(`notes__cal-cell--${r.attendance}`);
+          if (r.location !== 'qingdao') {
+            cell.classList.add('notes__cal-cell--trip');
+            cell.insertAdjacentHTML('beforeend', '<span class="notes__cal-trip-dot"></span>');
+          }
+        }
+      }
+    });
+  };
   const setActive = (year, month) => {
-    uiState.stats = { year, month };
+    uiState.stats = { year, month, selectedDate: uiState.stats.selectedDate };
     labelEl.textContent = U.monthLabel(year, month);
     renderMonthGroup(year, month);
+    applyActiveClasses(year, month);
   };
-  const scrollToMonth = (block, smooth) => {
+  const scrollToWeek = (row, smooth) => {
     const wrapRect = calScroll.getBoundingClientRect();
-    const delta = block.getBoundingClientRect().top - wrapRect.top - headHeight();
+    const delta = row.getBoundingClientRect().top - wrapRect.top - headHeight();
     if (smooth) calScroll.scrollTo({ top: calScroll.scrollTop + delta, behavior: 'smooth' });
     else calScroll.scrollTop += delta;
   };
@@ -620,19 +643,18 @@ function mountStatsPage(pageEl, dis) {
     return best;
   };
 
-  // 滚动联动：参考线 = 滚动容器顶 + 头高，取最近月块并设为活动月
+  // 滚动联动：参考线 = 滚动容器顶 + 头高，取最近周行并设为活动月
   const syncActiveFromScroll = () => {
     const refLine = calScroll.getBoundingClientRect().top + headHeight();
-    const blocks = monthEls();
-    if (!blocks.length) return;
-    let best = blocks[0];
+    const rows = weekEls();
+    if (!rows.length) return;
+    let best = rows[0];
     let bestDiff = Infinity;
-    for (const b of blocks) {
-      const diff = Math.abs(b.getBoundingClientRect().top - refLine);
-      if (diff < bestDiff) { bestDiff = diff; best = b; }
+    for (const r of rows) {
+      const diff = Math.abs(r.getBoundingClientRect().top - refLine);
+      if (diff < bestDiff) { bestDiff = diff; best = r; }
     }
-    const year = Number(best.dataset.year);
-    const month = Number(best.dataset.month);
+    const [year, month] = best.dataset.ym.split('-').map(Number);
     if (uiState.stats.year === year && uiState.stats.month === month) return;
     setActive(year, month);
   };
@@ -651,27 +673,34 @@ function mountStatsPage(pageEl, dis) {
     syncActiveFromScroll();
   };
 
+  // 日格点击：设选中态（持久）→ 开编辑器；out 格（相邻月）不响应
   const bindCal = () => {
     calWrap.querySelectorAll('.notes__cal-cell[data-date]').forEach((cell) =>
-      cell.addEventListener('click', () => openEditor(cell.dataset.date)));
+      cell.addEventListener('click', () => {
+        if (cell.classList.contains('notes__cal-cell--out')) return;
+        uiState.stats.selectedDate = cell.dataset.date;
+        calWrap.querySelectorAll('.notes__cal-cell--selected').forEach((el) => el.classList.remove('notes__cal-cell--selected'));
+        cell.classList.add('notes__cal-cell--selected');
+        openEditor(cell.dataset.date);
+      }));
   };
 
   const goToMonth = (year, month, smooth) => {
     let y = year, m = month;
-    let block = monthBlockEl(y, m);
-    if (!block) {
+    let row = weekRowEl(y, m);
+    if (!row) {
       const n = nearestMonth(y, m);
       y = n.year; m = n.month;
-      block = monthBlockEl(y, m);
+      row = weekRowEl(y, m);
     }
-    if (!block) return;
+    if (!row) return;
     setActive(y, m);
     if (smooth) {
       scrolling = true; // 冻结 onScroll 联动，label 在整个滑动过程保持目标月
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(endSmoothScroll, 400); // 兜底：scrollend 缺失或无需滚动（delta=0）
     }
-    scrollToMonth(block, smooth);
+    scrollToWeek(row, smooth);
   };
 
   // 面板开关（外部点击 / Esc 关闭）
@@ -717,29 +746,28 @@ function mountStatsPage(pageEl, dis) {
     const all = U.loadReports();
     const today = U.todayISO();
     const span = U.calendarMonthSpan(all, today);
-    const months = U.monthSeq(span.start, span.end);
     // 活动月可能超出新跨度（删数据后），clamp 回跨度内
     const sKey = span.start.year * 12 + span.start.month;
     const eKey = span.end.year * 12 + span.end.month;
     const aKey = uiState.stats.year * 12 + uiState.stats.month;
     const active = aKey < sKey ? span.start : (aKey > eKey ? span.end : uiState.stats);
     statsTotalEl.innerHTML = statsGroupHtml('累计', U.calcStats(all));
-    calWrap.innerHTML = calendarHtml(all, months) + legendHtml();
+    calWrap.innerHTML = calendarHtml(all, span, active) + legendHtml();
     queryRefs();
     bindCal();
     bindCalNav();
-    // 恢复滚动位置到活动月块（防跳回当前月）
-    const block = monthBlockEl(active.year, active.month);
-    if (block) scrollToMonth(block, false);
+    // 恢复滚动位置到活动月周行（防跳回当前月）；选中态（uiState.stats.selectedDate）与滚动位置保留
+    const row = weekRowEl(active.year, active.month);
+    if (row) scrollToWeek(row, false);
     setActive(active.year, active.month);
   }
 
   // —— 初始定位：当前月（重进页回默认当前月），无平滑 ——
   const [ty, tm] = U.todayISO().split('-').map(Number);
   const initMonth = nearestMonth(ty, tm - 1);
-  const initBlock = monthBlockEl(initMonth.year, initMonth.month);
+  const initRow = weekRowEl(initMonth.year, initMonth.month);
   setActive(initMonth.year, initMonth.month);
-  if (initBlock) scrollToMonth(initBlock, false);
+  if (initRow) scrollToWeek(initRow, false);
 
   // —— 面板外部点击 / Esc 关闭（不随 refresh 重挂载，闭包读最新引用）——
   const onDocClick = (e) => {

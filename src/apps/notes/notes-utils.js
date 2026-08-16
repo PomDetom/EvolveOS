@@ -136,30 +136,26 @@ export function calcStats(reports, range) {
   return stats;
 }
 
-// —— 日历：周一起、6×7 定网格，连续日期——月初前/月末后填相邻月份真实日期（inMonth:false 灰格）——
-export function buildMonthGrid(year, month) {
-  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevMonthEnd = new Date(year, month, 0).getDate();
-  const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const grid = [];
+// —— 日历：连续周流——从 span.start 所在周周一到 span.end 所在周周日，每周 7 个真实日期（连续不重复）——
+// 跨月不重排、不重复灰格；活动月份决定着色（见 notes.js 就地重着色）
+export function buildContinuousWeeks(span) {
+  const start = new Date(span.start.year, span.start.month, 1);
+  const startOffset = (start.getDay() + 6) % 7; // 周一=0
+  const firstDay = new Date(span.start.year, span.start.month, 1 - startOffset);
+  const end = new Date(span.end.year, span.end.month + 1, 0);
+  const endOffset = (end.getDay() + 6) % 7;
+  // 补到终点月最后一天所在周的周日（用 end 自身年月，防跨月溢出）
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate() + (6 - endOffset));
+  const weeks = [];
   let week = [];
-  for (let i = 0; i < 42; i++) {
-    const dayNum = i - startOffset + 1;
-    if (dayNum >= 1 && dayNum <= daysInMonth) {
-      week.push({ date: iso(year, month, dayNum), inMonth: true });
-    } else if (dayNum < 1) {
-      const py = month === 0 ? year - 1 : year;
-      const pm = month === 0 ? 11 : month - 1;
-      week.push({ date: iso(py, pm, prevMonthEnd + dayNum), inMonth: false });
-    } else {
-      const ny = month === 11 ? year + 1 : year;
-      const nm = month === 11 ? 0 : month + 1;
-      week.push({ date: iso(ny, nm, dayNum - daysInMonth), inMonth: false });
-    }
-    if (week.length === 7) { grid.push(week); week = []; }
+  const d = new Date(firstDay);
+  const iso = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  while (d <= lastDay) {
+    week.push({ date: iso(d), year: d.getFullYear(), month: d.getMonth() });
+    if (week.length === 7) { weeks.push(week); week = []; }
+    d.setDate(d.getDate() + 1);
   }
-  return grid;
+  return weeks;
 }
 
 // —— 竖向连续日历的月份跨度 ——

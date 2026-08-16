@@ -187,11 +187,11 @@ test.describe('牛马笔记：统计与日历', () => {
       const y = new Date();
       const d1 = new Date(y.getFullYear(), y.getMonth(), 1);
       const d2 = new Date(y.getFullYear(), y.getMonth(), 2);
-      const d3 = new Date(y.getFullYear(), y.getMonth(), 3);
+      const d5 = new Date(y.getFullYear(), y.getMonth(), 5); // normal 放 5 号：任意月起始日首周必完全可见（盲周至多 4 天）
       localStorage.setItem('evolveos.notes.reports', JSON.stringify([
-        { date: iso(d1), primary: '正常日', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+        { date: iso(d1), primary: '出差日', secondary: '', attendance: 'overtime', phase: 'regular', location: 'xian', updatedAt: 1 },
         { date: iso(d2), primary: '半天请假', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
-        { date: iso(d3), primary: '出差日', secondary: '', attendance: 'overtime', phase: 'regular', location: 'xian', updatedAt: 3 },
+        { date: iso(d5), primary: '正常日', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 3 },
       ]));
       localStorage.setItem('evolveos.notes.templates', '[]');
     });
@@ -227,7 +227,7 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--rest')).toHaveCount(1);
     await expect(page.locator('[data-notes-stats-month] .notes__breakdown-item--leave')).toHaveCount(3);
 
-    // 日历：3 个格子带对应着色类（竖向连续仍各 1）
+    // 日历：3 个格子带对应着色类（连续周流仍各 1）
     await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(1);
     await expect(page.locator('.notes__cal-cell--leave-am')).toHaveCount(1);
     await expect(page.locator('.notes__cal-cell--overtime')).toHaveCount(1);
@@ -237,8 +237,21 @@ test.describe('牛马笔记：统计与日历', () => {
     // 出差角标（xian）
     await expect(page.locator('.notes__cal-cell--trip')).toHaveCount(1);
     await expect(page.locator('.notes__cal-trip-dot')).toHaveCount(1);
-    // 今天描边
+    // 正方形格：宽高近似相等（aspect-ratio: 1 生效）
+    const cellBox = await page.locator('.notes__cal-cell').first().boundingBox();
+    expect(Math.abs(cellBox.width - cellBox.height)).toBeLessThan(2);
+    // 无月块/月标题分隔（连续周流单段）
+    await expect(page.locator('.notes__cal-month')).toHaveCount(0);
+    await expect(page.locator('.notes__cal-month-title')).toHaveCount(0);
+    await expect(page.locator('.notes__cal-week--head')).toHaveCount(1);
+    // 今天实心圆：::before 圆（accent 底）+ accent-contrast 字
     await expect(page.locator('.notes__cal-cell--today')).toHaveCount(1);
+    const todayBefore = await page.locator('.notes__cal-cell--today').evaluate((el) => {
+      const b = getComputedStyle(el, '::before');
+      return { radius: b.borderRadius, bg: b.backgroundColor };
+    });
+    expect(todayBefore.radius).toBe('50%');
+    expect(todayBefore.bg).not.toBe('rgba(0, 0, 0, 0)');
     // 图例：正常/加班/休息日/请假（单琥珀块）/出差，无 半天·上/下 /全天 /西安
     const legendText = await page.locator('.notes__legend').innerText();
     expect(legendText).toContain('正常');
@@ -249,16 +262,26 @@ test.describe('牛马笔记：统计与日历', () => {
     expect(legendText).not.toContain('半天');
     expect(legendText).not.toContain('全天');
     expect(legendText).not.toContain('西安');
-    // 连续日期灰格存在（相邻月填充），点击不弹编辑器
-    expect(await page.locator('.notes__cal-cell--out').count()).toBeGreaterThan(0);
-    await page.locator('.notes__cal-cell--out').first().click();
-    await expect(page.locator('.c-dialog')).toHaveCount(0);
-
-    // 点日历格 → 打开该日编辑器
+    // 点日历格 → 打开该日编辑器 + 选中圆环；取消后选中保留
     await page.locator('.notes__cal-cell--normal').click();
     await expect(page.locator('.c-dialog')).toBeVisible();
     await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('正常日');
+    await expect(page.locator('.notes__cal-cell--selected')).toHaveCount(1);
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
+    await expect(page.locator('.notes__cal-cell--selected')).toHaveCount(1); // 取消后选中保留
+
+    // 连续日期灰格存在（相邻月填充），点击不弹编辑器
+    // 直接对「视口内灰格」派发 click：绕开 Playwright 自动滚动（滚动会触发活动月联动+重着色，灰格可能就地变回 in-month）
+    expect(await page.locator('.notes__cal-cell--out').count()).toBeGreaterThan(0);
+    await page.locator('.notes__cal-cell--out').evaluateAll((cells) => {
+      const vr = document.querySelector('[data-notes-cal-scroll]').getBoundingClientRect();
+      const visible = Array.from(cells).find((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top >= vr.top && r.bottom <= vr.bottom;
+      });
+      visible?.click();
+    });
+    await expect(page.locator('.c-dialog')).toHaveCount(0);
   });
 
   test('回溯选中：无记录月（当前月−2）可达且该月格可点开编辑器', async ({ page }) => {
@@ -274,20 +297,20 @@ test.describe('牛马笔记：统计与日历', () => {
 
     const y = new Date();
     const target = new Date(y.getFullYear(), y.getMonth() - 2, 1);
-    // 目标月块存在（窗口至少回溯一年，无记录也能翻到过去空月份）
-    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-month[data-year="${target.getFullYear()}"][data-month="${target.getMonth()}"]`)).toHaveCount(1);
-    // 滚动到目标月块
-    await page.locator('[data-notes-cal-scroll]').evaluate((el, { year, month }) => {
+    const targetYM = `${target.getFullYear()}-${target.getMonth()}`;
+    // 目标月周行存在（连续周流窗口覆盖回溯月份；月可占多行，取首行）
+    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-week[data-ym="${targetYM}"]`).first()).toBeVisible();
+    // 滚动到目标月首行
+    await page.locator('[data-notes-cal-scroll]').evaluate((el, ym) => {
       const head = el.querySelector('.notes__cal-head');
-      const block = el.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
-      el.scrollTop = block.offsetTop - head.offsetHeight;
+      const row = el.querySelector(`.notes__cal-week[data-ym="${ym}"]`);
+      el.scrollTop = row.offsetTop - head.offsetHeight;
       el.dispatchEvent(new Event('scroll'));
-    }, { year: target.getFullYear(), month: target.getMonth() });
+    }, targetYM);
     // 点该月某 in-month 格 → 打开该日编辑器
-    const blockSel = `.notes__cal-month[data-year="${target.getFullYear()}"][data-month="${target.getMonth()}"]`;
-    const cellDate = await page.locator(`${blockSel} .notes__cal-cell[data-date]`).first().getAttribute('data-date');
+    const cellDate = await page.locator(`.notes__cal-cell[data-ym="${targetYM}"][data-date]`).first().getAttribute('data-date');
     expect(cellDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    await page.locator(`${blockSel} .notes__cal-cell[data-date]`).first().click();
+    await page.locator(`.notes__cal-cell[data-ym="${targetYM}"][data-date]`).first().click();
     await expect(page.locator('.c-dialog')).toBeVisible();
     await expect(page.locator('[data-notes-ed="date"]')).toHaveValue(cellDate);
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
@@ -295,7 +318,7 @@ test.describe('牛马笔记：统计与日历', () => {
 });
 
 test.describe('牛马笔记：统计滚动联动', () => {
-  test('滚动到上月块 → 底部组标题/统计跟随', async ({ page }) => {
+  test('滚动到上月周行 → 底部组标题/统计跟随 + 上月着色/相邻灰化', async ({ page }) => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const y = new Date();
@@ -318,24 +341,29 @@ test.describe('牛马笔记：统计滚动联动', () => {
     const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
     const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
     const curLabel = `${y.getFullYear()}年${y.getMonth() + 1}月`;
-    // 上月块存在（跨度覆盖最早记录月）
-    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-month[data-year="${prevM.getFullYear()}"][data-month="${prevM.getMonth()}"]`)).toHaveCount(1);
+    const prevYM = `${prevM.getFullYear()}-${prevM.getMonth()}`;
+    // 上月周行存在（连续周流跨度覆盖最早记录月；月可占多行，取首行）
+    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-week[data-ym="${prevYM}"]`).first()).toBeVisible();
 
     // 初始：活动月=本月，底部组标题=本月，牛马日=1（normal）
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
     await expect(page.locator('.notes__stats-group').nth(1)).toContainText(curLabel);
     await expect(monthStat(1)).toHaveText('1天');
 
-    // 滚动到上月块 → 联动更新底部组（上月 1 条 leave-am → 0.5）
-    await page.locator('[data-notes-cal-scroll]').evaluate((el, { year, month }) => {
+    // 滚动到上月首行 → 联动更新底部组（上月 1 条 leave-am → 0.5）
+    await page.locator('[data-notes-cal-scroll]').evaluate((el, ym) => {
       const head = el.querySelector('.notes__cal-head');
-      const block = el.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
-      el.scrollTop = block.offsetTop - head.offsetHeight;
+      const row = el.querySelector(`.notes__cal-week[data-ym="${ym}"]`);
+      el.scrollTop = row.offsetTop - head.offsetHeight;
       el.dispatchEvent(new Event('scroll'));
-    }, { year: prevM.getFullYear(), month: prevM.getMonth() });
+    }, prevYM);
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
     await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
     await expect(monthStat(1)).toHaveText('0.5天');
+    // 上月日期着色（该月 leave-am 记录格仍彩色）、相邻当前月灰化
+    await expect(page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth() - 1, 15))}"]`)).toHaveClass(/notes__cal-cell--leave-am/);
+    await expect(page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth(), 1))}"]`)).toHaveClass(/notes__cal-cell--out/);
+    await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(0); // 当前月记录不再着色
   });
 });
 
@@ -415,14 +443,14 @@ test.describe('牛马笔记：统计月切换', () => {
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
     await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
     await expect(monthStat(1)).toHaveText('0.5天');
-    // 日历已滚动到该月块（块顶落入滚动视口；平滑滚动需轮询等待落定）
-    await expect.poll(() => page.evaluate(({ year, month }) => {
+    // 日历已滚动到该月首行（行顶落入滚动视口；平滑滚动需轮询等待落定）
+    await expect.poll(() => page.evaluate((ym) => {
       const scrollEl = document.querySelector('[data-notes-cal-scroll]');
-      const block = scrollEl.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
+      const row = scrollEl.querySelector(`.notes__cal-week[data-ym="${ym}"]`);
       const s = scrollEl.getBoundingClientRect();
-      const b = block.getBoundingClientRect();
+      const b = row.getBoundingClientRect();
       return b.top >= s.top && b.top < s.bottom;
-    }, { year: prevM.getFullYear(), month: prevM.getMonth() })).toBe(true);
+    }, `${prevM.getFullYear()}-${prevM.getMonth()}`)).toBe(true);
   });
 });
 
