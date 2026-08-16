@@ -184,38 +184,34 @@ export function statsPage(ctx) {
               <span class="notes__io">${renderButton({ label: '导入', variant: 'secondary', iconName: 'upload' })}</span>
             </div>
           </div>
-          <div class="notes__stats-groups" data-notes-stats-total>
-            ${statsGroupHtml('累计', U.calcStats(all))}
-          </div>
-          <div class="notes__stats-groups" data-notes-stats-month>
-            ${statsGroupHtml(U.monthLabel(active.year, active.month), U.calcStats(all, activeRange))}
+          <div class="notes__stats-columns">
+            ${statsGroupHtml(U.monthLabel(active.year, active.month), U.calcStats(all, activeRange), 'notes-stats-month')}
+            ${statsGroupHtml('累计', U.calcStats(all), 'notes-stats-total')}
           </div>
         </div>
       </div>
     </div>`;
 }
 
-const STAT_SQUARES = [
-  { key: 'workdays', label: '牛马日', value: (s) => s.workDays, cls: 'notes__sq--workdays' },
-  { key: 'rest', label: '休息日', value: (s) => s.restDays, cls: 'notes__sq--rest' },
-  { key: 'intern', label: '实习期', value: (s) => s.internDays, cls: 'notes__sq--intern' },
-  { key: 'regular', label: '正式期', value: (s) => s.regularDays, cls: 'notes__sq--regular' },
-  { key: 'trip', label: '出差日', value: (s) => s.tripDays, cls: 'notes__sq--trip' },
-  { key: 'overtime', label: '加班', value: (s) => s.breakdown.overtime, cls: 'notes__sq--overtime' },
-  { key: 'leave', label: '请假', value: (s) => s.breakdown.leaveAm + s.breakdown.leavePm + s.breakdown.leaveFull, cls: 'notes__sq--leave' },
-];
-// 统计方块竖排：仅非零显示；title 为名称+值（可访问性，非视觉文字）
-function statsSquaresHtml(s) {
-  return STAT_SQUARES.filter((sq) => sq.value(s) !== 0)
-    .map((sq) => `<div class="notes__stat-square ${sq.cls}" title="${sq.label} ${sq.value(s)}">${sq.value(s)}</div>`)
-    .join('');
+// 统计卡片：紧凑方块卡片，label 上、值下、单位「天」（5 卡全显，含 0 值项）
+function statCard(label, value) {
+  return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
 }
-function statsGroupHtml(title, s) {
+function statsCardsHtml(s) {
+  return [
+    statCard('牛马日', s.workDays),
+    statCard('休息日', s.restDays),
+    statCard('实习期', s.internDays),
+    statCard('正式期', s.regularDays),
+    statCard('出差日', s.tripDays),
+  ].join('');
+}
+function statsGroupHtml(title, s, dataKey) {
   return `
-    <div class="notes__stats-group">
+    <div class="notes__stats-group"${dataKey ? ` data-${dataKey}` : ''}>
       <h3 class="notes__stats-title">${title}</h3>
-      <div class="notes__stat-squares">
-        ${statsSquaresHtml(s)}
+      <div class="notes__stats-cards">
+        ${statsCardsHtml(s)}
       </div>
     </div>`;
 }
@@ -598,7 +594,9 @@ function mountStatsPage(pageEl, dis) {
   const renderMonthGroup = (year, month) => {
     const all = U.loadReports();
     const range = U.monthRange(year, month);
-    statsMonthEl.innerHTML = statsGroupHtml(U.monthLabel(year, month), U.calcStats(all, range));
+    const s = U.calcStats(all, range);
+    statsMonthEl.querySelector('.notes__stats-title').textContent = U.monthLabel(year, month);
+    statsMonthEl.querySelector('.notes__stats-cards').innerHTML = statsCardsHtml(s);
   };
   // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标
   const applyActiveClasses = (year, month) => {
@@ -750,7 +748,8 @@ function mountStatsPage(pageEl, dis) {
     const eKey = span.end.year * 12 + span.end.month;
     const aKey = uiState.stats.year * 12 + uiState.stats.month;
     const active = aKey < sKey ? span.start : (aKey > eKey ? span.end : uiState.stats);
-    statsTotalEl.innerHTML = statsGroupHtml('累计', U.calcStats(all));
+    statsTotalEl.querySelector('.notes__stats-title').textContent = '累计';
+    statsTotalEl.querySelector('.notes__stats-cards').innerHTML = statsCardsHtml(U.calcStats(all));
     calWrap.innerHTML = calendarHtml(all, span, active) + legendHtml();
     queryRefs();
     bindCal();

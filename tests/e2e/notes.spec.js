@@ -264,34 +264,24 @@ test.describe('牛马笔记：统计与日历', () => {
     expect(dashStatsLayout.alignSelf).toBe('flex-start');
     expect(dashStatsLayout.maxHeight).toBe('100%');
 
-    // 每组统计方块竖排（flex column；仅非零显示：本 seed 休息日=0 隐藏 → 6 块）
-    await expect(page.locator('[data-notes-stats-total] .notes__stat-square')).toHaveCount(6);
-    await expect(page.locator('[data-notes-stats-month] .notes__stat-square')).toHaveCount(6);
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--rest')).toHaveCount(0); // 休息日 0 不显示
-    const squaresDisplay = await page.locator('.notes__stat-squares').first().evaluate((el) => getComputedStyle(el).display);
-    expect(squaresDisplay).toBe('flex');
-    const squaresDirection = await page.locator('.notes__stat-squares').first().evaluate((el) => getComputedStyle(el).flexDirection);
-    expect(squaresDirection).toBe('column');
-    // 方块为正方形（aspect-ratio: 1 生效）
-    const sqBox = await page.locator('[data-notes-stats-total] .notes__stat-square').first().boundingBox();
-    expect(Math.abs(sqBox.width - sqBox.height)).toBeLessThan(2);
-    // 方块颜色类存在 + title（名称 + 值，可访问性非视觉文字）
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--workdays')).toHaveAttribute('title', '牛马日 2.5');
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--intern')).toHaveAttribute('title', '实习期 2');
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--regular')).toHaveAttribute('title', '正式期 1');
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--trip')).toHaveAttribute('title', '出差日 1');
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--overtime')).toHaveAttribute('title', '加班 1');
-    await expect(page.locator('[data-notes-stats-total] .notes__sq--leave')).toHaveAttribute('title', '请假 1');
-    // 方块为彩色底（非透明）
-    const sqBg = await page.locator('[data-notes-stats-total] .notes__sq--workdays').evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(sqBg).not.toBe('rgba(0, 0, 0, 0)');
-    // 累计组（本页数据全在当前月，累计=当月）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
-    await expect(page.locator('.notes__stats-group').first()).toContainText('累计');
-    await expect(page.locator('.notes__stats-group').first()).toContainText('2.5');
-    // 活动月组（默认当前月）：标题为月份名，数据同累计
+    // 两列左右：.notes__stats-columns flex 两列；左=活动月组、右=累计组（x 坐标左<右）
+    const columnsDisplay = await page.locator('.notes__stats-columns').evaluate((el) => getComputedStyle(el).display);
+    expect(columnsDisplay).toBe('flex');
+    const monthBox = await page.locator('[data-notes-stats-month]').boundingBox();
+    const totalBox = await page.locator('[data-notes-stats-total]').boundingBox();
+    expect(monthBox.x).toBeLessThan(totalBox.x);
+    await expect(page.locator('.notes__stats-group')).toHaveCount(2);
+    // 各组 5 张紧凑卡片（label 上/值下/单位「天」；休息日 0 也显示）
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-card')).toHaveCount(5);
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card')).toHaveCount(5);
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card').first().locator('.notes__stat-label')).toHaveText('牛马日');
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card').first().locator('.notes__stat-value')).toHaveText('2.5天');
+    // 5 卡值（本页数据全在当前月，累计=当月）：牛马日 2.5；休息日 0；实习期 2；正式期 1；出差日 1
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-value')).toHaveText(['2.5天', '0天', '2天', '1天', '1天']);
+    // 左组标题=活动月标签、右组标题=累计
     const y = new Date();
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText('2.5');
+    await expect(page.locator('.notes__stats-group').nth(0)).toContainText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
+    await expect(page.locator('.notes__stats-group').nth(1)).toContainText('累计');
 
     // 日历：3 个格子带对应着色类（连续周流仍各 1）
     await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(1);
@@ -467,7 +457,7 @@ test.describe('牛马笔记：统计滚动联动', () => {
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
 
-    const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-square').first();
+    const monthStat = () => page.locator('[data-notes-stats-month] .notes__stat-value').first();
     const y = new Date();
     const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
     const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
@@ -476,12 +466,12 @@ test.describe('牛马笔记：统计滚动联动', () => {
     // 上月周行存在（连续周流跨度覆盖最早记录月；月可占多行，取首行）
     await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-week[data-ym="${prevYM}"]`).first()).toBeVisible();
 
-    // 初始：活动月=本月，底部组标题=本月，牛马日=1（normal）
+    // 初始：活动月=本月，左列组标题=本月，牛马日=1（normal）
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(curLabel);
-    await expect(monthStat(1)).toHaveText('1');
+    await expect(page.locator('.notes__stats-group').nth(0)).toContainText(curLabel);
+    await expect(monthStat()).toHaveText('1天');
 
-    // 滚动到上月首行 → 联动更新底部组（上月 1 条 leave-am → 0.5）
+    // 滚动到上月首行 → 联动更新左列组（上月 1 条 leave-am → 0.5）
     await page.locator('[data-notes-cal-scroll]').evaluate((el, ym) => {
       const head = el.querySelector('.notes__cal-head');
       const row = el.querySelector(`.notes__cal-week[data-ym="${ym}"]`);
@@ -489,8 +479,8 @@ test.describe('牛马笔记：统计滚动联动', () => {
       el.dispatchEvent(new Event('scroll'));
     }, prevYM);
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
-    await expect(monthStat(1)).toHaveText('0.5');
+    await expect(page.locator('.notes__stats-group').nth(0)).toContainText(prevLabel);
+    await expect(monthStat()).toHaveText('0.5天');
     // 上月日期着色（该月 leave-am 记录格仍彩色）；相邻当前月记录格 out 保色淡化（出勤类 + opacity<1）
     await expect(page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth() - 1, 15))}"]`)).toHaveClass(/notes__cal-cell--leave-am/);
     const curOutCell = page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth(), 1))}"]`);
@@ -520,23 +510,23 @@ test.describe('牛马笔记：统计月切换', () => {
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
 
-    const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-square').first();
+    const monthStat = () => page.locator('[data-notes-stats-month] .notes__stat-value').first();
     const y = new Date();
     const curLabel = `${y.getFullYear()}年${y.getMonth() + 1}月`;
     const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
     const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
-    // 初始本月：底部组标题=本月，牛马日=1
+    // 初始本月：左列组标题=本月，牛马日=1
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
-    await expect(monthStat(1)).toHaveText('1');
-    // ‹ 上月：标签/底部组更新为上月（0.5）
+    await expect(monthStat()).toHaveText('1天');
+    // ‹ 上月：标签/左列组更新为上月（0.5）
     await page.locator('[data-notes-cal-prev]').click();
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
-    await expect(monthStat(1)).toHaveText('0.5');
+    await expect(page.locator('.notes__stats-group').nth(0)).toContainText(prevLabel);
+    await expect(monthStat()).toHaveText('0.5天');
     // › 回本月
     await page.locator('[data-notes-cal-next]').click();
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(curLabel);
-    await expect(monthStat(1)).toHaveText('1');
+    await expect(monthStat()).toHaveText('1天');
   });
 
   test('月标签弹面板：选上月 → 日历滚动 + 底部组联动', async ({ page }) => {
@@ -557,7 +547,7 @@ test.describe('牛马笔记：统计月切换', () => {
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
 
-    const monthStat = (groupIndex) => page.locator('.notes__stats-group').nth(groupIndex).locator('.notes__stat-square').first();
+    const monthStat = () => page.locator('[data-notes-stats-month] .notes__stat-value').first();
     const y = new Date();
     const prevM = new Date(y.getFullYear(), y.getMonth() - 1, 1);
     const prevLabel = `${prevM.getFullYear()}年${prevM.getMonth() + 1}月`;
@@ -571,12 +561,12 @@ test.describe('牛马笔记：统计月切换', () => {
       await page.locator('[data-cal-year-prev]').click();
       await expect(page.locator('[data-cal-year-label]')).toHaveText(String(prevM.getFullYear()));
     }
-    // 选上月 → 面板关闭 + 标签/底部组联动
+    // 选上月 → 面板关闭 + 标签/左列组联动
     await page.locator(`[data-cal-month="${prevM.getMonth()}"]`).click();
     await expect(page.locator('[data-notes-cal-picker]')).toBeHidden();
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
-    await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
-    await expect(monthStat(1)).toHaveText('0.5');
+    await expect(page.locator('.notes__stats-group').nth(0)).toContainText(prevLabel);
+    await expect(monthStat()).toHaveText('0.5天');
     // 日历已滚动到该月首行（行顶落入滚动视口；平滑滚动需轮询等待落定）
     await expect.poll(() => page.evaluate((ym) => {
       const scrollEl = document.querySelector('[data-notes-cal-scroll]');
@@ -702,7 +692,7 @@ test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const y = new Date();
-      // 7 项统计全非零（每组 7 块全显），极短视口下右栏内容必超高
+      // 5 张卡片全显（含 0 值休息日），极短视口下右栏内容必超高
       const d1 = new Date(y.getFullYear(), y.getMonth(), 1);
       const d2 = new Date(y.getFullYear(), y.getMonth(), 2);
       const d3 = new Date(y.getFullYear(), y.getMonth(), 3);
@@ -723,7 +713,7 @@ test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
     // 极短视口下右栏内容超高 → 右栏内部滚动（max-height:100% 兜底）
     const statsBox = await page.locator('.notes__dash-stats').evaluate((el) => ({ clientH: el.clientHeight, scrollH: el.scrollHeight }));
     expect(statsBox.scrollH).toBeGreaterThan(statsBox.clientH);
-    await page.locator('[data-notes-stats-month] .notes__stat-square').last().scrollIntoViewIfNeeded();
-    await expect(page.locator('[data-notes-stats-month] .notes__stat-square').last()).toBeInViewport();
+    await page.locator('[data-notes-stats-month] .notes__stat-card').last().scrollIntoViewIfNeeded();
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-card').last()).toBeInViewport();
   });
 });
