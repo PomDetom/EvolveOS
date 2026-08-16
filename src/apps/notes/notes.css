@@ -57,10 +57,13 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__field-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--text-2); }
 .notes__seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .notes__seg-item {
-  display: inline-flex; align-items: center; gap: 4px; cursor: pointer; position: relative;
+  display: inline-flex; align-items: center; gap: 4px; cursor: grab; position: relative;
   padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid var(--glass-border);
   color: var(--text-2); font-size: var(--font-size-sm);
 }
+.notes__seg-item--dragging { opacity: 0.4; }
+.notes__seg-item--drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+.notes__seg-item--drop-after { box-shadow: 0 2px 0 0 var(--accent); }
 .notes__seg-item input { position: absolute; opacity: 0; }
 .notes__seg-item:has(input:checked) { color: var(--accent); border-color: var(--accent); background: var(--accent-50); }
 .notes__editor-del { align-self: flex-start; margin-top: var(--space-1); }
@@ -107,25 +110,27 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 
 /* 日历：竖向连续（滚动容器 + 固定头 + 月份堆叠） */
 .notes__cal-wrap { position: relative; margin-top: var(--space-4); }
-.notes__cal-scroll { max-height: 460px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
+.notes__cal-scroll { max-height: 240px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
 .notes__cal-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-2); background: var(--surface-solid); border-bottom: 1px solid var(--glass-border); }
 .notes__cal-nav { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-2); }
 .notes__cal-nav:hover { background: var(--surface-hover); color: var(--text-1); }
 .notes__cal-label { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-1); padding: 4px 10px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
 .notes__cal-label:hover { background: var(--surface-hover); }
 .notes__cal-months { display: flex; flex-direction: column; }
-.notes__cal-month { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--glass-border); }
+.notes__cal-month { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--glass-border); }
 .notes__cal-month:last-child { border-bottom: none; }
 .notes__cal-month-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-2); margin-bottom: var(--space-2); }
-.notes__cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.notes__cal-weekday { text-align: center; font-size: var(--font-size-xs); color: var(--text-3); padding: 2px 0; }
+.notes__cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.notes__cal-weekday { text-align: center; font-size: var(--font-size-xs); color: var(--text-3); padding: 1px 0; }
 .notes__cal-cell {
   position: relative; display: flex; align-items: center; justify-content: center;
-  aspect-ratio: 1; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
-  border: 1px solid transparent; color: var(--text-2); font-size: var(--font-size-sm);
+  height: 30px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  border: 1px solid transparent; color: var(--text-2); font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
 }
 .notes__cal-cell--blank { background: transparent; }
+.notes__cal-cell--out { color: var(--text-3); background: transparent; cursor: default; }
+.notes__cal-cell--out:hover { border-color: transparent; }
 .notes__cal-cell:hover { border-color: var(--glass-border); }
 .notes__cal-cell--normal { background: var(--success-50); color: var(--success-600); }
 .notes__cal-cell--overtime { background: var(--accent-50); color: var(--accent); }
@@ -155,4 +160,5 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__legend-dot--leave-am { background: linear-gradient(180deg, var(--warning-500) 50%, var(--success-500) 50%); }
 .notes__legend-dot--leave-pm { background: linear-gradient(180deg, var(--success-500) 50%, var(--warning-500) 50%); }
 .notes__legend-dot--leave-full { background: var(--warning-500); }
+.notes__legend-dot--leave { background: var(--warning-500); }
 .notes__legend-dot--trip { background: var(--info-500); border-radius: 50%; }

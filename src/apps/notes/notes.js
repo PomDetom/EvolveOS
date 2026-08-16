@@ -228,8 +228,9 @@ function calendarHtml(all, months) {
     const grid = U.buildMonthGrid(year, month);
     const rows = grid.map((week) => `
       <div class="notes__cal-week">
-        ${week.map((date) => {
-          if (!date) return '<span class="notes__cal-cell notes__cal-cell--blank"></span>';
+        ${week.map((cell) => {
+          if (!cell.inMonth) return `<span class="notes__cal-cell notes__cal-cell--out">${Number(cell.date.slice(8))}</span>`;
+          const date = cell.date;
           const r = byDate.get(date);
           const cls = ['notes__cal-cell'];
           if (r) cls.push(`notes__cal-cell--${r.attendance}`);
@@ -272,11 +273,8 @@ function legendHtml() {
     .filter((o) => ['normal', 'overtime', 'rest'].includes(o.value))
     .map((o) => `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--${o.value}"></i>${o.label}</span>`)
     .join('');
-  const leave = `
-    <span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--leave-am"></i>请假（半天·上）</span>
-    <span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--leave-pm"></i>请假（半天·下）</span>
-    <span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--leave-full"></i>请假（全天）</span>`;
-  const trip = `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--trip"></i>出差（西安）</span>`;
+  const leave = `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--leave"></i>请假</span>`;
+  const trip = `<span class="notes__legend-item"><i class="notes__legend-dot notes__legend-dot--trip"></i>出差</span>`;
   return `<div class="notes__legend">${base}${leave}${trip}</div>`;
 }
 
@@ -305,9 +303,12 @@ function notesConfirm(opts) {
 
 function editorFormHtml(existing, templates, date) {
   const e = existing ?? {};
+  const order = U.loadOptionOrder();
   const tplList = templates.length
     ? templates.map((t) => `<button type="button" class="notes__tpl-item" data-notes-template="${U.escapeHtml(t.id)}">${U.escapeHtml(t.name)}</button>`).join('')
     : '<div class="notes__tpl-empty">暂无模板，可先在「模板」页新建</div>';
+  const seg = (name, opts, checked) => `
+    <div class="notes__seg" data-notes-opt-group="${name}">${U.orderedOptions(opts, order[name]).map((o) => segItem(name, o, checked)).join('')}</div>`;
   return `
   <div class="notes__editor">
     <div class="notes__field">
@@ -316,15 +317,15 @@ function editorFormHtml(existing, templates, date) {
     </div>
     <div class="notes__field">
       <label class="notes__field-label">出勤情况</label>
-      <div class="notes__seg">${U.ATTENDANCE_OPTIONS.map((o) => segItem('attendance', o, e.attendance ?? 'normal')).join('')}</div>
+      ${seg('attendance', U.ATTENDANCE_OPTIONS, e.attendance ?? 'normal')}
     </div>
     <div class="notes__field">
       <label class="notes__field-label">工作阶段</label>
-      <div class="notes__seg">${U.PHASE_OPTIONS.map((o) => segItem('phase', o, e.phase ?? 'intern')).join('')}</div>
+      ${seg('phase', U.PHASE_OPTIONS, e.phase ?? 'intern')}
     </div>
     <div class="notes__field">
       <label class="notes__field-label">所在地</label>
-      <div class="notes__seg">${U.LOCATION_OPTIONS.map((o) => segItem('location', o, e.location ?? 'qingdao')).join('')}</div>
+      ${seg('location', U.LOCATION_OPTIONS, e.location ?? 'qingdao')}
     </div>
     <div class="notes__field">
       <div class="notes__field-head">
@@ -354,6 +355,7 @@ export function openReportEditor({ date, existing, onSaved }) {
   document.body.appendChild(mask);
   const body = mask.querySelector('.c-dialog__body');
   mountPopover(body);
+  wireSegDrag(body);
 
   let subOpen = false; // 次级确认对话框打开期间忽略 Esc，防叠层同关
   const close = () => { mask.remove(); document.removeEventListener('keydown', onKey); };
@@ -430,6 +432,60 @@ export function openReportEditor({ date, existing, onSaved }) {
       wrap?.classList.remove('c-popover--open');
       wrap?.querySelector('.c-popover__trigger')?.setAttribute('aria-expanded', 'false');
       wrap?.querySelector('.c-popover__panel')?.setAttribute('aria-hidden', 'true');
+    });
+  });
+}
+
+// —— 编辑器分组选项 HTML5 拖拽换位：同组内重排 + 顺序持久化（仅渲染序，不影响数据值/配色/统计）——
+function wireSegDrag(body) {
+  body.querySelectorAll('[data-notes-opt-group]').forEach((group) => {
+    let source = null;
+    const clearDrop = () => {
+      group.querySelectorAll('.notes__seg-item').forEach((x) => x.classList.remove('notes__seg-item--drop-before', 'notes__seg-item--drop-after'));
+    };
+    const persist = () => {
+      // 读当前 DOM 序写入该组；补齐全部组（loadOptionOrder 要求三组皆数组，防部分写入被丢弃）
+      const order = {};
+      body.querySelectorAll('[data-notes-opt-group]').forEach((g) => {
+        order[g.dataset.notesOptGroup] = Array.from(g.querySelectorAll('.notes__seg-item input')).map((inp) => inp.value);
+      });
+      U.saveOptionOrder(order);
+    };
+    group.querySelectorAll('.notes__seg-item').forEach((item) => {
+      item.draggable = true;
+      item.addEventListener('dragstart', (e) => {
+        source = item;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'notes-opt');
+        item.classList.add('notes__seg-item--dragging');
+      });
+      item.addEventListener('dragover', (e) => {
+        if (!source || source === item) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = item.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        clearDrop();
+        item.classList.add(after ? 'notes__seg-item--drop-after' : 'notes__seg-item--drop-before');
+      });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        clearDrop();
+        if (!source || source === item) { source = null; return; }
+        const rect = item.getBoundingClientRect();
+        const before = e.clientY <= rect.top + rect.height / 2;
+        const target = item;
+        source.remove();
+        if (before) target.before(source);
+        else target.after(source);
+        source = null;
+        persist();
+      });
+      item.addEventListener('dragend', () => {
+        group.querySelectorAll('.notes__seg-item').forEach((x) => x.classList.remove('notes__seg-item--dragging'));
+        clearDrop();
+        source = null;
+      });
     });
   });
 }
