@@ -100,21 +100,20 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__dash-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: var(--space-3); }
 .notes__dash { display: flex; gap: var(--space-4); flex: 1; min-height: 0; }
 .notes__dash-cal { flex: 0 0 45%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-.notes__dash-stats { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto; }
+.notes__dash-stats { align-self: flex-start; flex: 0 1 55%; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow-y: auto; }
 .notes__dash-stats .notes__toolbar,
 .notes__dash-stats .notes__stats-groups { margin-bottom: 0; }
 .notes__dash-cal .notes__legend { flex: none; margin-top: 0; }
 .notes__cal-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: none; margin: 0; }
-.notes__cal-scroll { flex: 1; min-height: 0; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
+.notes__cal-scroll { flex: 1; min-height: 0; overflow-y: auto; background: var(--surface-1); border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
 
 .notes__stats-groups { display: flex; flex-direction: column; gap: var(--space-3); }
 .notes__stats-title { font-size: var(--font-size-sm); color: var(--text-3); font-weight: var(--font-weight-medium); margin: 0 0 var(--space-2); }
-.notes__stats-cards { display: flex; flex-direction: column; }
-.notes__stat-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--glass-border); }
-.notes__stat-row:last-child { border-bottom: none; }
+.notes__stats-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-2); }
+.notes__stat-card { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); background: var(--surface-1); border: 1px solid var(--glass-border); }
 .notes__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
 .notes__stat-value { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-1); font-variant-numeric: tabular-nums; }
-.notes__stat-unit { font-style: normal; font-size: var(--font-size-sm); font-weight: var(--font-weight-regular); color: var(--text-3); margin-left: 2px; }
+.notes__stat-unit { font-style: normal; font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--text-3); margin-left: 2px; }
 .notes__stats-breakdown { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
 .notes__breakdown-item { font-size: var(--font-size-sm); color: var(--text-2); }
 .notes__breakdown-item b { font-weight: var(--font-weight-semibold); }
@@ -124,7 +123,7 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__breakdown-item--rest { color: var(--neutral-600); }
 
 /* 日历：连续周流（滚动容器 + 固定头 + 整段周行；窄块居中 + 正方形格） */
-.notes__cal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-solid); border-bottom: 1px solid var(--glass-border); padding: var(--space-2) var(--space-2) var(--space-1); }
+.notes__cal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-1); border-bottom: 1px solid var(--glass-border); padding: var(--space-2) var(--space-2) var(--space-1); }
 .notes__cal-head-nav { display: flex; align-items: center; justify-content: center; gap: var(--space-3); }
 .notes__cal-nav { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-2); }
 .notes__cal-nav:hover { background: var(--surface-hover); color: var(--text-1); }
@@ -140,7 +139,7 @@ body.notes__confirm .c-dialog__mask .c-dialog {
   font-variant-numeric: tabular-nums;
 }
 .notes__cal-day { position: relative; z-index: 1; }
-.notes__cal-cell--out { color: var(--text-3); background: transparent; cursor: default; }
+.notes__cal-cell--out { opacity: 0.35; color: var(--text-3); cursor: default; }
 .notes__cal-cell--out:hover { border-color: transparent; }
 .notes__cal-cell:hover { border-color: var(--glass-border); }
 .notes__cal-cell--normal { background: var(--success-50); color: var(--success-600); }
