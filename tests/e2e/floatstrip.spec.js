@@ -236,7 +236,11 @@ test('strip 窗口：拖动走系统拖拽、旋转贴合尺寸、位置持久�
       outerPosition: () => { calls.push('outerPosition'); return Promise.resolve({ x: 300, y: 200 }); },
       onMoved: (fn) => { window.__stripMovedFn__ = fn; return Promise.resolve(() => {}); },
       hide: () => { calls.push('hide'); return Promise.resolve(); },
-    }) } };
+    }) }, core: { invoke: async (cmd, args) => {
+      if (cmd === 'get_window_rect') return { x: 300, y: 200, width: 320, height: 64 }; // 持久化读位置
+      if (cmd === 'set_window_pos') { calls.push(['setPosition', { x: args.x, y: args.y }]); return null; }
+      return null;
+    } } };
     window.__stripWinCalls__ = calls;
     localStorage.setItem('ui-design-strip-pos', JSON.stringify({ x: 120, y: 80 }));
   });
@@ -429,8 +433,10 @@ async function mountEdgeMock(page, seedPos) {
           hide: () => Promise.resolve(),
         }),
       },
-      core: { invoke: async (cmd) => {
+      core: { invoke: async (cmd, args) => {
         if (cmd === 'get_current_monitor') return { x: 0, y: 0, width: 1280, height: 720 }; // 显示器 bounds（物理像素）
+        if (cmd === 'get_window_rect') return { x: pos.x, y: pos.y, width: size.width, height: size.height };
+        if (cmd === 'set_window_pos') { calls.push(['setPosition', { x: args.x, y: args.y }]); Object.assign(pos, args); return null; }
         return null;
       } },
       event: { listen: async () => () => {} },

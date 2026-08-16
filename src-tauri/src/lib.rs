@@ -33,6 +33,31 @@ fn get_current_monitor(window: tauri::Window) -> Option<MonitorBounds> {
     })
 }
 
+// —— 贴边收起：窗口位置/尺寸读写走 Rust（全局 shim 缺 read 方法：currentMonitor/screen 均 undefined，
+// outerPosition/outerSize 同缺 → 全部经命令，对齐 codeplan-usage 的 Rust 侧窗口操作）——
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WindowRect {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[tauri::command]
+fn get_window_rect(window: tauri::Window) -> Option<WindowRect> {
+    let pos = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    Some(WindowRect { x: pos.x, y: pos.y, width: size.width, height: size.height })
+}
+
+#[tauri::command]
+fn set_window_pos(window: tauri::Window, x: i32, y: i32) -> Result<(), String> {
+    window
+        .set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())
+}
+
 // —— 主窗启动时序（ui/startup-opt）：hidden-until-ready ——
 // 主窗 tauri.conf.json 设 visible:false；前端 mountAppMode 首帧绘制后 invoke main_window_ready
 // → 隐藏态恢复上次几何（尺寸/位置/最大化）→ show。窗口首次可见帧即「保存位置 + 已渲染内容」，
@@ -118,6 +143,8 @@ pub fn run() {
             set_close_behavior,
             main_window_ready,
             get_current_monitor,
+            get_window_rect,
+            set_window_pos,
             commands::get_config,
             commands::save_config,
             commands::refresh_all,

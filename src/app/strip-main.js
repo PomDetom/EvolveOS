@@ -201,7 +201,7 @@ export function mountStripMode() {
     const line = document.createElement('div');
     line.textContent = msg;
     debugEl.appendChild(line);
-    while (debugEl.children.length > 6) debugEl.firstChild?.remove();
+    while (debugEl.children.length > 20) debugEl.firstChild?.remove();
   };
   // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
   // 双通道（覆盖隐藏→唤起）：① 先写 ui-jump-intent（主窗 visibilitychange visible 时消费）再 show+setFocus，
@@ -255,7 +255,7 @@ export function mountStripMode() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const { x, y } = JSON.parse(saved);
-        if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
+        if (Number.isFinite(x) && Number.isFinite(y)) window.__TAURI__?.core?.invoke?.('set_window_pos', { x, y }).catch?.(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
 
@@ -293,11 +293,10 @@ export function mountStripMode() {
       return m;
     };
     const getRect = async () => {
-      // ?.() 兼容缺 outerPosition/outerSize 的旧 mock/降级环境（无能力 → null，评估 no-op）
-      const p = await win.outerPosition?.().catch?.((err) => { logEdge(`[edge] outerPosition err ${err}`); return null; });
-      const s = await win.outerSize?.().catch?.((err) => { logEdge(`[edge] outerSize err ${err}`); return null; });
-      const rect = (p && s) ? { x: p.x, y: p.y, width: s.width, height: s.height } : null;
-      logEdge(`[edge] rect ${JSON.stringify(rect)} | outerPosition=${typeof win.outerPosition} outerSize=${typeof win.outerSize}`);
+      // 窗口位置/尺寸走 Rust 命令（全局 shim 缺 read 方法：outerPosition/outerSize 同 currentMonitor
+      // 均 undefined → 不能依赖 JS 对象）；?.() 兼容旧 mock/降级（无 invoke → null，评估 no-op）。
+      const rect = await window.__TAURI__?.core?.invoke?.('get_window_rect').catch?.((err) => { logEdge(`[edge] rect err ${err}`); return null; });
+      logEdge(`[edge] rect ${JSON.stringify(rect)}`);
       return rect;
     };
     const setEdgeUI = (mode) => {
@@ -311,14 +310,17 @@ export function mountStripMode() {
     const tweenTo = (to, dur, onDone = () => {}) => new Promise((resolve) => {
       if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
       const finish = () => { try { onDone(); } finally { resolve(); } };
-      win.outerPosition().then((p) => {
-        const from = { x: p.x, y: p.y };
-        if (dur <= 0) { win.setPosition(to).catch(() => {}); finish(); return; }
+      // 移动走 Rust set_window_pos（全局 shim 无 outerPosition/setPosition 依赖面，统一经命令）
+      const setPos = (p) => window.__TAURI__?.core?.invoke?.('set_window_pos', { x: p.x, y: p.y }).catch?.(() => {});
+      getRect().then((rect) => {
+        if (!rect) { finish(); return; }
+        const from = { x: rect.x, y: rect.y };
+        if (dur <= 0) { setPos(to); finish(); return; }
         const start = performance.now();
         const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
         const step = (now) => {
           const k = ease(Math.min(1, (now - start) / dur));
-          win.setPosition({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) }).catch(() => {});
+          setPos({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) });
           if (k < 1) collapseRaf = requestAnimationFrame(step);
           else { collapseRaf = null; finish(); }
         };
@@ -328,7 +330,7 @@ export function mountStripMode() {
     const cancelCollapse = () => { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } };
     const startCollapseTimer = () => {
       cancelCollapse();
-      if (edge.mode !== 'docked' || strip.matches(':hover')) return; // 非贴边或光标在条上不计时
+      if (edge.mode !== 'docked' || strip.matches(':hover') || collapseRaf) return; // 弹出 tween 期间不计时
       collapseTimer = setTimeout(collapseNow, 1000);
     };
     const collapseNow = async () => {
@@ -341,7 +343,7 @@ export function mountStripMode() {
       // 守卫，光标在条上不计时；mouseleave 会重启计时），不进入收起。
       if (strip.matches(':hover')) { startCollapseTimer(); return; }
       const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
-      logEdge(`[edge] collapse → ${JSON.stringify(target)} edge=${edge.dockEdge}`);
+      logEdge(`[edge] collapse from=${JSON.stringify({ x: rect.x, y: rect.y })} → ${JSON.stringify(target)} edge=${edge.dockEdge} mon=${JSON.stringify(monitor)}`);
       edge.mode = 'collapsed';
       collapsed = true;
       setEdgeUI('collapsed');
@@ -352,9 +354,9 @@ export function mountStripMode() {
       if (edge.mode !== 'collapsed' || !edge.dockPos) return;
       logEdge(`[edge] popOut → ${JSON.stringify(edge.dockPos)}`);
       collapsed = false;
+      edge.mode = 'docked'; // 立即置 docked：tween 期间重复 mouseenter 不再触发 popOut（防反复重启 tween）
       setEdgeUI('docked');
       tweenTo(edge.dockPos, readMotionDur(), () => {
-        edge.mode = 'docked';
         if (strip.isConnected) startCollapseTimer();
       });
     };
@@ -404,9 +406,9 @@ export function mountStripMode() {
       if (collapsed || collapseRaf) return;
       clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
-        win.outerPosition?.().then(({ x, y }) => {
-          if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
-        }).catch(() => {});
+        window.__TAURI__?.core?.invoke?.('get_window_rect').then?.((r) => {
+          if (r && !collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: r.x, y: r.y }));
+        }).catch?.(() => {});
       }, 200);
     });
     // 评估触发：后台轮询（每 150ms 读窗口位置；连续两次相同 = 用户松手 → 评估贴边一次）。
