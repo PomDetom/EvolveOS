@@ -256,11 +256,32 @@ test.describe('牛马笔记：统计与日历', () => {
     expect(calScrollBox.scrollHeight).toBeGreaterThan(calScrollBox.clientHeight);
     const statsScrollY = await page.locator('.notes__dash-stats').evaluate((el) => getComputedStyle(el).overflowY);
     expect(statsScrollY).toBe('auto');
+    // 右栏内容自然高度（不再撑满屏）：align-self: flex-start + max-height:100% 兜底内部滚动
+    const dashStatsLayout = await page.locator('.notes__dash-stats').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { alignSelf: s.alignSelf, maxHeight: s.maxHeight };
+    });
+    expect(dashStatsLayout.alignSelf).toBe('flex-start');
+    expect(dashStatsLayout.maxHeight).toBe('100%');
 
-    // 每组 5 张统计卡改为竖排行（label 左、值右一行）
-    await expect(page.locator('[data-notes-stats-total] .notes__stat-row')).toHaveCount(5);
-    await expect(page.locator('[data-notes-stats-month] .notes__stat-row')).toHaveCount(5);
-    await expect(page.locator('.notes__stat-row').first()).toContainText('牛马日');
+    // 每组 5 张统计卡（紧凑网格卡：label 上、值下；grid 布局）
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card')).toHaveCount(5);
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-card')).toHaveCount(5);
+    await expect(page.locator('.notes__stat-card').first()).toContainText('牛马日');
+    const statsCardsDisplay = await page.locator('.notes__stats-cards').first().evaluate((el) => getComputedStyle(el).display);
+    expect(statsCardsDisplay).toBe('grid');
+    // 网格列模板含 minmax(96px, 1fr)（紧凑卡 auto-fill 布局；computed 已解析为像素，改查样式表规则）
+    const hasCardsMinmax = await page.evaluate(() => {
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch { continue; }
+        for (const r of rules) {
+          if (r.selectorText && r.selectorText.includes('.notes__stats-cards') && r.style.gridTemplateColumns.includes('minmax')) return true;
+        }
+      }
+      return false;
+    });
+    expect(hasCardsMinmax).toBe(true);
     // 累计组（本页数据全在当前月，累计=当月）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
     await expect(page.locator('.notes__stats-group').first()).toContainText('累计');
     await expect(page.locator('.notes__stats-group').first()).toContainText('2.5');
@@ -294,6 +315,17 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('.notes__cal-month')).toHaveCount(0);
     await expect(page.locator('.notes__cal-month-title')).toHaveCount(0);
     await expect(page.locator('.notes__cal-week--head')).toHaveCount(1);
+    // 日历头底色与日历容器一体（--surface-1，非纯白 --surface-solid）
+    const headBg = await page.locator('.notes__cal-head').evaluate((el) => getComputedStyle(el).backgroundColor);
+    const scrollBg = await page.locator('[data-notes-cal-scroll]').evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(headBg).toBe(scrollBg);
+    const headAlpha = await page.locator('.notes__cal-head').evaluate((el) => {
+      const m = getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/);
+      if (!m) return 1; // 无 alpha 的 rgb → 视为 opaque
+      const parts = m[1].split(',').map((x) => parseFloat(x));
+      return parts.length === 4 ? parts[3] : 1;
+    });
+    expect(headAlpha).toBeLessThan(1);
     // 今天实心圆：::before 圆（accent 底）+ accent-contrast 字；直径缩至格宽 2/3（原 inset 2px → calc(100%/6)）
     await expect(page.locator('.notes__cal-cell--today')).toHaveCount(1);
     const todayBefore = await page.locator('.notes__cal-cell--today').evaluate((el) => {
@@ -384,6 +416,49 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('[data-notes-ed="date"]')).toHaveValue(cellDate);
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
   });
+
+  test('其他月份保色：非活动月有记录格保留出勤色淡化，无记录格仅灰化', async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const cur = new Date(y.getFullYear(), y.getMonth(), 1);
+      const prev = new Date(y.getFullYear(), y.getMonth() - 1, 15);
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify([
+        { date: iso(cur), primary: '本月记录', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 1 },
+        { date: iso(prev), primary: '上月记录', secondary: '', attendance: 'overtime', phase: 'intern', location: 'qingdao', updatedAt: 2 },
+      ]));
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    // 活动月=本月：上月记录格 = out + 出勤类 + opacity 淡化（0 < opacity < 1）
+    const y = new Date();
+    const prevDate = iso(new Date(y.getFullYear(), y.getMonth() - 1, 15));
+    const prevCell = page.locator(`.notes__cal-cell[data-date="${prevDate}"]`);
+    await expect(prevCell).toHaveClass(/notes__cal-cell--out/);
+    await expect(prevCell).toHaveClass(/notes__cal-cell--overtime/);
+    const prevOpacity = await prevCell.evaluate((el) => Number(getComputedStyle(el).opacity));
+    expect(prevOpacity).toBeGreaterThan(0);
+    expect(prevOpacity).toBeLessThan(1);
+    // 无记录 out 格：仅 --out（无出勤类），背景透明灰化
+    const noRecordOut = await page.locator('.notes__cal-cell--out').evaluateAll((cells) => {
+      const attrs = ['normal', 'overtime', 'rest', 'leave-am', 'leave-pm', 'leave-full'];
+      const cell = Array.from(cells).find((el) => !attrs.some((a) => el.classList.contains(`notes__cal-cell--${a}`)));
+      if (!cell) return null;
+      const s = getComputedStyle(cell);
+      return { opacity: Number(s.opacity), bg: s.backgroundColor };
+    });
+    expect(noRecordOut).not.toBeNull();
+    expect(noRecordOut.opacity).toBeLessThan(1);
+    expect(noRecordOut.bg).toBe('rgba(0, 0, 0, 0)');
+    // out 格仍不可点（点击守卫保留）
+    await prevCell.evaluate((el) => el.click());
+    await expect(page.locator('.c-dialog')).toHaveCount(0);
+  });
 });
 
 test.describe('牛马笔记：统计滚动联动', () => {
@@ -429,10 +504,13 @@ test.describe('牛马笔记：统计滚动联动', () => {
     await expect(page.locator('[data-notes-cal-label]')).toHaveText(prevLabel);
     await expect(page.locator('.notes__stats-group').nth(1)).toContainText(prevLabel);
     await expect(monthStat(1)).toHaveText('0.5天');
-    // 上月日期着色（该月 leave-am 记录格仍彩色）、相邻当前月灰化
+    // 上月日期着色（该月 leave-am 记录格仍彩色）；相邻当前月记录格 out 保色淡化（出勤类 + opacity<1）
     await expect(page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth() - 1, 15))}"]`)).toHaveClass(/notes__cal-cell--leave-am/);
-    await expect(page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth(), 1))}"]`)).toHaveClass(/notes__cal-cell--out/);
-    await expect(page.locator('.notes__cal-cell--normal')).toHaveCount(0); // 当前月记录不再着色
+    const curOutCell = page.locator(`.notes__cal-cell[data-date="${iso(new Date(y.getFullYear(), y.getMonth(), 1))}"]`);
+    await expect(curOutCell).toHaveClass(/notes__cal-cell--out/);
+    await expect(curOutCell).toHaveClass(/notes__cal-cell--normal/);
+    const curOutOpacity = await curOutCell.evaluate((el) => Number(getComputedStyle(el).opacity));
+    expect(curOutOpacity).toBeLessThan(1);
   });
 });
 
@@ -632,8 +710,8 @@ test.describe('牛马笔记：编辑器选项拖拽换位', () => {
 });
 
 test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
-  test.use({ viewport: { width: 1280, height: 520 } });
-  test('右栏超高：内部滚动可达（末个统计行可见）', async ({ page }) => {
+  test.use({ viewport: { width: 1280, height: 360 } });
+  test('右栏超高：内部滚动可达（末个统计卡可见）', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('evolveos.notes.reports', '[]');
       localStorage.setItem('evolveos.notes.templates', '[]');
@@ -643,10 +721,10 @@ test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
     await page.waitForTimeout(400);
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
-    // 短视口下右栏内容超高 → 右栏内部滚动
+    // 极短视口下右栏内容超高 → 右栏内部滚动（max-height:100% 兜底）
     const statsBox = await page.locator('.notes__dash-stats').evaluate((el) => ({ clientH: el.clientHeight, scrollH: el.scrollHeight }));
     expect(statsBox.scrollH).toBeGreaterThan(statsBox.clientH);
-    await page.locator('[data-notes-stats-month] .notes__stat-row').last().scrollIntoViewIfNeeded();
-    await expect(page.locator('[data-notes-stats-month] .notes__stat-row').last()).toBeInViewport();
+    await page.locator('[data-notes-stats-month] .notes__stat-card').last().scrollIntoViewIfNeeded();
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-card').last()).toBeInViewport();
   });
 });

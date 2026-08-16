@@ -200,11 +200,11 @@ function statsGroupHtml(title, s) {
     <div class="notes__stats-group">
       <h3 class="notes__stats-title">${title}</h3>
       <div class="notes__stats-cards">
-        ${statRow('牛马日', s.workDays)}
-        ${statRow('休息日', s.restDays)}
-        ${statRow('实习期', s.internDays)}
-        ${statRow('正式期', s.regularDays)}
-        ${statRow('出差日', s.tripDays)}
+        ${statCard('牛马日', s.workDays)}
+        ${statCard('休息日', s.restDays)}
+        ${statCard('实习期', s.internDays)}
+        ${statCard('正式期', s.regularDays)}
+        ${statCard('出差日', s.tripDays)}
       </div>
       <div class="notes__stats-breakdown">
         ${breakdownItem('正常', s.breakdown.normal, 'normal')}
@@ -216,15 +216,15 @@ function statsGroupHtml(title, s) {
       </div>
     </div>`;
 }
-function statRow(label, value) {
-  return `<div class="notes__stat-row"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
+function statCard(label, value) {
+  return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
 }
 function breakdownItem(label, n, cls) {
   return `<span class="notes__breakdown-item notes__breakdown-item--${cls}">${label} <b>${n}</b></span>`;
 }
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
-// 连续周流日历：整段周行（无月块/月标题/分隔线）；活动月决定 inMonth 着色，相邻月灰化（--out，不可点）；
+// 连续周流日历：整段周行（无月块/月标题/分隔线）；活动月决定 inMonth 着色，相邻月保色淡化（--out opacity 淡化，无记录纯灰；不可点）；
 // 今天=实心 accent 圆（--today），悬浮=accent 描边圆环（:hover，无持久选中态）
 function calendarHtml(all, span, active) {
   const byDate = new Map(all.map((r) => [r.date, r]));
@@ -238,8 +238,11 @@ function calendarHtml(all, span, active) {
       const inMonth = `${year}-${month}` === activeYM;
       const r = byDate.get(date);
       const cls = ['notes__cal-cell'];
-      if (!inMonth) cls.push('notes__cal-cell--out');
-      else if (r) {
+      if (!inMonth) {
+        cls.push('notes__cal-cell--out');
+        // 非活动月有记录：保留出勤色（--out opacity 淡化），无记录仍纯灰
+        if (r) cls.push(`notes__cal-cell--${r.attendance}`);
+      } else if (r) {
         cls.push(`notes__cal-cell--${r.attendance}`);
         if (r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
       }
@@ -612,14 +615,13 @@ function mountStatsPage(pageEl, dis) {
       cell.classList.toggle('notes__cal-cell--out', !inMonth);
       cell.classList.remove('notes__cal-cell--normal', 'notes__cal-cell--overtime', 'notes__cal-cell--rest', 'notes__cal-cell--leave-am', 'notes__cal-cell--leave-pm', 'notes__cal-cell--leave-full', 'notes__cal-cell--trip');
       cell.querySelector('.notes__cal-trip-dot')?.remove();
-      if (inMonth) {
-        const r = byDate.get(cell.dataset.date);
-        if (r) {
-          cell.classList.add(`notes__cal-cell--${r.attendance}`);
-          if (r.location !== 'qingdao') {
-            cell.classList.add('notes__cal-cell--trip');
-            cell.insertAdjacentHTML('beforeend', '<span class="notes__cal-trip-dot"></span>');
-          }
+      // 有记录：保留出勤色（非活动月由 --out opacity 淡化）；出差角标/类仅活动月
+      const r = byDate.get(cell.dataset.date);
+      if (r) {
+        cell.classList.add(`notes__cal-cell--${r.attendance}`);
+        if (inMonth && r.location !== 'qingdao') {
+          cell.classList.add('notes__cal-cell--trip');
+          cell.insertAdjacentHTML('beforeend', '<span class="notes__cal-trip-dot"></span>');
         }
       }
     });
