@@ -197,21 +197,41 @@ test.describe('牛马笔记：统计与日历', () => {
     });
   });
 
-  test('布局：累计组顶 → 日历中 → 活动月组底 + 统计卡/日历着色/彩色 breakdown', async ({ page }) => {
+  test('Dashboard 布局：左栏日历全高 + 右栏汇总竖排 + 统计行/日历着色/彩色 breakdown', async ({ page }) => {
     await page.goto(APP_URL);
     await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
     await page.waitForTimeout(400);
     await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
     await page.waitForTimeout(400);
 
-    // 布局顺序：累计组 → 日历 → 活动月组
-    const order = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.app-main__page-body > *')).map((el) =>
-        el.matches('[data-notes-stats-total]') ? 'total' : el.matches('[data-notes-cal]') ? 'cal' : el.matches('[data-notes-stats-month]') ? 'month' : 'other'));
-    expect(order.indexOf('total')).toBeLessThan(order.indexOf('cal'));
-    expect(order.indexOf('cal')).toBeLessThan(order.indexOf('month'));
+    // Dashboard：左栏日历 + 右栏汇总（日历在左、汇总在右）
+    const calBox = await page.locator('.notes__dash-cal').boundingBox();
+    const statsBox = await page.locator('.notes__dash-stats').boundingBox();
+    expect(calBox.x).toBeLessThan(statsBox.x);
+    // 左栏含 日历滚动区 + 图例；右栏含 工具栏 + 累计组 + 活动月组（纵向排列）
+    await expect(page.locator('.notes__dash-cal [data-notes-cal-scroll]')).toBeVisible();
+    await expect(page.locator('.notes__dash-cal .notes__legend')).toBeVisible();
+    await expect(page.locator('.notes__dash-stats .notes__toolbar')).toBeVisible();
+    await expect(page.locator('.notes__dash-stats [data-notes-stats-total]')).toBeVisible();
+    await expect(page.locator('.notes__dash-stats [data-notes-stats-month]')).toBeVisible();
 
-    // 累计卡（本页数据全在当前月，累计=当月）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
+    // 页面自身不滚动（notes 页固定高度 + overflow hidden）；日历区内部滚动可达
+    const pageOverflow = await page.locator('.app-main__page[data-page="notes"]').evaluate((el) => getComputedStyle(el).overflow);
+    expect(pageOverflow).toBe('hidden');
+    const calScrollBox = await page.locator('[data-notes-cal-scroll]').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { overflowY: s.overflowY, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
+    });
+    expect(calScrollBox.overflowY).toBe('auto');
+    expect(calScrollBox.scrollHeight).toBeGreaterThan(calScrollBox.clientHeight);
+    const statsScrollY = await page.locator('.notes__dash-stats').evaluate((el) => getComputedStyle(el).overflowY);
+    expect(statsScrollY).toBe('auto');
+
+    // 每组 5 张统计卡改为竖排行（label 左、值右一行）
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-row')).toHaveCount(5);
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-row')).toHaveCount(5);
+    await expect(page.locator('.notes__stat-row').first()).toContainText('牛马日');
+    // 累计组（本页数据全在当前月，累计=当月）：牛马日 = 1 + 0.5 + 1 = 2.5；实习期 2；正式期 1；出差日 1；休息日 0
     await expect(page.locator('.notes__stats-group').first()).toContainText('累计');
     await expect(page.locator('.notes__stats-group').first()).toContainText('2.5');
     await expect(page.locator('.notes__stats-group').first()).toContainText('实习期');
@@ -244,14 +264,22 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('.notes__cal-month')).toHaveCount(0);
     await expect(page.locator('.notes__cal-month-title')).toHaveCount(0);
     await expect(page.locator('.notes__cal-week--head')).toHaveCount(1);
-    // 今天实心圆：::before 圆（accent 底）+ accent-contrast 字
+    // 今天实心圆：::before 圆（accent 底）+ accent-contrast 字；直径缩至格宽 2/3（原 inset 2px → calc(100%/6)）
     await expect(page.locator('.notes__cal-cell--today')).toHaveCount(1);
     const todayBefore = await page.locator('.notes__cal-cell--today').evaluate((el) => {
       const b = getComputedStyle(el, '::before');
-      return { radius: b.borderRadius, bg: b.backgroundColor };
+      return { radius: b.borderRadius, bg: b.backgroundColor, insetTop: parseFloat(b.top), insetBottom: parseFloat(b.bottom) };
     });
     expect(todayBefore.radius).toBe('50%');
     expect(todayBefore.bg).not.toBe('rgba(0, 0, 0, 0)');
+    expect(todayBefore.insetTop).toBeGreaterThan(2);
+    expect(todayBefore.insetBottom).toBeGreaterThan(2);
+    // 悬浮描边圆环（替代持久选中环）：hover 出勤格 → ::after accent 圆环；无 --selected 类
+    await expect(page.locator('.notes__cal-cell--selected')).toHaveCount(0);
+    await page.locator('.notes__cal-cell--normal').first().hover();
+    const hoverShadow = await page.locator('.notes__cal-cell--normal').first().evaluate((el) => getComputedStyle(el, '::after').boxShadow);
+    expect(hoverShadow).not.toBe('none');
+    await page.mouse.move(0, 0);
     // 图例：正常/加班/休息日/请假（单琥珀块）/出差，无 半天·上/下 /全天 /西安
     const legendText = await page.locator('.notes__legend').innerText();
     expect(legendText).toContain('正常');
@@ -262,13 +290,12 @@ test.describe('牛马笔记：统计与日历', () => {
     expect(legendText).not.toContain('半天');
     expect(legendText).not.toContain('全天');
     expect(legendText).not.toContain('西安');
-    // 点日历格 → 打开该日编辑器 + 选中圆环；取消后选中保留
+    // 点日历格 → 打开该日编辑器（无持久选中态）
     await page.locator('.notes__cal-cell--normal').click();
     await expect(page.locator('.c-dialog')).toBeVisible();
     await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('正常日');
-    await expect(page.locator('.notes__cal-cell--selected')).toHaveCount(1);
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
-    await expect(page.locator('.notes__cal-cell--selected')).toHaveCount(1); // 取消后选中保留
+    await expect(page.locator('.c-dialog')).toHaveCount(0);
 
     // 连续日期灰格存在（相邻月填充），点击不弹编辑器
     // 直接对「视口内灰格」派发 click：绕开 Playwright 自动滚动（滚动会触发活动月联动+重着色，灰格可能就地变回 in-month）
@@ -284,7 +311,7 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('.c-dialog')).toHaveCount(0);
   });
 
-  test('回溯选中：无记录月（当前月−2）可达且该月格可点开编辑器', async ({ page }) => {
+  test('回溯可达：无记录月（当前月−2）可达且该月格可点开编辑器', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('evolveos.notes.reports', '[]');
       localStorage.setItem('evolveos.notes.templates', '[]');
