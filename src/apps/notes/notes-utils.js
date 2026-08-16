@@ -166,7 +166,7 @@ export function buildMonthGrid(year, month) {
 // 至少回溯 11 个月（一年窗口，无记录也能翻到过去空月份），终点当前月+1；同时覆盖最早/最晚记录月
 export function calendarMonthSpan(reports, todayISOStr) {
   const [cy, cm] = todayISOStr.split('-').map(Number);
-  const key = (y, m) => y * 12 + m;
+  const key = (y, m) => y * 12 + (m - 1); // ISO 月 1 基 → 0 基键（结果直接供 monthSeq 消费）
   // 至少回溯 11 个月（一年窗口），终点当前月+1
   let min = key(cy, cm) - 11, max = key(cy, cm + 1);
   for (const r of reports) {
@@ -175,7 +175,7 @@ export function calendarMonthSpan(reports, todayISOStr) {
     if (key(y, m) > max) max = key(y, m);
   }
   return {
-    start: { year: Math.floor(min / 12), month: ((min % 12) + 12) % 12 },
+    start: { year: Math.floor(min / 12), month: min % 12 },
     end: { year: Math.floor(max / 12), month: max % 12 },
   };
 }
@@ -205,12 +205,20 @@ export function loadOptionOrder() {
   } catch { /* 坏 JSON → 空 */ }
   return {};
 }
-export function saveOptionOrder(order) { localStorage.setItem(OPTION_ORDER_KEY, JSON.stringify(order)); }
-// 按存储顺序重排 options；缺失/未知 value 过滤后按原序补尾
+export function saveOptionOrder(order) {
+  try { localStorage.setItem(OPTION_ORDER_KEY, JSON.stringify(order)); } catch { /* 配额/隐私模式 → 静默，拖拽不中断 */ }
+}
+// 按存储顺序重排 options；缺失/未知 value 过滤后按原序补尾；重复值保留首个
 export function orderedOptions(options, order) {
   const valid = (v) => options.some((o) => o.value === v);
-  const picked = (order || []).filter(valid);
-  const rest = options.filter((o) => !picked.includes(o.value));
+  const seen = new Set();
+  const picked = [];
+  for (const v of order || []) {
+    if (!valid(v) || seen.has(v)) continue;
+    seen.add(v);
+    picked.push(v);
+  }
+  const rest = options.filter((o) => !seen.has(o.value));
   return [...picked.map((v) => options.find((o) => o.value === v)), ...rest];
 }
 

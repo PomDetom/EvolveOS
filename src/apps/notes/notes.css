@@ -128,7 +128,6 @@ body.notes__confirm .c-dialog__mask .c-dialog {
   border: 1px solid transparent; color: var(--text-2); font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
 }
-.notes__cal-cell--blank { background: transparent; }
 .notes__cal-cell--out { color: var(--text-3); background: transparent; cursor: default; }
 .notes__cal-cell--out:hover { border-color: transparent; }
 .notes__cal-cell:hover { border-color: var(--glass-border); }
@@ -157,8 +156,5 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__legend-dot--normal { background: var(--success-500); }
 .notes__legend-dot--overtime { background: var(--accent-500); }
 .notes__legend-dot--rest { background: var(--neutral-400); }
-.notes__legend-dot--leave-am { background: linear-gradient(180deg, var(--warning-500) 50%, var(--success-500) 50%); }
-.notes__legend-dot--leave-pm { background: linear-gradient(180deg, var(--success-500) 50%, var(--warning-500) 50%); }
-.notes__legend-dot--leave-full { background: var(--warning-500); }
 .notes__legend-dot--leave { background: var(--warning-500); }
 .notes__legend-dot--trip { background: var(--info-500); border-radius: 50%; }

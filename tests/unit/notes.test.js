@@ -177,16 +177,23 @@ describe('notes-utils：竖向日历月份跨度', () => {
     { date: '2026-08-01', attendance: 'normal', phase: 'intern', location: 'qingdao' },
   ];
   it('calendarMonthSpan：至少回溯 11 个月（一年窗口）+ 终点当前月+1', () => {
-    // 无记录：当前月(2026-08)减 11 → 2025-09，终点当前月+1 → 2026-09
-    expect(calendarMonthSpan([], '2026-08-15')).toEqual({ start: { year: 2025, month: 9 }, end: { year: 2026, month: 9 } });
+    // 无记录：当前月(2026-08)减 11 → 2025-09（0 基 month 8），终点当前月+1 → 2026-09（0 基 month 8）
+    expect(calendarMonthSpan([], '2026-08-15')).toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 8 } });
     // 2026-03 记录不早于窗口 → start 仍 2025-09
-    expect(calendarMonthSpan(reports, '2026-08-15')).toEqual({ start: { year: 2025, month: 9 }, end: { year: 2026, month: 9 } });
-    // 更早记录（2025-01）→ start 取记录月
+    expect(calendarMonthSpan(reports, '2026-08-15')).toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 8 } });
+    // 更早记录（2025-01）→ start 取记录月（0 基 month 0 = 1 月）
     expect(calendarMonthSpan([{ date: '2025-01-10', attendance: 'normal', phase: 'intern', location: 'qingdao' }], '2026-08-15'))
-      .toEqual({ start: { year: 2025, month: 1 }, end: { year: 2026, month: 9 } });
-    // 未来预填 2026-12 记录 → 窗口尾覆盖该月（key 帧 12 月溢出到次年 1 月：end={2027,0}，12 月块仍在窗口内）
+      .toEqual({ start: { year: 2025, month: 0 }, end: { year: 2026, month: 8 } });
+    // 未来预填 2026-12 记录 → end=2026-12（0 基 month 11，无溢出到次年）
     expect(calendarMonthSpan([{ date: '2026-12-01', attendance: 'normal', phase: 'regular', location: 'xian' }], '2026-08-15'))
-      .toEqual({ start: { year: 2025, month: 9 }, end: { year: 2027, month: 0 } });
+      .toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 11 } });
+  });
+  it('calendarMonthSpan + monthSeq：渲染窗口首块=最早记录月（1 月块在窗口内）', () => {
+    const span = calendarMonthSpan([{ date: '2025-01-10', attendance: 'normal', phase: 'intern', location: 'qingdao' }], '2026-08-15');
+    const months = monthSeq(span.start, span.end);
+    expect(months[0]).toEqual({ year: 2025, month: 0 }); // 2025年1月
+    expect(months.some((m) => m.year === 2025 && m.month === 0)).toBe(true);
+    expect(months[months.length - 1]).toEqual({ year: 2026, month: 8 }); // 2026年9月
   });
   it('monthSeq：含两端升序 + 跨年', () => {
     expect(monthSeq({ year: 2026, month: 11 }, { year: 2027, month: 1 }))
@@ -198,11 +205,14 @@ describe('notes-utils：竖向日历月份跨度', () => {
 });
 
 describe('notes-utils：选项顺序持久化', () => {
-  it('orderedOptions：按 order 重排 + 未知 value 过滤 + 缺失补尾', () => {
+  it('orderedOptions：按 order 重排 + 未知 value 过滤 + 缺失补尾 + 重复去重', () => {
     expect(orderedOptions(ATTENDANCE_OPTIONS, ['overtime', 'normal', 'bogus', 'rest']).map((o) => o.value))
       .toEqual(['overtime', 'normal', 'rest', 'leave-am', 'leave-pm', 'leave-full']);
     expect(orderedOptions(PHASE_OPTIONS, ['regular']).map((o) => o.value)).toEqual(['regular', 'intern']);
     expect(orderedOptions(LOCATION_OPTIONS, null).map((o) => o.value)).toEqual(['qingdao', 'xian']);
+    // 存储序含重复值 → 保留首个，不渲染重复 chip
+    expect(orderedOptions(ATTENDANCE_OPTIONS, ['normal', 'normal', 'overtime', 'rest']).map((o) => o.value))
+      .toEqual(['normal', 'overtime', 'rest', 'leave-am', 'leave-pm', 'leave-full']);
   });
   it('saveOptionOrder → loadOptionOrder 往返', () => {
     saveOptionOrder({ attendance: ['leave-full', 'normal'], phase: ['intern', 'regular'], location: ['xian', 'qingdao'] });
