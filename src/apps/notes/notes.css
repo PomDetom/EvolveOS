@@ -109,18 +109,21 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 
 .notes__stats-groups { display: flex; flex-direction: column; gap: var(--space-3); }
 .notes__stats-title { font-size: var(--font-size-sm); color: var(--text-3); font-weight: var(--font-weight-medium); margin: 0 0 var(--space-2); }
-.notes__stats-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-2); }
-.notes__stat-card { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); background: var(--surface-1); border: 1px solid var(--glass-border); }
-.notes__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
-.notes__stat-value { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-1); font-variant-numeric: tabular-nums; }
-.notes__stat-unit { font-style: normal; font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--text-3); margin-left: 2px; }
-.notes__stats-breakdown { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
-.notes__breakdown-item { font-size: var(--font-size-sm); color: var(--text-2); }
-.notes__breakdown-item b { font-weight: var(--font-weight-semibold); }
-.notes__breakdown-item--normal { color: var(--success-600); }
-.notes__breakdown-item--overtime { color: var(--accent); }
-.notes__breakdown-item--leave { color: var(--warning-600); }
-.notes__breakdown-item--rest { color: var(--neutral-600); }
+/* 统计方块竖排：彩色底 + 数值（无 label 文字）；仅非零显示；正方形、限宽防 7 块全显过高 */
+.notes__stat-squares { display: flex; flex-direction: column; gap: var(--space-2); max-width: 72px; }
+.notes__stat-square {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; aspect-ratio: 1; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); font-variant-numeric: tabular-nums;
+  color: var(--neutral-50);
+}
+.notes__sq--workdays { background: var(--accent); }
+.notes__sq--rest { background: var(--neutral-400); color: var(--neutral-900); }
+.notes__sq--intern { background: var(--info-500); }
+.notes__sq--regular { background: var(--success-500); }
+.notes__sq--trip { background: var(--danger-500); }
+.notes__sq--overtime { background: var(--accent-600); }
+.notes__sq--leave { background: var(--warning-500); }
 
 /* 日历：连续周流（滚动容器 + 固定头 + 整段周行；窄块居中 + 正方形格） */
 .notes__cal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-1); border-bottom: 1px solid var(--glass-border); padding: var(--space-2) var(--space-2) var(--space-1); }
@@ -148,19 +151,12 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__cal-cell--leave-am { background: linear-gradient(180deg, var(--warning-50) 50%, var(--success-50) 50%); color: var(--neutral-600); }
 .notes__cal-cell--leave-pm { background: linear-gradient(180deg, var(--success-50) 50%, var(--warning-50) 50%); color: var(--neutral-600); }
 .notes__cal-cell--leave-full { background: var(--warning-50); color: var(--warning-600); }
-/* 圆形遮罩：今天=实心 accent 圆（::before，覆盖出勤 tint，直径缩至格宽 2/3）；悬浮=accent 描边圆环（::after，替代持久选中环） */
-.notes__cal-cell--today { color: var(--accent-contrast); }
-.notes__cal-cell--today::before {
-  content: ''; position: absolute; inset: calc(100% / 6); border-radius: 50%;
-  background: var(--accent);
-}
+/* 悬浮描边圆环（替代持久选中环） */
 .notes__cal-cell:hover::after {
   content: ''; position: absolute; inset: 1px; border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
-/* 灰化格不显示今天/悬浮遮罩（避免「看似可点」），文字回灰 */
-.notes__cal-cell--out.notes__cal-cell--today { color: var(--text-3); }
-.notes__cal-cell--out::before,
+/* 灰化格不显示悬浮遮罩（避免「看似可点」），文字回灰 */
 .notes__cal-cell--out::after { content: none; }
 /* hover 环规则（.notes__cal-cell:hover::after，同特异性）晚于灰化格 ::after，灰化格悬浮也不显环 */
 .notes__cal-cell--out:hover::after { content: none; }
