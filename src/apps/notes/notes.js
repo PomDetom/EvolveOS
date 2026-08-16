@@ -195,40 +195,36 @@ export function statsPage(ctx) {
     </div>`;
 }
 
+const STAT_SQUARES = [
+  { key: 'workdays', label: '牛马日', value: (s) => s.workDays, cls: 'notes__sq--workdays' },
+  { key: 'rest', label: '休息日', value: (s) => s.restDays, cls: 'notes__sq--rest' },
+  { key: 'intern', label: '实习期', value: (s) => s.internDays, cls: 'notes__sq--intern' },
+  { key: 'regular', label: '正式期', value: (s) => s.regularDays, cls: 'notes__sq--regular' },
+  { key: 'trip', label: '出差日', value: (s) => s.tripDays, cls: 'notes__sq--trip' },
+  { key: 'overtime', label: '加班', value: (s) => s.breakdown.overtime, cls: 'notes__sq--overtime' },
+  { key: 'leave', label: '请假', value: (s) => s.breakdown.leaveAm + s.breakdown.leavePm + s.breakdown.leaveFull, cls: 'notes__sq--leave' },
+];
+// 统计方块竖排：仅非零显示；title 为名称+值（可访问性，非视觉文字）
+function statsSquaresHtml(s) {
+  return STAT_SQUARES.filter((sq) => sq.value(s) !== 0)
+    .map((sq) => `<div class="notes__stat-square ${sq.cls}" title="${sq.label} ${sq.value(s)}">${sq.value(s)}</div>`)
+    .join('');
+}
 function statsGroupHtml(title, s) {
   return `
     <div class="notes__stats-group">
       <h3 class="notes__stats-title">${title}</h3>
-      <div class="notes__stats-cards">
-        ${statCard('牛马日', s.workDays)}
-        ${statCard('休息日', s.restDays)}
-        ${statCard('实习期', s.internDays)}
-        ${statCard('正式期', s.regularDays)}
-        ${statCard('出差日', s.tripDays)}
-      </div>
-      <div class="notes__stats-breakdown">
-        ${breakdownItem('正常', s.breakdown.normal, 'normal')}
-        ${breakdownItem('加班', s.breakdown.overtime, 'overtime')}
-        ${breakdownItem('请假上午', s.breakdown.leaveAm, 'leave')}
-        ${breakdownItem('请假下午', s.breakdown.leavePm, 'leave')}
-        ${breakdownItem('请假全天', s.breakdown.leaveFull, 'leave')}
-        ${breakdownItem('休息日', s.breakdown.rest, 'rest')}
+      <div class="notes__stat-squares">
+        ${statsSquaresHtml(s)}
       </div>
     </div>`;
-}
-function statCard(label, value) {
-  return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
-}
-function breakdownItem(label, n, cls) {
-  return `<span class="notes__breakdown-item notes__breakdown-item--${cls}">${label} <b>${n}</b></span>`;
 }
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 // 连续周流日历：整段周行（无月块/月标题/分隔线）；活动月决定 inMonth 着色，相邻月保色淡化（--out opacity 淡化，无记录纯灰；不可点）；
-// 今天=实心 accent 圆（--today），悬浮=accent 描边圆环（:hover，无持久选中态）
+// 今天无任何标记；悬浮=accent 描边圆环（:hover，无持久选中态）
 function calendarHtml(all, span, active) {
   const byDate = new Map(all.map((r) => [r.date, r]));
-  const today = U.todayISO();
   const activeYM = `${active.year}-${active.month}`;
   const weeks = U.buildContinuousWeeks(span);
   const headRow = `<div class="notes__cal-week notes__cal-week--head">${WEEKDAYS.map((w) => `<span class="notes__cal-weekday">${w}</span>`).join('')}</div>`;
@@ -246,7 +242,6 @@ function calendarHtml(all, span, active) {
         cls.push(`notes__cal-cell--${r.attendance}`);
         if (r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
       }
-      if (date === today) cls.push('notes__cal-cell--today');
       const dot = inMonth && r && r.location !== 'qingdao' ? '<span class="notes__cal-trip-dot"></span>' : '';
       return `<button class="${cls.join(' ')}" type="button" data-date="${date}" data-ym="${year}-${month}"><span class="notes__cal-day">${Number(date.slice(8))}</span>${dot}</button>`;
     }).join('');
@@ -605,7 +600,7 @@ function mountStatsPage(pageEl, dis) {
     const range = U.monthRange(year, month);
     statsMonthEl.innerHTML = statsGroupHtml(U.monthLabel(year, month), U.calcStats(all, range));
   };
-  // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标；今天类不动（持久）
+  // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标
   const applyActiveClasses = (year, month) => {
     const activeYM = `${year}-${month}`;
     const all = U.loadReports();
