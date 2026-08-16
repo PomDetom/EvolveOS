@@ -136,35 +136,43 @@ export function calcStats(reports, range) {
   return stats;
 }
 
-// —— 日历：周一起、6×7 定网格，格值为 ISO 日期串或 null ——
+// —— 日历：周一起、6×7 定网格，连续日期——月初前/月末后填相邻月份真实日期（inMonth:false 灰格）——
 export function buildMonthGrid(year, month) {
   const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const m = String(month + 1).padStart(2, '0');
+  const prevMonthEnd = new Date(year, month, 0).getDate();
+  const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const grid = [];
   let week = [];
   for (let i = 0; i < 42; i++) {
     const dayNum = i - startOffset + 1;
-    week.push(dayNum >= 1 && dayNum <= daysInMonth
-      ? `${year}-${m}-${String(dayNum).padStart(2, '0')}`
-      : null);
+    if (dayNum >= 1 && dayNum <= daysInMonth) {
+      week.push({ date: iso(year, month, dayNum), inMonth: true });
+    } else if (dayNum < 1) {
+      const py = month === 0 ? year - 1 : year;
+      const pm = month === 0 ? 11 : month - 1;
+      week.push({ date: iso(py, pm, prevMonthEnd + dayNum), inMonth: false });
+    } else {
+      const ny = month === 11 ? year + 1 : year;
+      const nm = month === 11 ? 0 : month + 1;
+      week.push({ date: iso(ny, nm, dayNum - daysInMonth), inMonth: false });
+    }
     if (week.length === 7) { grid.push(week); week = []; }
   }
   return grid;
 }
 
 // —— 竖向连续日历的月份跨度 ——
-// 最早有记录月 → 当前月+1（未来 1 个月缓冲）；同时确保覆盖最晚记录月（防未来预填日期不可达）
+// 至少回溯 11 个月（一年窗口，无记录也能翻到过去空月份），终点当前月+1；同时覆盖最早/最晚记录月
 export function calendarMonthSpan(reports, todayISOStr) {
   const [cy, cm] = todayISOStr.split('-').map(Number);
-  const cur = cm - 1; // ISO 月份 1 基 → 日历 0 基
-  const key = (y, m) => y * 12 + m;
-  let min = key(cy, cur), max = key(cy, cur + 1); // 默认 [当前月, 当前月+1]
+  const key = (y, m) => y * 12 + (m - 1); // ISO 月 1 基 → 0 基键（结果直接供 monthSeq 消费）
+  // 至少回溯 11 个月（一年窗口），终点当前月+1
+  let min = key(cy, cm) - 11, max = key(cy, cm + 1);
   for (const r of reports) {
     const [y, m] = r.date.split('-').map(Number);
-    const month = m - 1;
-    if (key(y, month) < min) min = key(y, month);
-    if (key(y, month) > max) max = key(y, month);
+    if (key(y, m) < min) min = key(y, m);
+    if (key(y, m) > max) max = key(y, m);
   }
   return {
     start: { year: Math.floor(min / 12), month: min % 12 },
@@ -186,6 +194,32 @@ export function monthSeq(start, end) {
 // 中文月份标签：2026年8月
 export function monthLabel(year, month) {
   return `${year}年${month + 1}月`;
+}
+
+// —— 写日报分组选项顺序持久化（拖拽换位；仅影响渲染顺序，不影响数据值/配色/统计）——
+const OPTION_ORDER_KEY = 'evolveos.notes.optionOrder';
+export function loadOptionOrder() {
+  try {
+    const v = JSON.parse(localStorage.getItem(OPTION_ORDER_KEY));
+    if (v && typeof v === 'object' && ['attendance', 'phase', 'location'].every((k) => Array.isArray(v[k]))) return v;
+  } catch { /* 坏 JSON → 空 */ }
+  return {};
+}
+export function saveOptionOrder(order) {
+  try { localStorage.setItem(OPTION_ORDER_KEY, JSON.stringify(order)); } catch { /* 配额/隐私模式 → 静默，拖拽不中断 */ }
+}
+// 按存储顺序重排 options；缺失/未知 value 过滤后按原序补尾；重复值保留首个
+export function orderedOptions(options, order) {
+  const valid = (v) => options.some((o) => o.value === v);
+  const seen = new Set();
+  const picked = [];
+  for (const v of order || []) {
+    if (!valid(v) || seen.has(v)) continue;
+    seen.add(v);
+    picked.push(v);
+  }
+  const rest = options.filter((o) => !seen.has(o.value));
+  return [...picked.map((v) => options.find((o) => o.value === v)), ...rest];
 }
 
 // —— 序列化（导出/导入校验）——

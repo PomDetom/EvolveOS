@@ -6,6 +6,7 @@ import {
   todayISO, monthRange, fmtDate, escapeHtml,
   calcStats, buildMonthGrid, serializeExport, parseImport,
   calendarMonthSpan, monthSeq, monthLabel,
+  orderedOptions, loadOptionOrder, saveOptionOrder,
 } from '../../src/apps/notes/notes-utils.js';
 import { module } from '../../src/apps/notes/index.js';
 import { notesPage } from '../../src/apps/notes/notes.js';
@@ -139,24 +140,34 @@ describe('notes-utils：统计', () => {
 });
 
 describe('notes-utils：日历网格', () => {
-  it('2026-08：周一起、6×7 定网格、月外 null', () => {
+  it('2026-08：周一起、6×7 定网格、连续日期（月前/月末灰格填相邻月）', () => {
     const grid = buildMonthGrid(2026, 7); // 8 月，index 7
     expect(grid.length).toBe(6);
     grid.forEach((w) => expect(w.length).toBe(7));
-    // 2026-08-01 是周六：周一开头偏移 5 → 前 5 格空、第 6 格为 1 号
-    expect(grid[0].slice(0, 5)).toEqual([null, null, null, null, null]);
-    expect(grid[0][5]).toBe('2026-08-01');
-    expect(grid[0][6]).toBe('2026-08-02');
-    // 31 天 → 最后一行第 1 格为 31 号，其后空
-    expect(grid[5][0]).toBe('2026-08-31');
-    expect(grid[5][1]).toBeNull();
+    // 2026-08-01 是周六：周一开头偏移 5 → 前 5 格为 2026-07 灰格（27-31 号）
+    expect(grid[0].slice(0, 5)).toEqual([
+      { date: '2026-07-27', inMonth: false },
+      { date: '2026-07-28', inMonth: false },
+      { date: '2026-07-29', inMonth: false },
+      { date: '2026-07-30', inMonth: false },
+      { date: '2026-07-31', inMonth: false },
+    ]);
+    expect(grid[0][5]).toEqual({ date: '2026-08-01', inMonth: true });
+    expect(grid[0][6]).toEqual({ date: '2026-08-02', inMonth: true });
+    // 31 天 → 最后一行第 1 格为 31 号，其后为 2026-09 灰格（1 号起）
+    expect(grid[5][0]).toEqual({ date: '2026-08-31', inMonth: true });
+    expect(grid[5][1]).toEqual({ date: '2026-09-01', inMonth: false });
+    expect(grid[5][2]).toEqual({ date: '2026-09-02', inMonth: false });
+    // 当月真实日期数 = 31；无 null 格
+    expect(grid.flat().filter((c) => c.inMonth).length).toBe(31);
+    expect(grid.flat().every((c) => c && typeof c.date === 'string')).toBe(true);
   });
-  it('2024-02 闰年 29 天', () => {
+  it('2024-02 闰年 29 天 inMonth', () => {
     const grid = buildMonthGrid(2024, 1);
-    const days = grid.flat().filter(Boolean);
+    const days = grid.flat().filter((c) => c.inMonth);
     expect(days.length).toBe(29);
-    expect(days[0]).toBe('2024-02-01');
-    expect(days[days.length - 1]).toBe('2024-02-29');
+    expect(days[0]).toEqual({ date: '2024-02-01', inMonth: true });
+    expect(days[days.length - 1]).toEqual({ date: '2024-02-29', inMonth: true });
   });
 });
 
@@ -165,11 +176,24 @@ describe('notes-utils：竖向日历月份跨度', () => {
     { date: '2026-03-05', attendance: 'normal', phase: 'intern', location: 'qingdao' },
     { date: '2026-08-01', attendance: 'normal', phase: 'intern', location: 'qingdao' },
   ];
-  it('calendarMonthSpan：最早记录月 → 当前月+1（覆盖最晚记录）', () => {
-    expect(calendarMonthSpan(reports, '2026-08-15')).toEqual({ start: { year: 2026, month: 2 }, end: { year: 2026, month: 8 } }); // 3月→9月（8月+1）
-    expect(calendarMonthSpan([], '2026-08-15')).toEqual({ start: { year: 2026, month: 7 }, end: { year: 2026, month: 8 } }); // 无记录仅当前月+1
+  it('calendarMonthSpan：至少回溯 11 个月（一年窗口）+ 终点当前月+1', () => {
+    // 无记录：当前月(2026-08)减 11 → 2025-09（0 基 month 8），终点当前月+1 → 2026-09（0 基 month 8）
+    expect(calendarMonthSpan([], '2026-08-15')).toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 8 } });
+    // 2026-03 记录不早于窗口 → start 仍 2025-09
+    expect(calendarMonthSpan(reports, '2026-08-15')).toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 8 } });
+    // 更早记录（2025-01）→ start 取记录月（0 基 month 0 = 1 月）
+    expect(calendarMonthSpan([{ date: '2025-01-10', attendance: 'normal', phase: 'intern', location: 'qingdao' }], '2026-08-15'))
+      .toEqual({ start: { year: 2025, month: 0 }, end: { year: 2026, month: 8 } });
+    // 未来预填 2026-12 记录 → end=2026-12（0 基 month 11，无溢出到次年）
     expect(calendarMonthSpan([{ date: '2026-12-01', attendance: 'normal', phase: 'regular', location: 'xian' }], '2026-08-15'))
-      .toEqual({ start: { year: 2026, month: 7 }, end: { year: 2026, month: 11 } }); // 未来预填 12 月 → end 12 月
+      .toEqual({ start: { year: 2025, month: 8 }, end: { year: 2026, month: 11 } });
+  });
+  it('calendarMonthSpan + monthSeq：渲染窗口首块=最早记录月（1 月块在窗口内）', () => {
+    const span = calendarMonthSpan([{ date: '2025-01-10', attendance: 'normal', phase: 'intern', location: 'qingdao' }], '2026-08-15');
+    const months = monthSeq(span.start, span.end);
+    expect(months[0]).toEqual({ year: 2025, month: 0 }); // 2025年1月
+    expect(months.some((m) => m.year === 2025 && m.month === 0)).toBe(true);
+    expect(months[months.length - 1]).toEqual({ year: 2026, month: 8 }); // 2026年9月
   });
   it('monthSeq：含两端升序 + 跨年', () => {
     expect(monthSeq({ year: 2026, month: 11 }, { year: 2027, month: 1 }))
@@ -177,6 +201,28 @@ describe('notes-utils：竖向日历月份跨度', () => {
   });
   it('monthLabel', () => {
     expect(monthLabel(2026, 7)).toBe('2026年8月');
+  });
+});
+
+describe('notes-utils：选项顺序持久化', () => {
+  it('orderedOptions：按 order 重排 + 未知 value 过滤 + 缺失补尾 + 重复去重', () => {
+    expect(orderedOptions(ATTENDANCE_OPTIONS, ['overtime', 'normal', 'bogus', 'rest']).map((o) => o.value))
+      .toEqual(['overtime', 'normal', 'rest', 'leave-am', 'leave-pm', 'leave-full']);
+    expect(orderedOptions(PHASE_OPTIONS, ['regular']).map((o) => o.value)).toEqual(['regular', 'intern']);
+    expect(orderedOptions(LOCATION_OPTIONS, null).map((o) => o.value)).toEqual(['qingdao', 'xian']);
+    // 存储序含重复值 → 保留首个，不渲染重复 chip
+    expect(orderedOptions(ATTENDANCE_OPTIONS, ['normal', 'normal', 'overtime', 'rest']).map((o) => o.value))
+      .toEqual(['normal', 'overtime', 'rest', 'leave-am', 'leave-pm', 'leave-full']);
+  });
+  it('saveOptionOrder → loadOptionOrder 往返', () => {
+    saveOptionOrder({ attendance: ['leave-full', 'normal'], phase: ['intern', 'regular'], location: ['xian', 'qingdao'] });
+    expect(loadOptionOrder()).toEqual({ attendance: ['leave-full', 'normal'], phase: ['intern', 'regular'], location: ['xian', 'qingdao'] });
+  });
+  it('loadOptionOrder：坏 JSON / 结构不符 → {}', () => {
+    localStorage.setItem('evolveos.notes.optionOrder', '{oops');
+    expect(loadOptionOrder()).toEqual({});
+    localStorage.setItem('evolveos.notes.optionOrder', '{"attendance":"not-array"}');
+    expect(loadOptionOrder()).toEqual({});
   });
 });
 

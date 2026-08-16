@@ -239,13 +239,57 @@ test.describe('牛马笔记：统计与日历', () => {
     await expect(page.locator('.notes__cal-trip-dot')).toHaveCount(1);
     // 今天描边
     await expect(page.locator('.notes__cal-cell--today')).toHaveCount(1);
-    // 图例
-    await expect(page.locator('.notes__legend-item').first()).toBeVisible();
+    // 图例：正常/加班/休息日/请假（单琥珀块）/出差，无 半天·上/下 /全天 /西安
+    const legendText = await page.locator('.notes__legend').innerText();
+    expect(legendText).toContain('正常');
+    expect(legendText).toContain('加班');
+    expect(legendText).toContain('休息日');
+    expect(legendText).toContain('请假');
+    expect(legendText).toContain('出差');
+    expect(legendText).not.toContain('半天');
+    expect(legendText).not.toContain('全天');
+    expect(legendText).not.toContain('西安');
+    // 连续日期灰格存在（相邻月填充），点击不弹编辑器
+    expect(await page.locator('.notes__cal-cell--out').count()).toBeGreaterThan(0);
+    await page.locator('.notes__cal-cell--out').first().click();
+    await expect(page.locator('.c-dialog')).toHaveCount(0);
 
     // 点日历格 → 打开该日编辑器
     await page.locator('.notes__cal-cell--normal').click();
     await expect(page.locator('.c-dialog')).toBeVisible();
     await expect(page.locator('[data-notes-ed="primary"]')).toHaveValue('正常日');
+    await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
+  });
+
+  test('回溯选中：无记录月（当前月−2）可达且该月格可点开编辑器', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('evolveos.notes.reports', '[]');
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+
+    const y = new Date();
+    const target = new Date(y.getFullYear(), y.getMonth() - 2, 1);
+    // 目标月块存在（窗口至少回溯一年，无记录也能翻到过去空月份）
+    await expect(page.locator(`[data-notes-cal-scroll] .notes__cal-month[data-year="${target.getFullYear()}"][data-month="${target.getMonth()}"]`)).toHaveCount(1);
+    // 滚动到目标月块
+    await page.locator('[data-notes-cal-scroll]').evaluate((el, { year, month }) => {
+      const head = el.querySelector('.notes__cal-head');
+      const block = el.querySelector(`.notes__cal-month[data-year="${year}"][data-month="${month}"]`);
+      el.scrollTop = block.offsetTop - head.offsetHeight;
+      el.dispatchEvent(new Event('scroll'));
+    }, { year: target.getFullYear(), month: target.getMonth() });
+    // 点该月某 in-month 格 → 打开该日编辑器
+    const blockSel = `.notes__cal-month[data-year="${target.getFullYear()}"][data-month="${target.getMonth()}"]`;
+    const cellDate = await page.locator(`${blockSel} .notes__cal-cell[data-date]`).first().getAttribute('data-date');
+    expect(cellDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await page.locator(`${blockSel} .notes__cal-cell[data-date]`).first().click();
+    await expect(page.locator('.c-dialog')).toBeVisible();
+    await expect(page.locator('[data-notes-ed="date"]')).toHaveValue(cellDate);
     await page.locator('.c-dialog__footer .c-btn').first().click(); // 取消关闭
   });
 });
@@ -446,5 +490,46 @@ test.describe('牛马笔记：导出/导入', () => {
     await fc.setFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"app":"other"}') });
     await expect(page.locator('.c-dialog')).toHaveCount(0); // 无覆盖确认 → 直接拒绝
     await expect(page.locator('.c-toast--danger')).toBeVisible();
+  });
+});
+
+test.describe('牛马笔记：编辑器选项拖拽换位', () => {
+  test('出勤选项拖拽换位：保存后重开编辑器顺序保持', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('evolveos.notes.reports', '[]');
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.notes__write .c-btn').click();
+    await expect(page.locator('.c-dialog')).toBeVisible();
+
+    const group = page.locator('[data-notes-opt-group="attendance"]');
+    await expect(group.locator('.notes__seg-item')).toHaveCount(6);
+    // HTML5 拖拽序列模拟（dragTo 不触发原生 drag 事件）：dragstart(源) → dragover/drop(目标中心) → dragend(源)
+    await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('[data-notes-opt-group="attendance"] .notes__seg-item'));
+      const source = items[1];
+      const target = items[0];
+      const dt = new DataTransfer();
+      const rect = target.getBoundingClientRect();
+      const mk = (type) => new DragEvent(type, { dataTransfer: dt, clientY: rect.top + rect.height / 2, bubbles: true, cancelable: true });
+      source.dispatchEvent(mk('dragstart'));
+      target.dispatchEvent(mk('dragover'));
+      target.dispatchEvent(mk('drop'));
+      source.dispatchEvent(mk('dragend'));
+    });
+    await expect(group.locator('.notes__seg-item').nth(0).locator('input')).toHaveValue('overtime');
+    await expect(group.locator('.notes__seg-item').nth(1).locator('input')).toHaveValue('normal');
+
+    // 保存 → 重开编辑器 → 顺序保持（持久化生效）
+    await page.locator('.c-dialog__footer .c-btn:last-child').click();
+    await expect(page.locator('.c-dialog')).toHaveCount(0);
+    await page.locator('.notes__write .c-btn').click();
+    await expect(page.locator('.c-dialog')).toBeVisible();
+    const group2 = page.locator('[data-notes-opt-group="attendance"]');
+    await expect(group2.locator('.notes__seg-item').nth(0).locator('input')).toHaveValue('overtime');
+    await expect(group2.locator('.notes__seg-item').nth(1).locator('input')).toHaveValue('normal');
   });
 });
