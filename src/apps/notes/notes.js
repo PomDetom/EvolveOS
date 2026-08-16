@@ -227,7 +227,7 @@ function calendarHtml(all, span, active) {
   const weeks = U.buildContinuousWeeks(span);
   const headRow = `<div class="notes__cal-week notes__cal-week--head">${WEEKDAYS.map((w) => `<span class="notes__cal-weekday">${w}</span>`).join('')}</div>`;
   const rows = weeks.map((week) => {
-    const ym = `${week[3].year}-${week[3].month}`; // 周行所属月 = 第 4 格（周三）
+    const ym = `${week[6].year}-${week[6].month}`; // 周行所属月 = 末日（周日）所在月：跨月周归后者，月初日可达
     const cells = week.map(({ date, year, month }) => {
       const inMonth = `${year}-${month}` === activeYM;
       const r = byDate.get(date);

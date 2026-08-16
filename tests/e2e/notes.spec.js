@@ -187,11 +187,11 @@ test.describe('牛马笔记：统计与日历', () => {
       const y = new Date();
       const d1 = new Date(y.getFullYear(), y.getMonth(), 1);
       const d2 = new Date(y.getFullYear(), y.getMonth(), 2);
-      const d3 = new Date(y.getFullYear(), y.getMonth(), 3);
+      const d5 = new Date(y.getFullYear(), y.getMonth(), 5); // normal 放 5 号：任意月起始日首周必完全可见（盲周至多 4 天）
       localStorage.setItem('evolveos.notes.reports', JSON.stringify([
         { date: iso(d1), primary: '出差日', secondary: '', attendance: 'overtime', phase: 'regular', location: 'xian', updatedAt: 1 },
         { date: iso(d2), primary: '半天请假', secondary: '', attendance: 'leave-am', phase: 'intern', location: 'qingdao', updatedAt: 2 },
-        { date: iso(d3), primary: '正常日', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 3 },
+        { date: iso(d5), primary: '正常日', secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: 3 },
       ]));
       localStorage.setItem('evolveos.notes.templates', '[]');
     });
