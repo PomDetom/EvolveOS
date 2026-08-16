@@ -398,19 +398,36 @@ export function mountStripMode() {
     // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
     // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
     logEdge(`[edge] active win=${!!win} strip=${!!strip}`);
+    // onMoved：仅持久化当前位置（参考 codeplan-usage legacy floating：系统拖动期间
+    // WindowEvent::Moved 不可靠，评估不能依赖它；拖拽结束判定改走轮询）。
     win.onMoved?.(() => {
-      logEdge('[edge] onMoved fired');
       if (collapsed || collapseRaf) return;
       clearTimeout(settleTimer);
-      settleTimer = setTimeout(async () => {
-        const handled = await evaluateDock();
-        if (!handled) {
-          win.outerPosition?.().then(({ x, y }) => {
-            if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
-          }).catch(() => {});
-        }
-      }, 150);
+      settleTimer = setTimeout(() => {
+        win.outerPosition?.().then(({ x, y }) => {
+          if (!collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+        }).catch(() => {});
+      }, 200);
     });
+    // 评估触发：后台轮询（每 150ms 读窗口位置；连续两次相同 = 用户松手 → 评估贴边一次）。
+    // 参考 codeplan-usage 的 COLLAPSE_POLL 实现，不依赖 Moved 事件。
+    let lastPos = null;
+    let stable = false;
+    const pollEdge = setInterval(async () => {
+      if (collapsed || collapseRaf) { lastPos = null; stable = false; return; }
+      const rect = await getRect();
+      if (!rect) return;
+      const pos = { x: rect.x, y: rect.y };
+      if (lastPos && lastPos.x === pos.x && lastPos.y === pos.y) {
+        if (!stable) {
+          stable = true;
+          logEdge(`[edge] released @ ${JSON.stringify(pos)}`);
+          await evaluateDock();
+        }
+      } else {
+        lastPos = pos; stable = false;
+      }
+    }, 150);
     // hover 触发：贴边态取消计时（标准自动隐藏）；收起态弹回
     strip.addEventListener('mouseenter', () => {
       if (edge.mode === 'collapsed') popOut();

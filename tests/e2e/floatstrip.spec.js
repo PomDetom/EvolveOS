@@ -446,11 +446,8 @@ async function mountEdgeMock(page, seedPos) {
 test('贴边收起：半出屏 → 先决校正拉回贴齐，贴边 1s 后缓收起（左滑留 20px）', async ({ page }) => {
   await mountEdgeMock(page, { x: 500, y: 300 }); // 居中 free
   // 拖成左溢出 → 松手（onMoved）→ 先决校正（x 拉回 0）
-  await page.evaluate(() => {
-    Object.assign(window.__mockPos__, { x: -100, y: 300 });
-    window.__stripMoved__();
-  });
-  await page.waitForTimeout(1200); // 去抖 150ms + 校正 tween ~500ms（余量防冷启动 rAF 延迟）
+  await page.evaluate(() => Object.assign(window.__mockPos__, { x: -100, y: 300 }));
+  await page.waitForTimeout(1500); // 轮询 2×150ms 检测松手稳定 + 校正 tween ~500ms
   let c = await page.evaluate(() => window.__edgeCalls__);
   let last = c.filter((x) => x[0] === 'setPosition').pop();
   expect(Math.abs(last[1].x)).toBe(0); // tween 中间帧可能 Math.round(-0.4) → -0，取绝对值
@@ -469,11 +466,8 @@ test('贴边收起：半出屏 → 先决校正拉回贴齐，贴边 1s 后缓�
 test('贴边收起：hover 取消计时，移开后 1s 缓收起（标准自动隐藏）', async ({ page }) => {
   await mountEdgeMock(page, { x: 500, y: 300 });
   // 贴底 + 松手评估 → docked 起计时（光标已移开）
-  await page.evaluate(() => {
-    Object.assign(window.__mockPos__, { x: 490, y: 660 });
-    window.__stripMoved__();
-  });
-  await page.waitForTimeout(400); // 去抖 150ms → docked 计时已起
+  await page.evaluate(() => Object.assign(window.__mockPos__, { x: 490, y: 660 }));
+  await page.waitForTimeout(600); // 轮询 2×150ms 检测松手 → docked 计时已起
   // hover 取消计时
   await page.locator('.c-strip').hover();
   await page.waitForTimeout(1600); // 若未取消，此窗口应已收起（y→700）
@@ -491,11 +485,8 @@ test('贴边收起：hover 取消计时，移开后 1s 缓收起（标准自动�
 
 test('贴边收起：贴底 1s 自动收起 → hover 窄条弹回贴边完整位', async ({ page }) => {
   await mountEdgeMock(page, { x: 500, y: 300 });
-  await page.evaluate(() => {
-    Object.assign(window.__mockPos__, { x: 490, y: 660 });
-    window.__stripMoved__();
-  });
-  await page.waitForTimeout(2600); // 去抖 + 1s 计时 + 500ms 收起 tween（余量防 rAF 延迟）
+  await page.evaluate(() => Object.assign(window.__mockPos__, { x: 490, y: 660 }));
+  await page.waitForTimeout(2700); // 轮询检测松手 + 1s 计时 + 500ms 收起 tween（余量防 rAF 延迟）
   await expect(page.locator('.c-strip')).toHaveClass(/c-strip--collapsed/);
   await expect(page.locator('.c-strip')).toHaveAttribute('data-dock-edge', 'bottom');
   // hover 窄条 → 弹回 dockPos（y=660）
