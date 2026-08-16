@@ -4,7 +4,7 @@ import {
   workDayFraction, loadReports, saveReports, upsertReport, deleteReport,
   loadTemplates, saveTemplates, upsertTemplate, deleteTemplate, ensureSeedTemplates,
   todayISO, monthRange, fmtDate, escapeHtml,
-  calcStats, buildMonthGrid, serializeExport, parseImport,
+  calcStats, buildContinuousWeeks, serializeExport, parseImport,
   calendarMonthSpan, monthSeq, monthLabel,
   orderedOptions, loadOptionOrder, saveOptionOrder,
 } from '../../src/apps/notes/notes-utils.js';
@@ -139,35 +139,38 @@ describe('notes-utils：统计', () => {
   });
 });
 
-describe('notes-utils：日历网格', () => {
-  it('2026-08：周一起、6×7 定网格、连续日期（月前/月末灰格填相邻月）', () => {
-    const grid = buildMonthGrid(2026, 7); // 8 月，index 7
-    expect(grid.length).toBe(6);
-    grid.forEach((w) => expect(w.length).toBe(7));
-    // 2026-08-01 是周六：周一开头偏移 5 → 前 5 格为 2026-07 灰格（27-31 号）
-    expect(grid[0].slice(0, 5)).toEqual([
-      { date: '2026-07-27', inMonth: false },
-      { date: '2026-07-28', inMonth: false },
-      { date: '2026-07-29', inMonth: false },
-      { date: '2026-07-30', inMonth: false },
-      { date: '2026-07-31', inMonth: false },
-    ]);
-    expect(grid[0][5]).toEqual({ date: '2026-08-01', inMonth: true });
-    expect(grid[0][6]).toEqual({ date: '2026-08-02', inMonth: true });
-    // 31 天 → 最后一行第 1 格为 31 号，其后为 2026-09 灰格（1 号起）
-    expect(grid[5][0]).toEqual({ date: '2026-08-31', inMonth: true });
-    expect(grid[5][1]).toEqual({ date: '2026-09-01', inMonth: false });
-    expect(grid[5][2]).toEqual({ date: '2026-09-02', inMonth: false });
-    // 当月真实日期数 = 31；无 null 格
-    expect(grid.flat().filter((c) => c.inMonth).length).toBe(31);
-    expect(grid.flat().every((c) => c && typeof c.date === 'string')).toBe(true);
+describe('notes-utils：连续周流', () => {
+  // 前一格 +1 天（按实际日期，跨月/跨年自然进位）
+  const dayAfter = (isoStr) => {
+    const [y, m, d] = isoStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + 1);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  };
+  const assertContinuous = (weeks) => {
+    weeks.forEach((w) => expect(w.length).toBe(7));
+    const flat = weeks.flat();
+    for (let i = 1; i < flat.length; i += 1) expect(flat[i].date).toBe(dayAfter(flat[i - 1].date));
+    expect(new Set(flat.map((c) => c.date)).size).toBe(flat.length); // 无重复格
+  };
+  it('2026-08：周一起、每行 7 天、日期连续、无重复（首周周一 07-27、末周周日 09-06）', () => {
+    const weeks = buildContinuousWeeks({ start: { year: 2026, month: 7 }, end: { year: 2026, month: 7 } });
+    assertContinuous(weeks);
+    expect(weeks.length).toBe(6);
+    expect(weeks[0][0]).toEqual({ date: '2026-07-27', year: 2026, month: 6 }); // 2026-08-01 周六 → 周一起 07-27
+    expect(weeks[0][5]).toEqual({ date: '2026-08-01', year: 2026, month: 7 });
+    expect(weeks[weeks.length - 1][6]).toEqual({ date: '2026-09-06', year: 2026, month: 8 }); // 月末后补到周日
+    expect(weeks.flat().length).toBe(42);
   });
-  it('2024-02 闰年 29 天 inMonth', () => {
-    const grid = buildMonthGrid(2024, 1);
-    const days = grid.flat().filter((c) => c.inMonth);
-    expect(days.length).toBe(29);
-    expect(days[0]).toEqual({ date: '2024-02-01', inMonth: true });
-    expect(days[days.length - 1]).toEqual({ date: '2024-02-29', inMonth: true });
+  it('跨年（2026-12 → 2027-02）连续无断、首末周正确', () => {
+    const weeks = buildContinuousWeeks({ start: { year: 2026, month: 11 }, end: { year: 2027, month: 1 } });
+    assertContinuous(weeks);
+    expect(weeks[0][0]).toEqual({ date: '2026-11-30', year: 2026, month: 10 });
+    expect(weeks[weeks.length - 1][6]).toEqual({ date: '2027-02-28', year: 2027, month: 1 });
+    const flat = weeks.flat();
+    expect(flat.some((c) => c.date === '2026-12-31')).toBe(true); // 跨月边界无断
+    expect(flat.some((c) => c.date === '2027-01-01')).toBe(true);
+    expect(flat.some((c) => c.date === '2027-01-31')).toBe(true);
+    expect(flat.some((c) => c.date === '2027-02-01')).toBe(true);
   });
 });
 
