@@ -98,6 +98,36 @@ test.describe('牛马笔记：日报', () => {
     await expect(page.locator(`.notes__report-row[data-date="${yDate}"]`)).toHaveCount(1);
     await expect(page.locator(`.notes__report-row[data-date="${xDate}"]`)).toHaveCount(0);
   });
+
+  test('日报列表超高：末条可达（body 内部滚动，页面固定高度不裁切）', async ({ page }) => {
+    await page.addInitScript(() => {
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const y = new Date();
+      const reports = [];
+      for (let d = 1; d <= 15; d += 1) {
+        reports.push({ date: iso(new Date(y.getFullYear(), y.getMonth(), d)), primary: `日报第${d}条`, secondary: '', attendance: 'normal', phase: 'intern', location: 'qingdao', updatedAt: d });
+      }
+      localStorage.setItem('evolveos.notes.reports', JSON.stringify(reports));
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await expect(page.locator('.notes__report-row')).toHaveCount(15);
+    // body 即滚动容器（overflow-y:auto，内容超高）——页面 height:100% 下不被裁切、用户可滚到末条
+    const bodyScroll = await page.locator('.app-main__page[data-page="notes"] .app-main__page-body').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { overflowY: s.overflowY, scrollH: el.scrollHeight, clientH: el.clientHeight };
+    });
+    expect(bodyScroll.overflowY).toBe('auto');
+    expect(bodyScroll.scrollH).toBeGreaterThan(bodyScroll.clientH);
+    // 滚动 body 容器到底 → 末条进入浏览器视口（scrollIntoViewIfNeeded 会被 overflow:hidden 祖先程序性吞掉，不用它）
+    await page.locator('.app-main__page[data-page="notes"] .app-main__page-body').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await page.waitForTimeout(100);
+    const lastTop = await page.locator('.notes__report-row').last().evaluate((el) => el.getBoundingClientRect().top);
+    expect(lastTop).toBeGreaterThanOrEqual(0);
+    expect(lastTop).toBeLessThan(await page.evaluate(() => window.innerHeight));
+  });
 });
 
 test.describe('牛马笔记：模板', () => {
@@ -279,6 +309,18 @@ test.describe('牛马笔记：统计与日历', () => {
     await page.locator('.notes__cal-cell--normal').first().hover();
     const hoverShadow = await page.locator('.notes__cal-cell--normal').first().evaluate((el) => getComputedStyle(el, '::after').boxShadow);
     expect(hoverShadow).not.toBe('none');
+    // 灰化格悬浮不显环：加载样式表含 `.notes__cal-cell--out:hover::after { content:none }`（覆盖通用 hover 环；行为级 hover 会触发滚动联动导致灰格重着色，故用规则存在性守卫）
+    const hasOutHoverGuard = await page.evaluate(() => {
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch { continue; }
+        for (const r of rules) {
+          if (r.selectorText && r.selectorText.includes('.notes__cal-cell--out:hover::after') && r.style.content === 'none') return true;
+        }
+      }
+      return false;
+    });
+    expect(hasOutHoverGuard).toBe(true);
     await page.mouse.move(0, 0);
     // 图例：正常/加班/休息日/请假（单琥珀块）/出差，无 半天·上/下 /全天 /西安
     const legendText = await page.locator('.notes__legend').innerText();
@@ -586,5 +628,25 @@ test.describe('牛马笔记：编辑器选项拖拽换位', () => {
     const group2 = page.locator('[data-notes-opt-group="attendance"]');
     await expect(group2.locator('.notes__seg-item').nth(0).locator('input')).toHaveValue('overtime');
     await expect(group2.locator('.notes__seg-item').nth(1).locator('input')).toHaveValue('normal');
+  });
+});
+
+test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
+  test.use({ viewport: { width: 1280, height: 520 } });
+  test('右栏超高：内部滚动可达（末个统计行可见）', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('evolveos.notes.reports', '[]');
+      localStorage.setItem('evolveos.notes.templates', '[]');
+    });
+    await page.goto(APP_URL);
+    await page.locator('.app-main__nav-l .c-navwheel__item[data-id="notes"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.app-main__nav-r .c-navwheel__item[data-id="stats"]').click();
+    await page.waitForTimeout(400);
+    // 短视口下右栏内容超高 → 右栏内部滚动
+    const statsBox = await page.locator('.notes__dash-stats').evaluate((el) => ({ clientH: el.clientHeight, scrollH: el.scrollHeight }));
+    expect(statsBox.scrollH).toBeGreaterThan(statsBox.clientH);
+    await page.locator('[data-notes-stats-month] .notes__stat-row').last().scrollIntoViewIfNeeded();
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-row').last()).toBeInViewport();
   });
 });

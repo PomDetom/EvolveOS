@@ -162,7 +162,12 @@ export function statsPage(ctx) {
   const span = U.calendarMonthSpan(all, today);
   const active = uiState.stats; // {year, month}，默认当前月；日历滚动/面板跳转会更新
   const activeRange = U.monthRange(active.year, active.month);
-  return `
+  const head = `
+    <div class="app-main__page-head">
+      <h2 class="app-main__page-title">牛马笔记</h2>
+      <span class="app-main__page-sub">› 统计</span>
+    </div>`;
+  return `${head}
     <div class="app-main__page-body notes__dash-body">
       <div class="notes__dash">
         <div class="notes__dash-cal">
@@ -195,11 +200,11 @@ function statsGroupHtml(title, s) {
     <div class="notes__stats-group">
       <h3 class="notes__stats-title">${title}</h3>
       <div class="notes__stats-cards">
-        ${statCard('牛马日', s.workDays)}
-        ${statCard('休息日', s.restDays)}
-        ${statCard('实习期', s.internDays)}
-        ${statCard('正式期', s.regularDays)}
-        ${statCard('出差日', s.tripDays)}
+        ${statRow('牛马日', s.workDays)}
+        ${statRow('休息日', s.restDays)}
+        ${statRow('实习期', s.internDays)}
+        ${statRow('正式期', s.regularDays)}
+        ${statRow('出差日', s.tripDays)}
       </div>
       <div class="notes__stats-breakdown">
         ${breakdownItem('正常', s.breakdown.normal, 'normal')}
@@ -211,7 +216,7 @@ function statsGroupHtml(title, s) {
       </div>
     </div>`;
 }
-function statCard(label, value) {
+function statRow(label, value) {
   return `<div class="notes__stat-row"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
 }
 function breakdownItem(label, n, cls) {
