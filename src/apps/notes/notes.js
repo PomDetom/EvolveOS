@@ -155,12 +155,12 @@ function openTemplateEditor({ existing, onSaved }) {
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 }
 
-// —— 统计页（连续周流日历：累计顶 → 日历中 → 活动月底；滚动联动 + 月标签弹面板）——
+// —— 统计页（Dashboard：左栏日历全高内部滚动 + 图例，右栏汇总竖排；滚动联动 + 月标签弹面板）——
 export function statsPage(ctx) {
   const all = U.loadReports();
   const today = U.todayISO();
   const span = U.calendarMonthSpan(all, today);
-  const active = uiState.stats; // {year, month, selectedDate}，默认当前月；日历滚动/面板跳转会更新
+  const active = uiState.stats; // {year, month}，默认当前月；日历滚动/面板跳转会更新
   const activeRange = U.monthRange(active.year, active.month);
   const head = `
     <div class="app-main__page-head">
@@ -168,23 +168,29 @@ export function statsPage(ctx) {
       <span class="app-main__page-sub">› 统计</span>
     </div>`;
   return `${head}
-    <div class="app-main__page-body">
-      <div class="notes__toolbar">
-        <span class="notes__toolbar-hint">累计 · 日历 · 活动月</span>
-        <div class="notes__toolbar-actions">
-          <span class="notes__io">${renderButton({ label: '导出', variant: 'secondary', iconName: 'download' })}</span>
-          <span class="notes__io">${renderButton({ label: '导入', variant: 'secondary', iconName: 'upload' })}</span>
+    <div class="app-main__page-body notes__dash-body">
+      <div class="notes__dash">
+        <div class="notes__dash-cal">
+          <div class="notes__cal-wrap" data-notes-cal>
+            ${calendarHtml(all, span, active)}
+            ${legendHtml()}
+          </div>
         </div>
-      </div>
-      <div class="notes__stats-groups" data-notes-stats-total>
-        ${statsGroupHtml('累计', U.calcStats(all))}
-      </div>
-      <div class="notes__cal-wrap" data-notes-cal>
-        ${calendarHtml(all, span, active)}
-        ${legendHtml()}
-      </div>
-      <div class="notes__stats-groups" data-notes-stats-month>
-        ${statsGroupHtml(U.monthLabel(active.year, active.month), U.calcStats(all, activeRange))}
+        <div class="notes__dash-stats">
+          <div class="notes__toolbar">
+            <span class="notes__toolbar-hint">累计 · 活动月</span>
+            <div class="notes__toolbar-actions">
+              <span class="notes__io">${renderButton({ label: '导出', variant: 'secondary', iconName: 'download' })}</span>
+              <span class="notes__io">${renderButton({ label: '导入', variant: 'secondary', iconName: 'upload' })}</span>
+            </div>
+          </div>
+          <div class="notes__stats-groups" data-notes-stats-total>
+            ${statsGroupHtml('累计', U.calcStats(all))}
+          </div>
+          <div class="notes__stats-groups" data-notes-stats-month>
+            ${statsGroupHtml(U.monthLabel(active.year, active.month), U.calcStats(all, activeRange))}
+          </div>
+        </div>
       </div>
     </div>`;
 }
@@ -194,11 +200,11 @@ function statsGroupHtml(title, s) {
     <div class="notes__stats-group">
       <h3 class="notes__stats-title">${title}</h3>
       <div class="notes__stats-cards">
-        ${statCard('牛马日', s.workDays)}
-        ${statCard('休息日', s.restDays)}
-        ${statCard('实习期', s.internDays)}
-        ${statCard('正式期', s.regularDays)}
-        ${statCard('出差日', s.tripDays)}
+        ${statRow('牛马日', s.workDays)}
+        ${statRow('休息日', s.restDays)}
+        ${statRow('实习期', s.internDays)}
+        ${statRow('正式期', s.regularDays)}
+        ${statRow('出差日', s.tripDays)}
       </div>
       <div class="notes__stats-breakdown">
         ${breakdownItem('正常', s.breakdown.normal, 'normal')}
@@ -210,8 +216,8 @@ function statsGroupHtml(title, s) {
       </div>
     </div>`;
 }
-function statCard(label, value) {
-  return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
+function statRow(label, value) {
+  return `<div class="notes__stat-row"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
 }
 function breakdownItem(label, n, cls) {
   return `<span class="notes__breakdown-item notes__breakdown-item--${cls}">${label} <b>${n}</b></span>`;
@@ -219,7 +225,7 @@ function breakdownItem(label, n, cls) {
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 // 连续周流日历：整段周行（无月块/月标题/分隔线）；活动月决定 inMonth 着色，相邻月灰化（--out，不可点）；
-// 今天=实心 accent 圆（--today），选中=描边圆环（--selected，持久）
+// 今天=实心 accent 圆（--today），悬浮=accent 描边圆环（:hover，无持久选中态）
 function calendarHtml(all, span, active) {
   const byDate = new Map(all.map((r) => [r.date, r]));
   const today = U.todayISO();
@@ -238,7 +244,6 @@ function calendarHtml(all, span, active) {
         if (r.location !== 'qingdao') cls.push('notes__cal-cell--trip');
       }
       if (date === today) cls.push('notes__cal-cell--today');
-      if (date === uiState.stats.selectedDate) cls.push('notes__cal-cell--selected');
       const dot = inMonth && r && r.location !== 'qingdao' ? '<span class="notes__cal-trip-dot"></span>' : '';
       return `<button class="${cls.join(' ')}" type="button" data-date="${date}" data-ym="${year}-${month}"><span class="notes__cal-day">${Number(date.slice(8))}</span>${dot}</button>`;
     }).join('');
@@ -558,7 +563,7 @@ function mountTemplatePage(pageEl, dis) {
   bindList();
 }
 
-// —— 统计页 mount（连续周流日历：初始定位当前月 + 滚动联动（按周行）+ ‹ › 切换 + 月标签弹面板 + 格开编辑器 + 选中态）——
+// —— 统计页 mount（连续周流日历：初始定位当前月 + 滚动联动（按周行）+ ‹ › 切换 + 月标签弹面板 + 格开编辑器）——
 function mountStatsPage(pageEl, dis) {
   const calWrap = pageEl.querySelector('[data-notes-cal]');
   const statsTotalEl = pageEl.querySelector('[data-notes-stats-total]');
@@ -597,7 +602,7 @@ function mountStatsPage(pageEl, dis) {
     const range = U.monthRange(year, month);
     statsMonthEl.innerHTML = statsGroupHtml(U.monthLabel(year, month), U.calcStats(all, range));
   };
-  // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标；今天/选中类不动（持久）
+  // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标；今天类不动（持久）
   const applyActiveClasses = (year, month) => {
     const activeYM = `${year}-${month}`;
     const all = U.loadReports();
@@ -620,7 +625,7 @@ function mountStatsPage(pageEl, dis) {
     });
   };
   const setActive = (year, month) => {
-    uiState.stats = { year, month, selectedDate: uiState.stats.selectedDate };
+    uiState.stats = { year, month };
     labelEl.textContent = U.monthLabel(year, month);
     renderMonthGroup(year, month);
     applyActiveClasses(year, month);
@@ -673,14 +678,11 @@ function mountStatsPage(pageEl, dis) {
     syncActiveFromScroll();
   };
 
-  // 日格点击：设选中态（持久）→ 开编辑器；out 格（相邻月）不响应
+  // 日格点击：开该日编辑器（无持久选中态）；out 格（相邻月）不响应
   const bindCal = () => {
     calWrap.querySelectorAll('.notes__cal-cell[data-date]').forEach((cell) =>
       cell.addEventListener('click', () => {
         if (cell.classList.contains('notes__cal-cell--out')) return;
-        uiState.stats.selectedDate = cell.dataset.date;
-        calWrap.querySelectorAll('.notes__cal-cell--selected').forEach((el) => el.classList.remove('notes__cal-cell--selected'));
-        cell.classList.add('notes__cal-cell--selected');
         openEditor(cell.dataset.date);
       }));
   };
@@ -756,7 +758,7 @@ function mountStatsPage(pageEl, dis) {
     queryRefs();
     bindCal();
     bindCalNav();
-    // 恢复滚动位置到活动月周行（防跳回当前月）；选中态（uiState.stats.selectedDate）与滚动位置保留
+    // 恢复滚动位置到活动月周行（防跳回当前月）；滚动位置保留
     const row = weekRowEl(active.year, active.month);
     if (row) scrollToWeek(row, false);
     setActive(active.year, active.month);
