@@ -101,29 +101,24 @@ body.notes__confirm .c-dialog__mask .c-dialog {
 .notes__dash { display: flex; gap: var(--space-4); flex: 1; min-height: 0; }
 .notes__dash-cal { flex: 0 0 45%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .notes__dash-stats { align-self: flex-start; flex: 0 1 55%; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow-y: auto; }
-.notes__dash-stats .notes__toolbar,
-.notes__dash-stats .notes__stats-groups { margin-bottom: 0; }
+.notes__dash-stats .notes__toolbar { margin-bottom: 0; }
 .notes__dash-cal .notes__legend { flex: none; margin-top: 0; }
 .notes__cal-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: none; margin: 0; }
 .notes__cal-scroll { flex: 1; min-height: 0; overflow-y: auto; background: var(--surface-1); border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
 
-.notes__stats-groups { display: flex; flex-direction: column; gap: var(--space-3); }
+/* 统计卡片两列左右：左=当前月（活动月）组、右=累计组；各列卡片竖排单列 */
+.notes__stats-columns { display: flex; gap: var(--space-4); }
+.notes__stats-columns .notes__stats-group { flex: 1; min-width: 0; }
 .notes__stats-title { font-size: var(--font-size-sm); color: var(--text-3); font-weight: var(--font-weight-medium); margin: 0 0 var(--space-2); }
-/* 统计方块竖排：彩色底 + 数值（无 label 文字）；仅非零显示；正方形、限宽防 7 块全显过高 */
-.notes__stat-squares { display: flex; flex-direction: column; gap: var(--space-2); max-width: 72px; }
-.notes__stat-square {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; aspect-ratio: 1; border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
-  font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); font-variant-numeric: tabular-nums;
-  color: var(--neutral-50);
+.notes__stats-cards { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__stat-card {
+  display: flex; flex-direction: column; gap: 4px; padding: var(--space-2);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border);
 }
-.notes__sq--workdays { background: var(--accent); }
-.notes__sq--rest { background: var(--neutral-400); color: var(--neutral-900); }
-.notes__sq--intern { background: var(--info-500); }
-.notes__sq--regular { background: var(--success-500); }
-.notes__sq--trip { background: var(--danger-500); }
-.notes__sq--overtime { background: var(--accent-600); }
-.notes__sq--leave { background: var(--warning-500); }
+.notes__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
+.notes__stat-value { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.notes__stat-unit { font-style: normal; font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--text-3); margin-left: 2px; }
 
 /* 日历：连续周流（滚动容器 + 固定头 + 整段周行；窄块居中 + 正方形格） */
 .notes__cal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-1); border-bottom: 1px solid var(--glass-border); padding: var(--space-2) var(--space-2) var(--space-1); }
