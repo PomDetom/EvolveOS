@@ -45,8 +45,9 @@
 
 ### 3.1 边缘检测与坐标口径
 
-- 窗口 rect：`win.outerPosition()`（物理像素 `{x,y}`）+ `win.outerSize()`（物理像素 `{width,height}`）。
-- 显示器 bounds：`invoke('get_current_monitor')`（Rust 命令 `window.current_monitor()`）→ `{ x, y, width, height }`（物理像素）。全局 shim 无 monitor API（`win.currentMonitor` / `__TAURI__.screen` 均 undefined），走 Rust 命令。
+- 窗口 rect：`invoke('get_window_rect')`（Rust 命令 `window.outer_position()` + `outer_size()`）→ `{ x, y, width, height }`（物理像素）。**全局 shim 缺 read 方法**（`currentMonitor`/`screen`/`outerPosition`/`outerSize` 均 undefined，真机实测）→ 位置/尺寸读写全走 Rust 命令。
+- 显示器 bounds：`invoke('get_current_monitor')`（Rust 命令 `window.current_monitor()`）→ `{ x, y, width, height }`（物理像素）。同上走 Rust 命令。
+- 窗口移动：`invoke('set_window_pos', {x, y})`（Rust 命令 `window.set_position(PhysicalPosition)`）。
 - 四边距离 = 窗口 rect 到当前显示器 bounds 四边的距离。
 - 判定：
   - **溢出某边**：窗口该边越出 monitor bounds（如 `rect.left < m.left`）。
@@ -55,15 +56,15 @@
 
 ### 3.2 先决校正（进入贴边）
 
-- 拖拽结束检测：`onMoved` 去抖 ~150ms 无移动 = 松手。
-- 校正：若窗口某边**溢出** → `setPosition` 将该边对齐 monitor 边（拉回完整可见）→ 进入贴边态。
+- 拖拽结束检测：**后台轮询**（每 150ms 读 `get_window_rect`，连续两次位置相同 = 用户松手；参考 codeplan-usage legacy `COLLAPSE_POLL` —— 系统拖动期间 `WindowEvent::Moved` 不可靠，不依赖 onMoved）。
+- 校正：若窗口某边**溢出** → `set_window_pos` 将该边对齐 monitor 边（拉回完整可见）→ 进入贴边态。
 - **不做磁吸**：靠边但未溢出 → 不动，不进入收起计时。
 
 ### 3.3 收起动画
 
 - **方向**：贴靠边决定 —— 底→向下滑出、顶→向上、左→向左、右→向右。角位（贴两条边）选**主贴靠边**（距边最小者）。
 - **目标位**：贴边完整位 + 沿贴靠边方向位移 `(窗口该边尺寸 - SLIVER)`，使屏幕内仅剩 `SLIVER = 20px`。
-- **动画**：JS rAF 逐帧 `setPosition` tween，ease-out ~500ms（比 `--dur-slow` 300ms 更慢的「缓收起」节奏）。时长读 CSS 变量 `--strip-dur-collapse`（float-strip.css 定义，默认 500ms；JS 经 `getComputedStyle` 读取，同现有 `readDur` 模式），动效降级时归零。窗口移动是 OS 层 `setPosition`，**非 CSS 布局动画**（不触动画红线）。
+- **动画**：JS rAF 逐帧 `set_window_pos` tween，ease-out ~500ms（比 `--dur-slow` 300ms 更慢的「缓收起」节奏）。时长读 CSS 变量 `--strip-dur-collapse`（float-strip.css 定义，默认 500ms；JS 经 `getComputedStyle` 读取，同现有 `readDur` 模式），动效降级时归零。窗口移动是 OS 层（Rust `set_position`），**非 CSS 布局动画**（不触动画红线）。
 - **收起态协调**：挂起 `fit()`（现有 hover→onResize 贴合 + 倒计时宽度漂移重贴），防把滑出窗口重新顶回屏内；收起滑出期间不触发位置持久化。
 
 ### 3.4 收起形态 B（边缘小把手）

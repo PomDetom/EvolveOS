@@ -192,17 +192,9 @@ export function mountStripMode() {
   });
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
-  // 真机调试读条（ui/strip-edge-debug）：console 无 DevTools 不可见（壳层禁右键）→ 直接渲染到
-  // strip DOM 内，滚动显示最近诊断。临时调试用，定位后移除。
-  const debugEl = document.createElement('div');
-  debugEl.className = 'c-strip__debug';
-  const logEdge = (msg) => {
-    console.log(msg);
-    const line = document.createElement('div');
-    line.textContent = msg;
-    debugEl.appendChild(line);
-    while (debugEl.children.length > 20) debugEl.firstChild?.remove();
-  };
+  // 贴边诊断（ui/strip-edge-debug 收尾）：console.log 与既有 [strip] fit 一致；
+  // 真机调试时曾渲染 DOM 读条（壳层禁右键无 DevTools），现已移除。
+  const logEdge = (msg) => console.log(msg);
   // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
   // 双通道（覆盖隐藏→唤起）：① 先写 ui-jump-intent（主窗 visibilitychange visible 时消费）再 show+setFocus，
   // ② emit jump-to-tokentool 事件（主窗已可见时直接 setModule）。
@@ -240,7 +232,6 @@ export function mountStripMode() {
     root.classList.add('strip-root--window');
     document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底
     const strip = root.querySelector('.c-strip');
-    strip.appendChild(debugEl); // 真机调试读条（临时）
     const STORAGE_KEY = 'ui-design-strip-pos';
 
     // —— 贴边收起状态（ui/strip-edge-collapse）——
