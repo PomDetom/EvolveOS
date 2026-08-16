@@ -7,6 +7,7 @@ import { renderFloatStrip, mountFloatStrip } from '../components/float-strip/flo
 import '../components/float-strip/float-strip.css';
 import { getConfig, saveConfig } from '../config/store.js';
 import { applyConfig } from '../config/apply.js';
+import { computeCorrectionTarget, computeCollapseTarget, resolveDock } from './strip-edge.js';
 
 /** 悬浮窗窗口尺寸（纯函数，可单测）：CSS 像素 → {width,height}（ceil + 至少 1px） */
 export function computeFitSize(rect) {
@@ -187,9 +188,13 @@ export function mountStripMode() {
   root.innerHTML = renderFloatStrip({
     content: '<div class="c-strip-tk"><span class="c-strip-tk__muted">加载中…</span></div>',
     showJump: !!win, // 仅 Tauri 独立窗口渲染「跳转到 TokenTool 余量页」按钮
+    collapsible: !!win,
   });
   document.body.appendChild(root);
   const content = root.querySelector('.c-strip__content');
+  // 贴边诊断（ui/strip-edge-debug 收尾）：console.log 与既有 [strip] fit 一致；
+  // 真机调试时曾渲染 DOM 读条（壳层禁右键无 DevTools），现已移除。
+  const logEdge = (msg) => console.log(msg);
   // 跳转到 TokenTool 余量页按钮接线（Tauri 后台模式：主窗隐藏 → 点此唤回 main + 通知主窗跳转）
   // 双通道（覆盖隐藏→唤起）：① 先写 ui-jump-intent（主窗 visibilitychange visible 时消费）再 show+setFocus，
   // ② emit jump-to-tokentool 事件（主窗已可见时直接 setModule）。
@@ -225,44 +230,211 @@ export function mountStripMode() {
   if (win) {
     // —— Tauri 独立窗口（B4-6）：铺满窗口 + 系统拖拽 + 尺寸贴合 + 位置持久化 ——
     root.classList.add('strip-root--window');
-    document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底（base.css body 背景），避免整窗半透明遮罩
+    document.body.style.background = 'transparent'; // 透明窗口：清掉 body 玻璃底
     const strip = root.querySelector('.c-strip');
     const STORAGE_KEY = 'ui-design-strip-pos';
+
+    // —— 贴边收起状态（ui/strip-edge-collapse）——
+    const edge = { mode: 'free', dockEdge: null, dockPos: null }; // free | docked | collapsed
+    let collapsed = false;   // 收起/收起动画期间：挂起 fit、跳过持久化、onMoved 不评估
+    let collapseTimer = null;
+    let settleTimer = null;
+    let collapseRaf = null;
+
     // 位置恢复
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const { x, y } = JSON.parse(saved);
-        if (Number.isFinite(x) && Number.isFinite(y)) win.setPosition({ x, y }).catch(() => {});
+        if (Number.isFinite(x) && Number.isFinite(y)) window.__TAURI__?.core?.invoke?.('set_window_pos', { x, y }).catch?.(() => {});
       }
     } catch { /* 损坏存档忽略 */ }
-    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。量 strip（border-box）—— 实底无 box-shadow，
-    // 窗口=内容尺寸即可（ui/strip-ui-m9：阴影在透明窗外被裁无效果，去阴影留白）。
+
+    // 尺寸贴合内容（初始 + 数据到达 + 旋转）。收起/收起动画期间挂起：
+    // 防 hover 贴合 / 倒计时宽度漂移把滑出窗口重定位。量 strip（border-box）。
     fit = () => {
+      if (collapsed) return;
       const r = strip.getBoundingClientRect();
       const { LogicalSize } = window.__TAURI__.window;
       const size = computeFitSize(r);
       win.setSize(new LogicalSize(size.width, size.height)).catch(() => {});
-      // 诊断（B4 收尾）：确认窗口尺寸与内容一致 + DPI 缩放
       win.outerSize?.().then((os) => {
         win.scaleFactor?.().then((sf) => {
           console.log('[strip] fit', JSON.stringify(size), 'outer', JSON.stringify(os), 'scaleFactor', sf);
         }).catch(() => {});
       }).catch(() => {});
     };
-    fit(); // 首次显示尺寸由挂载时 fit() 确定，桌面目检通过 [strip] fit 诊断 log 确认
-    // 字体异步加载（普惠体 ~5MB）会让文字在 fit 后变宽 → 重贴一次，防右缘圆角被窗口裁方
-    document.fonts?.ready?.then(() => fit()).catch(() => {});
-    // 位置持久化（去抖 200ms）
-    let saveTimer = null;
+    fit(); // 首次显示尺寸由挂载时 fit() 确定
+    document.fonts?.ready?.then(() => { fit(); evaluateDock(); }).catch(() => {}); // 字体加载后重贴 + 初始贴边评估
+
+    // —— 贴边收起机制（规格 §3）——
+    const readMotionDur = () => {
+      const off = document.documentElement.dataset.motion === 'off'
+        || (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false);
+      if (off) return 0;
+      const v = parseFloat(getComputedStyle(strip).getPropertyValue('--strip-dur-collapse'));
+      return Number.isFinite(v) ? v : 500;
+    };
+    const getMonitor = async () => {
+      // 全局 shim 无 monitor API（真机实测 win.currentMonitor / __TAURI__.screen 均 undefined）→
+      // 走 Rust 命令 get_current_monitor 取当前显示器 bounds（物理像素）。?.() 兼容旧 mock/降级
+      // 环境（无 core.invoke → null，评估 no-op，不抛错）。
+      const m = await window.__TAURI__?.core?.invoke?.('get_current_monitor').catch?.((err) => { logEdge(`[edge] monitor err ${err}`); return null; });
+      logEdge(`[edge] monitor ${JSON.stringify(m)} (invoke)`);
+      return m;
+    };
+    const getRect = async () => {
+      // 窗口位置/尺寸走 Rust 命令（全局 shim 缺 read 方法：outerPosition/outerSize 同 currentMonitor
+      // 均 undefined → 不能依赖 JS 对象）；?.() 兼容旧 mock/降级（无 invoke → null，评估 no-op）。
+      const rect = await window.__TAURI__?.core?.invoke?.('get_window_rect').catch?.((err) => { logEdge(`[edge] rect err ${err}`); return null; });
+      logEdge(`[edge] rect ${JSON.stringify(rect)}`);
+      return rect;
+    };
+    const setEdgeUI = (mode) => {
+      strip.classList.toggle('c-strip--collapsed', mode === 'collapsed');
+      strip.dataset.dockEdge = edge.dockEdge ?? '';
+    };
+    const persistPosition = (p) => localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: p.x, y: p.y }));
+    // tweenTo 返回 Promise：await 的调用方（evaluateDock 先决校正）等动画真正到位再起收起计时，
+    // 防「校正 tween 与 1s 计时并发」把贴边可见窗口期压缩。onDone 后 resolve；dur<=0 直落、
+    // outerPosition 失败都 resolve（防悬挂）。位移全走 setPosition（OS 层）。
+    const tweenTo = (to, dur, onDone = () => {}) => new Promise((resolve) => {
+      if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
+      const finish = () => { try { onDone(); } finally { resolve(); } };
+      // 移动走 Rust set_window_pos（全局 shim 无 outerPosition/setPosition 依赖面，统一经命令）
+      const setPos = (p) => window.__TAURI__?.core?.invoke?.('set_window_pos', { x: p.x, y: p.y }).catch?.(() => {});
+      getRect().then((rect) => {
+        if (!rect) { finish(); return; }
+        const from = { x: rect.x, y: rect.y };
+        if (dur <= 0) { setPos(to); finish(); return; }
+        const start = performance.now();
+        const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
+        const step = (now) => {
+          const k = ease(Math.min(1, (now - start) / dur));
+          setPos({ x: Math.round(from.x + (to.x - from.x) * k), y: Math.round(from.y + (to.y - from.y) * k) });
+          if (k < 1) collapseRaf = requestAnimationFrame(step);
+          else { collapseRaf = null; finish(); }
+        };
+        collapseRaf = requestAnimationFrame(step);
+      }).catch(() => finish());
+    });
+    const cancelCollapse = () => { if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; } };
+    const startCollapseTimer = () => {
+      cancelCollapse();
+      if (edge.mode !== 'docked' || strip.matches(':hover') || collapseRaf) return; // 弹出 tween 期间不计时
+      collapseTimer = setTimeout(collapseNow, 1000);
+    };
+    const collapseNow = async () => {
+      const monitor = await getMonitor();
+      const rect = await getRect();
+      if (!monitor || !rect || !edge.dockEdge) return;
+      // 收起间隙守卫：await getMonitor/getRect 期间鼠标可能进入 strip —— mouseenter 此时看到的
+      // mode 仍是 'docked'，只 cancelCollapse()（计时已触发，无效果），悬停下窗口仍会滑出。
+      // 这里在置 mode 前补 :hover 检查：命中则重启计时并返回（startCollapseTimer 自带 :hover
+      // 守卫，光标在条上不计时；mouseleave 会重启计时），不进入收起。
+      if (strip.matches(':hover')) { startCollapseTimer(); return; }
+      const target = computeCollapseTarget({ x: rect.x, y: rect.y }, { width: rect.width, height: rect.height }, monitor, edge.dockEdge);
+      logEdge(`[edge] collapse from=${JSON.stringify({ x: rect.x, y: rect.y })} → ${JSON.stringify(target)} edge=${edge.dockEdge} mon=${JSON.stringify(monitor)}`);
+      edge.mode = 'collapsed';
+      collapsed = true;
+      setEdgeUI('collapsed');
+      tweenTo(target, readMotionDur());
+    };
+    const popOut = () => {
+      cancelCollapse();
+      if (edge.mode !== 'collapsed' || !edge.dockPos) return;
+      logEdge(`[edge] popOut → ${JSON.stringify(edge.dockPos)}`);
+      collapsed = false;
+      edge.mode = 'docked'; // 立即置 docked：tween 期间重复 mouseenter 不再触发 popOut（防反复重启 tween）
+      setEdgeUI('docked');
+      tweenTo(edge.dockPos, readMotionDur(), () => {
+        if (strip.isConnected) startCollapseTimer();
+      });
+    };
+    const evaluateDock = async () => {
+      const monitor = await getMonitor();
+      const rect = await getRect();
+      if (!monitor || !rect) return false; // 无能力（旧 mock/降级）→ 调用方兜底持久化
+      const dock = resolveDock(rect, monitor);
+      logEdge(`[edge] dock ${JSON.stringify(dock)} → ${dock.overflow.length ? 'correct→docked' : dock.edge ? 'docked' : 'free'}`);
+      if (dock.overflow.length) {
+        // 先决校正：溢出边拉回贴齐完整可见 → 贴边
+        const target = computeCorrectionTarget(rect, monitor);
+        edge.dockEdge = dock.edge;
+        edge.dockPos = target;
+        edge.mode = 'docked';
+        collapsed = false;
+        setEdgeUI('docked');
+        await tweenTo(target, readMotionDur());
+        persistPosition(target);
+        if (strip.isConnected) startCollapseTimer();
+      } else if (dock.edge) {
+        edge.dockEdge = dock.edge;
+        edge.dockPos = { x: rect.x, y: rect.y };
+        edge.mode = 'docked';
+        collapsed = false;
+        setEdgeUI('docked');
+        persistPosition({ x: rect.x, y: rect.y });
+        startCollapseTimer();
+      } else {
+        edge.mode = 'free';
+        edge.dockEdge = null;
+        collapsed = false;
+        setEdgeUI('free');
+        cancelCollapse();
+        persistPosition({ x: rect.x, y: rect.y });
+      }
+      return true;
+    };
+
+    // 位置持久化 + 贴边评估：拖动松手（onMoved 去抖 150ms）统一处理；收起/收起动画期间不评估。
+    // evaluateDock 有能力（monitor+rect）时其内部 persistPosition；降级环境无能力时兜底持久化
+    // 当前位置（沿用既有 onMoved 持久化行为，兼容无 screen/outerSize 的旧 mock）。
+    logEdge(`[edge] active win=${!!win} strip=${!!strip}`);
+    // onMoved：仅持久化当前位置（参考 codeplan-usage legacy floating：系统拖动期间
+    // WindowEvent::Moved 不可靠，评估不能依赖它；拖拽结束判定改走轮询）。
     win.onMoved?.(() => {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        win.outerPosition?.().then(({ x, y }) => {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
-        }).catch(() => {});
+      if (collapsed || collapseRaf) return;
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        window.__TAURI__?.core?.invoke?.('get_window_rect').then?.((r) => {
+          if (r && !collapsed && !collapseRaf) localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: r.x, y: r.y }));
+        }).catch?.(() => {});
       }, 200);
     });
+    // 评估触发：后台轮询（每 150ms 读窗口位置；连续两次相同 = 用户松手 → 评估贴边一次）。
+    // 参考 codeplan-usage 的 COLLAPSE_POLL 实现，不依赖 Moved 事件。
+    let lastPos = null;
+    let stable = false;
+    const pollEdge = setInterval(async () => {
+      if (collapsed || collapseRaf) { lastPos = null; stable = false; return; }
+      const rect = await getRect();
+      if (!rect) return;
+      const pos = { x: rect.x, y: rect.y };
+      if (lastPos && lastPos.x === pos.x && lastPos.y === pos.y) {
+        if (!stable) {
+          stable = true;
+          logEdge(`[edge] released @ ${JSON.stringify(pos)}`);
+          await evaluateDock();
+        }
+      } else {
+        lastPos = pos; stable = false;
+      }
+    }, 150);
+    // hover 触发：贴边态取消计时（标准自动隐藏）；收起态弹回
+    strip.addEventListener('mouseenter', () => {
+      if (edge.mode === 'collapsed') popOut();
+      else cancelCollapse();
+    });
+    strip.addEventListener('mouseleave', () => { if (edge.mode === 'docked') startCollapseTimer(); });
+    // 拖拽退出收起：pointerdown 取消计时/中止弹出动画/清收起态，交给系统拖拽（onMoved settle 再评估）
+    strip.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.c-strip__ctrl')) return;
+      cancelCollapse();
+      if (collapseRaf) { cancelAnimationFrame(collapseRaf); collapseRaf = null; }
+      if (edge.mode === 'collapsed') { edge.mode = 'free'; collapsed = false; setEdgeUI('free'); }
+    });
+
     mountFloatStrip(root, { windowMode: true, onResize: fit, onClose: () => win.hide().catch(() => {}) });
   } else {
     mountFloatStrip(root, { onClose: () => root.remove() });

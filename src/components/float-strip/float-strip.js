@@ -12,8 +12,9 @@ import { icon } from '../icon/icon.js';
 const SNAP_DIST = 24; // 距屏幕边缘 < 24px 吸附（贴边）
 const MOVE_THRESHOLD = 2; // 像素级移动判定：双击/点击不触发吸附
 
-export function renderFloatStrip({ content = '', showJump = false } = {}) {
+export function renderFloatStrip({ content = '', showJump = false, collapsible = false } = {}) {
   return `<div class="c-strip c-strip--horizontal" data-orientation="horizontal">
+    ${collapsible ? `<span class="c-strip__grip" aria-hidden="true">${icon('chevron-up', 12)}</span>` : ''}
     <div class="c-strip__content">${content}</div>
     <div class="c-strip__ctrl" role="toolbar" aria-label="悬浮条控制">
       ${showJump ? `<button class="c-strip__jump" type="button" title="跳转到 TokenTool 余量页" aria-label="跳转到 TokenTool 余量页">${icon('bolt', 14)}</button>` : ''}
