@@ -193,25 +193,30 @@ export function statsPage(ctx) {
     </div>`;
 }
 
-// 统计卡片：紧凑方块卡片，label 上、值下、单位「天」（5 卡全显，含 0 值项）
+// 统计卡片：紧凑方块卡片，label 上、值下、单位「天」；七项固定顺序（牛马日/休息日/实习期/正式期/出差日/加班/请假），值为 0 的项不渲染（非零显示）
+const CARD_ITEMS = [
+  { label: '牛马日', value: (s) => s.workDays },
+  { label: '休息日', value: (s) => s.restDays },
+  { label: '实习期', value: (s) => s.internDays },
+  { label: '正式期', value: (s) => s.regularDays },
+  { label: '出差日', value: (s) => s.tripDays },
+  { label: '加班', value: (s) => s.breakdown.overtime },
+  { label: '请假', value: (s) => s.breakdown.leaveAm + s.breakdown.leavePm + s.breakdown.leaveFull },
+];
 function statCard(label, value) {
   return `<div class="notes__stat-card"><span class="notes__stat-label">${label}</span><span class="notes__stat-value">${value}<em class="notes__stat-unit">天</em></span></div>`;
 }
-function statsCardsHtml(s) {
-  return [
-    statCard('牛马日', s.workDays),
-    statCard('休息日', s.restDays),
-    statCard('实习期', s.internDays),
-    statCard('正式期', s.regularDays),
-    statCard('出差日', s.tripDays),
-  ].join('');
+function statCardsHtml(s) {
+  return CARD_ITEMS.filter((c) => c.value(s) !== 0)
+    .map((c) => statCard(c.label, c.value(s)))
+    .join('');
 }
 function statsGroupHtml(title, s, dataKey) {
   return `
     <div class="notes__stats-group"${dataKey ? ` data-${dataKey}` : ''}>
       <h3 class="notes__stats-title">${title}</h3>
       <div class="notes__stats-cards">
-        ${statsCardsHtml(s)}
+        ${statCardsHtml(s)}
       </div>
     </div>`;
 }
@@ -596,7 +601,7 @@ function mountStatsPage(pageEl, dis) {
     const range = U.monthRange(year, month);
     const s = U.calcStats(all, range);
     statsMonthEl.querySelector('.notes__stats-title').textContent = U.monthLabel(year, month);
-    statsMonthEl.querySelector('.notes__stats-cards').innerHTML = statsCardsHtml(s);
+    statsMonthEl.querySelector('.notes__stats-cards').innerHTML = statCardsHtml(s);
   };
   // 就地重着色：活动月变化不清空重渲染（防滚动跳），仅切换 out/出勤类与出差角标
   const applyActiveClasses = (year, month) => {
@@ -749,7 +754,7 @@ function mountStatsPage(pageEl, dis) {
     const aKey = uiState.stats.year * 12 + uiState.stats.month;
     const active = aKey < sKey ? span.start : (aKey > eKey ? span.end : uiState.stats);
     statsTotalEl.querySelector('.notes__stats-title').textContent = '累计';
-    statsTotalEl.querySelector('.notes__stats-cards').innerHTML = statsCardsHtml(U.calcStats(all));
+    statsTotalEl.querySelector('.notes__stats-cards').innerHTML = statCardsHtml(U.calcStats(all));
     calWrap.innerHTML = calendarHtml(all, span, active) + legendHtml();
     queryRefs();
     bindCal();
