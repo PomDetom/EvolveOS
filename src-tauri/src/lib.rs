@@ -91,6 +91,7 @@ mod models;
 mod pwm; // 密码管理器核心（移植 pwm-core）
 mod pwm_commands; // 密码管理器 Tauri 命令
 mod pwm_state;    // 密码管理器会话状态
+mod refresh;      // tokenTool 动态刷新状态机（纯逻辑）
 mod scheduler;
 mod state;
 mod window_state; // 主窗口几何持久化（尺寸/位置/最大化）
