@@ -238,6 +238,9 @@ test.describe('牛马笔记：统计与日历', () => {
     const calBox = await page.locator('.notes__dash-cal').boundingBox();
     const statsBox = await page.locator('.notes__dash-stats').boundingBox();
     expect(calBox.x).toBeLessThan(statsBox.x);
+    // 日历宽 = 页面 2/3（.notes__dash-cal flex-basis 66.67%）：dash 容器内 cal 宽占比 ≈ 2/3
+    const dashBox = await page.locator('.notes__dash').boundingBox();
+    expect(calBox.width / dashBox.width).toBeCloseTo(2 / 3, 2);
     // 左栏含 日历滚动区 + 图例；右栏含 工具栏 + 累计组 + 活动月组（纵向排列）
     await expect(page.locator('.notes__dash-cal [data-notes-cal-scroll]')).toBeVisible();
     await expect(page.locator('.notes__dash-cal .notes__legend')).toBeVisible();
@@ -271,13 +274,22 @@ test.describe('牛马笔记：统计与日历', () => {
     const totalBox = await page.locator('[data-notes-stats-total]').boundingBox();
     expect(monthBox.x).toBeLessThan(totalBox.x);
     await expect(page.locator('.notes__stats-group')).toHaveCount(2);
-    // 各组 5 张紧凑卡片（label 上/值下/单位「天」；休息日 0 也显示）
-    await expect(page.locator('[data-notes-stats-month] .notes__stat-card')).toHaveCount(5);
-    await expect(page.locator('[data-notes-stats-total] .notes__stat-card')).toHaveCount(5);
+    // 各组 6 张非零卡片（label 上/值下/单位「天」）——七卡非零过滤：休息日 0 隐藏，加班/请假 1 显示
+    await expect(page.locator('[data-notes-stats-month] .notes__stat-card')).toHaveCount(6);
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card')).toHaveCount(6);
     await expect(page.locator('[data-notes-stats-total] .notes__stat-card').first().locator('.notes__stat-label')).toHaveText('牛马日');
     await expect(page.locator('[data-notes-stats-total] .notes__stat-card').first().locator('.notes__stat-value')).toHaveText('2.5天');
-    // 5 卡值（本页数据全在当前月，累计=当月）：牛马日 2.5；休息日 0；实习期 2；正式期 1；出差日 1
-    await expect(page.locator('[data-notes-stats-total] .notes__stat-value')).toHaveText(['2.5天', '0天', '2天', '1天', '1天']);
+    // 6 卡值（本页数据全在当前月，累计=当月；固定顺序 牛马日/实习期/正式期/出差日/加班/请假）：2.5；2；1；1；1；1
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-value')).toHaveText(['2.5天', '2天', '1天', '1天', '1天', '1天']);
+    // 加班卡、请假卡存在（seed 非零）；值为 0 的休息日卡不渲染
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card').filter({ hasText: '加班' })).toHaveCount(1);
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card').filter({ hasText: '请假' })).toHaveCount(1);
+    await expect(page.locator('[data-notes-stats-total] .notes__stat-card').filter({ hasText: '休息日' })).toHaveCount(0);
+    // 卡片半宽居中：.notes__stat-card 宽 ≈ 列宽一半，且水平居中（align-items: center）
+    const cardsBox = await page.locator('[data-notes-stats-total] .notes__stats-cards').boundingBox();
+    const firstCardBox = await page.locator('[data-notes-stats-total] .notes__stat-card').first().boundingBox();
+    expect(Math.abs(firstCardBox.width - cardsBox.width / 2)).toBeLessThan(2);
+    expect(Math.abs(firstCardBox.x - cardsBox.x - (cardsBox.width - firstCardBox.width) / 2)).toBeLessThan(2);
     // 左组标题=活动月标签、右组标题=累计
     const y = new Date();
     await expect(page.locator('.notes__stats-group').nth(0)).toContainText(`${y.getFullYear()}年${y.getMonth() + 1}月`);
@@ -692,7 +704,7 @@ test.describe('牛马笔记：统计右栏滚动（短视口）', () => {
     await page.addInitScript(() => {
       const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const y = new Date();
-      // 5 张卡片全显（含 0 值休息日），极短视口下右栏内容必超高
+      // 7 张卡片全显（该 seed 七卡均非零：牛马日/休息日/实习期/正式期/出差日/加班/请假），极短视口下右栏内容必超高
       const d1 = new Date(y.getFullYear(), y.getMonth(), 1);
       const d2 = new Date(y.getFullYear(), y.getMonth(), 2);
       const d3 = new Date(y.getFullYear(), y.getMonth(), 3);
