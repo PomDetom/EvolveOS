@@ -227,8 +227,9 @@ export function mountTokenTool(pageEl, ctx) {
 
 function editorFormHtml(existing, kind) {
   const e = existing ?? {};
-  const ds = kind === 'opencode_go' ? ' hidden' : '';
+  const ds = kind === 'deepseek' ? '' : ' hidden';
   const oc = kind === 'opencode_go' ? '' : ' hidden';
+  const cx = kind === 'codex' ? '' : ' hidden';
   return `
     <div class="tt__form">
       <label class="tt__field" data-tt-field="name">
@@ -242,6 +243,7 @@ function editorFormHtml(existing, kind) {
           options: [
             { value: 'deepseek', label: 'DeepSeek 官方' },
             { value: 'opencode_go', label: 'OpenCode Go 套餐' },
+            { value: 'codex', label: 'Codex 本机登录态' },
           ],
         })}
       </label>
@@ -261,6 +263,10 @@ function editorFormHtml(existing, kind) {
         <span class="tt__field-label">Auth Cookie</span>
         ${renderInput({ type: 'password', value: escapeHtml(e.authCookie ?? ''), placeholder: 'auth=... 整段', label: 'Auth Cookie' })}
       </div>
+      <div class="tt__field tt__field--hint" data-tt-row="codex"${cx}>
+        <span class="tt__field-label">查询方式</span>
+        <span class="tt__field-help">使用当前 Windows 用户的 Codex 登录态，无需填写密钥。</span>
+      </div>
     </div>`;
 }
 
@@ -272,12 +278,13 @@ function collectEditor(body) {
     return null;
   }
   const kind = body.querySelector('[data-tt-field="kind"] .c-select').value;
+  const isDeepseek = kind === 'deepseek';
   const isOpen = kind === 'opencode_go';
   return {
     name,
     kind,
-    baseUrl: isOpen ? 'https://opencode.ai' : (val('baseUrl') || 'https://api.deepseek.com'),
-    apiKey: isOpen ? '' : val('apiKey'),
+    baseUrl: isOpen ? 'https://opencode.ai' : isDeepseek ? (val('baseUrl') || 'https://api.deepseek.com') : '',
+    apiKey: isDeepseek ? val('apiKey') : '',
     workspaceId: isOpen ? (val('workspace') || null) : null,
     authCookie: isOpen ? (val('cookie') || null) : null,
     warnThreshold: 10,
@@ -303,6 +310,7 @@ function openEditorDialog(existing) {
       const k = kindSel.value;
       body.querySelectorAll('[data-tt-row="deepseek"]').forEach((el) => { el.hidden = k !== 'deepseek'; });
       body.querySelectorAll('[data-tt-row="opencode_go"]').forEach((el) => { el.hidden = k !== 'opencode_go'; });
+      body.querySelectorAll('[data-tt-row="codex"]').forEach((el) => { el.hidden = k !== 'codex'; });
     };
 
     const done = (acc) => {

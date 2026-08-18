@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum AccountKind {
     Deepseek,
     OpencodeGo,
+    Codex,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,12 +50,24 @@ pub struct Balance {
     pub currency: Option<String>,
     /// opencode 套餐专用: 三窗口用量
     pub windows: Option<Vec<QuotaWindow>>,
+    /// Codex 专用：套餐类型
+    pub plan_type: Option<String>,
+    /// Codex 专用：额外 credits 状态
+    pub credits: Option<Credits>,
     /// 查询状态
     pub ok: bool,
     pub error: Option<String>,
     /// 原始响应(截断,供调试)
     pub raw: Option<String>,
     pub last_updated: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Credits {
+    pub has_credits: bool,
+    pub unlimited: bool,
+    pub balance: String,
 }
 
 /// 一个套餐限额窗口
@@ -128,6 +141,14 @@ mod tests {
     }
 
     #[test]
+    fn codex_account_kind_roundtrip() {
+        let s = serde_json::to_string(&AccountKind::Codex).unwrap();
+        assert_eq!(s, "\"codex\"");
+        let k: AccountKind = serde_json::from_str("\"codex\"").unwrap();
+        assert_eq!(k, AccountKind::Codex);
+    }
+
+    #[test]
     fn balance_windows_serde() {
         let b = Balance {
             account_id: "a1".into(),
@@ -146,6 +167,8 @@ mod tests {
                 resets_in: 3600,
                 resets_at: "2026-08-07T18:00:00+08:00".into(),
             }]),
+            plan_type: None,
+            credits: None,
             ok: true,
             error: None,
             raw: None,

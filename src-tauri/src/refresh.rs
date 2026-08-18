@@ -16,6 +16,7 @@ const EPS: f64 = 1e-6;
 pub enum BalanceSig {
     Deepseek(Option<f64>),
     Opencode(Vec<(String, f64)>),
+    Codex(Vec<(String, f64)>),
 }
 
 pub fn signature(b: &Balance) -> BalanceSig {
@@ -30,6 +31,16 @@ pub fn signature(b: &Balance) -> BalanceSig {
                 .collect();
             v.sort_by(|a, b| a.0.cmp(&b.0));
             BalanceSig::Opencode(v)
+        }
+        AccountKind::Codex => {
+            let mut v: Vec<(String, f64)> = b
+                .windows
+                .iter()
+                .flatten()
+                .map(|w| (w.key.clone(), w.used_pct))
+                .collect();
+            v.sort_by(|a, b| a.0.cmp(&b.0));
+            BalanceSig::Codex(v)
         }
     }
 }
@@ -133,6 +144,8 @@ mod tests {
             total: None,
             currency: None,
             windows: None,
+            plan_type: None,
+            credits: None,
             ok,
             error: if ok { None } else { Some("err".into()) },
             raw: None,
@@ -163,6 +176,8 @@ mod tests {
                     })
                     .collect(),
             ),
+            plan_type: None,
+            credits: None,
             ok,
             error: if ok { None } else { Some("err".into()) },
             raw: None,

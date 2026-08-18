@@ -64,6 +64,8 @@ pub fn build_balance(
         total,
         currency,
         windows: None,
+        plan_type: None,
+        credits: None,
         ok: true,
         error: None,
         raw,
@@ -81,6 +83,8 @@ pub fn error_balance(account: &Account, err: String) -> Balance {
         total: None,
         currency: None,
         windows: None,
+        plan_type: None,
+        credits: None,
         ok: false,
         error: Some(err),
         raw: None,
@@ -114,7 +118,11 @@ impl HttpClient {
 }
 
 /// 单次请求 opencode /go 页面；错误带可重试标记
-fn get_html_once(base_url: &str, workspace_id: &str, cookie: &str) -> Result<String, HttpFetchError> {
+fn get_html_once(
+    base_url: &str,
+    workspace_id: &str,
+    cookie: &str,
+) -> Result<String, HttpFetchError> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
@@ -212,6 +220,8 @@ pub fn build_opencode_balance(account: &Account, windows: Vec<QuotaWindow>) -> B
         total: None,
         currency: None,
         windows: Some(windows),
+        plan_type: None,
+        credits: None,
         ok: true,
         error: None,
         raw: None,
@@ -230,6 +240,8 @@ pub fn quota_error(account: &Account, msg: impl Into<String>) -> Balance {
         total: None,
         currency: None,
         windows: None,
+        plan_type: None,
+        credits: None,
         ok: false,
         error: Some(msg.into()),
         raw: None,
