@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "EvolveOS",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "identifier": "com.evolveos.system",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -20,7 +20,8 @@
         "minHeight": 480,
         "decorations": false,
         "transparent": false,
-        "shadow": true
+        "shadow": true,
+        "visible": false
       },
       {
         "label": "strip",

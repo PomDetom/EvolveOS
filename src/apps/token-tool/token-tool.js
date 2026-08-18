@@ -7,10 +7,12 @@ import { renderDialog } from '../../components/dialog/dialog.js';
 import { renderInput } from '../../components/input/input.js';
 import { renderSelect } from '../../components/select/select.js';
 import { toast } from '../../components/toast/toast.js';
-import { accountCard, escapeHtml, formatRelative } from './token-tool-utils.js';
+import { accountRow, escapeHtml, formatRelative, usageCard } from './token-tool-utils.js';
 import './token-tool.css';
 
-export function tokenToolPage() {
+// 页面拆分（module.dir）：'usage' = 余量展示（只读），'accounts' = 账户管理。
+export function tokenToolPage(ctx) {
+  const dirId = ctx?.dirId ?? 'usage';
   const head = `
     <div class="app-main__page-head">
       <h2 class="app-main__page-title">TokenTool</h2>
@@ -25,16 +27,34 @@ export function tokenToolPage() {
         })}
       </div>`;
   }
+  return dirId === 'accounts' ? renderAccountsPage(head) : renderUsagePage(head);
+}
+
+function renderUsagePage(head) {
   return `${head}
     <div class="app-main__page-body">
       <div class="tt__toolbar">
-        <span class="tt__toolbar-hint">账户余额 / OpenCode Go 套餐用量监测</span>
+        <span class="tt__toolbar-hint">账户余量 / OpenCode Go 套餐用量监测</span>
         <div class="tt__toolbar-actions">
           ${renderButton({ label: '立即刷新', iconName: 'refresh' })}
-          ${renderButton({ label: '添加账户', variant: 'secondary', iconName: 'plus' })}
         </div>
       </div>
       <div class="tt__grid" data-tt-grid>
+        ${renderEmptyState({ iconName: 'box', title: '加载中…' })}
+      </div>
+    </div>`;
+}
+
+function renderAccountsPage(head) {
+  return `${head}
+    <div class="app-main__page-body">
+      <div class="tt__toolbar">
+        <span class="tt__toolbar-hint">添加、编辑、测试、删除账户</span>
+        <div class="tt__toolbar-actions">
+          ${renderButton({ label: '添加账户', variant: 'secondary', iconName: 'plus' })}
+        </div>
+      </div>
+      <div class="tt__accounts" data-tt-accounts>
         ${renderEmptyState({ iconName: 'box', title: '加载中…' })}
       </div>
     </div>`;
@@ -44,12 +64,14 @@ export function tokenToolPage() {
 
 const disposes = new WeakMap();
 
-export function mountTokenTool(pageEl) {
+export function mountTokenTool(pageEl, ctx) {
   if (typeof window.__TAURI__ === 'undefined') return; // 浏览器：空态已由 render 输出
   const api = window.__TAURI__.core;
+  const dirId = ctx?.dirId ?? 'usage';
   const grid = pageEl.querySelector('[data-tt-grid]');
+  const accountsEl = pageEl.querySelector('[data-tt-accounts]');
   const toolbar = pageEl.querySelector('.tt__toolbar');
-  if (!grid || !toolbar) return;
+  if (!toolbar) return;
 
   disposes.get(pageEl)?.(); // 壳重渲染复用同一 pageEl → 先释放上次挂载
   let disposed = false;
@@ -58,19 +80,34 @@ export function mountTokenTool(pageEl) {
   let config = { accounts: [] };
   let balances = [];
 
-  const renderAccounts = () => {
-    if (disposed) return;
+  const renderUsage = () => {
+    if (disposed || !grid) return;
     grid.innerHTML = config.accounts.length
       ? config.accounts
-          .map((acc) => accountCard(acc, balances.find((b) => b.accountId === acc.id)))
+          .map((acc) => usageCard(acc, balances.find((b) => b.accountId === acc.id)))
           .join('')
       : renderEmptyState({
-          iconName: 'box',
+          iconName: 'wallet',
+          title: '暂无账户',
+          desc: '前往「账户管理」页添加 DeepSeek 或 OpenCode Go 账户。',
+        });
+  };
+
+  const renderAccounts = () => {
+    if (disposed || !accountsEl) return;
+    accountsEl.innerHTML = config.accounts.length
+      ? config.accounts
+          .map((acc) => accountRow(acc, balances.find((b) => b.accountId === acc.id)))
+          .join('')
+      : renderEmptyState({
+          iconName: 'list',
           title: '暂无账户',
           desc: '添加一个 DeepSeek 或 OpenCode Go 账户开始监测。',
           action: { label: '添加账户', variant: 'primary', iconName: 'plus' },
         });
   };
+
+  const renderActive = () => (dirId === 'accounts' ? renderAccounts() : renderUsage());
 
   const renderLastRefreshes = () => {
     if (disposed) return;
@@ -92,7 +129,7 @@ export function mountTokenTool(pageEl) {
     } catch (err) {
       /* 冷启动快照失败可忽略，等 balances-updated */
     }
-    renderAccounts();
+    renderActive();
   };
 
   const saveConfig = async () => {
@@ -122,7 +159,7 @@ export function mountTokenTool(pageEl) {
       const bal = await api.invoke('test_account', { account: acc });
       balances = balances.filter((b) => b.accountId !== id);
       balances.push(bal);
-      renderAccounts();
+      renderActive();
     } catch (err) {
       toast(`测试失败: ${errMsg(err)}`, { variant: 'danger' });
     }
@@ -143,7 +180,7 @@ export function mountTokenTool(pageEl) {
     }
   };
 
-  const onGrid = (e) => {
+  const onAccounts = (e) => {
     const actionEl = e.target.closest('[data-tt-action]');
     if (!actionEl) {
       // 空状态 CTA（renderEmptyState 的 action 不带 data-tt-action）→ 打开添加账户
@@ -151,22 +188,22 @@ export function mountTokenTool(pageEl) {
       if (cta && cta.textContent.includes('添加账户')) openEditor();
       return;
     }
-    const card = actionEl.closest('.tt__card');
-    if (!card) return;
+    const row = actionEl.closest('.tt__row');
+    if (!row) return;
     const action = actionEl.dataset.ttAction;
-    const id = card.dataset.ttId;
+    const id = row.dataset.ttId;
     if (action === 'test') testAccount(id);
     else if (action === 'edit') openEditor(id);
     else if (action === 'del') deleteAccount(id);
   };
 
   toolbar.addEventListener('click', onToolbar);
-  grid.addEventListener('click', onGrid);
+  accountsEl?.addEventListener('click', onAccounts);
 
   const listenPromise = window.__TAURI__.event.listen('balances-updated', (e) => {
     if (disposed) return;
     balances = e.payload ?? [];
-    renderAccounts();
+    renderActive();
   });
   listenPromise.then((un) => { unlisten = un; }).catch(() => {});
 
@@ -178,7 +215,7 @@ export function mountTokenTool(pageEl) {
     if (unlisten) unlisten();
     else listenPromise.then((un) => un && un()).catch(() => {});
     toolbar.removeEventListener('click', onToolbar);
-    grid.removeEventListener('click', onGrid);
+    accountsEl?.removeEventListener('click', onAccounts);
   });
 
   load();
@@ -224,10 +261,6 @@ function editorFormHtml(existing, kind) {
         <span class="tt__field-label">Auth Cookie</span>
         ${renderInput({ type: 'password', value: escapeHtml(e.authCookie ?? ''), placeholder: 'auth=... 整段', label: 'Auth Cookie' })}
       </div>
-      <div class="tt__field" data-tt-field="interval">
-        <span class="tt__field-label">刷新间隔(秒)</span>
-        ${renderInput({ type: 'number', value: e.refreshIntervalSecs ?? 300, placeholder: '300', label: '刷新间隔(秒)' })}
-      </div>
     </div>`;
 }
 
@@ -240,7 +273,6 @@ function collectEditor(body) {
   }
   const kind = body.querySelector('[data-tt-field="kind"] .c-select').value;
   const isOpen = kind === 'opencode_go';
-  const interval = Number(val('interval')) || 300;
   return {
     name,
     kind,
@@ -248,7 +280,6 @@ function collectEditor(body) {
     apiKey: isOpen ? '' : val('apiKey'),
     workspaceId: isOpen ? (val('workspace') || null) : null,
     authCookie: isOpen ? (val('cookie') || null) : null,
-    refreshIntervalSecs: Math.max(30, interval),
     warnThreshold: 10,
   };
 }

@@ -1,0 +1,177 @@
+/* 牛马笔记局部样式（notes__*，令牌驱动） */
+.notes__toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.notes__toolbar-hint { color: var(--text-3); font-size: var(--font-size-sm); }
+.notes__toolbar-actions { display: flex; align-items: center; gap: var(--space-2); }
+.notes__month-nav { display: flex; align-items: center; gap: var(--space-2); }
+.notes__month-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  color: var(--text-2); border: 1px solid var(--glass-border); background: transparent;
+}
+.notes__month-btn:hover { background: var(--surface-hover); color: var(--text-1); }
+.notes__month-label { min-width: 96px; text-align: center; font-weight: var(--font-weight-medium); color: var(--text-1); }
+
+.notes__report-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__report-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; text-align: left;
+  padding: var(--space-3) var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border); color: var(--text-1);
+}
+.notes__report-row:hover { background: var(--surface-hover); }
+.notes__report-date { min-width: 110px; font-size: var(--font-size-sm); color: var(--text-2); }
+.notes__report-primary { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.notes__badge {
+  padding: 1px 8px; border-radius: var(--radius-full); font-size: var(--font-size-xs);
+  color: var(--text-2); background: var(--surface-solid); white-space: nowrap;
+}
+.notes__badge--trip { color: var(--info-600); background: var(--info-50); }
+
+/* 出勤着色 tag（报告行 + 日历图例共用基底） */
+.notes__tag--normal { color: var(--success-600); background: var(--success-50); }
+.notes__tag--overtime { color: var(--accent); background: var(--accent-50); }
+.notes__tag--rest { color: var(--neutral-600); background: var(--neutral-100); }
+.notes__tag--leave-am, .notes__tag--leave-pm, .notes__tag--leave-full { color: var(--warning-600); background: var(--warning-50); }
+
+/* 编辑器对话框实底材质（与 key/.key__editor、token-tool/.tt__editor 一致）：
+   实底 surface-solid 替代默认玻璃；高度适配：头部/底部按钮常驻、中部表单区可滚动 */
+.notes__editor-mask .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+}
+.notes__editor-mask .c-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+/* 确认对话框实底（与编辑器一致）：body 标记类在 notes 确认弹窗打开期间生效（openDialog 无 class 透传） */
+body.notes__confirm .c-dialog__mask .c-dialog {
+  background: var(--surface-solid);
+  backdrop-filter: none;
+}
+.notes__editor { display: flex; flex-direction: column; gap: var(--space-4); }
+.notes__field { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__field-head { display: flex; align-items: center; justify-content: space-between; }
+.notes__field-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--text-2); }
+.notes__seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.notes__seg-item {
+  display: inline-flex; align-items: center; gap: 4px; cursor: grab; position: relative;
+  padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid var(--glass-border);
+  color: var(--text-2); font-size: var(--font-size-sm);
+}
+.notes__seg-item--dragging { opacity: 0.4; }
+.notes__seg-item--drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+.notes__seg-item--drop-after { box-shadow: 0 2px 0 0 var(--accent); }
+.notes__seg-item input { position: absolute; opacity: 0; }
+.notes__seg-item:has(input:checked) { color: var(--accent); border-color: var(--accent); background: var(--accent-50); }
+.notes__editor-del { align-self: flex-start; margin-top: var(--space-1); }
+.notes__tpl-picker { font-size: var(--font-size-sm); }
+.notes__tpl-item {
+  display: block; width: 100%; text-align: left; padding: 6px 10px;
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-1);
+  font-size: var(--font-size-sm);
+}
+.notes__tpl-item:hover { background: var(--surface-hover); }
+.notes__tpl-empty { padding: 6px 10px; color: var(--text-3); font-size: var(--font-size-sm); }
+
+/* 模板列表 */
+.notes__template-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes__template-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border);
+}
+.notes__template-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notes__template-name { font-weight: var(--font-weight-medium); color: var(--text-1); }
+.notes__template-preview { font-size: var(--font-size-sm); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes__template-actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* 统计页 Dashboard 布局：页面不滚动（notes 页撑满内容区），左栏日历全高内部滚动，右栏汇总竖排。
+   notes 页 = 壳内共享 section（日报/模板/统计三子页共用）：flex 列 + 页高固定，各子页 body 自控滚动。
+   display:flex 只在激活态（--active 同特异性且晚于壳 .app-main__page--active）；非激活保持 display:none */
+.app-main__page[data-page="notes"] { height: 100%; overflow: hidden; }
+.app-main__page[data-page="notes"].app-main__page--active { display: flex; flex-direction: column; }
+.app-main__page[data-page="notes"] .app-main__page-head { flex: none; }
+.app-main__page[data-page="notes"] .app-main__page-body { flex: 1; min-height: 0; overflow-y: auto; }
+/* 统计页 Dashboard body 不自滚（内部两栏各自滚动）——覆盖上方通用 body 滚动 */
+.app-main__page[data-page="notes"] .notes__dash-body { overflow: hidden; }
+.notes__dash-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: var(--space-3); }
+.notes__dash { display: flex; gap: var(--space-4); flex: 1; min-height: 0; }
+.notes__dash-cal { flex: 0 0 66.67%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.notes__dash-stats { align-self: flex-start; flex: 0 1 55%; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow-y: auto; }
+.notes__dash-stats .notes__toolbar { margin-bottom: 0; }
+.notes__dash-cal .notes__legend { flex: none; margin-top: 0; }
+.notes__cal-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: none; margin: 0; }
+.notes__cal-scroll { flex: 1; min-height: 0; overflow-y: auto; background: var(--surface-1); border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); }
+
+/* 统计卡片两列左右：左=当前月（活动月）组、右=累计组；各列卡片竖排单列 */
+.notes__stats-columns { display: flex; gap: var(--space-4); }
+.notes__stats-columns .notes__stats-group { flex: 1; min-width: 0; }
+.notes__stats-title { font-size: var(--font-size-sm); color: var(--text-3); font-weight: var(--font-weight-medium); margin: 0 0 var(--space-2); }
+.notes__stats-cards { display: flex; flex-direction: column; gap: var(--space-2); align-items: center; }
+.notes__stat-card {
+  display: flex; flex-direction: column; gap: 4px; padding: var(--space-2); width: 50%;
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  background: var(--surface-1); border: 1px solid var(--glass-border);
+}
+.notes__stat-label { font-size: var(--font-size-xs); color: var(--text-3); }
+.notes__stat-value { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.notes__stat-unit { font-style: normal; font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--text-3); margin-left: 2px; }
+
+/* 日历：连续周流（滚动容器 + 固定头 + 整段周行；窄块居中 + 正方形格） */
+.notes__cal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-1); border-bottom: 1px solid var(--glass-border); padding: var(--space-2) var(--space-2) var(--space-1); }
+.notes__cal-head-nav { display: flex; align-items: center; justify-content: center; gap: var(--space-3); }
+.notes__cal-nav { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-2); }
+.notes__cal-nav:hover { background: var(--surface-hover); color: var(--text-1); }
+.notes__cal-label { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-1); padding: 4px 10px; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); }
+.notes__cal-label:hover { background: var(--surface-hover); }
+.notes__cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.notes__cal-week--head { margin-top: var(--space-1); }
+.notes__cal-weekday { text-align: center; font-size: var(--font-size-xs); color: var(--text-3); padding: 1px 0; }
+.notes__cal-cell {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1; height: auto; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  border: 1px solid transparent; color: var(--text-2); font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.notes__cal-day { position: relative; z-index: 1; }
+.notes__cal-cell--out { opacity: 0.35; color: var(--text-3); cursor: default; }
+.notes__cal-cell--out:hover { border-color: transparent; }
+.notes__cal-cell:hover { border-color: var(--glass-border); }
+.notes__cal-cell--normal { background: var(--success-50); color: var(--success-600); }
+.notes__cal-cell--overtime { background: var(--accent-50); color: var(--accent); }
+.notes__cal-cell--rest { background: var(--neutral-100); color: var(--neutral-600); }
+.notes__cal-cell--leave-am { background: linear-gradient(180deg, var(--warning-50) 50%, var(--success-50) 50%); color: var(--neutral-600); }
+.notes__cal-cell--leave-pm { background: linear-gradient(180deg, var(--success-50) 50%, var(--warning-50) 50%); color: var(--neutral-600); }
+.notes__cal-cell--leave-full { background: var(--warning-50); color: var(--warning-600); }
+/* 悬浮描边圆环（替代持久选中环） */
+.notes__cal-cell:hover::after {
+  content: ''; position: absolute; inset: 1px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+/* 灰化格不显示悬浮遮罩（避免「看似可点」），文字回灰 */
+.notes__cal-cell--out::after { content: none; }
+/* hover 环规则（.notes__cal-cell:hover::after，同特异性）晚于灰化格 ::after，灰化格悬浮也不显环 */
+.notes__cal-cell--out:hover::after { content: none; }
+.notes__cal-trip-dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--info-500); }
+
+/* 月标签弹面板 */
+.notes__cal-picker { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 3; width: 240px; background: var(--surface-solid); border: 1px solid var(--glass-border); border-radius: calc(var(--radius-md) * var(--radius-scale, 1)); box-shadow: var(--shadow-md); padding: var(--space-3); display: grid; gap: var(--space-2); }
+.notes__cal-picker[hidden] { display: none; }
+.notes__cal-picker-year { display: flex; align-items: center; justify-content: space-between; }
+.notes__cal-picker-year-label { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-1); }
+.notes__cal-picker-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-1); }
+.notes__cal-picker-month { padding: 4px 0; text-align: center; border-radius: calc(var(--radius-sm) * var(--radius-scale, 1)); color: var(--text-2); font-size: var(--font-size-sm); }
+.notes__cal-picker-month:hover { background: var(--surface-hover); color: var(--text-1); }
+
+/* 图例 */
+.notes__legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.notes__legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-size-xs); color: var(--text-2); }
+.notes__legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: var(--radius-xs); }
+.notes__legend-dot--normal { background: var(--success-500); }
+.notes__legend-dot--overtime { background: var(--accent-500); }
+.notes__legend-dot--rest { background: var(--neutral-400); }
+.notes__legend-dot--leave { background: var(--warning-500); }
+.notes__legend-dot--trip { background: var(--info-500); border-radius: 50%; }

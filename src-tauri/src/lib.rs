@@ -11,21 +11,119 @@ fn set_close_behavior(state: tauri::State<'_, CloseBehaviorState>, behavior: Str
     *state.close_behavior.lock().unwrap() = behavior;
 }
 
+// —— 贴边收起（ui/strip-edge-collapse）：当前显示器 bounds ——
+// JS 全局 shim 不暴露 monitor API（真机实测 win.currentMonitor / __TAURI__.screen 均 undefined，
+// web mock 掩盖了这点）→ 走 Rust 命令 `window.current_monitor()` 取物理像素 bounds，JS invoke 消费。
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorBounds {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[tauri::command]
+fn get_current_monitor(window: tauri::Window) -> Option<MonitorBounds> {
+    window.current_monitor().ok().flatten().map(|m| MonitorBounds {
+        x: m.position().x,
+        y: m.position().y,
+        width: m.size().width,
+        height: m.size().height,
+    })
+}
+
+// —— 贴边收起：窗口位置/尺寸读写走 Rust（全局 shim 缺 read 方法：currentMonitor/screen 均 undefined，
+// outerPosition/outerSize 同缺 → 全部经命令，对齐 codeplan-usage 的 Rust 侧窗口操作）——
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WindowRect {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[tauri::command]
+fn get_window_rect(window: tauri::Window) -> Option<WindowRect> {
+    let pos = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    Some(WindowRect { x: pos.x, y: pos.y, width: size.width, height: size.height })
+}
+
+#[tauri::command]
+fn set_window_pos(window: tauri::Window, x: i32, y: i32) -> Result<(), String> {
+    window
+        .set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())
+}
+
+// —— 主窗启动时序（ui/startup-opt）：hidden-until-ready ——
+// 主窗 tauri.conf.json 设 visible:false；前端 mountAppMode 首帧绘制后 invoke main_window_ready
+// → 隐藏态恢复上次几何（尺寸/位置/最大化）→ show。窗口首次可见帧即「保存位置 + 已渲染内容」，
+// 消除「先按默认几何显示、加载到某阶段才跳保存位置」与白屏。setup 内另起 10s 兜底（前端异常时
+// 仍恢复几何并显示，防隐形窗口）。Tauri 特有路径：仅 mock 不能证明窗口创建/权限/几何生效，
+// 须桌面真机目检 [win-state] 面诊日志。
+
+#[tauri::command]
+fn main_window_ready(app: tauri::AppHandle) {
+    restore_and_show(&app, "内容就绪");
+}
+
+/// 恢复主窗几何（隐藏态执行，无可见跳变）并显示 + 聚焦。
+fn restore_and_show(app: &tauri::AppHandle, cause: &str) {
+    if let Some(win) = app.get_webview_window("main") {
+        if let Err(e) = app.state::<window_state::WindowStateStore>().restore(&win) {
+            log::warn!("[win-state] 恢复主窗口几何失败: {e}");
+        }
+        let _ = win.show();
+        let _ = win.set_focus();
+        log::info!("[win-state] 主窗口已显示（{cause}）");
+    }
+}
+
 // tokenTool 后端：账户余额监测（适配器/调度器/DPAPI 配置存储）
 mod adapters;
 mod commands;
 mod config;
 mod crypto;
 mod models;
+mod pwm; // 密码管理器核心（移植 pwm-core）
+mod pwm_commands; // 密码管理器 Tauri 命令
+mod pwm_state;    // 密码管理器会话状态
+mod refresh;      // tokenTool 动态刷新状态机（纯逻辑）
 mod scheduler;
 mod state;
+mod window_state; // 主窗口几何持久化（尺寸/位置/最大化）
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(CloseBehaviorState { close_behavior: Mutex::new("exit".into()) })
         .manage(state::AppState::new())
+        .manage(pwm_state::PwmState::default())
+        .manage(window_state::WindowStateStore::new())
         .setup(|app| {
+            // 系统托盘（右下角）：closeBehavior=background 隐藏主窗后仍可唤回 / 退出
+            if let Err(e) = setup_tray(app) {
+                log::error!("创建系统托盘失败: {e}");
+            }
+            // 主窗 hidden-until-ready 兜底（ui/startup-opt）：主窗 visible:false，前端首帧
+            // 绘制后 invoke main_window_ready 恢复几何并显示；若前端异常未就绪（JS 错误 /
+            // dev server 未起），10s 后仍恢复几何并显示，防「隐形窗口」这一更糟的失败模式。
+            {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                    let already_shown = handle
+                        .get_webview_window("main")
+                        .map(|w| w.is_visible().unwrap_or(true))
+                        .unwrap_or(true);
+                    if !already_shown {
+                        restore_and_show(&handle, "10s 兜底");
+                    }
+                });
+            }
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -44,15 +142,51 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_close_behavior,
+            main_window_ready,
+            get_current_monitor,
+            get_window_rect,
+            set_window_pos,
             commands::get_config,
             commands::save_config,
             commands::refresh_all,
             commands::get_balances,
             commands::test_account,
+            pwm_commands::create_vault,
+            pwm_commands::unlock_vault,
+            pwm_commands::lock_vault,
+            pwm_commands::list_entries,
+            pwm_commands::get_entry,
+            pwm_commands::create_entry,
+            pwm_commands::update_entry,
+            pwm_commands::delete_entry,
+            pwm_commands::generate_password,
+            pwm_commands::export_vault,
+            pwm_commands::import_vault,
+            pwm_commands::default_vault_path,
+            pwm_commands::current_vault_path,
+            pwm_commands::pick_vault_path,
         ])
         .on_window_event(|window, event| {
+            // 主窗几何变更 → 防抖持久化（移动/缩放尾部落盘一次）
+            if window.label() == "main" {
+                if let tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) = event {
+                    if let Some(ww) = window.app_handle().get_webview_window("main") {
+                        window
+                            .app_handle()
+                            .state::<window_state::WindowStateStore>()
+                            .schedule_save(ww);
+                    }
+                }
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
+                    // 关闭/隐藏前同步落盘当前几何（防抖可能未触发，先存再走关闭逻辑）
+                    if let Some(ww) = window.app_handle().get_webview_window("main") {
+                        let _ = window
+                            .app_handle()
+                            .state::<window_state::WindowStateStore>()
+                            .save_now(&ww);
+                    }
                     let behavior = window
                         .app_handle()
                         .state::<CloseBehaviorState>()
@@ -72,4 +206,51 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// —— 系统托盘（桌面右下角）——
+
+/// 创建托盘：菜单「打开主窗口 / 退出」；左键单击/双击托盘唤回主窗。
+/// closeBehavior=background 时主窗隐藏、strip 悬浮窗 skipTaskbar，托盘是唯一 OS 级唤回入口。
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    let show_i = MenuItem::with_id(app, "show", "打开主窗口", true, None::<&str>)?;
+    let quit_i = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+    let mut builder = TrayIconBuilder::with_id("evolveos-tray")
+        .tooltip("EvolveOS")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => show_main(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            }
+            | TrayIconEvent::DoubleClick { .. } => show_main(tray.app_handle()),
+            _ => {}
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    log::info!("[tray] 系统托盘已创建");
+    Ok(())
+}
+
+/// 显示并聚焦主窗口（托盘唤回入口：show + 取消最小化 + focus）。
+fn show_main(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+    }
 }

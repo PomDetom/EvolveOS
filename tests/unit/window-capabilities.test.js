@@ -12,6 +12,8 @@ describe('Tauri 窗口能力（B4-1）', () => {
   it('授权窗口变更操作（min/max/close/拖拽）', () => {
     const required = [
       'core:window:allow-minimize',
+      'core:window:allow-is-minimized',
+      'core:window:allow-unminimize',
       'core:window:allow-maximize',
       'core:window:allow-unmaximize',
       'core:window:allow-toggle-maximize',
@@ -29,6 +31,7 @@ describe('Tauri 窗口能力（B4-1）', () => {
       'core:window:allow-get-all-windows',
       'core:window:allow-set-position',
       'core:window:allow-outer-position',
+      'core:window:allow-outer-size',
       'core:window:allow-set-size',
       'core:window:allow-set-focus',
     ];

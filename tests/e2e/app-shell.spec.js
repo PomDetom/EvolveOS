@@ -25,20 +25,34 @@ test('壳结构：标题栏/左窗模块（≥8）/单窗口态右窗隐藏/内�
   await expect(active).toContainText('概览');
 });
 
-test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
+test('懒渲染：启动只渲染激活页，其余页首激活时渲染', async ({ page }) => {
   await page.goto(APP_URL);
-  // 点击左窗第 2 项（剪贴板）
+  // 非激活应用页未渲染（空 section，等挂载后断言）
+  await expect(page.locator('.app-main__page[data-page="key"]')).toBeEmpty();
+  await expect(page.locator('.app-main__page[data-page="memo"]')).toBeEmpty();
+  // 激活概览页已渲染
+  await expect(page.locator('.app-main__page[data-page="home"]')).not.toBeEmpty();
+  // 切到密码 → 该页首激活渲染（懒渲染路径）
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
-  // 右窗展开且含剪贴板目录 3 项
+  await expect(page.locator('.app-main__page[data-page="key"]')).not.toBeEmpty();
+  await expect(page.locator('.app-main__page[data-page="key"]')).toContainText('密码');
+});
+
+test('点击应用：右窗展开 + 目录项出现 + 内容区切到该应用首屏', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 点击左窗第 2 项（密码）
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
+  await page.waitForTimeout(400);
+  // 右窗展开且含密码目录 3 项
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['全部', '分组']);
-  // 内容区切到剪贴板首屏
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toContainText(['全部', '数据管理']);
+  // 内容区切到密码首屏
   const active = page.locator('.app-main__page--active');
   await expect(active).toHaveAttribute('data-page', 'key');
   await expect(active).toContainText('密码');
-  await expect(active).toContainText('功能开发中');
+  await expect(active).toContainText('需桌面端使用');
 });
 
 test('收起通道一：右窗顶部返回按钮', async ({ page }) => {
@@ -74,7 +88,7 @@ test('收起通道三：Esc', async ({ page }) => {
 
 test('换应用：右窗目录内容切换（不收起）', async ({ page }) => {
   await page.goto(APP_URL);
-  // 密码（目录：全部/分组/回收站）
+  // 密码（目录：全部/数据管理/设置）
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(3);
@@ -84,7 +98,7 @@ test('换应用：右窗目录内容切换（不收起）', async ({ page }) => 
   await page.waitForTimeout(400);
   await expect(page.locator('.app-main__nav-r')).toBeVisible();
   await expect(page.locator('.app-main__nav-r .c-navwheel__item')).toHaveCount(2);
-  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]')).toHaveCount(0);
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="data"]')).toHaveCount(0);
   await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="archived"]')).toHaveCount(1);
   // 内容区切到智能备忘页
   const active = page.locator('.app-main__page--active');
@@ -97,12 +111,12 @@ test('标题栏上下文联动：应用名 / 应用名 › 页面名', async ({ 
   const ctx = page.locator('.app-main [data-ctx]');
   // 单窗口态：只有应用名
   await expect(ctx).toHaveText('概览');
-  // 选中剪贴板 → 右窗展开 → 应用名 › 首目录项
+  // 选中密码 → 右窗展开 → 应用名 › 首目录项
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="key"]').click();
   await expect(ctx).toHaveText('密码 › 全部');
-  // 选中右窗目录项「固定」→ 页面名联动
-  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="groups"]').click();
-  await expect(ctx).toHaveText('密码 › 分组');
+  // 选中右窗目录项「数据管理」→ 页面名联动
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="data"]').click();
+  await expect(ctx).toHaveText('密码 › 数据管理');
   // 收起右窗 → 回到单窗口态（只有应用名）
   await page.locator('.app-main__nav-r-back').click();
   await expect(ctx).toHaveText('密码');
@@ -140,6 +154,61 @@ test('设置模式：⚙ 展开右窗设置目录 + 内容区设置页 + 激活�
   await expect(active).toContainText('通用');
   // ⚙ 激活态高亮
   await expect(settingsBtn).toHaveClass(/settings-toggle--active/);
+});
+
+test('设置模式：⚙ 进入后左窗设置项滚动聚焦锚线（非仅高亮）', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 前置：先滚左窗到某个应用（account），制造「左窗不在设置项」状态
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]').click();
+  await page.waitForTimeout(400);
+  // 点击标题栏 ⚙
+  await page.locator('.app-main .c-titlebar__control--settings').click();
+  await page.waitForTimeout(400);
+  // 断言：左窗 settings 项 active 且滚动聚焦到锚线（38.2% 视口；正常聚焦偏移 ≈ itemH/2）
+  const focused = await page.evaluate(() => {
+    const navL = document.querySelector('.app-main__nav-l');
+    if (!navL) return { ok: false, reason: 'no navL' };
+    const anchor = navL.clientHeight * 0.382;
+    const item = document.querySelector('.app-main__nav-l .c-navwheel__item[data-id="settings"]');
+    if (!item) return { ok: false, reason: 'no settings item' };
+    const center = item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+    return {
+      ok: Math.abs(center - anchor) < 60,
+      center,
+      anchor,
+      active: item.classList.contains('c-navwheel__item--active'),
+    };
+  });
+  expect(focused.ok, `settings 未聚焦锚线: ${JSON.stringify(focused)}`).toBe(true);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="settings"]')).toHaveClass(/c-navwheel__item--active/);
+});
+
+test('设置模式：退出 ⚙ 后左窗滚回原应用项聚焦锚线（对称）', async ({ page }) => {
+  await page.goto(APP_URL);
+  // 前置：滚左窗到 account，进入设置，再退出 —— 左窗应从 settings 滚回 account
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]').click();
+  await page.waitForTimeout(400);
+  const settingsBtn = page.locator('.app-main .c-titlebar__control--settings');
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  await settingsBtn.click();
+  await page.waitForTimeout(400);
+  const focused = await page.evaluate(() => {
+    const navL = document.querySelector('.app-main__nav-l');
+    if (!navL) return { ok: false, reason: 'no navL' };
+    const anchor = navL.clientHeight * 0.382;
+    const item = document.querySelector('.app-main__nav-l .c-navwheel__item[data-id="account"]');
+    if (!item) return { ok: false, reason: 'no account item' };
+    const center = item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+    return {
+      ok: Math.abs(center - anchor) < 60,
+      center,
+      anchor,
+      active: item.classList.contains('c-navwheel__item--active'),
+    };
+  });
+  expect(focused.ok, `account 未聚焦锚线: ${JSON.stringify(focused)}`).toBe(true);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="account"]')).toHaveClass(/c-navwheel__item--active/);
 });
 
 test('设置模式：选择「外观」→ 内容区设置页含 cust-group 6', async ({ page }) => {
@@ -575,6 +644,7 @@ test('Tauri：FloatBall 展开显示/聚焦独立 strip 窗口；配置同步 se
           setFocus: () => { shown.push('setFocus'); return Promise.resolve(); },
         }]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__stripShown__ = shown;
@@ -625,6 +695,7 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
         getAllWindows: () => Promise.resolve([]),
       },
+      event: { listen: async () => () => {} }, // 补 mock 缺口（jump-to-tokentool 监听依赖 __TAURI__.event，缺失会同步抛 TypeError 中断 mountAppMode）
       core: { invoke: (cmd, args) => { invokes.push({ cmd, args }); return Promise.resolve(); } },
     };
     window.__closeBehaviorInvokes__ = invokes;
@@ -646,6 +717,33 @@ test('Tauri：切「保留后台」→ set_close_behavior invoke 同步 Rust；�
   await page.locator('.app-main .csettings__mode[data-mode="dark"]').click();
   await expect(group.locator('[data-close-behavior="background"]')).toHaveClass(/csettings__mode--active/);
   await expect(group.locator('[data-close-behavior="exit"]')).not.toHaveClass(/csettings__mode--active/);
+});
+
+// —— 跳转通道（ui/strip-ui-m9 补全）：strip「跳转到 TokenTool」事件 → 主窗除内容/右窗外，
+// 主菜单（左窗导航轮）也必须切到 TokenTool —— 程序化跳转须经左轮 scrollToIndex → onChange 联动
+// （直接 setModule 只切内容/右窗，左窗选中态停在原项 = 「主菜单没跳、子菜单跳了」bug）。
+test('Tauri：jump-to-tokentool 事件 → 主菜单左窗也切到 TokenTool（内容+右窗+左窗选中一致）', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      event: { listen: async (ev, cb) => { if (ev === 'jump-to-tokentool') window.__jumpListener__ = cb; return () => {}; } },
+      core: { invoke: () => Promise.resolve() },
+    };
+  });
+  await page.goto('/?mode=app');
+  // 初始：主菜单停在概览（home），TokenTool 未选中
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]')).not.toHaveClass(/c-navwheel__item--active/);
+  // 触发 strip 跳转事件（真实链路：strip 按钮 → emit jump-to-tokentool）
+  await page.evaluate(() => window.__jumpListener__({ payload: null }));
+  // 主菜单（左窗）切到 TokenTool：高亮转移 + 内容切到 TokenTool 页 + 右窗目录轮 usage 选中
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]')).toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__nav-l .c-navwheel__item[data-id="home"]')).not.toHaveClass(/c-navwheel__item--active/);
+  await expect(page.locator('.app-main__page--active')).toHaveAttribute('data-page', 'token-tool');
+  await expect(page.locator('.app-main__nav-r .c-navwheel__item[data-id="usage"]')).toHaveClass(/c-navwheel__item--active/);
 });
 
 // —— B5-4 自适应布局（Task B5-4：内容区限宽居中 + 展示分区撑满）——

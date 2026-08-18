@@ -34,17 +34,13 @@ export function formatRelative(epochSecs) {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
 }
 
-export function accountCard(account, balance) {
+// 余量展示页卡片（只读）：头部 = 名称+badge；主体 = 余额/窗口进度；底部 = 上次刷新。
+// 无任何操作按钮 —— 账户管理（测试/编辑/删除）在账户管理页。
+export function usageCard(account, balance) {
   const isOpen = account.kind === 'opencode_go';
   const last = balance?.lastUpdated
     ? `<span class="tt__card-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
-    : '';
-  const actions = `
-    <span class="tt__card-actions">
-      <span data-tt-action="test">${renderButton({ label: '测试', variant: 'secondary', size: 'sm' })}</span>
-      <span data-tt-action="edit">${renderButton({ label: '编辑', variant: 'secondary', size: 'sm' })}</span>
-      <span data-tt-action="del">${renderButton({ label: '删除', variant: 'danger', size: 'sm' })}</span>
-    </span>`;
+    : '<span class="tt__card-last">尚未刷新</span>';
   let body = '';
   if (balance?.error) {
     body += `<div class="tt__card-error">${escapeHtml(balance.error)}</div>`;
@@ -75,9 +71,32 @@ export function accountCard(account, balance) {
       <div class="tt__card-head">
         <strong class="tt__card-name">${escapeHtml(account.name)}</strong>
         ${renderBadge({ label: isOpen ? 'OpenCode Go' : 'DeepSeek', variant: isOpen ? 'info' : 'accent' })}
-        ${last}
-        ${actions}
       </div>
       ${body}
+      <div class="tt__card-foot">${last}</div>
+    </div>`;
+}
+
+// 账户管理页行：名称 + badge + 动态刷新文案 + 上次刷新 + 操作列（测试/编辑/删除，固定列，不随文本浮动）。
+export function accountRow(account, balance) {
+  const isOpen = account.kind === 'opencode_go';
+  const last = balance?.lastUpdated
+    ? `<span class="tt__row-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
+    : '<span class="tt__row-last">尚未刷新</span>';
+  const actions = `
+    <span class="tt__row-actions">
+      <span data-tt-action="test">${renderButton({ label: '测试', variant: 'secondary', size: 'sm' })}</span>
+      <span data-tt-action="edit">${renderButton({ label: '编辑', variant: 'secondary', size: 'sm' })}</span>
+      <span data-tt-action="del">${renderButton({ label: '删除', variant: 'danger', size: 'sm' })}</span>
+    </span>`;
+  return `
+    <div class="tt__row" data-tt-id="${escapeHtml(account.id)}">
+      <div class="tt__row-main">
+        <strong class="tt__row-name">${escapeHtml(account.name)}</strong>
+        ${renderBadge({ label: isOpen ? 'OpenCode Go' : 'DeepSeek', variant: isOpen ? 'info' : 'accent' })}
+        <span class="tt__row-meta">动态 30s~5min 自适应</span>
+        ${last}
+      </div>
+      ${actions}
     </div>`;
 }

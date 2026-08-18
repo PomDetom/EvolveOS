@@ -156,3 +156,27 @@
 - Important 2: plan/设计规格文档未提交到分支（在 main 66b9cfc/59c9152/57a2578），账本引用需显式说明（不重复提交以免合并冲突）。
 - Minor 清扫（修复波含）：commands.rs 未用 `Manager` 导入、models.rs `AccountKind::label()` 死代码（Rust 警告清扫）；`unlisten` 赋值竞态（trivial）。
 - Minor（deferred，账本已有 + 新增）：编辑对话框缺 Tab 焦点圈定（a11y 低影响）；`config-updated`/`balance-updated`(单数) 事件发射但前端未监听（无害）；`test_one` spawn 失败兜底 `last_updated:0` 显示 1970 日期（罕见路径）；Cargo.toml `tokio full`/`reqwest json` 特性可裁剪（编译时间）；ledger Task 9 块待填（修复波后控制器补）。
+
+## 悬浮条优化轮（2026-08-15，ui/strip-ui-m9，用户 2 项）
+
+- **Bug（唤回最小化主窗）**：跳转余量页在 UI 最小化后只后台跳页、不唤出主窗。根因双因：① `capabilities/default.json` 缺 `core:window:allow-unminimize`，`main.unminimize()` 被静默拒绝（JS `.catch` 吞错）；② unminimize/show/setFocus 三个 promise 未 await，Windows 下对最小化窗 setFocus 唤不回。修复：补 `allow-unminimize` + `allow-is-minimized` 权限；跳转处理器加 `isMinimized` 守卫（非最小化跳过 unminimize，防 SW_RESTORE 把最大化主窗还原）+ 顺序 await。e2e 新断言：isMinimized 先于 unminimize；新增「非最小化跳过 unminimize」用例锁防回归。
+- **优化（实底阴影落窗）**：实底材质 box-shadow 落在透明窗口边界外被裁（窗口按 strip border-box 贴合、body margin 0）→ 观感平底。修复：themes.css 新增双层浮起令牌 `--shadow-float`（接触影 + 环境影，亮/暗两档，复用 `--shadow-intensity`）；`.strip-root--window` 加 `--strip-shadow-room: 32px`（padding + `width:max-content` 单源决定窗口尺寸）；`fit()` 改量 root（含留白）→ 阴影落在窗口内可见。e2e 新用例：贴合尺寸含 2×room + 计算样式为双层阴影。视觉基线零漂移（`.c-strip` 不在基线截图内）。
+- 验证：单测 23/23（含 capabilities 补权限断言）；floatstrip e2e 14/14；app-shell 冒烟 43/43；`npm run build` 通过。
+- 待桌面真机验证：真实 unminimize 唤起路径（mock 只验 JS 调用形态）。
+
+## 悬浮条优化轮 2（2026-08-15，ui/strip-ui-m10，用户 2 项反馈）
+
+- **优化撤回（阴影→淡灰边框）**：m9 的阴影方案（`--shadow-float` + 窗口留白）用户目检后否决——阴影在透明窗外被裁无效果，且留白增大窗口脚掌。最终方案：**去 box-shadow**（idle none，过渡列表同步移除），改**淡灰边框**——idle `1px var(--text-3)`、hover 提一级 `var(--text-2)`（复用文本色令牌做主题感知边框，同 `layout.css` 先例）。回退 m9 的全部阴影面：themes.css 删 `--shadow-float`（两档）、`.strip-root--window` 去留白块、`fit()` 改回量 strip。e2e 用例改写：删「阴影留白」用例，原「无边框 hover 浮出」改为「边框对比度 + hover 控制块浮出」（idle 边框非透明 + box-shadow none + hover 边框变化）。
+- **Bug（跳转只切子菜单不切主菜单）**：m9 修复唤出后，用户反馈「主菜单没跳转、只有子菜单跳了」。根因：跳转通道直接 `setModule('token-tool')`——setModule 只切内容/右窗，左窗导航轮选中态是 nav-wheel 自管，程序化调用不经过左轮 → 左窗停在原项。修复：抽 `jumpToTokenTool()` = `setModule('token-tool', true)`（强制落 usage 余量页，含已在该应用时重置 dirId）+ `goToModule('token-tool')`（左轮 scrollToIndex → onChange → onLeftSelect 联动主菜单选中，幂等），双通道（emit / visibilitychange）统一走该 helper。e2e 新用例：jump-to-tokentool 事件后左窗 `[data-id=token-tool]` active + home 失活 + 内容 `data-page=token-tool` + 右窗 usage 选中。
+- 验证：floatstrip e2e 13/13；app-shell 跳转用例 1/1；单测 23/23；`npm run build` 通过。视觉基线零漂移（`.c-strip` 不在基线截图内；`--shadow-float` 无其他消费方）。
+
+## 悬浮条优化轮 3（贴边收起，2026-08-15，ui/strip-edge-collapse，用户 3 点探讨）
+
+- **状态机（4 态）**：`自由(Free) →(溢出校正/贴靠)→ 贴边(Docked) →(空闲 1s)→ 收起(Collapsed)`；拖动 / hover 窄条弹回。贴边态光标离开起 1s 计时；收起态 `fit()` 挂起、收起滑出期间跳过位置持久化；收起 tween 为 OS 层 `setPosition` rAF 逐帧（ease-out ~500ms，非 CSS 布局动画，不触动画红线），时长经 `getComputedStyle(strip)` 读 `--strip-dur-collapse`（动效降级归零）。
+- **先决校正**：拖拽结束（`onMoved` 去抖）窗口某边**溢出** monitor bounds → 先 `setPosition` 拉回贴齐完整可见 → 再进贴边计时。pre-flight 修正：`getRect` 用 `?.()` 兼容缺 screen/outerSize 的旧窗口 mock；`evaluateDock` 返回 boolean（有能力则内部持久化），onMoved 收起守卫（`collapsed||collapseRaf` 跳过评估/持久化）防 tween 程序化 setPosition 打架。
+- **用户选定**：进入贴边**仅溢出校正**（不做磁吸，靠边未溢出不吸附不进计时）；收起形态 **B 边缘小把手**（~20px 边带 + `data-dock-edge` 定向 chevron grip，仅 Tauri 窗口模式渲染、收起态才显示）；触发语义**标准自动隐藏**（hover/拖动/点击取消 1s 计时，离开重计）。
+- **提交**（`aa59310..edd5dc9`，9 commits）：`aa59310` 设计规格 → `7a7cc9d` 实施计划（5 任务 TDD）→ `c9902f9` Task1 几何纯函数（边缘/溢出/收起目标/grip 方向）→ `8bebbd6` 预扫描修正 → `fb13689` Task2 权限（`core:window:allow-current-monitor` + `core:window:allow-outer-size`）→ `1f03774` Task3 grip 渲染 + 收起态样式 → `77be6d5` Task3 fix（grip 锚定特异性提 `.strip-root--window .c-strip--collapsed`）→ `127264a` Task4 状态机 + 编排 → `edd5dc9` Task4 fix（tweenTo 返回 Promise 保时序 + `readMotionDur` 改读 strip）。Task3/4 各 1 轮 fix round（评审 Important 全 ADDRESSED），Minor deferred 明细见 `.superpowers/sdd/2026-08-15-strip-edge-collapse/progress.md`。
+- **收尾修正**（`95c0109` Task5 账本 + `d7f2988` 整分支评审 fix 波（collapseNow hover 间隙守卫 / e2e 移离坐标 / grip 真 (0,3,0) 特异性）+ `d8a477c` I1 口径修正）：用户拍板**严格贴边口径**（贴边 = 距离 0 精确贴齐 或 故意溢出触发校正后；≤6px 未溢出不进收起计时），`DOCK_TOLERANCE` 6→0，spec/plan/测试同步。整分支评审（opus）0 Critical，修复全 ADDRESSED。最终提交范围 `aa59310..d8a477c`（12 commits）。
+- **验证**：单测 32/32（strip-edge 8 + strip-main 13 + float-strip 8 + strip-sizing 1 + window-capabilities 2）；floatstrip e2e 16/16（含 3 新增收起用例：半出屏先决校正、hover 取消计时、贴底 1s 收起→hover 弹回）+ app-shell 冒烟 44/44，合计 60/60；`npm run build` 通过。视觉基线零漂移（`.c-strip` 不在基线截图内；`--strip-dur-collapse` 无基线影响）。
+- **待桌面真机验证**（web 测试只验 JS 调用形态）：真实显示器 bounds 与 DPI 坐标口径（`outerPosition`/`outerSize` 物理 vs `currentMonitor` bounds 物理）；窗口大部分滑出屏后可见窄条 hover 事件可达性（Windows 命中测试）；角位主贴靠边选择与收起方向观感。
+- **真机 bug 三连（tauri:dev 构建失败 + 特性全不生效 → 修复后真机验证通过）**：① 首版 `core:screen:allow-current-monitor` 构建报「Permission not found」；② 修权限后用 `win.currentMonitor()` / `__TAURI__.screen`，真机实测均 undefined（全局 shim 缺 monitor API，web mock 掩盖）；③ **真机连 `outerPosition`/`outerSize` 也缺**（getRect 恒 null，轮询不触发），且 JS `onMoved` 在系统拖动期间不可靠（参考 codeplan-usage legacy floating 注释「不依赖 WindowEvent::Moved」）。最终修复：**全部窗口操作走 Rust 命令** —— `get_current_monitor`（显示器 bounds）/ `get_window_rect`（位置尺寸）/ `set_window_pos`（移动），JS getRect/tweenTo/位置恢复/持久化改走 `invoke`；**评估触发改后台轮询**（每 150ms 读位置，连续两次相同=松手 → evaluateDock，参考 COLLAPSE_POLL）；popOut 立即置 docked + startCollapseTimer 加 `collapseRaf` 守卫（防 tween 期间重复 mouseenter 反复重启 tween 跑飞）；移除已不用的 `core:window:allow-current-monitor` 权限。真机调试用 `.c-strip__debug` DOM 读条（壳层禁右键无 DevTools），确认生效后移除。**用户真机目检确认：先决校正/1s 缓收起/hover 弹回均正常。** 分支 `ui/strip-edge-debug` 承载调试与修复，改完并入 dev。

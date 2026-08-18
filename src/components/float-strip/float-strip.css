@@ -1,9 +1,11 @@
-/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 无边框 hover 浮现。
+/* FloatStrip 悬浮条（Task A5，规格 §5）：横竖双形态 / 四边磁吸 / 实底边框对比度。
    定位模型：position:fixed 底右 dock（right/bottom = --strip-gap），全部位移经
    transform: translate(dx,dy)（红线段：不触发布局动画，磁吸贴边不 animate 宽/高/left/top）。
    形态：--strip-orientation 语义态（horizontal|vertical）+ data-orientation 翻转，
    flex-direction 随形态切换（布局属性瞬时切换，不做动画）。
-   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/阴影/背景为 paint-only 豁免
+   边框：实底常态 1px var(--text-3) 淡灰边框，hover 提至 --text-2 ——
+   不用 box-shadow（透明窗按 strip border-box 贴合，阴影落在窗外被裁、无效果，ui/strip-ui-m9）。
+   红线段：旋转切换/磁吸/浮现只动 transform/opacity；边框/背景为 paint-only 豁免
    （hover 短暂状态过渡）；模糊（backdrop-filter）静态、永不动画；时长/曲线一律经 CSS 变量。 */
 
 .c-strip {
@@ -12,35 +14,40 @@
   bottom: var(--strip-gap, var(--space-4));
   z-index: var(--z-float);
   --strip-gap: var(--space-4);
-  --strip-thick: 48px;
   --strip-orientation: horizontal; /* 语义态：horizontal | vertical（data-orientation 同步） */
   display: flex;
+  align-items: center; /* 横排内容垂直居中（子项默认 stretch 会撑满交叉轴） */
   box-sizing: border-box;
   max-width: calc(100vw - var(--strip-gap) * 2);
   max-height: calc(100vh - var(--strip-gap) * 2);
   overflow: hidden;
-  border: 1px solid transparent; /* 常态零边框（border-width 恒定，hover 只换色，无布局位移） */
+  border: 1px solid var(--text-3); /* 实底常态淡灰边框（对比度克制；border-width 恒定，hover 只换色，无布局位移） */
   border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--acrylic-saturate)) brightness(var(--acrylic-brightness)); /* 静态材质，永不动画 */
+  background: var(--surface-solid); /* 实底材质（默认）：无透明、无模糊；无背景态由 html[data-strip-material="none"] 覆盖 */
+  backdrop-filter: none;
   color: var(--text-1);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: none;
-  /* 磁吸贴边位移 300ms spring + 边框/阴影 hover 过渡（paint-only 豁免） */
+  /* 磁吸贴边位移 300ms spring + 边框 hover 过渡（paint-only 豁免） */
   transition: transform var(--dur-slow) var(--ease-spring),
-    border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out);
+    border-color var(--dur-base) var(--ease-out);
 }
 .c-strip[data-orientation="vertical"] { --strip-orientation: vertical; }
-.c-strip--horizontal { min-height: var(--strip-thick); width: max-content; }
-.c-strip--vertical { min-width: var(--strip-thick); height: max-content; }
+/* 尺寸适应内容：去掉固定厚度/宽度，改由 strip 层 padding 统一留白（内容区不再自带 padding，避免双内边距） */
+.c-strip--horizontal { padding: var(--space-2) var(--space-3); width: max-content; }
+.c-strip--vertical { padding: var(--space-2) var(--space-3); height: max-content; }
 /* 拖动/旋转期间瞬时响应：关掉容器 transform 过渡（避免跟手滞后），松手/翻转后再启用 */
 .c-strip--dragging, .c-strip--rotating { transition: none; }
 .c-strip:hover {
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  border-color: var(--text-2); /* hover 边框提一级（--text-3 → --text-2） */
+}
+/* 无背景材质（stripMaterial: none）：仅文字，无底/边/影 —— 特异性高于 .c-strip:hover 的 box-shadow/border-color */
+html[data-strip-material="none"] .c-strip {
+  background: transparent;
+  backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* —— 内容区（可拖）——
@@ -61,30 +68,31 @@
 /* 旋转中：内容淡出 + 轻微缩放（只动 transform/opacity），翻转到新形态后淡入 */
 .c-strip--rotating .c-strip__content { opacity: 0; transform: scale(0.95); }
 
-/* —— hover 浮现控制条（旋转/拖动/关闭）——
-   常态 opacity:0 + pointer-events:none（无边框内容优先）；hover 浮现半透明细边框 + 控制条。 */
+/* —— hover 浮出控制块（旋转/拖动/关闭）——
+   控制块 idle display:none（不占布局空间 → 悬浮条=内容高度，最薄）；hover 浮出
+   display:flex/grid（悬浮条/窗口容纳控制块）。display 切换无淡入，过渡只留 border-color。 */
 .c-strip__ctrl {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 2px;
   padding: 2px;
-  opacity: 0;
-  pointer-events: none;
   border: 1px solid transparent;
-  transition: opacity var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--ease-out),
-    border-color var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out);
 }
 .c-strip:hover .c-strip__ctrl {
-  opacity: 1;
-  pointer-events: auto;
+  display: flex;
   border-color: var(--glass-border);
 }
-/* horizontal：控制条竖排在内容右侧；vertical：控制条横排在内容下侧 */
-.c-strip--horizontal .c-strip__ctrl { flex-direction: column; }
-.c-strip--vertical .c-strip__ctrl { flex-direction: row; }
+/* 控制块方向随形态对调：横排时 ctrl 为 2×2 按钮方阵（4 按钮一行两个），竖排时 ctrl 为竖排按钮列（不撑宽竖条）。
+   display 走通用 hover flex；横排 hover 覆盖为 grid（0,3,0 同特异度，置于 hover flex 规则后生效）。 */
+.c-strip--horizontal .c-strip__ctrl {
+  grid-template-columns: repeat(2, 26px);
+  flex-direction: unset;
+}
+.c-strip--horizontal:hover .c-strip__ctrl { display: grid; }
+.c-strip--vertical .c-strip__ctrl { flex-direction: column; }
 
-.c-strip__ctrl button, .c-strip__drag {
+.c-strip__ctrl button {
   width: 26px;
   height: 26px;
   display: grid;
@@ -96,9 +104,6 @@
 }
 .c-strip__ctrl button:hover { color: var(--text-1); background: var(--surface-hover); }
 .c-strip__close:hover { color: var(--danger-500); }
-.c-strip__drag { cursor: grab; touch-action: none; }
-.c-strip__drag:hover { color: var(--text-1); background: var(--surface-hover); }
-.c-strip__drag:active { cursor: grabbing; }
 
 /* —— token 监测内容模板（renderTokenMonitor，供后续应用复用）——
    数值 + 状态点（OK/WARN/ERR 语义色）+ 迷你趋势条（纯 div + transform scaleY，红线段）。 */
@@ -106,7 +111,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
   line-height: 1;
   white-space: nowrap;
@@ -137,6 +141,64 @@
   transform-origin: bottom;
 }
 
+/* —— token 实时监测内容（strip-main.js renderStripToken，真实账户数据）——
+   每账户一行 chip = 状态点 + 名称 + 值 + 上次刷新时间；横向排列随 strip 形态，名称固定列宽对齐。 */
+.c-strip-tk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+/* 竖排：每行一个账户（chip 纵向堆叠，左对齐）；横排保持单行横向排列 */
+.c-strip[data-orientation="vertical"] .c-strip-tk {
+  flex-direction: column;
+  align-items: stretch; /* 行拉伸填宽：配合 .c-strip-tk__time margin-left:auto 使时间右缘对齐 */
+}
+/* 横排账户间距双倍（12→24px，观感拉开；竖排保持原 gap） */
+.c-strip[data-orientation="horizontal"] .c-strip-tk { gap: var(--space-5); }
+.c-strip-tk__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* 名称 min-width 72px：常见短名对齐；超长名完整显示不省略（仅超 viewport 才被 strip 裁切） */
+.c-strip-tk__name {
+  color: var(--text-2);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  min-width: 72px;
+  white-space: nowrap;
+}
+.c-strip-tk__value {
+  color: var(--text-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.c-strip-tk__time {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto; /* 右对齐：竖排堆叠行拉伸后时间右缘对齐 */
+}
+.c-strip-tk__muted {
+  color: var(--text-3);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+.c-strip-tk__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--success-500);
+}
+.c-strip-tk__dot--warn { background: var(--warning-500); }
+.c-strip-tk__dot--err { background: var(--danger-500); }
+.c-strip-tk__dot--none { background: var(--text-3); }
+
 /* B4-6：独立窗口模式 —— strip 铺满窗口（窗口尺寸=内容），去掉底右 dock 定位；
    同时禁用 backdrop-filter：透明窗口内无可模糊对象，且 WebView2 下 backdrop-filter 会渲染成
    未按 border-radius 裁剪的方形图层（竖排时底部圆角被遮成直角），禁用后仅留玻璃底色 + 圆角 */
@@ -148,3 +210,37 @@
 /* 窗口模式下竖排也必须内容宽度（width:auto + position:static 会填满窗口，把控制条裁掉、
    并破坏底部圆角）—— 与横向 width:max-content 一致 */
 .strip-root--window .c-strip--vertical { width: max-content; }
+
+/* 贴边收起（ui/strip-edge-collapse）：收起态窗口经 setPosition 滑出屏，屏幕内只剩靠中心一侧
+   ~20px 边带；grip 仅收起态显示、绝对定位不占布局；chevron 按 data-dock-edge 静态旋转定向
+   （transform，非动画）。--strip-dur-collapse 供 strip-main.js 读取（JS tween 时长）。 */
+.c-strip {
+  --strip-dur-collapse: 500ms;
+}
+.c-strip__grip {
+  position: absolute;
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 16px;
+  color: var(--text-3);
+  pointer-events: none; /* 装饰元素：不拦截 hover/拖拽 */
+}
+.c-strip__grip svg { width: 12px; height: 12px; }
+/* 收起态：strip 转相对定位容器（锚定 grip），grip 浮出 */
+/* fix2：复合选择器真 (0,3,0) 特异性 —— 收起只发生在窗口模式；裸 .c-strip--collapsed (0,1,0)
+   会被既有 .strip-root--window .c-strip { position: static } (0,2,0) 覆盖，grip 绝对定位
+   会锚到视口而非 strip（竖排 width:max-content 下 left:50% 相对视口必错位）。
+   .c-strip.c-strip--collapsed 双类与容器类同现 → 特异度 (0,2,0)+(0,1,0)=(0,3,0)，不靠源序
+   压过 static 规则（抗未来重排），grip 恒锚 strip。 */
+.strip-root--window .c-strip.c-strip--collapsed { position: relative; }
+.c-strip--collapsed .c-strip__grip { display: grid; }
+/* 按贴靠边把 grip 放到屏幕内可见边（窗口靠中心一侧），chevron 指向拉出方向（朝屏幕中心） */
+.c-strip--collapsed[data-dock-edge="bottom"] .c-strip__grip { top: 2px; left: 50%; transform: translateX(-50%); }
+.c-strip--collapsed[data-dock-edge="bottom"] .c-strip__grip svg { transform: none; }        /* up */
+.c-strip--collapsed[data-dock-edge="top"] .c-strip__grip { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.c-strip--collapsed[data-dock-edge="top"] .c-strip__grip svg { transform: rotate(180deg); } /* down */
+.c-strip--collapsed[data-dock-edge="left"] .c-strip__grip { right: 2px; top: 50%; transform: translateY(-50%); }
+.c-strip--collapsed[data-dock-edge="left"] .c-strip__grip svg { transform: rotate(90deg); }  /* right */
+.c-strip--collapsed[data-dock-edge="right"] .c-strip__grip { left: 2px; top: 50%; transform: translateY(-50%); }
+.c-strip--collapsed[data-dock-edge="right"] .c-strip__grip svg { transform: rotate(-90deg); } /* left */

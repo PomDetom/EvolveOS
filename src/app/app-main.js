@@ -20,6 +20,7 @@ import { APP_SECTIONS, renderSettingsPages, mountSettingsInteractions } from '..
 import { getConfig, saveConfig, subscribe } from '../config/store.js';
 import { resolveNav } from '../config/nav.js';
 import { applyConfig, prefersDark } from '../config/apply.js';
+import { signalWhenPainted } from './startup-signal.js';
 import '../components/float-strip/float-strip.css';
 import './app-main.css';
 import './partitions.css';
@@ -460,12 +461,23 @@ export function mountAppMode(root) {
   }
 
   // —— 设置模式（⚙）：进入 = 右窗切为设置目录（内容区设置页）；再次点击/收起 = 退出回应用模式 ——
+  // 左窗滚动聚焦 helper：设置模式进入/退出时左窗须滚动聚焦目标项（非仅高亮）。
+  // 左窗点击走 onClick → select(i, true) 带动画滚动；而 ⚙/退出路径若只 setActive
+  // （select(i, false)）则左窗停在原位 —— 目标项虽加高亮类但未滚到锚线，
+  // 即「⚙ 有高亮但未聚焦设置菜单」缺陷。目标项被 nav.hidden 隐藏（MODULES 无此项）
+  // 时回退 setActive 仅高亮（防 scrollToIndex(-1) clamp 到首项误跳转）。
+  function focusLeftItem(id) {
+    const i = MODULES.findIndex((m) => m.id === id);
+    if (i >= 0) leftWheel.scrollToIndex(i);
+    else leftWheel.setActive(id);
+  }
+
   function setSettingsMode() {
     if (state.rightMode === 'settings') return;
     state.rightMode = 'settings';
     state.rightOpen = true;
     ensureActiveModule(); // 0.1.2 兜底：进入设置前保证激活模块可见（防御性，正常路径恒有效）
-    leftWheel.setActive('settings'); // 左窗高亮同步：设置内置模块项
+    focusLeftItem('settings'); // 左窗滚动聚焦设置项（高亮 + 滚到锚线；替代仅 setActive）
     renderRight();
     renderPages();
     applyRightOpen();
@@ -476,7 +488,7 @@ export function mountAppMode(root) {
     state.rightMode = 'apps';
     state.rightOpen = false;
     ensureActiveModule(); // 0.1.2 兜底：当前激活应用若在设置期间被隐藏 → 切到首个可见，防 setActive/render 崩溃
-    leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
+    focusLeftItem(state.moduleId); // 左窗滚动聚焦恢复：回到左窗选中应用项（滚回锚线，替代仅 setActive）
     renderRight(); // 右窗回应用目录轮（收起也重渲染 —— 避免重开后残留设置目录轮，违反「apps 模式右窗=应用目录」不变量）
     renderPages(); // 内容区回到左窗选中应用页
     applyRightOpen();
@@ -513,7 +525,7 @@ export function mountAppMode(root) {
     if (wasSettings) {
       state.rightMode = 'apps';
       ensureActiveModule(); // 0.1.2 兜底：同 exitSettingsMode —— 退出设置时激活应用被隐藏则切走
-      leftWheel.setActive(state.moduleId); // 左窗高亮恢复：回到左窗选中应用项
+      focusLeftItem(state.moduleId); // 左窗滚动聚焦恢复：回到左窗选中应用项（滚回锚线，替代仅 setActive）
       renderRight(); // 同上：退出设置模式即重渲染应用目录轮，重开后不残留设置轮
       renderPages();
     }
@@ -727,8 +739,8 @@ export function mountAppMode(root) {
       onChange: (item) => onLeftSelect(item.id),
       anchorRatio: 0.382,
     });
-    // 若设置模式激活，左窗高亮 settings；否则保持当前 moduleId
-    leftWheel.setActive(state.rightMode === 'settings' ? 'settings' : state.moduleId);
+    // 若设置模式激活，左窗聚焦 settings；否则聚焦当前 moduleId（重建后须滚动聚焦锚线，防只高亮不可见）
+    focusLeftItem(state.rightMode === 'settings' ? 'settings' : state.moduleId);
     // 手机 dock 重建（若已挂载）
     if (dockMounted) mountDock(true); // 强制重挂（dockMounted 保持 true）
     if (state.rightMode === 'settings') return; // 设置轮不受 moduleId 影响；退出时按新 moduleId 重渲
@@ -846,14 +858,35 @@ export function mountAppMode(root) {
   mountTitleBar(appMain);
   bindWindowControls();
 
-  // —— 初始渲染：全部 7 应用页 + 激活概览页 + 右窗收起（单窗口态）；
-  //   设置页（第 8 区）已随模板渲染，此处跳过 ——
-  pages.forEach((page) => {
-    if (page.dataset.page === 'settings') return;
-    const mod = MODULES.find((m) => m.id === page.dataset.page);
-    if (mod?.render) page.innerHTML = mod.render(modCtx(mod)); // review ① 防御：模块缺失则留空
+  // FloatStrip 跳转通道（ui/strip-ui-opt）：strip 窗口「跳转到 TokenTool」按钮 →
+  // 主窗跳到 TokenTool 余量页（usage）并切回应用模式。
+  // 双通道（覆盖隐藏→唤起）：① jump-to-tokentool 事件（主窗可见时直接消费）；
+  // ② ui-jump-intent（strip 先写 intent 再 show 主窗，主窗 visibilitychange visible 时消费）
+  // —— 任一通道消费后先清 intent，防陈旧 intent 在主窗后续被唤起点亮时误跳转。
+  // 跳转须「内容 + 主菜单」双落：直接 setModule 只切内容/右窗，左窗导航轮选中态停原项
+  // （= 主菜单不跳、子菜单跳了，ui/strip-ui-m9 用户反馈）；先强制落 usage（含已在该应用时
+  // 重置 dirId），再经左轮 scrollToIndex → onChange → onLeftSelect 联动主菜单选中（幂等）。
+  function jumpToTokenTool() {
+    setModule('token-tool', true);
+    goToModule('token-tool');
+  }
+  if (typeof window.__TAURI__ !== 'undefined') {
+    window.__TAURI__.event.listen('jump-to-tokentool', () => {
+      localStorage.removeItem('ui-jump-intent');
+      jumpToTokenTool();
+    }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && localStorage.getItem('ui-jump-intent') === 'token-tool') {
+      localStorage.removeItem('ui-jump-intent');
+      jumpToTokenTool();
+    }
   });
-  pages.find((p) => p.dataset.page === state.moduleId)?.classList.add('app-main__page--active'); // review ① 防御：无对应页则跳过
+
+  // —— 初始渲染：懒渲染（ui/startup-opt）—— 启动只渲染激活页（概览），
+  //   其余应用页首激活时经 renderPages 渲染（原全页预渲染在冷启动把 7 页 render 全跑一遍）；
+  //   设置页（第 8 区）已随模板渲染，此处跳过。renderPages 负责 active 类 + render + mount。 ——
+  renderPages(); // 懒渲染：仅激活页渲染
   renderRight();
   applyRightOpen();
   renderStack(); // 手机形态基底页（概览）；桌面视口 display:none，不干扰桌面渲染
@@ -908,6 +941,16 @@ export function mountAppMode(root) {
   };
   syncCloseBehavior(getConfig());
   subscribe((cfg) => { syncCloseBehavior(cfg); });
+
+  // 主窗 hidden-until-ready（ui/startup-opt）：首帧绘制后通知 Rust 恢复几何并显示。
+  // 主窗 tauri.conf.json 设 visible:false，此处为唯一显示信号 —— 消除白屏与位置跳变；
+  // Rust 侧另有 10s 兜底（前端异常时也恢复几何并显示，防隐形窗口）。浏览器（无 __TAURI__）no-op。
+  if (typeof window.__TAURI__ !== 'undefined') {
+    signalWhenPainted(
+      (cb) => requestAnimationFrame(cb),
+      () => window.__TAURI__.core.invoke('main_window_ready').catch(() => {}),
+    );
+  }
 }
 
 // —— 概览页：欢迎卡 + 7 快捷入口卡（点击 = 展开右窗 + 切到该应用）+ 主题状态卡 ——

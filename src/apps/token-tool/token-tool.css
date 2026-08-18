@@ -18,6 +18,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4);
+  /* 边框自适应内容：卡片高度随内容（DeepSeek 小卡不再被 OpenCode 撑高），不沿行拉伸 */
+  align-items: start;
 }
 .tt__card {
   background: var(--glass-bg);
@@ -33,19 +35,19 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
 }
 .tt__card-name {
   color: var(--text-1);
 }
+/* 上次刷新固定卡片底部（不再随文本长度在头部浮动换行） */
+.tt__card-foot {
+  margin-top: auto;
+  border-top: 1px solid var(--glass-border);
+  padding-top: var(--space-2);
+}
 .tt__card-last {
   font-size: var(--font-size-xs);
   color: var(--text-3);
-  margin-left: auto;
-}
-.tt__card-actions {
-  display: flex;
-  gap: var(--space-1);
 }
 .tt__card-error {
   font-size: var(--font-size-sm);
@@ -86,8 +88,71 @@
   font-size: var(--font-size-sm);
   color: var(--text-3);
 }
+
+/* —— 账户管理页：账户行 —— */
+.tt__accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.tt__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-md) * var(--radius-scale, 1));
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+.tt__row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.tt__row-name {
+  color: var(--text-1);
+}
+.tt__row-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-3);
+}
+.tt__row-last {
+  font-size: var(--font-size-xs);
+  color: var(--text-3);
+}
+/* 操作列固定右侧（不随上次刷新文本长度浮动） */
+.tt__row-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex: none;
+}
 /* 添加/编辑账户对话框：实底材质（与主页面一致，非透明毛玻璃）——覆盖框架 .c-dialog 的玻璃面板 */
 .tt__editor .c-dialog {
   background: var(--surface-solid);
   backdrop-filter: none;
+  /* 高度适配（与 key 编辑器同步）：表单字段多时不高出视口，body 可滚动、底部按钮常驻；
+     窄窗（480）曾溢出、底部贴边 */
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+}
+.tt__editor .c-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+/* —— 编辑器表单字段（与 key 编辑器 .key__field 同构：纵向 flex + gap）—— */
+.tt__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.tt__field { display: flex; flex-direction: column; gap: var(--space-2); }
+/* .tt__field 的 display:flex 会覆盖 [hidden] 的 UA display:none，必须显式恢复隐藏语义
+   （OpenCode/DeepSeek 联动字段靠 hidden 切换显隐） */
+.tt__field[hidden] { display: none; }
+.tt__field-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-2);
 }

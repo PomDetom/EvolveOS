@@ -12,13 +12,14 @@ import { icon } from '../icon/icon.js';
 const SNAP_DIST = 24; // 距屏幕边缘 < 24px 吸附（贴边）
 const MOVE_THRESHOLD = 2; // 像素级移动判定：双击/点击不触发吸附
 
-export function renderFloatStrip({ content = '', showRestore = false } = {}) {
+export function renderFloatStrip({ content = '', showJump = false, collapsible = false } = {}) {
   return `<div class="c-strip c-strip--horizontal" data-orientation="horizontal">
+    ${collapsible ? `<span class="c-strip__grip" aria-hidden="true">${icon('chevron-up', 12)}</span>` : ''}
     <div class="c-strip__content">${content}</div>
     <div class="c-strip__ctrl" role="toolbar" aria-label="悬浮条控制">
-      ${showRestore ? `<button class="c-strip__restore" type="button" title="恢复主窗" aria-label="恢复主窗">${icon('layout', 14)}</button>` : ''}
+      ${showJump ? `<button class="c-strip__jump" type="button" title="跳转到 TokenTool 余量页" aria-label="跳转到 TokenTool 余量页">${icon('bolt', 14)}</button>` : ''}
+      <button class="c-strip__material" type="button" title="切换外观材质" aria-label="切换外观材质">${icon('layout', 14)}</button>
       <button class="c-strip__rotate" type="button" title="旋转" aria-label="旋转">${icon('refresh', 14)}</button>
-      <div class="c-strip__drag" role="button" title="拖动" aria-label="拖动">${icon('drag', 14)}</div>
       <button class="c-strip__close" type="button" title="关闭" aria-label="关闭">${icon('close', 14)}</button>
     </div>
   </div>`;
@@ -52,10 +53,8 @@ export function renderTokenMonitor({ value = '--', status = 'ok', trend = [] } =
 export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windowMode = false, onResize = () => {} } = {}) {
   const strip = root.classList.contains('c-strip') ? root : root.querySelector('.c-strip');
   if (!strip) return null;
-  const content = strip.querySelector('.c-strip__content');
   const rotateBtn = strip.querySelector('.c-strip__rotate');
   const closeBtn = strip.querySelector('.c-strip__close');
-  const dragHandle = strip.querySelector('.c-strip__drag');
 
   let orientation = strip.dataset.orientation === 'vertical' ? 'vertical' : 'horizontal';
 
@@ -161,13 +160,27 @@ export function mountFloatStrip(root, { onStateChange = () => {}, onClose, windo
   }
 
   rotateBtn?.addEventListener('click', toggleOrientation);
-  content?.addEventListener('pointerdown', startDrag);
-  content?.addEventListener('dblclick', toggleOrientation);
-  dragHandle?.addEventListener('pointerdown', startDrag);
+  // 整窗拖动：拖拽绑定从 content 扩到整个 strip 元素（跳过控制条 —— 控制按钮可点，不拖）。
+  // startDrag 逻辑不变：窗口模式 startDragging 拖整窗，浏览器模式 transform 拖整条。
+  strip.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.c-strip__ctrl')) return; // 控制按钮可点，不拖
+    startDrag(e);
+  });
+  // 双击旋转（第二通道）：拖拽 pointerdown 的 setPointerCapture 会把后续 click/dblclick 重定向到
+  // strip（捕获目标），故 dblclick 也必须绑在 strip 上并跳过控制条 —— 否则内容区双击不再触发旋转。
+  strip.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.c-strip__ctrl')) return; // 控制按钮可点，不触发旋转
+    toggleOrientation();
+  });
   closeBtn?.addEventListener('click', () => {
     if (onClose) onClose(strip);
     else strip.remove();
   });
+  // hover 控制块浮出 → 窗口重贴合（idle 薄条 ↔ hover 容纳控制块）
+  if (windowMode) {
+    strip.addEventListener('mouseenter', () => requestAnimationFrame(() => onResize()));
+    strip.addEventListener('mouseleave', () => requestAnimationFrame(() => onResize()));
+  }
 
   return {
     setOrientation: (o) => { if ((o === 'vertical' || o === 'horizontal') && o !== orientation) toggleOrientation(); },
