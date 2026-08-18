@@ -22,7 +22,7 @@ const GATE_REGISTRY = {
   'rust-check': { command: () => 'cargo check --manifest-path src-tauri/Cargo.toml' },
   'permission-check': { command: () => 'MANUAL: 记录 Tauri 权限检查', manual: true },
   'desktop-manual': { command: () => 'MANUAL: 记录真实 Windows 桌面验证', manual: true },
-  'version-consistency': { command: () => 'node scripts/check-version.js', manual: false },
+  'version-consistency': { command: () => 'node scripts/agent/check-version.js', manual: false },
   'user-confirmation': { command: () => 'MANUAL: 记录用户发版确认', manual: true },
 };
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { createEvidence, parseVerifyArgs, renderDryRun } from '../../scripts/agent/verify.js';
+import { readManifestVersions } from '../../scripts/agent/check-version.js';
 
 describe('agent:verify', () => {
   test('解析 task 与 dry-run 参数', () => {
@@ -31,5 +32,12 @@ describe('agent:verify', () => {
     });
     expect(evidence).toMatchObject({ gate: 'build', exitCode: 1, result: 'failed' });
     expect(evidence.result).not.toBe('success');
+  });
+
+  test('只读版本检查读取三个 manifest 的版本', () => {
+    const versions = readManifestVersions(process.cwd());
+    expect(versions.package).toBe('0.2.0');
+    expect(versions.cargo).toBe(versions.package);
+    expect(versions.tauri).toBe(versions.package);
   });
 });
