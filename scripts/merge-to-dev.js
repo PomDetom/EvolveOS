@@ -16,6 +16,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
+import { readProtocol } from './agent/task-schema.js';
+import { listTasks } from './agent/validate-task.js';
+import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -42,6 +45,24 @@ function worktreesOn(branch) {
     .map((b) => b.split('\n')[0].replace('worktree ', '').trim());
 }
 
+function nativeReadinessFor(branch) {
+  let protocol;
+  try {
+    protocol = readProtocol(ROOT);
+  } catch (error) {
+    return { mode: 'shadow', taskId: null, ok: true, issues: [`无法读取 protocol.json: ${error.message}`] };
+  }
+  const entry = listTasks(ROOT).find((candidate) => candidate.task?.branch === branch) ?? null;
+  let branchHead = null;
+  try { branchHead = sh(ROOT, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
+  return evaluateNativeReadiness({
+    mode: protocol.mode,
+    task: entry?.task ?? null,
+    taskBranch: branch,
+    branchHead,
+  });
+}
+
 function main() {
   const { branch, message, noSync, noCleanup } = parseArgs(process.argv.slice(2));
   if (!branch) fail('用法：node scripts/merge-to-dev.js <分支名> [--message "merge: 摘要"] [--no-sync] [--no-cleanup]');
@@ -50,6 +71,12 @@ function main() {
 
   if (sh(ROOT, 'git branch --show-current') !== 'dev') fail(`须在主 checkout 的 dev 分支上运行（主 checkout 常驻 dev）。当前不在 dev。`);
   if (!shOk(ROOT, `git rev-parse --verify --quiet ${branch}`)) fail(`分支不存在：${branch}`);
+
+  const nativeReadiness = nativeReadinessFor(branch);
+  console.log(formatNativeReadiness(nativeReadiness));
+  if (nativeReadiness.mode === 'enforced' && !nativeReadiness.ok) {
+    fail('native readiness 未通过，中止合并');
+  }
 
   const wts = worktreesOn(branch);
   const wt = wts[0] ?? null; // 待合分支的 worktree（主 checkout 常驻 dev，正常不含该分支）

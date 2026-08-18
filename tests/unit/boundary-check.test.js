@@ -54,6 +54,17 @@ describe('边界检查（G2：框架/应用门禁）', () => {
     expect(r.ok).toBe(true);
     expect(r.kind).toBe('chore');
   });
+  it('EWP chore 分支允许 native workflow 基础设施路径', () => {
+    const r = assessBranchChanges('chore/ewp-skeleton', [
+      '.agents/protocol.json',
+      '.agents/templates/task.json',
+      'AGENTS.md',
+      'docs/AGENTS.md',
+      'tests/unit/agent-protocol.test.js',
+    ]);
+    expect(r.ok).toBe(true);
+    expect(r.kind).toBe('chore');
+  });
   it('chore 分支触碰 src → 失败', () => {
     const r = assessBranchChanges('chore/boundary-prefixes', ['src/config/defaults.js']);
     expect(r.ok).toBe(false);

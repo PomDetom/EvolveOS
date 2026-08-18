@@ -25,6 +25,12 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 - 分层细则：`src/AGENTS.md`（组件/令牌/动画/验证）、`src-tauri/AGENTS.md`（桌面壳）、`docs/AGENTS.md`（文档体系/任务执行）。
 - 模式与入口：浏览器 `/` 与 Tauri 均应用壳；`?mode=app|strip` 显式覆盖，非法/无参回落 `app`。
 
+## EWP 任务路由
+
+- 长期规则读取根和相关子目录的 `AGENTS.md`；当前 native task 读取 `.agents/tasks/<年份>/<task-id>/`，协议读取 `.agents/protocol.json`。
+- 新任务使用 `.agents` 的 task/plan/review 与 `scripts/agent/` 校验工具；`docs/superpowers/sdd/` 仅用于历史任务恢复和审计。
+- 迁移期仍允许 Superpowers 作为执行兼容层，但任务状态、验证证据和评审记录以仓库文件与 Git SHA 为准。
+
 ## 默认不同于常规
 
 - **零运行时依赖、零框架**：不要引入任何 npm 运行时依赖，组件无抽象封装。

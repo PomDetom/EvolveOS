@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-000",
+  "title": "任务标题",
+  "status": "planned",
+  "kind": "chore",
+  "branch": "chore/example-task",
+  "baseBranch": "dev",
+  "baseSha": "创建任务时的 dev SHA",
+  "allowedPaths": [],
+  "spec": "docs/superpowers/specs/example.md",
+  "notes": [],
+  "requiredGates": "auto",
+  "evidence": [],
+  "review": null,
+  "readyHead": null
+}

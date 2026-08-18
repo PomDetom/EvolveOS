@@ -9,11 +9,14 @@
 - 会话开始先读执行留痕（`docs/superpowers/sdd/progress-*.md`），从第一个未完成任务恢复；**已完成任务不得重新派发**。
 - 动画红线口径在 `src/AGENTS.md`（不在此重复）。
 
+Evolve Workflow Protocol 迁移规格：[`docs/superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md`](superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md)。该规格只固定迁移约束；`docs/superpowers/sdd/` 的历史留痕仍按下文规则保留。
+
 ## 工作流红线（子代理驱动开发）
 
 - 每任务 TDD：写失败测试 → 确认红 → 实现 → 跑绿 → 提交。
 - 实施子代理按复杂度分级：机械转录用快速模型、集成判断用标准模型、整体审查用最强模型。
 - **每任务必须有独立评审**（规格符合 + 质量）；Critical/Important 进修复循环（≤5 轮：前 3 轮续派原实施者，后 2 轮换更强模型）；Minor 记入执行留痕留给收尾。
+- EWP 迁移处于 shadow 时，新任务同时维护 `.agents/tasks/` 的 native task 与现有 `progress-*.md` 账本；历史 `docs/superpowers/sdd/` 文件只读保留。
 - **并行实施子代理必须在独立 worktree**（各占一条分支）；同一 worktree 内串行；`ui/*` 全局串行（同一时刻只一个 ui 分支）；控制器不直接修改代码；不接受无评审的自评报告。
 - 派发实施子代理前先做 **pre-flight 计划-现实冲突扫描**（对照计划代码段与当前代码/测试 mock 实际签名与成员形态），发现计划缺陷先呈报用户再派发。
 - 子代理报告 e2e 失败为「无关 flake」时，控制器须**独立隔离复跑确认**后再放行，不直接采信。
