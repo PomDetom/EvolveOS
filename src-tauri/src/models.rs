@@ -23,9 +23,6 @@ pub struct Account {
     pub workspace_id: Option<String>,
     /// opencode 套餐专用: 会话 cookie (DPAPI 加密存储)
     pub auth_cookie: Option<String>,
-    /// 刷新间隔(秒)
-    #[serde(default = "default_interval")]
-    pub refresh_interval_secs: u64,
     /// 保留字段，预警已移除（不再触发任何通知逻辑）
     #[serde(default = "default_threshold")]
     pub warn_threshold: f64,
@@ -33,10 +30,6 @@ pub struct Account {
 
 fn gen_id() -> String {
     uuid::Uuid::new_v4().to_string()
-}
-
-fn default_interval() -> u64 {
-    300
 }
 
 fn default_threshold() -> f64 {
