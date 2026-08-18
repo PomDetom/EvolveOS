@@ -77,7 +77,7 @@ export function usageCard(account, balance) {
     </div>`;
 }
 
-// 账户管理页行：名称 + badge + 刷新间隔 + 上次刷新 + 操作列（测试/编辑/删除，固定列，不随文本浮动）。
+// 账户管理页行：名称 + badge + 动态刷新文案 + 上次刷新 + 操作列（测试/编辑/删除，固定列，不随文本浮动）。
 export function accountRow(account, balance) {
   const isOpen = account.kind === 'opencode_go';
   const last = balance?.lastUpdated
@@ -94,7 +94,7 @@ export function accountRow(account, balance) {
       <div class="tt__row-main">
         <strong class="tt__row-name">${escapeHtml(account.name)}</strong>
         ${renderBadge({ label: isOpen ? 'OpenCode Go' : 'DeepSeek', variant: isOpen ? 'info' : 'accent' })}
-        <span class="tt__row-meta">每 ${account.refreshIntervalSecs}s 刷新</span>
+        <span class="tt__row-meta">动态 30s~5min 自适应</span>
         ${last}
       </div>
       ${actions}
