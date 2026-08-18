@@ -18,6 +18,8 @@
     "merge-to-dev": "node scripts/merge-to-dev.js",
     "agent:task-check": "node scripts/agent/validate-task.js",
     "agent:status": "node scripts/agent/status.js",
+    "agent:scope": "node scripts/agent/change-scope.js",
+    "agent:gates": "node scripts/agent/select-gates.js",
     "set-version": "node scripts/set-version.js",
     "release": "node scripts/release.js",
     "tauri": "tauri",
