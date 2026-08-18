@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "mode": "shadow",
+  "baseBranch": "dev",
+  "taskRoot": ".agents/tasks",
+  "legacySddRoot": "docs/superpowers/sdd",
+  "taskStates": [
+    "planned",
+    "implementing",
+    "verifying",
+    "reviewing",
+    "ready",
+    "blocked",
+    "cancelled"
+  ],
+  "noteClasses": [
+    "architecture",
+    "process",
+    "testing",
+    "feature",
+    "bug-fix",
+    "simplification"
+  ]
+}
