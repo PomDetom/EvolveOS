@@ -79,7 +79,7 @@ describe('token-tool utils', () => {
     )).toContain('尚未刷新');
   });
 
-  it('accountRow：含测试/编辑/删除操作 + 类型 badge + 刷新间隔', () => {
+  it('accountRow：含测试/编辑/删除操作 + 类型 badge + 动态刷新文案', () => {
     const html = accountRow(
       { id: 'a1', name: '主号', kind: 'deepseek', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, refreshIntervalSecs: 300, warnThreshold: 10 },
       { accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: Math.floor(Date.now() / 1000) },
@@ -89,7 +89,7 @@ describe('token-tool utils', () => {
     expect(html).toContain('data-tt-action="edit"');
     expect(html).toContain('data-tt-action="del"');
     expect(html).toContain('DeepSeek');
-    expect(html).toContain('300');
+    expect(html).toContain('动态 30s~5min 自适应');
     expect(html).toContain('主号');
   });
 

@@ -261,10 +261,6 @@ function editorFormHtml(existing, kind) {
         <span class="tt__field-label">Auth Cookie</span>
         ${renderInput({ type: 'password', value: escapeHtml(e.authCookie ?? ''), placeholder: 'auth=... 整段', label: 'Auth Cookie' })}
       </div>
-      <div class="tt__field" data-tt-field="interval">
-        <span class="tt__field-label">刷新间隔(秒)</span>
-        ${renderInput({ type: 'number', value: e.refreshIntervalSecs ?? 300, placeholder: '300', label: '刷新间隔(秒)' })}
-      </div>
     </div>`;
 }
 
@@ -277,7 +273,6 @@ function collectEditor(body) {
   }
   const kind = body.querySelector('[data-tt-field="kind"] .c-select').value;
   const isOpen = kind === 'opencode_go';
-  const interval = Number(val('interval')) || 300;
   return {
     name,
     kind,
@@ -285,7 +280,6 @@ function collectEditor(body) {
     apiKey: isOpen ? '' : val('apiKey'),
     workspaceId: isOpen ? (val('workspace') || null) : null,
     authCookie: isOpen ? (val('cookie') || null) : null,
-    refreshIntervalSecs: Math.max(30, interval),
     warnThreshold: 10,
   };
 }

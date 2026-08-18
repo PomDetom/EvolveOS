@@ -201,11 +201,12 @@ test('tokenTool：账户管理页新增账户选 OpenCode 带出 workspace+cooki
   await expect(page.locator('[data-tt-field="cookie"]')).toBeVisible();
 });
 
-// 新增账户弹窗在窄窗（960×480，桌面主窗最小高度）内适配：不高出视口 + 表单可滚动。
-// 回归：.c-dialog 无 max-height + body 不滚动时，弹窗 490px 在 480 视口溢出、底部按钮贴边
+// 新增账户弹窗在矮窗内适配：不高出视口 + 表单可滚动（移除「刷新间隔」字段后表单变短，
+// 原 480 视口不再溢出 → 视口压到 360 仍验证 max-height+滚动机制）。
+// 回归：.c-dialog 无 max-height + body 不滚动时，弹窗溢出、底部按钮贴边
 //（与密码管理器 key 编辑器弹窗同类缺陷，同步修复）。
 test('tokenTool：新增账户弹窗窄窗适配（不高出视口 + 表单可滚动）', async ({ page }) => {
-  await page.setViewportSize({ width: 960, height: 480 });
+  await page.setViewportSize({ width: 960, height: 360 });
   await page.addInitScript(() => {
     window.__TAURI__ = {
       window: {
