@@ -8,7 +8,7 @@
 
 <!-- 记录需要跨任务复用的现象或约束。 -->
 
-## Decision/Proposal
+## Proposal
 
 <!-- implemented/archived 使用 Decision；proposed 使用 Proposal。 -->
 

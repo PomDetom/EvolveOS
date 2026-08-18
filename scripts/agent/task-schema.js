@@ -6,7 +6,7 @@ const DEFAULT_PROTOCOL = {
   taskStates: ['planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
 };
 
-const BRANCH_RE = /^(app\/[^/]+\/[^/]+|ui\/[^/]+|docs\/[^/]+|chore\/[^/]+|hotfix\/[^/]+)$/;
+const BRANCH_RE = /^(app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
 
 function asPosixPath(value) {
   return String(value ?? '').replaceAll('\\', '/');

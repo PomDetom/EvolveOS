@@ -17,6 +17,8 @@
     "check:boundary": "node scripts/check-boundary.js",
     "merge-to-dev": "node scripts/merge-to-dev.js",
     "agent:task-check": "node scripts/agent/validate-task.js",
+    "agent:start": "node scripts/agent/start-task.js",
+    "agent:finish": "node scripts/agent/finish-task.js",
     "agent:status": "node scripts/agent/status.js",
     "agent:scope": "node scripts/agent/change-scope.js",
     "agent:gates": "node scripts/agent/select-gates.js",

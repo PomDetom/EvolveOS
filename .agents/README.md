@@ -14,6 +14,12 @@ EWP 把 EvolveOS 的任务事实、执行边界、验证证据和评审记录放
 - `skills/`：仓库原生执行 SOP；迁移前五个 Skill 先落地，后续再补 merge、Note 和 release Skill。
 - `../scripts/agent/`：纯校验、范围选择、gate 选择、验证和状态读取脚本。
 
+## 执行入口
+
+- `npm run agent:start -- --title "标题" --kind <kind> --paths <path1,path2>`：必须从干净的 `dev` 启动；自动创建任务 ID、独立 worktree、`task.json`、`plan.md` 和非平凡任务的 proposed Note，并提交初始化记录。
+- `npm run agent:finish -- --task <id> --reviewer <name> --review-result approved`：运行验证、检查改动范围和 Note，并将任务推进到 `ready`；验证和评审绑定代码 `changeHead`，后续只追加任务记录不会使证据失效。
+- `merge-to-dev` 从待合入分支读取 task，而不是依赖主 checkout 是否已经包含 task 文件；`shadow` 只告警，`enforced` 才阻断。
+
 首批 Skill 的职责依次是 start、plan、implement、verify、review；它们都必须引用 task/spec/Note/Git 作为 source of truth，不以模型或聊天平台作为状态源。Notes 使用 `proposed/implemented/rejected/archived` 生命周期，可通过 `npm run agent:notes-check` 校验。
 
 ## 标准恢复顺序

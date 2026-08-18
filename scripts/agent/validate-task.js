@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { readProtocol, validateTask } from './task-schema.js';
@@ -50,6 +51,41 @@ export function listTasks(rootDir) {
       return { ...entry, taskPath, parseError: error };
     }
   });
+}
+
+function gitFilesAtRef(rootDir, ref) {
+  const output = execFileSync('git', ['ls-tree', '-r', '--name-only', ref, '.agents/tasks'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  return output.split(/\r?\n/).filter((file) => file.endsWith('/task.json'));
+}
+
+export function listTasksAtRef(rootDir, ref) {
+  return gitFilesAtRef(rootDir, ref).map((taskPath) => {
+    const directory = taskPath.slice(0, -'/task.json'.length);
+    const relativeDirectory = directory.replaceAll('\\', '/');
+    try {
+      const raw = execFileSync('git', ['show', `${ref}:${taskPath}`], { cwd: rootDir, encoding: 'utf8' });
+      return {
+        directory: resolve(rootDir, directory),
+        relativeDirectory,
+        taskPath: resolve(rootDir, taskPath),
+        task: JSON.parse(raw),
+      };
+    } catch (error) {
+      return {
+        directory: resolve(rootDir, directory),
+        relativeDirectory,
+        taskPath: resolve(rootDir, taskPath),
+        parseError: error,
+      };
+    }
+  });
+}
+
+export function findTaskAtRef(rootDir, ref, taskId) {
+  return listTasksAtRef(rootDir, ref).find((entry) => entry.task?.id === taskId) ?? null;
 }
 
 export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {

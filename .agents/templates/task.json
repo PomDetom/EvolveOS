@@ -13,5 +13,6 @@
   "requiredGates": "auto",
   "evidence": [],
   "review": null,
+  "changeHead": null,
   "readyHead": null
 }
