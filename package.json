@@ -22,6 +22,7 @@
     "agent:gates": "node scripts/agent/select-gates.js",
     "agent:verify": "node scripts/agent/verify.js",
     "agent:version-check": "node scripts/agent/check-version.js",
+    "agent:notes-check": "node scripts/agent/validate-notes.js",
     "set-version": "node scripts/set-version.js",
     "release": "node scripts/release.js",
     "tauri": "tauri",

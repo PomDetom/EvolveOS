@@ -14,6 +14,8 @@ EWP 把 EvolveOS 的任务事实、执行边界、验证证据和评审记录放
 - `skills/`：仓库原生执行 SOP；迁移前五个 Skill 先落地，后续再补 merge、Note 和 release Skill。
 - `../scripts/agent/`：纯校验、范围选择、gate 选择、验证和状态读取脚本。
 
+首批 Skill 的职责依次是 start、plan、implement、verify、review；它们都必须引用 task/spec/Note/Git 作为 source of truth，不以模型或聊天平台作为状态源。Notes 使用 `proposed/implemented/rejected/archived` 生命周期，可通过 `npm run agent:notes-check` 校验。
+
 ## 标准恢复顺序
 
 1. 读取根和相关子目录的 `AGENTS.md`。
