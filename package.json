@@ -1,7 +1,7 @@
 {
   "name": "evolveos",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.2.0",
   "type": "module",
   "description": "EvolveOS — 多应用综合管理系统：统一应用壳承载多桌面应用，共享设计系统为基础设施。",
   "engines": {
