@@ -12,11 +12,22 @@ use crate::state::AppState;
 pub struct Scheduler;
 
 impl Scheduler {
-    /// 启动后台刷新循环, 每 30 秒检查一次, 按各账户间隔节流
+    /// 启动后台刷新循环：每 5 秒检查一次（支撑 5s 错误重试粒度），
+    /// 按各账户**动态间隔**（30s→…→5min，见 refresh.rs）节流。
     pub fn start(app: AppHandle) {
         tauri::async_runtime::spawn(async move {
-            // 记录各账户上次刷新时间
-            let mut last_refresh: HashMap<String, std::time::Instant> = HashMap::new();
+            // 各账户上次刷新时间；启动即标记为已刷新（setup 的 refresh_all_now 刚做过首轮），
+            // 首个周期按间隔推进，避免启动后立刻重复拉取
+            let mut last_refresh: HashMap<String, std::time::Instant> = {
+                let now = std::time::Instant::now();
+                let state = app.state::<AppState>();
+                state
+                    .config()
+                    .accounts
+                    .iter()
+                    .map(|a| (a.id.clone(), now))
+                    .collect()
+            };
             loop {
                 let accounts = {
                     let state = app.state::<AppState>();
@@ -24,9 +35,12 @@ impl Scheduler {
                 };
                 for account in &accounts {
                     let now = std::time::Instant::now();
+                    let interval = {
+                        let state = app.state::<AppState>();
+                        state.refresh_interval(&account.id)
+                    };
                     let due = match last_refresh.get(&account.id) {
-                        Some(last) => now.duration_since(*last)
-                            >= Duration::from_secs(account.refresh_interval_secs.max(30)),
+                        Some(last) => now.duration_since(*last) >= Duration::from_secs(interval),
                         None => true,
                     };
                     if !due {
@@ -39,19 +53,20 @@ impl Scheduler {
                         let _ = refresh_one(&app, &account).await;
                     });
                 }
-                tokio::time::sleep(Duration::from_secs(30)).await;
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         });
     }
 }
 
-/// 刷新单个账户并广播结果
+/// 刷新单个账户：抓取 → 更新快照 → 推进动态状态机 → 广播结果
 pub async fn refresh_one(app: &AppHandle, account: &Account) -> Balance {
     let balance = test_one(account).await;
 
     {
         let state = app.state::<AppState>();
         state.update_balance(balance.clone());
+        state.record_refresh(&balance);
     }
     let _ = app.emit("balance-updated", balance.clone());
     let _ = app.emit("balances-updated", app.state::<AppState>().balances());
