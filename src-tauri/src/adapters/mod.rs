@@ -1,3 +1,4 @@
+pub mod codex;
 pub mod common;
 pub mod deepseek;
 pub mod opencode;

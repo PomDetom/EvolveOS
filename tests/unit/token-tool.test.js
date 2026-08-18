@@ -65,6 +65,27 @@ describe('token-tool utils', () => {
     expect(html).not.toContain('data-tt-action'); // 只读
   });
 
+  it('usageCard：Codex 显示套餐、限额窗口与 credits 状态', () => {
+    const html = usageCard(
+      { id: 'a3', name: '本机 Codex', kind: 'codex', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 },
+      {
+        accountId: 'a3',
+        planType: 'plus',
+        windows: [{ key: 'primary', label: '7天', limit: 100, used: 11, usedPct: 11, resetsIn: 7200, resetsAt: '' }],
+        credits: { hasCredits: false, unlimited: false, balance: '0' },
+        ok: true,
+        error: null,
+        lastUpdated: Math.floor(Date.now() / 1000),
+      },
+    );
+    expect(html).toContain('Codex');
+    expect(html).toContain('plus');
+    expect(html).toContain('7天');
+    expect(html).toContain('11.0%');
+    expect(html).toContain('无额外 credits');
+    expect(html).not.toContain('data-tt-action');
+  });
+
   it('usageCard：错误态 + 名称转义；无数据时「尚未刷新」', () => {
     const html = usageCard(
       { id: 'a3', name: '<b>hack</b>', kind: 'deepseek', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, refreshIntervalSecs: 300, warnThreshold: 10 },

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::adapters::codex::CodexAdapter;
 use crate::adapters::deepseek::DeepseekAdapter;
 use crate::adapters::opencode::OpencodeGoAdapter;
 use crate::adapters::Adapter;
@@ -93,6 +94,7 @@ pub fn get_adapter(account: &Account) -> Box<dyn Adapter> {
     match account.kind {
         AccountKind::Deepseek => Box::new(DeepseekAdapter::new()),
         AccountKind::OpencodeGo => Box::new(OpencodeGoAdapter::new()),
+        AccountKind::Codex => Box::new(CodexAdapter::new()),
     }
 }
 
@@ -113,6 +115,8 @@ pub async fn test_one(account: &Account) -> Balance {
         total: None,
         currency: None,
         windows: None,
+        plan_type: None,
+        credits: None,
         ok: false,
         error: Some(e),
         raw: None,

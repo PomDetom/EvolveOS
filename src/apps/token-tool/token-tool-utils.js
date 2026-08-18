@@ -38,6 +38,9 @@ export function formatRelative(epochSecs) {
 // 无任何操作按钮 —— 账户管理（测试/编辑/删除）在账户管理页。
 export function usageCard(account, balance) {
   const isOpen = account.kind === 'opencode_go';
+  const isCodex = account.kind === 'codex';
+  const badgeLabel = isCodex ? 'Codex' : isOpen ? 'OpenCode Go' : 'DeepSeek';
+  const badgeVariant = isCodex || isOpen ? 'info' : 'accent';
   const last = balance?.lastUpdated
     ? `<span class="tt__card-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
     : '<span class="tt__card-last">尚未刷新</span>';
@@ -61,6 +64,27 @@ export function usageCard(account, balance) {
           <div class="tt__window-sub">重置: ${formatReset(w.resetsIn)}</div>
         </div>`;
     }
+  } else if (isCodex) {
+    const wins = balance?.windows ?? [];
+    body += `<div class="tt__card-plan">套餐: ${escapeHtml(balance?.planType ?? 'unknown')}</div>`;
+    if (!wins.length) body += '<div class="tt__card-none">暂无限额窗口数据</div>';
+    for (const w of wins) {
+      const usedPct = Number(w.usedPct ?? 0);
+      body += `
+        <div class="tt__window">
+          <div class="tt__window-head">
+            <span class="tt__window-label">${escapeHtml(w.label)}</span>
+            <span class="tt__window-meta">${usedPct.toFixed(1)}% · 剩余 ${(100 - usedPct).toFixed(1)}%</span>
+          </div>
+          ${renderProgress({ value: usedPct, variant: usedPct >= 90 ? 'danger' : usedPct >= 70 ? 'warning' : 'accent' })}
+          <div class="tt__window-sub">重置: ${formatReset(w.resetsIn)}</div>
+        </div>`;
+    }
+    if (balance?.credits) {
+      const credits = balance.credits;
+      const label = credits.unlimited ? '无限 credits' : credits.hasCredits ? `credits 余额: ${credits.balance}` : '无额外 credits';
+      body += `<div class="tt__card-credits">${escapeHtml(label)}</div>`;
+    }
   } else {
     const has = balance?.balance != null;
     body += `
@@ -70,7 +94,7 @@ export function usageCard(account, balance) {
     <div class="tt__card" data-tt-id="${escapeHtml(account.id)}">
       <div class="tt__card-head">
         <strong class="tt__card-name">${escapeHtml(account.name)}</strong>
-        ${renderBadge({ label: isOpen ? 'OpenCode Go' : 'DeepSeek', variant: isOpen ? 'info' : 'accent' })}
+        ${renderBadge({ label: badgeLabel, variant: badgeVariant })}
       </div>
       ${body}
       <div class="tt__card-foot">${last}</div>
@@ -80,6 +104,9 @@ export function usageCard(account, balance) {
 // 账户管理页行：名称 + badge + 动态刷新文案 + 上次刷新 + 操作列（测试/编辑/删除，固定列，不随文本浮动）。
 export function accountRow(account, balance) {
   const isOpen = account.kind === 'opencode_go';
+  const isCodex = account.kind === 'codex';
+  const badgeLabel = isCodex ? 'Codex' : isOpen ? 'OpenCode Go' : 'DeepSeek';
+  const badgeVariant = isCodex || isOpen ? 'info' : 'accent';
   const last = balance?.lastUpdated
     ? `<span class="tt__row-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
     : '<span class="tt__row-last">尚未刷新</span>';
@@ -93,7 +120,7 @@ export function accountRow(account, balance) {
     <div class="tt__row" data-tt-id="${escapeHtml(account.id)}">
       <div class="tt__row-main">
         <strong class="tt__row-name">${escapeHtml(account.name)}</strong>
-        ${renderBadge({ label: isOpen ? 'OpenCode Go' : 'DeepSeek', variant: isOpen ? 'info' : 'accent' })}
+        ${renderBadge({ label: badgeLabel, variant: badgeVariant })}
         <span class="tt__row-meta">动态 30s~5min 自适应</span>
         ${last}
       </div>

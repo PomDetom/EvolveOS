@@ -88,6 +88,67 @@ test('tokenTool：桌面端（mock __TAURI__）余量页只读渲染 + 账户管
   await expect(page.locator('.tt__row', { hasText: 'OpenCode Go' }).locator('[data-tt-action="test"]')).toBeVisible();
 });
 
+test('tokenTool：Codex 本机额度卡 + 账户编辑器', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') {
+            return {
+              accounts: [{ id: 'codex-1', name: '本机 Codex', kind: 'codex', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 }],
+            };
+          }
+          if (cmd === 'get_balances') {
+            return [{
+              accountId: 'codex-1',
+              accountName: '本机 Codex',
+              kind: 'codex',
+              balance: null,
+              currency: null,
+              windows: [{ key: 'primary', label: '7天', limit: 100, used: 11, usedPct: 11, resetsIn: 7200, resetsAt: '' }],
+              planType: 'plus',
+              credits: { hasCredits: false, unlimited: false, balance: '0' },
+              ok: true,
+              error: null,
+              lastUpdated: Math.floor(Date.now() / 1000),
+            }];
+          }
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
+  await page.waitForTimeout(400);
+
+  const card = page.locator('.tt__card', { hasText: '本机 Codex' });
+  await expect(card).toContainText('Codex');
+  await expect(card).toContainText('plus');
+  await expect(card).toContainText('7天');
+  await expect(card).toContainText('11.0%');
+  await expect(card).toContainText('无额外 credits');
+
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.tt__toolbar .c-btn', { hasText: '添加账户' }).click();
+  await page.locator('[data-tt-field="kind"] .c-select').selectOption('codex');
+  await expect(page.locator('[data-tt-row="codex"]')).toBeVisible();
+  const deepseekRows = page.locator('[data-tt-row="deepseek"]');
+  const opencodeRows = page.locator('[data-tt-row="opencode_go"]');
+  await expect(deepseekRows).toHaveCount(2);
+  await expect(opencodeRows).toHaveCount(2);
+  for (const rows of [deepseekRows, opencodeRows]) {
+    for (let i = 0; i < await rows.count(); i += 1) await expect(rows.nth(i)).toBeHidden();
+  }
+  await expect(page.locator('[data-tt-row="codex"]')).toContainText('无需填写密钥');
+});
+
 // 编辑对话框表单值转义：账户名含 `"` 时，name 输入框 value 必须完整回显且原始属性为转义形态
 test('tokenTool：账户管理页编辑对话框表单值转义（含引号账户名）', async ({ page }) => {
   await page.addInitScript(() => {

@@ -156,3 +156,7 @@
   font-weight: var(--font-weight-semibold);
   color: var(--text-2);
 }
+.tt__field-help {
+  color: var(--text-3);
+  font-size: var(--font-size-xs);
+}
