@@ -13,10 +13,11 @@ export const FRAMEWORK_FILE_RE = [
 // 文档分支允许：docs/ 目录 + 仓库根 *.md（README/CHANGELOG/CLAUDE）。
 const ROOT_MD_RE = /^[^/]+\.md$/;
 // 维护分支允许：scripts/ tests/ src-tauri/ + 锁文件/.gitignore/package.json/构建配置（不碰 src/）。
-const CHORE_PREFIXES = ['scripts/', 'tests/', 'src-tauri/'];
+const CHORE_PREFIXES = ['scripts/', 'tests/', 'src-tauri/', '.agents/'];
 const CHORE_FILE_RE = [
   /\.lock$/, /^package-lock\.json$/, /^\.gitignore$/, /^package\.json$/,
   /^vite\.config/, /^vitest\.config/, /^playwright\.config/,
+  /^AGENTS\.md$/, /^docs\/AGENTS\.md$/,
 ];
 
 export function assessBranchChanges(branch, files) {
