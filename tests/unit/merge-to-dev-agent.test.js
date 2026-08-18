@@ -82,4 +82,40 @@ describe('merge-to-dev native readiness', () => {
     });
     expect(report).toMatchObject({ ok: true, issues: [] });
   });
+
+  test('允许 evidence/review 之后追加 task 文档提交', () => {
+    const recordHead = 'c'.repeat(40);
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: {
+        ...readyTask(),
+        changeHead: head,
+        evidence: [{ gate: 'build', testedHead: head, result: 'success' }],
+        review: { reviewedHead: head, findings: { critical: [], important: [] } },
+      },
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: recordHead,
+      changeHeadAncestor: true,
+      codeChangedAfterHead: false,
+    });
+    expect(report).toMatchObject({ ok: true, issues: [] });
+  });
+
+  test('代码在验证后变化时阻断', () => {
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: {
+        ...readyTask(),
+        changeHead: head,
+        evidence: [{ gate: 'build', testedHead: head, result: 'success' }],
+        review: { reviewedHead: head, findings: { critical: [], important: [] } },
+      },
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: 'c'.repeat(40),
+      changeHeadAncestor: true,
+      codeChangedAfterHead: true,
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues).toContain('验证后又发生代码改动');
+  });
 });

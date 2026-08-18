@@ -27,5 +27,5 @@ export function summarizeOutput(stdout = '', stderr = '', maxLength = 240) {
 }
 
 export function createEvidence({ gate, command, baseSha, headSha, exitCode, result, timestamp, summary }) {
-  return { gate, command, baseSha, headSha, exitCode, result, timestamp, summary };
+  return { gate, command, baseSha, headSha, testedHead: headSha, exitCode, result, timestamp, summary };
 }

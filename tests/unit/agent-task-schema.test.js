@@ -63,6 +63,15 @@ describe('EWP task schema', () => {
     expect(result.errors.join(' ')).toContain('src/apps/ledger/');
   });
 
+  test('accepts nested ui branch names used by Tauri tasks', () => {
+    const result = validateTask(validTask({
+      kind: 'tauri',
+      branch: 'ui/token-tool/codex-quota',
+      allowedPaths: ['src-tauri/src/', 'src/apps/token-tool/'],
+    }), taskDirectory);
+    expect(result).toEqual({ ok: true, errors: [] });
+  });
+
   test('rejects a ready task without readyHead', () => {
     const result = validateTask(validTask({ status: 'ready' }), taskDirectory);
     expect(result.ok).toBe(false);

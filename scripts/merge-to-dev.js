@@ -17,7 +17,9 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
 import { readProtocol } from './agent/task-schema.js';
-import { listTasks } from './agent/validate-task.js';
+import { listTasksAtRef } from './agent/validate-task.js';
+import { getChangedPaths } from './agent/change-scope.js';
+import { evaluateNoteRequirement, noteLifecycleForPath } from './agent/note-gate.js';
 import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,6 +47,14 @@ function worktreesOn(branch) {
     .map((b) => b.split('\n')[0].replace('worktree ', '').trim());
 }
 
+function codeChangedAfter(rootDir, changeHead, branch) {
+  if (!changeHead) return false;
+  const paths = sh(rootDir, `git diff --name-only ${changeHead}..${branch}`)
+    .split('\n')
+    .filter(Boolean);
+  return paths.some((file) => !file.startsWith('.agents/tasks/') && !file.startsWith('.agents/notes/'));
+}
+
 function nativeReadinessFor(branch) {
   let protocol;
   try {
@@ -52,15 +62,32 @@ function nativeReadinessFor(branch) {
   } catch (error) {
     return { mode: 'shadow', taskId: null, ok: true, issues: [`无法读取 protocol.json: ${error.message}`] };
   }
-  const entry = listTasks(ROOT).find((candidate) => candidate.task?.branch === branch) ?? null;
+  const entry = listTasksAtRef(ROOT, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
   let branchHead = null;
   try { branchHead = sh(ROOT, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
-  return evaluateNativeReadiness({
+  const readiness = evaluateNativeReadiness({
     mode: protocol.mode,
     task: entry?.task ?? null,
     taskBranch: branch,
     branchHead,
+    changeHeadAncestor: entry?.task?.changeHead ? shOk(ROOT, `git merge-base --is-ancestor ${entry.task.changeHead} ${branch}`) : true,
+    codeChangedAfterHead: codeChangedAfter(ROOT, entry?.task?.changeHead, branch),
   });
+  if (!entry?.task) return readiness;
+  const changedPaths = getChangedPaths(ROOT, 'dev', branch);
+  const notePaths = entry.task.notes ?? [];
+  const existingNotePaths = notePaths.filter((note) => shOk(ROOT, `git cat-file -e ${branch}:${note}`));
+  const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
+  const noteReport = evaluateNoteRequirement({
+    task: entry.task,
+    changedPaths,
+    notePaths,
+    existingNotePaths,
+    noteLifecycles,
+    status: entry.task.status,
+  });
+  const issues = [...readiness.issues, ...noteReport.issues];
+  return { ...readiness, issues, ok: readiness.mode === 'shadow' || issues.length === 0 };
 }
 
 function main() {
