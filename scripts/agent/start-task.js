@@ -7,7 +7,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { listTasks } from './validate-task.js';
 import { listStartRecoveryArtifacts, writeStartRecoveryArtifact } from './start-recovery.js';
 import { buildAwaitingApproval, deriveApprovalScope } from './approval.js';
-import { createBaselineEvidence } from './workflow-utils.js';
+import { classifyGateResult, createBaselineEvidence } from './workflow-utils.js';
+import { gateDefinition } from './gate-registry.js';
+import { assessBranchChanges } from '../boundary-check.js';
+import { selectGates } from './select-gates.js';
 
 export { listStartRecoveryArtifacts } from './start-recovery.js';
 
@@ -84,7 +87,7 @@ function requiresNote(kind) {
   return NOTE_KINDS.has(kind);
 }
 
-export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths, year, date, slug, noteClass, spec, startRunId, preflight, initCommit = '0'.repeat(40) }) {
+export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths, year, date, slug, noteClass, spec, startRunId, preflight, baselines = [], initCommit = '0'.repeat(40) }) {
   const taskDirectory = `.agents/tasks/${year}/${id}-${slug}`;
   const taskPath = `${taskDirectory}/task.json`;
   const planPath = `${taskDirectory}/plan.md`;
@@ -128,6 +131,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     result: preflight?.ok === true ? 'success' : 'failed',
     summary: preflight?.ok === true ? 'agent:start preflight passed' : 'agent:start preflight failed',
   });
+  task.baselines = baselines;
   const startRecordPath = `.agents/start-runs/${startRunId}.json`;
   const startRecord = {
     schemaVersion: 1,
@@ -140,6 +144,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     taskPath,
     preflight,
     baseline: task.baseline,
+    baselines,
   };
   const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`dev\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
   task.approval = buildAwaitingApproval({ scope: deriveApprovalScope({ task, planText: plan, planPath }) });
@@ -154,6 +159,41 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     plan,
     note: noteContent,
   };
+}
+
+export function runBaselineCommand(rootDir, command) {
+  try {
+    const stdout = execFileSync(command, { cwd: rootDir, encoding: 'utf8', shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    return { exitCode: 0, stdout, stderr: '', reason: '' };
+  } catch (error) {
+    return {
+      exitCode: typeof error.status === 'number' ? error.status : 1,
+      stdout: error.stdout?.toString?.() ?? '',
+      stderr: error.stderr?.toString?.() ?? '',
+      reason: error.message ?? 'baseline command failed',
+    };
+  }
+}
+
+export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKind, hasNotes, runner = runBaselineCommand }) {
+  const kind = assessBranchChanges(branch, []).kind;
+  const gates = selectGates({ kind, changedPaths: [], hasNotes, taskKind });
+  return gates.map((gateName) => {
+    const gate = gateDefinition(gateName, taskId);
+    const result = gate.manual || gate.command.includes('--task')
+      ? { skipped: true, exitCode: null, stdout: '', stderr: '', reason: 'task-specific or manual baseline deferred' }
+      : runner(rootDir, gate.command, gate);
+    return createBaselineEvidence({
+      taskId,
+      gate: gate.gate,
+      baseSha,
+      command: gate.command,
+      commandId: gate.commandId,
+      exitCode: result.exitCode,
+      result: classifyGateResult(result),
+      summary: result.reason ?? '',
+    });
+  });
 }
 
 function git(rootDir, args, options = {}) {
@@ -350,7 +390,7 @@ export function cleanupStartArtifacts({ rootDir, branch, worktree, startRunId, c
   return { cleanup, recoveryPath };
 }
 
-export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console) {
+export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console, deps = {}) {
   const args = parseStartArgs(argv);
   if (!args.title) {
     io.error('用法：npm run agent:start -- --title "任务标题" --kind feature --paths src/apps/example/');
@@ -386,6 +426,15 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
       date: today(),
     });
     if (!preflightResult.ok) throw preflightResult.error;
+    const baselines = buildBaselineEvidence({
+      rootDir,
+      taskId: id,
+      baseSha: preflightResult.baseSha,
+      branch,
+      taskKind: args.kind,
+      hasNotes: requiresNote(args.kind),
+      runner: deps.baselineRunner,
+    });
     const files = buildStartFiles({
       id,
       title: args.title,
@@ -400,6 +449,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
       spec: args.spec,
       startRunId,
       preflight: preflightResult.preflight,
+      baselines,
     });
     git(rootDir, ['worktree', 'add', '-b', branch, worktree, 'dev'], { stdio: 'inherit' });
     createdBranch = true;

@@ -5,28 +5,9 @@ import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from '
 import { getChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
 import { classifyBaselineComparison, classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
+import { GATE_REGISTRY, gateDefinition } from './gate-registry.js';
 import { selectGates } from './select-gates.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
-
-const GATE_REGISTRY = {
-  'task-check': { command: (taskId) => `npm run agent:task-check -- --task ${taskId}` },
-  'notes-check': { command: (taskId) => `node scripts/agent/validate-notes.js --task ${taskId}` },
-  boundary: { command: () => 'npm run check:boundary' },
-  unit: { command: () => 'npm test' },
-  e2e: { command: (taskId) => `npm run agent:e2e -- --task ${taskId}` },
-  'shell-smoke': { command: () => 'npm run test:e2e -- --grep shell' },
-  'visual-review': { command: () => 'MANUAL: 记录视觉基线判断', manual: true },
-  build: { command: () => 'npm run build' },
-  'owner-review': { command: () => 'MANUAL: 记录 framework owner review', manual: true },
-  'scripts-unit': { command: () => 'npm test' },
-  'failure-paths': { command: () => 'npm test' },
-  'web-regression': { command: () => 'npm run test:e2e' },
-  'rust-check': { command: () => 'cargo check --manifest-path src-tauri/Cargo.toml' },
-  'permission-check': { command: () => 'MANUAL: 记录 Tauri 权限检查', manual: true },
-  'desktop-manual': { command: () => 'MANUAL: 记录真实 Windows 桌面验证', manual: true },
-  'version-consistency': { command: () => 'node scripts/agent/check-version.js', manual: false },
-  'user-confirmation': { command: () => 'MANUAL: 记录用户发版确认', manual: true },
-};
 
 export { GATE_REGISTRY };
 
@@ -40,9 +21,7 @@ export function parseVerifyArgs(argv) {
 
 export function makeGatePlan(taskId, gates) {
   return gates.map((gate) => {
-    const definition = GATE_REGISTRY[gate];
-    if (!definition) throw new Error(`未注册 gate: ${gate}`);
-    return { gate, command: definition.command(taskId), manual: definition.manual === true };
+    return gateDefinition(gate, taskId);
   });
 }
 
@@ -105,7 +84,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
     return 1;
   }
   const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`) : { ok: true, errors: [] };
+  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
   if (!schemaResult.ok || !evidenceResult.ok) {
     io.error(`✗ task ${taskId} 校验失败`);
     [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
@@ -133,13 +112,15 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
   let failed = false;
   for (const gate of plan) {
     const timestamp = new Date().toISOString();
+    const baseline = (entry.task.baselines ?? []).find((item) => item.gate === gate.gate && item.command === gate.command && item.taskId === taskId && item.baseSha === baseSha);
     if (gate.manual) {
-      const current = { taskId, gate: gate.gate, baseSha, result: 'incomplete', exitCode: null };
-      const comparison = classifyBaselineComparison({ baseline: entry.task.baseline, current });
+      const current = { taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, result: 'incomplete', exitCode: null };
+      const comparison = classifyBaselineComparison({ baseline, current });
       evidence.push(createEvidence({
         taskId,
         gate: gate.gate,
         command: gate.command,
+        commandId: gate.commandId,
         baseSha,
         headSha,
         exitCode: null,
@@ -154,10 +135,12 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
     const { result } = await executeGate(rootDir, gate.command, deps.runShellCommand ?? runShellCommand);
     const gateResult = classifyGateResult(result);
     const comparison = classifyBaselineComparison({
-      baseline: entry.task.baseline,
+      baseline,
       current: {
         taskId,
         gate: gate.gate,
+        command: gate.command,
+        commandId: gate.commandId,
         baseSha,
         result: result.environmentFailure || String(result.reason ?? '').startsWith('runner exception:') ? 'environmentFailure' : gateResult,
         exitCode: result.exitCode,
@@ -167,15 +150,16 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
       taskId,
       gate: gate.gate,
       command: gate.command,
+      commandId: gate.commandId,
       baseSha,
       headSha,
       exitCode: result.exitCode,
-      result: gateResult,
+      result: comparison.blocked && gateResult === 'success' ? 'failed' : gateResult,
       timestamp,
       summary: summarizeOutput(result.stdout, `${result.stderr} ${result.reason ?? ''}`),
       classification: comparison.classification,
     }));
-    if (gateResult !== 'success') failed = true;
+    if (gateResult !== 'success' || comparison.blocked) failed = true;
   }
   writeTask(entry, { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] });
   io.log(`写入 ${evidence.length} 条验证证据（head=${headSha}）`);

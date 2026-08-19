@@ -80,7 +80,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
     return 1;
   }
   const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`) : { ok: true, errors: [] };
+  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
   if (!schemaResult.ok || !evidenceResult.ok) {
     io.error(`✗ task ${taskId} 校验失败`);
     [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
@@ -96,7 +96,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
     }
 
     const refreshed = findTask(rootDir, taskId);
-    const refreshedEvidence = validateStartEvidence(rootDir, refreshed.task, `${refreshed.relativeDirectory}/task.json`);
+    const refreshedEvidence = validateStartEvidence(rootDir, refreshed.task, `${refreshed.relativeDirectory}/task.json`, { requireBaselines: true });
     if (!refreshedEvidence.ok) {
       refreshedEvidence.errors.forEach((error) => io.error(`✗ ${error}`));
       return 1;
