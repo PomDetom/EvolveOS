@@ -116,7 +116,7 @@ export function accountRow(account, balance) {
     ? `<span class="tt__row-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
     : '<span class="tt__row-last">尚未刷新</span>';
   const actions = `
-    <span class="tt__row-drag" data-tt-drag draggable="true" title="拖拽调整顺序" aria-label="拖拽调整顺序">${icon('drag', 16)}</span>
+    <span class="tt__row-drag" data-tt-drag role="button" tabindex="0" title="拖拽调整顺序" aria-label="拖拽调整顺序">${icon('drag', 16)}</span>
     <button class="tt__visibility" type="button" data-tt-action="toggle-visibility" aria-pressed="${isAccountVisible(account)}" title="${isAccountVisible(account) ? '隐藏在余量页和悬浮窗中' : '显示在余量页和悬浮窗中'}">
       ${icon('eye', 15)}<span>${isAccountVisible(account) ? '已展示' : '已隐藏'}</span>
     </button>

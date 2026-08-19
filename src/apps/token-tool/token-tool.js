@@ -179,46 +179,66 @@ export function mountTokenTool(pageEl, ctx) {
     await saveConfig();
   };
 
-  let draggingId = null;
+  let pointerDrag = null;
   const clearDragState = () => {
     accountsEl?.querySelectorAll('.tt__row--dragging, .tt__row--drag-over').forEach((row) => {
       row.classList.remove('tt__row--dragging', 'tt__row--drag-over');
     });
   };
-  const onDragStart = (e) => {
-    const handle = e.target.closest('[data-tt-drag]');
-    if (!handle) return;
-    const row = handle.closest('.tt__row');
-    draggingId = row?.dataset.ttId ?? null;
-    if (!draggingId) return;
-    e.dataTransfer?.setData('text/plain', draggingId);
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-    row.classList.add('tt__row--dragging');
-  };
-  const onDragOver = (e) => {
-    const row = e.target.closest('.tt__row');
-    if (!row || !draggingId || row.dataset.ttId === draggingId) return;
-    e.preventDefault();
-    e.dataTransfer && (e.dataTransfer.dropEffect = 'move');
-    accountsEl.querySelectorAll('.tt__row--drag-over').forEach((el) => el.classList.remove('tt__row--drag-over'));
-    row.classList.add('tt__row--drag-over');
-  };
-  const onDrop = async (e) => {
-    const target = e.target.closest('.tt__row');
-    if (!target || !draggingId || target.dataset.ttId === draggingId) return;
-    e.preventDefault();
-    const targetId = target.dataset.ttId;
-    const from = config.accounts.findIndex((a) => a.id === draggingId);
-    const to = config.accounts.findIndex((a) => a.id === targetId);
+  const finishPointerDrag = async () => {
+    const drag = pointerDrag;
+    if (!drag) return;
+    pointerDrag = null;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
+    clearDragState();
+    if (!drag.targetId || drag.targetId === drag.id) return;
+    const from = config.accounts.findIndex((a) => a.id === drag.id);
+    const to = config.accounts.findIndex((a) => a.id === drag.targetId);
     if (from < 0 || to < 0) return;
     const [moved] = config.accounts.splice(from, 1);
     config.accounts.splice(to, 0, moved);
-    draggingId = null;
-    clearDragState();
     renderAccounts();
     await saveConfig();
   };
-  const onDragEnd = () => { draggingId = null; clearDragState(); };
+  const onPointerMove = (e) => {
+    if (!pointerDrag || e.pointerId !== pointerDrag.pointerId) return;
+    e.preventDefault();
+    const target = [...accountsEl.querySelectorAll('.tt__row')].find((row) => {
+      if (row.dataset.ttId === pointerDrag.id) return false;
+      const rect = row.getBoundingClientRect();
+      return e.clientY >= rect.top && e.clientY <= rect.bottom;
+    });
+    accountsEl.querySelectorAll('.tt__row--drag-over').forEach((row) => row.classList.remove('tt__row--drag-over'));
+    pointerDrag.targetId = target?.dataset.ttId ?? null;
+    target?.classList.add('tt__row--drag-over');
+  };
+  const onPointerUp = (e) => {
+    if (pointerDrag && e.pointerId === pointerDrag.pointerId) finishPointerDrag();
+  };
+  const onPointerCancel = (e) => {
+    if (pointerDrag && e.pointerId === pointerDrag.pointerId) {
+      pointerDrag = null;
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+      clearDragState();
+    }
+  };
+  const onDragPointerDown = (e) => {
+    const handle = e.target.closest('[data-tt-drag]');
+    if (!handle || e.button !== 0) return;
+    const row = handle.closest('.tt__row');
+    const id = row?.dataset.ttId;
+    if (!id) return;
+    e.preventDefault();
+    pointerDrag = { id, pointerId: e.pointerId, targetId: null };
+    row.classList.add('tt__row--dragging');
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+  };
 
   const onToolbar = (e) => {
     const btn = e.target.closest('.c-btn');
@@ -250,10 +270,7 @@ export function mountTokenTool(pageEl, ctx) {
 
   toolbar.addEventListener('click', onToolbar);
   accountsEl?.addEventListener('click', onAccounts);
-  accountsEl?.addEventListener('dragstart', onDragStart);
-  accountsEl?.addEventListener('dragover', onDragOver);
-  accountsEl?.addEventListener('drop', onDrop);
-  accountsEl?.addEventListener('dragend', onDragEnd);
+  accountsEl?.addEventListener('pointerdown', onDragPointerDown);
 
   const listenPromise = window.__TAURI__.event.listen('balances-updated', (e) => {
     if (disposed) return;
@@ -279,10 +296,10 @@ export function mountTokenTool(pageEl, ctx) {
     else configListenPromise.then((un) => un && un()).catch(() => {});
     toolbar.removeEventListener('click', onToolbar);
     accountsEl?.removeEventListener('click', onAccounts);
-    accountsEl?.removeEventListener('dragstart', onDragStart);
-    accountsEl?.removeEventListener('dragover', onDragOver);
-    accountsEl?.removeEventListener('drop', onDrop);
-    accountsEl?.removeEventListener('dragend', onDragEnd);
+    accountsEl?.removeEventListener('pointerdown', onDragPointerDown);
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
   });
 
   load();
@@ -337,7 +354,7 @@ function editorFormHtml(existing, kind) {
     </div>`;
 }
 
-function collectEditor(body) {
+function collectEditor(body, existing) {
   const val = (key) => body.querySelector(`[data-tt-field="${key}"] .c-input, [data-tt-field="${key}"] .c-select`)?.value.trim() ?? '';
   const name = val('name');
   if (!name) {
@@ -392,7 +409,7 @@ function openEditorDialog(existing) {
     mask.querySelector('[data-action="cancel"]').addEventListener('click', () => done(null));
     mask.querySelector('.c-dialog__footer .c-btn').addEventListener('click', () => done(null));
     mask.querySelector('.c-dialog__footer .c-btn:last-child').addEventListener('click', () => {
-      const acc = collectEditor(body);
+      const acc = collectEditor(body, existing);
       if (acc) done(acc);
     });
     mask.addEventListener('click', (e) => { if (e.target === mask) done(null); });

@@ -205,6 +205,8 @@ test('旋转切换：初始 horizontal → 点旋转按钮 → orientation 类�
   // 竖排每行一个账户：.c-strip-tk 也随形态纵向堆叠
   const tkDir = await strip.locator('.c-strip-tk').evaluate((el) => getComputedStyle(el).flexDirection);
   expect(tkDir).toBe('column');
+  const contentAlign = await strip.locator('.c-strip__content').evaluate((el) => getComputedStyle(el).alignItems);
+  expect(contentAlign).toBe('flex-start');
 });
 
 test('四边磁吸：拖动到视口左边缘 → 吸附类 + 贴边定位生效（transform 定位）', async ({ page }) => {
