@@ -71,10 +71,10 @@
       "command": "npm run check:boundary",
       "commandId": "boundary",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T09:47:31.565Z",
+      "timestamp": "2026-08-19T09:49:00.286Z",
       "summary": ""
     },
     {
@@ -83,10 +83,10 @@
       "command": "npm test -- --configLoader runner --maxWorkers=1",
       "commandId": "unit",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T09:48:57.524Z",
+      "timestamp": "2026-08-19T09:50:23.212Z",
       "summary": ""
     },
     {
@@ -95,11 +95,11 @@
       "command": "npm run agent:e2e -- --task EWP-018",
       "commandId": "e2e",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
-      "exitCode": null,
-      "result": "incomplete",
-      "timestamp": "2026-08-19T09:48:57.524Z",
-      "summary": "task-specific baseline deferred until initCommit exists"
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:56.141Z",
+      "summary": ""
     },
     {
       "taskId": "EWP-018",
@@ -107,10 +107,10 @@
       "command": "MANUAL: 记录视觉基线判断",
       "commandId": "visual-review",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
       "exitCode": null,
       "result": "pending",
-      "timestamp": "2026-08-19T09:48:57.524Z",
+      "timestamp": "2026-08-19T09:50:56.141Z",
       "summary": "manual baseline deferred"
     },
     {
@@ -119,10 +119,10 @@
       "command": "npm run build",
       "commandId": "build",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T09:48:59.283Z",
+      "timestamp": "2026-08-19T09:50:57.661Z",
       "summary": ""
     },
     {
@@ -131,10 +131,10 @@
       "command": "MANUAL: 记录 framework owner review",
       "commandId": "owner-review",
       "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-      "initCommit": "0000000000000000000000000000000000000000",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
       "exitCode": null,
       "result": "pending",
-      "timestamp": "2026-08-19T09:48:59.283Z",
+      "timestamp": "2026-08-19T09:50:57.661Z",
       "summary": "manual baseline deferred"
     }
   ],
@@ -160,5 +160,14 @@
       ],
       "productAssumptions": []
     }
+  },
+  "baselineUpdate": {
+    "path": ".agents/start-runs/29d99a8f-c4d3-42c5-84f7-c42e5145298a-baseline-update.json",
+    "taskId": "EWP-018",
+    "id": "EWP-018",
+    "baseBranch": "dev",
+    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+    "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+    "commit": "0000000000000000000000000000000000000000"
   }
 }

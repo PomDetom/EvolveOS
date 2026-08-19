@@ -1,51 +1,12 @@
 {
   "schemaVersion": 1,
+  "kind": "agent-start-baseline-update",
+  "taskId": "EWP-018",
   "id": "EWP-018",
-  "title": "TokenTool 悬浮窗多账户展示修复",
-  "branch": "ui/token-tool/float-multi-account",
+  "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
   "baseBranch": "dev",
   "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-  "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
-  "taskPath": ".agents/tasks/2026/EWP-018-tokentool/task.json",
-  "preflight": {
-    "ok": true,
-    "checkedAt": "2026-08-19T09:47:30.517Z",
-    "checks": {
-      "gitBranch": "dev",
-      "baseRef": "dev",
-      "gitClean": true,
-      "gitWritable": true,
-      "taskIdAvailable": true,
-      "branchAvailable": true,
-      "worktreeWritable": true
-    },
-    "inputs": {
-      "id": "EWP-018",
-      "title": "TokenTool 悬浮窗多账户展示修复",
-      "kind": "ui",
-      "branch": "ui/token-tool/float-multi-account",
-      "worktree": "C:\\Repository\\EvolveOS-EWP-011-ui",
-      "allowedPaths": [
-        "src/app/strip-main.js",
-        "src/components/float-strip/float-strip.css",
-        "tests/e2e/floatstrip.spec.js"
-      ],
-      "year": "2026",
-      "date": "2026-08-19",
-      "baseRef": "dev"
-    }
-  },
-  "baseline": {
-    "taskId": "EWP-018",
-    "gate": "start-preflight",
-    "command": "agent:start preflight",
-    "commandId": "agent:start preflight",
-    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-    "exitCode": 0,
-    "result": "success",
-    "timestamp": "2026-08-19T09:47:30.517Z",
-    "summary": "agent:start preflight passed"
-  },
+  "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
   "baselines": [
     {
       "taskId": "EWP-018",
@@ -119,14 +80,5 @@
       "timestamp": "2026-08-19T09:50:57.661Z",
       "summary": "manual baseline deferred"
     }
-  ],
-  "baselineUpdate": {
-    "path": ".agents/start-runs/29d99a8f-c4d3-42c5-84f7-c42e5145298a-baseline-update.json",
-    "taskId": "EWP-018",
-    "id": "EWP-018",
-    "baseBranch": "dev",
-    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
-    "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
-    "commit": "0000000000000000000000000000000000000000"
-  }
+  ]
 }
