@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-018",
   "title": "TokenTool 悬浮窗多账户展示修复",
-  "status": "implementing",
+  "status": "ready",
   "kind": "ui",
   "branch": "ui/token-tool/float-multi-account",
   "baseBranch": "dev",
@@ -16,13 +16,107 @@
   ],
   "spec": "tests/e2e/floatstrip.spec.js",
   "notes": [
-    ".agents/notes/proposed/feature/2026-08-19-tokentool.md"
+    ".agents/notes/implemented/feature/2026-08-19-tokentool.md"
   ],
   "requiredGates": "auto",
-  "evidence": [],
-  "review": null,
-  "changeHead": null,
-  "readyHead": null,
+  "evidence": [
+    {
+      "taskId": "EWP-018",
+      "gate": "boundary",
+      "command": "npm run check:boundary",
+      "commandId": "boundary",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:51:55.680Z",
+      "summary": "> evolveos@0.2.0 check:boundary > node scripts/check-boundary.js [ui/token-tool/float-multi-account] ✓ 框架改动：分支上受影响子系统定向回归；全量仅 dev→main/hotfix→main；框架 owner 评审"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "unit",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:51:56.239Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-011-ui HEAD is now at 09f6791 fixture [chore/baseline-blocks-verify 9a2f3a1] chore: 初始化 EWP-809 任务 3 files changed, 225 insertion…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "e2e",
+      "command": "npm run agent:e2e -- --task EWP-018",
+      "commandId": "e2e",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:53:19.520Z",
+      "summary": "> evolveos@0.2.0 agent:e2e > node scripts/agent/e2e.js --task EWP-018 Running 17 tests using 1 worker [1/17] [chromium] › tests\\e2e\\floatstrip.spec.js:12:1 › 渲染：.c-strip 存在 + token 实时监测（浏览器无后端 → 暂无账户占位） [2/17] [chromium] › tests\\e2e\\floats…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "visual-review",
+      "command": "MANUAL: 记录视觉基线判断",
+      "commandId": "visual-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:56:00.000Z",
+      "summary": "Web-only 视觉评审：基于 17 项 Playwright E2E、固定 320px 视口多账户断言及最终代码审查，窗口模式超过两个账户改为纵向堆叠，账户 chip 均保持在可视边界内；未执行 Tauri/桌面验证。"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:53:53.136Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "owner-review",
+      "command": "MANUAL: 记录 framework owner review",
+      "commandId": "owner-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:56:00.000Z",
+      "summary": "Framework owner review：改动仅涉及悬浮条渲染、对应 UI 样式和 E2E；符合 ui/* allowedPaths，未触碰 src-tauri、数据源或持久化协议；boundary、unit、E2E、build 全部通过。"
+    }
+  ],
+  "review": {
+    "reviewer": "Codex",
+    "result": "approved",
+    "reviewedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+    "findings": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    }
+  },
+  "changeHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+  "readyHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
   "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
   "preflight": {
     "ok": true,
