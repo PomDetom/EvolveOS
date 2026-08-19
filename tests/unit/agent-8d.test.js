@@ -115,7 +115,7 @@ describe('Task 8D baseline evidence', () => {
           runShellCommand: async () => ({ exitCode: 0, stdout: 'ok', stderr: '', reason: '' }),
         }),
       })).toBe(1);
-      expect(JSON.parse(readFileSync(entry.taskPath, 'utf8')).status).not.toBe('ready');
+      expect(JSON.parse(readFileSync(entry.taskPath, 'utf8')).status).toBe('verifying');
     } finally {
       try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
       try { fixture.git(['branch', '-D', 'chore/baseline-blocks-verify']); } catch {}
