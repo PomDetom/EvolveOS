@@ -64,7 +64,10 @@ html[data-strip-material="none"] .c-strip {
   transition: opacity var(--dur-base) var(--ease-out),
     transform var(--dur-base) var(--ease-out);
 }
-.c-strip[data-orientation="vertical"] .c-strip__content { flex-direction: column; }
+.c-strip[data-orientation="vertical"] .c-strip__content {
+  flex-direction: column;
+  align-items: flex-start;
+}
 /* 旋转中：内容淡出 + 轻微缩放（只动 transform/opacity），翻转到新形态后淡入 */
 .c-strip--rotating .c-strip__content { opacity: 0; transform: scale(0.95); }
 
@@ -151,7 +154,7 @@ html[data-strip-material="none"] .c-strip {
 /* 竖排：每行一个账户（chip 纵向堆叠，左对齐）；横排保持单行横向排列 */
 .c-strip[data-orientation="vertical"] .c-strip-tk {
   flex-direction: column;
-  align-items: stretch; /* 行拉伸填宽：配合 .c-strip-tk__time margin-left:auto 使时间右缘对齐 */
+  align-items: flex-start;
 }
 /* 横排账户间距双倍（12→24px，观感拉开；竖排保持原 gap） */
 .c-strip[data-orientation="horizontal"] .c-strip-tk { gap: var(--space-5); }
@@ -188,7 +191,6 @@ html[data-strip-material="none"] .c-strip {
 .c-strip-tk__time {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
-  margin-left: auto; /* 右对齐：竖排堆叠行拉伸后时间右缘对齐 */
 }
 .c-strip-tk__muted {
   color: var(--text-3);

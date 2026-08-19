@@ -90,17 +90,20 @@ test('tokenTool：桌面端（mock __TAURI__）余量页只读渲染 + 账户管
 
 test('tokenTool：Codex 本机额度卡 + 账户编辑器', async ({ page }) => {
   await page.addInitScript(() => {
+    const config = {
+      accounts: [{ id: 'codex-1', name: '本机 Codex', kind: 'codex', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 }],
+    };
+    const invokes = [];
     window.__TAURI__ = {
       window: {
         getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
         getAllWindows: () => Promise.resolve([]),
       },
       core: {
-        invoke: async (cmd) => {
+        invoke: async (cmd, args) => {
+          invokes.push({ cmd, args });
           if (cmd === 'get_config') {
-            return {
-              accounts: [{ id: 'codex-1', name: '本机 Codex', kind: 'codex', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 }],
-            };
+            return structuredClone(config);
           }
           if (cmd === 'get_balances') {
             return [{
@@ -117,11 +120,16 @@ test('tokenTool：Codex 本机额度卡 + 账户编辑器', async ({ page }) => 
               lastUpdated: Math.floor(Date.now() / 1000),
             }];
           }
+          if (cmd === 'save_config') {
+            config.accounts = args.config.accounts;
+            return null;
+          }
           return null;
         },
       },
       event: { listen: async () => () => {} },
     };
+    window.__tokenToolInvokes__ = invokes;
   });
   await page.goto(APP_URL);
   await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
@@ -147,6 +155,12 @@ test('tokenTool：Codex 本机额度卡 + 账户编辑器', async ({ page }) => 
     for (let i = 0; i < await rows.count(); i += 1) await expect(rows.nth(i)).toBeHidden();
   }
   await expect(page.locator('[data-tt-row="codex"]')).toContainText('无需填写密钥');
+  await page.locator('[data-tt-field="name"] .c-input').fill('新 Codex 账户');
+  await page.locator('.c-dialog__footer .c-btn', { hasText: '保存' }).click();
+  await page.waitForTimeout(150);
+  const saves = await page.evaluate(() => window.__tokenToolInvokes__.filter((item) => item.cmd === 'save_config'));
+  expect(saves).toHaveLength(1);
+  expect(saves[0].args.config.accounts.at(-1).name).toBe('新 Codex 账户');
 });
 
 test('tokenTool：账户展示开关、顺序拖拽与配置实时同步', async ({ page }) => {
@@ -204,9 +218,12 @@ test('tokenTool：账户展示开关、顺序拖拽与配置实时同步', async
 
   await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
   await page.waitForTimeout(250);
-  await page.locator('.tt__row', { hasText: '第一账户' }).locator('[data-tt-drag]').dragTo(
-    page.locator('.tt__row', { hasText: '第三账户' }),
-  );
+  const source = await page.locator('.tt__row', { hasText: '第一账户' }).locator('[data-tt-drag]').boundingBox();
+  const target = await page.locator('.tt__row', { hasText: '第三账户' }).boundingBox();
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 5 });
+  await page.mouse.up();
   await page.waitForTimeout(150);
   const saves = await page.evaluate(() => window.__tokenToolInvokes__.filter((item) => item.cmd === 'save_config'));
   expect(saves.at(-1).args.config.accounts.map((account) => account.id)).toEqual(['a2', 'a3', 'a1']);

@@ -113,6 +113,8 @@
   color: var(--text-3);
   cursor: grab;
   flex: none;
+  touch-action: none;
+  user-select: none;
 }
 .tt__row-drag:active { cursor: grabbing; }
 .tt__visibility {
