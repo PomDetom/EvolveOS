@@ -27,6 +27,7 @@ function fixture({ approval = 'none', mutatePlan = false, missingStartEvidence =
     git(['add', '.']);
     git(['commit', '-m', 'base']);
     const baseSha = git(['rev-parse', 'HEAD']);
+    git(['checkout', '-b', 'chore/implement-gate']);
     mkdirSync(path.join(root, taskDirectory), { recursive: true });
     writeFileSync(path.join(root, planPath), plan);
     const preflight = { ok: true, checks: { branch: 'dev', status: 'clean' } };
@@ -75,6 +76,7 @@ function fixture({ approval = 'none', mutatePlan = false, missingStartEvidence =
       id: initialTask.id,
       title: initialTask.title,
       branch: initialTask.branch,
+      baseBranch: initialTask.baseBranch,
       baseSha,
       taskPath,
       preflight,

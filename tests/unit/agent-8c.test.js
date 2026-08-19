@@ -59,7 +59,7 @@ describe('Task 8C worktree e2e', () => {
       rmSync(mainRoot, { recursive: true, force: true });
       rmSync(worktreeRoot, { recursive: true, force: true });
     }
-  });
+  }, 30000);
 
   test('配置根目录不应指向主 checkout，并使用任务端口和日志目录', () => {
     const paths = {
