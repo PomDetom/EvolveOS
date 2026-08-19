@@ -19,6 +19,7 @@
     "agent:task-check": "node scripts/agent/validate-task.js",
     "agent:start": "node scripts/agent/start-task.js",
     "agent:approve": "node scripts/agent/approve-task.js",
+    "agent:implement": "node scripts/agent/implement-task.js",
     "agent:finish": "node scripts/agent/finish-task.js",
     "agent:status": "node scripts/agent/status.js",
     "agent:scope": "node scripts/agent/change-scope.js",

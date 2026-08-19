@@ -51,4 +51,13 @@
   - `node --check scripts/merge-to-dev.js`：通过。
   - `git diff --check`：通过。
 - 安全边界:
-  - 测试只使用临时 Git repository、`rootDir` 注入和 `dryRun`；未真实合并、删除分支或修改 `dev`。
+- 测试只使用临时 Git repository、`rootDir` 注入和 `dryRun`；未真实合并、删除分支或修改 `dev`。
+
+## 2026-08-19 Task 8B 规格补齐：agent:implement
+
+- 新增 `scripts/agent/implement-task.js` 与 `npm run agent:implement`。
+- 入口依次校验 task schema、Task 8A `agent:start` 启动证据、当前 plan/allowedPaths/Acceptance/Product Assumptions 的审批 scope，以及 `planned` 状态；任一失败均退出 1，不写 task，也不修改代码。
+- 已批准 task 支持 `--dry-run` 和正常模式：dry-run 只报告 `planned -> implementing`；正常模式只将 task 状态更新为 `implementing`，不执行实现代码动作。
+- 新增 7 个 TDD 单元测试，覆盖未审批、已批准、审批 scope 漂移、历史 task 无 approval、启动证据缺失、dry-run 和正常状态转换。
+- 定向回归：7 个测试文件、52/52 通过；`git diff --check` 通过。测试使用临时 Git fixture，未操作 `dev`。
+- 完整单元回归：44 个测试文件、274/274 通过；Git fixture 设置显式 30 秒超时，未改变生产入口行为。
