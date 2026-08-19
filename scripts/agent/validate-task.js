@@ -106,7 +106,7 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
   }
 
   const result = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  const evidenceResult = result.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`) : { ok: true, errors: [] };
+  const evidenceResult = result.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
   if (!result.ok || !evidenceResult.ok) {
     io.error(`✗ task ${taskId} 校验失败`);
     [...result.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));

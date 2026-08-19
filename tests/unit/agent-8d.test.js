@@ -21,6 +21,7 @@ import { main as approveMain } from '../../scripts/agent/approve-task.js';
 import { findTask } from '../../scripts/agent/validate-task.js';
 import { main as verifyMain } from '../../scripts/agent/verify.js';
 import { main as finishMain } from '../../scripts/agent/finish-task.js';
+import { main as taskCheckMain } from '../../scripts/agent/validate-task.js';
 
 function makeFixture() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-8d-fixture-'));
@@ -136,7 +137,7 @@ describe('Task 8D baseline evidence', () => {
         expect(startMain([
           '--id', scenario.id, '--title', scenario.title, '--kind', scenario.kind,
           ...(scenario.app ? ['--app', scenario.app] : []),
-          '--branch', scenario.branch, '--paths', 'scripts/agent/', '--worktree', fixture.worktree,
+          '--branch', scenario.branch, '--paths', scenario.kind === 'app' ? 'src/apps/demo/' : 'docs/', '--worktree', fixture.worktree,
         ], fixture.root, { log() {}, error() {} }, {
           baselineRunner: (rootDir, command, gate) => {
             const taskPath = path.join(rootDir, '.agents', 'tasks', '2026', `${scenario.id}-${scenario.title.toLowerCase().replaceAll(' ', '-')}`, 'task.json');
@@ -173,6 +174,10 @@ describe('Task 8D baseline evidence', () => {
         const updateCommitRecord = JSON.parse(fixture.git(['show', `${task.baselineUpdate.commit}:${task.baselineUpdate.path}`]));
         expect(updateCommitRecord).toMatchObject({ taskId: scenario.id, baseSha: task.baseSha, initCommit: task.initCommit });
         expect(updateCommitRecord.baselines).toEqual(task.baselines);
+        expect(validateStartEvidence(fixture.worktree, task, entry.taskPath.replace(`${fixture.worktree}${path.sep}`, '').replaceAll('\\', '/'), { requireBaselines: true })).toEqual({ ok: true, errors: [] });
+        const taskCheckErrors = [];
+        const taskCheckResult = taskCheckMain(['--task', scenario.id], fixture.worktree, { log() {}, error(message) { taskCheckErrors.push(String(message)); } });
+        expect({ result: taskCheckResult, errors: taskCheckErrors }).toEqual({ result: 0, errors: [] });
       } finally {
         try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
         try { fixture.git(['branch', '-D', scenario.branch]); } catch {}
@@ -197,6 +202,54 @@ describe('Task 8D baseline evidence', () => {
       summary: 'runner unavailable',
     });
   });
+
+  test('requireBaselines 拒绝补录提交顺序篡改、缺失 gate 和重复 gate', () => {
+    const fixture = makeFixture();
+    try {
+      expect(startMain([
+        '--id', 'EWP-813', '--title', 'Baseline integrity', '--kind', 'docs',
+        '--branch', 'docs/baseline-integrity', '--paths', 'docs/', '--worktree', fixture.worktree,
+      ], fixture.root, { log() {}, error() {} }, {
+        baselineRunner: () => ({ exitCode: 0, stdout: '', stderr: '', reason: '' }),
+      })).toBe(0);
+      const entry = findTask(fixture.worktree, 'EWP-813');
+      const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+      const taskPath = entry.taskPath.replace(`${fixture.worktree}${path.sep}`, '').replaceAll('\\', '/');
+      const reordered = { ...task, baselineUpdate: { ...task.baselineUpdate, commit: task.initCommit } };
+      expect(validateStartEvidence(fixture.worktree, reordered, taskPath, { requireBaselines: true }).ok).toBe(false);
+      const missing = { ...task, baselines: task.baselines.filter((item) => item.gate !== 'build') };
+      expect(validateStartEvidence(fixture.worktree, missing, taskPath, { requireBaselines: true }).errors.join(' ')).toContain('缺少 baseline gate: build');
+      const duplicate = { ...task, baselines: [...task.baselines, task.baselines[0]] };
+      expect(validateStartEvidence(fixture.worktree, duplicate, taskPath, { requireBaselines: true }).errors.join(' ')).toContain('baseline gate 重复');
+    } finally {
+      try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
+      try { fixture.git(['branch', '-D', 'docs/baseline-integrity']); } catch {}
+      rmSync(fixture.root, { recursive: true, force: true });
+      rmSync(fixture.worktree, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('agent:task-check 真实入口阻断缺少 baseline update 的旧 task', () => {
+    const fixture = makeFixture();
+    try {
+      expect(startMain([
+        '--id', 'EWP-814', '--title', 'Legacy baseline check', '--kind', 'docs',
+        '--branch', 'docs/legacy-baseline-check', '--paths', 'docs/', '--worktree', fixture.worktree,
+      ], fixture.root, { log() {}, error() {} }, {
+        baselineRunner: () => ({ exitCode: 0, stdout: '', stderr: '', reason: '' }),
+      })).toBe(0);
+      const entry = findTask(fixture.worktree, 'EWP-814');
+      const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+      delete task.baselineUpdate;
+      writeFileSync(entry.taskPath, `${JSON.stringify(task, null, 2)}\n`);
+      expect(taskCheckMain(['--task', 'EWP-814'], fixture.worktree, { log() {}, error() {} })).toBe(1);
+    } finally {
+      try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
+      try { fixture.git(['branch', '-D', 'docs/legacy-baseline-check']); } catch {}
+      rmSync(fixture.root, { recursive: true, force: true });
+      rmSync(fixture.worktree, { recursive: true, force: true });
+    }
+  }, 30000);
 
   test('legacy task without 8D baselines is readable but verification baseline lookup is incomplete', () => {
     expect(validateBaselineEvidence(undefined, { taskId: 'EWP-808', baseSha: 'a'.repeat(40) })).toMatchObject({ ok: false, errors: expect.arrayContaining(['缺少 baseline evidence']) });

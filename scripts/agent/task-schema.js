@@ -5,6 +5,8 @@ import { listStartRecoveryArtifacts } from './start-recovery.js';
 import { APPROVAL_STATUSES } from './approval.js';
 import { validateBaselineEvidence } from './workflow-utils.js';
 import { gateDefinition } from './gate-registry.js';
+import { assessBranchChanges } from '../boundary-check.js';
+import { selectGates } from './select-gates.js';
 
 const DEFAULT_PROTOCOL = {
   schemaVersion: 1,
@@ -167,6 +169,21 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
     }
   }
   if (options.requireBaselines === true) {
+    const expectedGates = task.requiredGates === 'auto'
+      ? selectGates({
+        kind: assessBranchChanges(task.branch, []).kind,
+        changedPaths: [],
+        hasNotes: Array.isArray(task.notes) && task.notes.length > 0,
+        taskKind: task.kind,
+      })
+      : task.requiredGates;
+    const actualGates = Array.isArray(task.baselines) ? task.baselines.map((baseline) => baseline?.gate) : [];
+    const duplicateGates = actualGates.filter((gate, index) => actualGates.indexOf(gate) !== index);
+    const missingGates = expectedGates.filter((gate) => !actualGates.includes(gate));
+    const unexpectedGates = actualGates.filter((gate) => !expectedGates.includes(gate));
+    if (duplicateGates.length) errors.push(`baseline gate 重复: ${[...new Set(duplicateGates)].join(', ')}`);
+    if (missingGates.length) errors.push(`缺少 baseline gate: ${missingGates.join(', ')}`);
+    if (unexpectedGates.length) errors.push(`存在非启动 gate baseline: ${[...new Set(unexpectedGates)].join(', ')}`);
     const update = task.baselineUpdate;
     if (!update || typeof update !== 'object') {
       errors.push('缺少 baseline update record；旧任务需补录基线');
@@ -179,6 +196,7 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
         errors.push('缺少合法的 baseline update commit');
       } else {
         try {
+          execFileSync('git', ['merge-base', '--is-ancestor', task.initCommit, update.commit], { cwd: rootDir, stdio: 'ignore' });
           execFileSync('git', ['merge-base', '--is-ancestor', update.commit, 'HEAD'], { cwd: rootDir, stdio: 'ignore' });
           const subject = gitText(rootDir, ['show', '-s', '--format=%s', update.commit]);
           if (subject !== `chore: 补录 ${task.id} baseline`) errors.push('baseline update commit 提交信息非法');
