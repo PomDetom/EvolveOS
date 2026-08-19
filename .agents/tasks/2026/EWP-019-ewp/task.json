@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-019",
   "title": "EWP 过程记录与提交前强制门禁",
-  "status": "verifying",
+  "status": "ready",
   "kind": "chore",
   "branch": "chore/ewp-process-records",
   "baseBranch": "dev",
@@ -271,11 +271,48 @@
       "classification": "success",
       "timestamp": "2026-08-19T12:29:55.276Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+      "testedHead": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:32:40.883Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 305bd07 fixture [chore/baseline-blocks-verify 6137022] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+      "testedHead": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:34:38.332Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
-  "review": null,
-  "changeHead": null,
-  "readyHead": null,
+  "review": {
+    "reviewer": "用户授权（本次请求）",
+    "result": "approved",
+    "reviewedHead": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+    "findings": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    }
+  },
+  "changeHead": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
+  "readyHead": "cd793536ad8bec25dcaeebdf6840c3acd8e9954f",
   "startRunId": "b82d3050-3c67-4c1d-80a9-061b3554d9fa",
   "preflight": {
     "ok": true,
