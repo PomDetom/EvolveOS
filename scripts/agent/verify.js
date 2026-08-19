@@ -4,7 +4,7 @@ import { assessBranchChanges } from '../boundary-check.js';
 import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
-import { createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
+import { classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
 import { selectGates } from './select-gates.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
@@ -13,7 +13,7 @@ const GATE_REGISTRY = {
   'notes-check': { command: (taskId) => `node scripts/agent/validate-notes.js --task ${taskId}` },
   boundary: { command: () => 'npm run check:boundary' },
   unit: { command: () => 'npm test' },
-  e2e: { command: () => 'npm run test:e2e' },
+  e2e: { command: (taskId) => `npm run agent:e2e -- --task ${taskId}` },
   'shell-smoke': { command: () => 'npm run test:e2e -- --grep shell' },
   'visual-review': { command: () => 'MANUAL: 记录视觉基线判断', manual: true },
   build: { command: () => 'npm run build' },
@@ -71,7 +71,7 @@ function enforceApproval(rootDir, entry, io) {
   return true;
 }
 
-export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
+export async function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
   const { taskId, dryRun } = parseVerifyArgs(argv);
   if (!taskId) {
     io.error('用法：npm run agent:verify -- --task EWP-004 [--dry-run]');
@@ -125,18 +125,24 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
       failed = true;
       continue;
     }
-    const result = runShellCommand(rootDir, gate.command);
+    let result;
+    try {
+      result = await runShellCommand(rootDir, gate.command);
+    } catch (error) {
+      result = { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` };
+    }
+    const gateResult = classifyGateResult(result);
     evidence.push(createEvidence({
       gate: gate.gate,
       command: gate.command,
       baseSha,
       headSha,
       exitCode: result.exitCode,
-      result: result.exitCode === 0 ? 'success' : 'failed',
+      result: gateResult,
       timestamp,
-      summary: summarizeOutput(result.stdout, result.stderr),
+      summary: summarizeOutput(result.stdout, `${result.stderr} ${result.reason ?? ''}`),
     }));
-    if (result.exitCode !== 0) failed = true;
+    if (gateResult !== 'success') failed = true;
   }
   writeTask(entry, { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] });
   io.log(`写入 ${evidence.length} 条验证证据（head=${headSha}）`);
@@ -144,5 +150,5 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
 }
 
 if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) {
-  process.exitCode = main();
+  main().then((code) => { process.exitCode = code; });
 }

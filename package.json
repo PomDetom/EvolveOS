@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "agent:e2e": "node scripts/agent/e2e.js",
     "test:visual": "playwright test tests/e2e/visual-regression.spec.js",
     "check:boundary": "node scripts/check-boundary.js",
     "merge-to-dev": "node scripts/merge-to-dev.js",

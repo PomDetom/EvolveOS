@@ -87,43 +87,47 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
   if (!enforceApproval(rootDir, entry, io)) return 1;
 
   writeTask(entry, { ...entry.task, status: 'verifying' });
-  const verifyResult = verifyMain(['--task', taskId], rootDir, io);
-  if (verifyResult !== 0) {
-    io.error('✗ verify 未通过，任务保持 verifying');
-    return 1;
-  }
+  const finishAfterVerify = (verifyResult) => {
+    if (verifyResult !== 0) {
+      io.error('✗ verify 未通过，任务保持 verifying');
+      return 1;
+    }
 
-  const refreshed = findTask(rootDir, taskId);
-  const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
-  const notePaths = resolveNotePaths(rootDir, refreshed.task.notes ?? []);
-  const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
-  const noteReport = evaluateNoteRequirement({
-    task: refreshed.task,
-    changedPaths,
-    notePaths,
-    noteLifecycles,
-    status: 'ready',
-  });
-  if (!noteReport.ok) {
-    noteReport.issues.forEach((issue) => io.error(`✗ ${issue}`));
-    return 1;
-  }
+    const refreshed = findTask(rootDir, taskId);
+    const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
+    const notePaths = resolveNotePaths(rootDir, refreshed.task.notes ?? []);
+    const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
+    const noteReport = evaluateNoteRequirement({
+      task: refreshed.task,
+      changedPaths,
+      notePaths,
+      noteLifecycles,
+      status: 'ready',
+    });
+    if (!noteReport.ok) {
+      noteReport.issues.forEach((issue) => io.error(`✗ ${issue}`));
+      return 1;
+    }
 
-  const changeHead = gitSha(rootDir, 'HEAD');
-  const review = buildReviewRecord({ reviewer, result: reviewResult, reviewedHead: changeHead });
-  const task = {
-    ...refreshed.task,
-    status: 'ready',
-    notes: notePaths,
-    changeHead,
-    readyHead: changeHead,
-    review,
+    const changeHead = gitSha(rootDir, 'HEAD');
+    const review = buildReviewRecord({ reviewer, result: reviewResult, reviewedHead: changeHead });
+    const task = {
+      ...refreshed.task,
+      status: 'ready',
+      notes: notePaths,
+      changeHead,
+      readyHead: changeHead,
+      review,
+    };
+    writeTask(refreshed, task);
+    const reviewPath = resolve(dirname(refreshed.taskPath), 'review.md');
+    writeFileSync(reviewPath, renderReview(task, review), 'utf8');
+    io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}）`);
+    return 0;
   };
-  writeTask(refreshed, task);
-  const reviewPath = resolve(dirname(refreshed.taskPath), 'review.md');
-  writeFileSync(reviewPath, renderReview(task, review), 'utf8');
-  io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}）`);
-  return 0;
+
+  const verifyResult = verifyMain(['--task', taskId], rootDir, io);
+  return verifyResult instanceof Promise ? verifyResult.then(finishAfterVerify) : finishAfterVerify(verifyResult);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) Promise.resolve(main()).then((code) => { process.exitCode = code; });
