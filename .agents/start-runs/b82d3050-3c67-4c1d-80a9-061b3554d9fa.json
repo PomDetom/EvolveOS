@@ -57,19 +57,7 @@
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T11:59:45.004Z",
-      "summary": ""
-    },
-    {
-      "taskId": "EWP-019",
-      "gate": "failure-paths",
-      "command": "npm test -- --configLoader runner --maxWorkers=1",
-      "commandId": "failure-paths",
-      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-      "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-      "exitCode": 0,
-      "result": "success",
-      "timestamp": "2026-08-19T12:01:18.363Z",
+      "timestamp": "2026-08-19T12:15:14.984Z",
       "summary": ""
     },
     {
@@ -81,7 +69,7 @@
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T12:01:20.671Z",
+      "timestamp": "2026-08-19T12:15:17.135Z",
       "summary": ""
     }
   ],
@@ -92,7 +80,7 @@
     "baseBranch": "dev",
     "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
     "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "cec17c7235e45ceb552144939201ddb66541a429",
+    "commit": "0000000000000000000000000000000000000000",
     "baselines": [
       {
         "taskId": "EWP-019",
@@ -103,19 +91,7 @@
         "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-19T11:59:45.004Z",
-        "summary": ""
-      },
-      {
-        "taskId": "EWP-019",
-        "gate": "failure-paths",
-        "command": "npm test -- --configLoader runner --maxWorkers=1",
-        "commandId": "failure-paths",
-        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-        "exitCode": 0,
-        "result": "success",
-        "timestamp": "2026-08-19T12:01:18.363Z",
+        "timestamp": "2026-08-19T12:15:14.984Z",
         "summary": ""
       },
       {
@@ -127,7 +103,7 @@
         "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-19T12:01:20.671Z",
+        "timestamp": "2026-08-19T12:15:17.135Z",
         "summary": ""
       }
     ]

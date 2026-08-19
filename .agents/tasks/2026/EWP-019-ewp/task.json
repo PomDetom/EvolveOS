@@ -145,6 +145,48 @@
       "classification": "success",
       "timestamp": "2026-08-19T12:05:23.834Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "3c5878020d9d80770ecae7098429a028478e8127",
+      "testedHead": "3c5878020d9d80770ecae7098429a028478e8127",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:05:37.438Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at ed2aa8e fixture [chore/baseline-blocks-verify 6f73bdb] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "failure-paths",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "failure-paths",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "3c5878020d9d80770ecae7098429a028478e8127",
+      "testedHead": "3c5878020d9d80770ecae7098429a028478e8127",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-19T12:07:07.842Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 19dd04f fixture [chore/baseline-blocks-verify af90540] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "3c5878020d9d80770ecae7098429a028478e8127",
+      "testedHead": "3c5878020d9d80770ecae7098429a028478e8127",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:09:08.366Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
   "review": null,
@@ -202,19 +244,7 @@
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T11:59:45.004Z",
-      "summary": ""
-    },
-    {
-      "taskId": "EWP-019",
-      "gate": "failure-paths",
-      "command": "npm test -- --configLoader runner --maxWorkers=1",
-      "commandId": "failure-paths",
-      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-      "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-      "exitCode": 0,
-      "result": "success",
-      "timestamp": "2026-08-19T12:01:18.363Z",
+      "timestamp": "2026-08-19T12:15:14.984Z",
       "summary": ""
     },
     {
@@ -226,7 +256,7 @@
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-19T12:01:20.671Z",
+      "timestamp": "2026-08-19T12:15:17.135Z",
       "summary": ""
     }
   ],
@@ -262,7 +292,7 @@
     "baseBranch": "dev",
     "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
     "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "cec17c7235e45ceb552144939201ddb66541a429",
+    "commit": "0000000000000000000000000000000000000000",
     "baselines": [
       {
         "taskId": "EWP-019",
@@ -273,19 +303,7 @@
         "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-19T11:59:45.004Z",
-        "summary": ""
-      },
-      {
-        "taskId": "EWP-019",
-        "gate": "failure-paths",
-        "command": "npm test -- --configLoader runner --maxWorkers=1",
-        "commandId": "failure-paths",
-        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-        "exitCode": 0,
-        "result": "success",
-        "timestamp": "2026-08-19T12:01:18.363Z",
+        "timestamp": "2026-08-19T12:15:14.984Z",
         "summary": ""
       },
       {
@@ -297,7 +315,7 @@
         "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-19T12:01:20.671Z",
+        "timestamp": "2026-08-19T12:15:17.135Z",
         "summary": ""
       }
     ]
