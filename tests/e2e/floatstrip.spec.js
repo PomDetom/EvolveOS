@@ -122,6 +122,14 @@ test('strip 窗口：超过两个账户时不应把后续账户裁在固定窗�
   }));
   expect(geometry.right).toBeLessThanOrEqual(321);
   expect(Math.max(...geometry.chips.map((chip) => chip.right))).toBeLessThanOrEqual(321);
+  const alignment = await strip.evaluate((el) => [...el.querySelectorAll('.c-strip-tk__chip')].map((chip) => ({
+    nameLeft: chip.querySelector('.c-strip-tk__name').getBoundingClientRect().left,
+    valueLeft: chip.querySelector('.c-strip-tk__value').getBoundingClientRect().left,
+    timeRight: chip.querySelector('.c-strip-tk__time').getBoundingClientRect().right,
+  })));
+  expect(new Set(alignment.map((cell) => Math.round(cell.nameLeft))).size).toBe(1);
+  expect(new Set(alignment.map((cell) => Math.round(cell.valueLeft))).size).toBe(1);
+  expect(new Set(alignment.map((cell) => Math.round(cell.timeRight))).size).toBe(1);
 });
 
 test('strip：OpenCode rolling 倒计时每秒递减（data-resets-at 定时器原地更新，不整窗重渲染）', async ({ page }) => {

@@ -92,13 +92,14 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(html).toContain(' · 2分钟前');
   });
 
-  it('renderStripToken：无 lastUpdated → 不渲染时间列', () => {
+  it('renderStripToken：无 lastUpdated → 保留空时间列以维持统一右对齐', () => {
     const html = renderStripToken(
       { accounts: [ACC()] },
       [{ accountId: 'a1', balance: 88.5, currency: 'CNY', ok: true, error: null, lastUpdated: null }],
     );
     expect(html).toContain('88.50');
-    expect(html).not.toContain('c-strip-tk__time');
+    expect(html).toContain('c-strip-tk__time');
+    expect(html).toContain('aria-hidden="true"');
     expect(html).not.toContain(' · ');
   });
 
