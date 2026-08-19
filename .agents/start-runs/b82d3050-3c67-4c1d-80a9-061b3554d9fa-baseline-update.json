@@ -1,68 +1,12 @@
 {
   "schemaVersion": 1,
+  "kind": "agent-start-baseline-update",
+  "taskId": "EWP-019",
   "id": "EWP-019",
-  "title": "EWP 过程记录与提交前强制门禁",
-  "status": "awaiting_approval",
-  "kind": "chore",
-  "branch": "chore/ewp-process-records",
+  "startRunId": "b82d3050-3c67-4c1d-80a9-061b3554d9fa",
   "baseBranch": "dev",
   "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-  "allowedPaths": [
-    "scripts/agent/",
-    "scripts/",
-    "tests/unit/",
-    ".agents/",
-    ".agents/tasks/2026/EWP-019-ewp/"
-  ],
-  "spec": ".agents/tasks/2026/EWP-019-ewp/plan.md",
-  "notes": [],
-  "requiredGates": "auto",
-  "evidence": [],
-  "review": null,
-  "changeHead": null,
-  "readyHead": null,
-  "startRunId": "b82d3050-3c67-4c1d-80a9-061b3554d9fa",
-  "preflight": {
-    "ok": true,
-    "checkedAt": "2026-08-19T11:32:11.343Z",
-    "checks": {
-      "gitBranch": "dev",
-      "baseRef": "dev",
-      "gitClean": true,
-      "gitWritable": true,
-      "taskIdAvailable": true,
-      "branchAvailable": true,
-      "worktreeWritable": true
-    },
-    "inputs": {
-      "id": "EWP-019",
-      "title": "EWP 过程记录与提交前强制门禁",
-      "kind": "chore",
-      "branch": "chore/ewp-process-records",
-      "worktree": "C:\\Repository\\EvolveOS-EWP-019-process-records",
-      "allowedPaths": [
-        "scripts/agent/",
-        "scripts/",
-        "tests/unit/",
-        ".agents/"
-      ],
-      "year": "2026",
-      "date": "2026-08-19",
-      "baseRef": "dev"
-    }
-  },
   "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-  "baseline": {
-    "taskId": "EWP-019",
-    "gate": "start-preflight",
-    "command": "agent:start preflight",
-    "commandId": "agent:start preflight",
-    "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-    "exitCode": 0,
-    "result": "success",
-    "timestamp": "2026-08-19T11:32:11.343Z",
-    "summary": "agent:start preflight passed"
-  },
   "baselines": [
     {
       "taskId": "EWP-019",
@@ -100,37 +44,5 @@
       "timestamp": "2026-08-19T11:32:18.465Z",
       "summary": "Command failed: npm run build\nfailed to load config from C:\\Repository\\EvolveOS-EWP-019-process-records\\vite.config.js\nerror during build:\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from C:\\Repository\\EvolveOS-EWP-019-process-records\\vite.config.js.timestamp-1787139138426-cbee061b175978.mjs\n    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)\n    at packageResolve (node:internal/modules/esm/resolve:764:81)\n    at moduleResolve (node:internal/modules/esm/resolve:855:18)\n    at defaultResolve (node:internal/modules/esm/resolve:988:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)\n    at #resolve (node:internal/modules/esm/loader:679:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:162:33)\n"
     }
-  ],
-  "approval": {
-    "status": "awaiting_approval",
-    "approver": null,
-    "approvedAt": null,
-    "scopeHash": null,
-    "scope": {
-      "planPath": ".agents/tasks/2026/EWP-019-ewp/plan.md",
-      "allowedPaths": [
-        ".agents/",
-        ".agents/tasks/2026/EWP-019-ewp/",
-        "scripts/",
-        "scripts/agent/",
-        "tests/unit/"
-      ],
-      "acceptance": [
-        "明确的可观察结果",
-        "相关自动化验证通过",
-        "验证证据绑定代码提交",
-        "评审记录已写入"
-      ],
-      "productAssumptions": []
-    }
-  },
-  "baselineUpdate": {
-    "path": ".agents/start-runs/b82d3050-3c67-4c1d-80a9-061b3554d9fa-baseline-update.json",
-    "taskId": "EWP-019",
-    "id": "EWP-019",
-    "baseBranch": "dev",
-    "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
-    "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "0000000000000000000000000000000000000000"
-  }
+  ]
 }
