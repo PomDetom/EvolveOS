@@ -103,7 +103,7 @@ export function formatRelative(epochSecs) {
 
 /**
  * 悬浮条 token 内容模板：每账户一行 chip = 状态点 + 名称 + 值 + 上次刷新时间（结构化排版：
- * 名称固定列宽对齐，各 chip 余额起始对齐；时间列随 lastUpdated 显示，无则不渲染）。
+ * 最长账户名决定统一列宽，所有账户内容左对齐；刷新时间保留空列并统一右对齐。
  * config 为空（未加载）→ 加载占位；无账户 → 暂无账户占位。
  */
 export function renderStripToken(config, balances) {
@@ -116,7 +116,7 @@ export function renderStripToken(config, balances) {
     const dotCls = st === 'err' ? ' c-strip-tk__dot--err' : st === 'warn' ? ' c-strip-tk__dot--warn' : st === 'none' ? ' c-strip-tk__dot--none' : '';
     const time = bal?.lastUpdated != null
       ? `<span class="c-strip-tk__time" data-last-refresh="${escapeHtml(String(bal.lastUpdated))}"> · ${formatRelative(bal.lastUpdated)}</span>`
-      : '';
+      : '<span class="c-strip-tk__time" aria-hidden="true"></span>';
     return `
       <div class="c-strip-tk__chip" title="${escapeHtml(acc.name)}">
         <span class="c-strip-tk__dot${dotCls}"></span>

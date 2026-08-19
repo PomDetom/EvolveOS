@@ -105,8 +105,16 @@
   padding: var(--space-3) var(--space-4);
   box-shadow: var(--shadow-sm);
 }
-.tt__row--dragging { opacity: 0.45; }
+.tt__row--dragging { opacity: 0.35; border-style: dashed; }
 .tt__row--drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-50); }
+.tt__row--drag-preview {
+  position: fixed;
+  z-index: var(--z-modal);
+  pointer-events: none;
+  opacity: 0.96;
+  box-shadow: var(--shadow-lg);
+  margin: 0;
+}
 .tt__row-drag {
   display: inline-flex;
   align-items: center;

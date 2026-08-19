@@ -185,6 +185,32 @@ export function mountTokenTool(pageEl, ctx) {
       row.classList.remove('tt__row--dragging', 'tt__row--drag-over');
     });
   };
+  const removeDragPreview = (drag = pointerDrag) => {
+    drag?.preview?.remove();
+    if (drag) drag.preview = null;
+  };
+  const updateDragPreview = (e) => {
+    const drag = pointerDrag;
+    if (!drag?.preview) return;
+    drag.preview.style.left = `${e.clientX - drag.offsetX}px`;
+    drag.preview.style.top = `${e.clientY - drag.offsetY}px`;
+  };
+  const startDragPreview = (e) => {
+    const drag = pointerDrag;
+    if (!drag || drag.started) return;
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 3) return;
+    drag.started = true;
+    drag.row.classList.add('tt__row--dragging');
+    const rect = drag.row.getBoundingClientRect();
+    const preview = drag.row.cloneNode(true);
+    preview.classList.remove('tt__row--dragging', 'tt__row--drag-over');
+    preview.classList.add('tt__row--drag-preview');
+    preview.style.width = `${rect.width}px`;
+    preview.style.left = `${e.clientX - drag.offsetX}px`;
+    preview.style.top = `${e.clientY - drag.offsetY}px`;
+    document.body.appendChild(preview);
+    drag.preview = preview;
+  };
   const finishPointerDrag = async () => {
     const drag = pointerDrag;
     if (!drag) return;
@@ -193,6 +219,7 @@ export function mountTokenTool(pageEl, ctx) {
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerCancel);
     clearDragState();
+    removeDragPreview(drag);
     if (!drag.targetId || drag.targetId === drag.id) return;
     const from = config.accounts.findIndex((a) => a.id === drag.id);
     const to = config.accounts.findIndex((a) => a.id === drag.targetId);
@@ -204,7 +231,10 @@ export function mountTokenTool(pageEl, ctx) {
   };
   const onPointerMove = (e) => {
     if (!pointerDrag || e.pointerId !== pointerDrag.pointerId) return;
+    startDragPreview(e);
+    if (!pointerDrag.started) return;
     e.preventDefault();
+    updateDragPreview(e);
     const target = [...accountsEl.querySelectorAll('.tt__row')].find((row) => {
       if (row.dataset.ttId === pointerDrag.id) return false;
       const rect = row.getBoundingClientRect();
@@ -219,11 +249,13 @@ export function mountTokenTool(pageEl, ctx) {
   };
   const onPointerCancel = (e) => {
     if (pointerDrag && e.pointerId === pointerDrag.pointerId) {
+      const drag = pointerDrag;
       pointerDrag = null;
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerCancel);
       clearDragState();
+      removeDragPreview(drag);
     }
   };
   const onDragPointerDown = (e) => {
@@ -233,8 +265,19 @@ export function mountTokenTool(pageEl, ctx) {
     const id = row?.dataset.ttId;
     if (!id) return;
     e.preventDefault();
-    pointerDrag = { id, pointerId: e.pointerId, targetId: null };
-    row.classList.add('tt__row--dragging');
+    const rect = row.getBoundingClientRect();
+    pointerDrag = {
+      id,
+      pointerId: e.pointerId,
+      targetId: null,
+      row,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      started: false,
+      preview: null,
+    };
     window.addEventListener('pointermove', onPointerMove, { passive: false });
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
@@ -300,6 +343,7 @@ export function mountTokenTool(pageEl, ctx) {
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerCancel);
+    removeDragPreview();
   });
 
   load();

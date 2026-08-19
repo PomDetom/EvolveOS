@@ -222,6 +222,9 @@ test('tokenTool：账户展示开关、顺序拖拽与配置实时同步', async
   const target = await page.locator('.tt__row', { hasText: '第三账户' }).boundingBox();
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
   await page.mouse.down();
+  await page.mouse.move(source.x + source.width / 2 + 12, source.y + source.height / 2 + 12);
+  await expect(page.locator('.tt__row--drag-preview')).toHaveCount(1);
+  await expect(page.locator('.tt__row--dragging')).toHaveCount(1);
   await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 5 });
   await page.mouse.up();
   await page.waitForTimeout(150);
