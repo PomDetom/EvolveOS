@@ -7,6 +7,7 @@ import { evaluateNoteRequirement, noteLifecycleForPath } from './note-gate.js';
 import { findTask } from './validate-task.js';
 import { gitSha } from './workflow-utils.js';
 import { main as verifyMain } from './verify.js';
+import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -62,6 +63,13 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
   const entry = findTask(rootDir, taskId);
   if (!entry || entry.parseError) {
     io.error(`✗ 无法读取 task: ${taskId}`);
+    return 1;
+  }
+  const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
+  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task) : { ok: true, errors: [] };
+  if (!schemaResult.ok || !evidenceResult.ok) {
+    io.error(`✗ task ${taskId} 校验失败`);
+    [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
     return 1;
   }
 

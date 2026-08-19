@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -31,6 +32,7 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   const requiredFields = [
     'schemaVersion', 'id', 'title', 'status', 'kind', 'branch', 'baseBranch',
     'baseSha', 'allowedPaths', 'spec', 'notes', 'requiredGates', 'evidence', 'review', 'readyHead',
+    'startRunId', 'preflight', 'initCommit',
   ];
 
   if (!task || typeof task !== 'object' || Array.isArray(task)) {
@@ -61,6 +63,9 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   if (!(task.requiredGates === 'auto' || Array.isArray(task.requiredGates))) errors.push('requiredGates 必须为 auto 或数组');
   if (!Array.isArray(task.evidence)) errors.push('evidence 必须为数组');
   if (task.review !== null && (typeof task.review !== 'object' || Array.isArray(task.review))) errors.push('review 必须为 null 或对象');
+  if (typeof task.startRunId !== 'string' || !task.startRunId.trim()) errors.push('startRunId 不能为空');
+  if (!task.preflight || typeof task.preflight !== 'object' || Array.isArray(task.preflight)) errors.push('preflight 必须为对象');
+  if (typeof task.initCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(task.initCommit)) errors.push('initCommit 必须为 40 位 Git SHA');
 
   if (typeof task.id === 'string' && taskDirectoryName(taskDirectory) && !taskDirectoryName(taskDirectory).startsWith(`${task.id}-`)) {
     errors.push(`task id 与目录不一致: ${task.id} / ${taskDirectory}`);
@@ -78,5 +83,26 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
     errors.push('ready task 必须包含 40 位 readyHead');
   }
 
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateStartEvidence(rootDir, task) {
+  const errors = [];
+  if (!task || typeof task !== 'object') return { ok: false, errors: ['task 必须是 JSON 对象'] };
+  if (!task.startRunId) errors.push('缺少 startRunId，任务不是通过 agent:start 初始化');
+  if (!task.preflight || task.preflight.ok !== true) errors.push('缺少成功的 preflight 记录');
+  if (!task.preflight?.checks || typeof task.preflight.checks !== 'object') errors.push('preflight.checks 缺失');
+  if (typeof task.initCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(task.initCommit)) {
+    errors.push('缺少合法的 initCommit');
+  } else {
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', task.initCommit, 'HEAD'], {
+        cwd: rootDir,
+        stdio: 'ignore',
+      });
+    } catch {
+      errors.push(`initCommit 不在当前分支历史中: ${task.initCommit}`);
+    }
+  }
   return { ok: errors.length === 0, errors };
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { listTasks } from './validate-task.js';
@@ -8,6 +9,7 @@ import { listTasks } from './validate-task.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const NOTE_KINDS = new Set(['feature', 'bug-fix', 'architecture', 'process', 'testing', 'app', 'ui', 'tauri', 'release', 'hotfix']);
 const NOTE_CLASSES = new Set(['architecture', 'process', 'testing', 'feature', 'bug-fix', 'simplification']);
+const BRANCH_RE = /^(app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
 
 function value(argv, name, fallback = null) {
   const index = argv.indexOf(name);
@@ -60,6 +62,13 @@ export function nextTaskId(ids) {
   return `EWP-${String(max + 1).padStart(3, '0')}`;
 }
 
+function startError(code, message, details = {}) {
+  const error = new Error(message);
+  error.code = code;
+  error.details = details;
+  return error;
+}
+
 function noteClassFor(kind, explicit) {
   const candidate = explicit ?? (NOTE_CLASSES.has(kind) ? kind : 'feature');
   if (!NOTE_CLASSES.has(candidate)) throw new Error(`Note class 非法: ${candidate}`);
@@ -70,7 +79,7 @@ function requiresNote(kind) {
   return NOTE_KINDS.has(kind);
 }
 
-export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths, year, date, slug, noteClass, spec }) {
+export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths, year, date, slug, noteClass, spec, startRunId, preflight, initCommit = '0'.repeat(40) }) {
   const taskDirectory = `.agents/tasks/${year}/${id}-${slug}`;
   const taskPath = `${taskDirectory}/task.json`;
   const planPath = `${taskDirectory}/plan.md`;
@@ -101,6 +110,9 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     review: null,
     changeHead: null,
     readyHead: null,
+    startRunId,
+    preflight,
+    initCommit,
   };
   const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`dev\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
   const noteContent = note ? `# ${title}\n\n**Status:** proposed\n\n**Class:** ${noteClass}\n\n## Problem\n\n<!-- 记录需要跨任务复用的现象或约束。 -->\n\n## Proposal\n\n<!-- 记录本任务的方案和边界。 -->\n\n## Alternatives\n\n- 尚未记录。\n\n## Consequences/Risks\n\n- 尚未记录。\n` : null;
@@ -128,13 +140,124 @@ function gitOk(rootDir, args) {
   }
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function nearestExistingParent(target) {
+  let current = path.resolve(target);
+  while (!existsSync(current)) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return current;
 }
 
-function ensureEmptyOrMissing(directory) {
-  if (!existsSync(directory)) return;
-  if (readdirSync(directory).length) throw new Error(`worktree 目录非空: ${directory}`);
+export function ensureWorktreeWritable(worktree) {
+  const absolute = path.resolve(worktree);
+  if (existsSync(absolute)) {
+    const stat = statSync(absolute);
+    if (!stat.isDirectory()) {
+      throw startError('WORKTREE_NOT_WRITABLE', `worktree 路径不是目录: ${absolute}`, { worktree: absolute });
+    }
+    if (readdirSync(absolute).length) {
+      throw startError('WORKTREE_NOT_WRITABLE', `worktree 目录非空: ${absolute}`, { worktree: absolute });
+    }
+    accessSync(absolute, constants.W_OK);
+    return absolute;
+  }
+  const parent = nearestExistingParent(path.dirname(absolute));
+  if (!statSync(parent).isDirectory()) {
+    throw startError('WORKTREE_NOT_WRITABLE', `worktree 父目录不是目录: ${parent}`, { worktree: absolute, parent });
+  }
+  accessSync(parent, constants.W_OK);
+  return absolute;
+}
+
+function gitWriteProbe(rootDir) {
+  const headsPath = git(rootDir, ['rev-parse', '--git-path', 'refs/heads']);
+  const absolute = path.resolve(rootDir, headsPath);
+  accessSync(absolute, constants.W_OK);
+}
+
+function normalizePreflightError(error) {
+  if (error?.code && error?.details) return error;
+  if (error?.code === 'EACCES' || error?.code === 'EPERM') {
+    return startError('WORKTREE_NOT_WRITABLE', error.message, { systemCode: error.code });
+  }
+  return startError('START_PREFLIGHT_FAILED', error?.message ?? '预检失败');
+}
+
+export function runStartPreflight({
+  rootDir,
+  id,
+  title,
+  kind,
+  branch,
+  worktree,
+  allowedPaths,
+  existingIds,
+  year,
+  date,
+  deps = {},
+}) {
+  const preflightDeps = {
+    gitBranch: deps.gitBranch ?? (() => git(rootDir, ['branch', '--show-current'])),
+    gitStatus: deps.gitStatus ?? (() => git(rootDir, ['status', '--porcelain'])),
+    gitBaseSha: deps.gitBaseSha ?? (() => git(rootDir, ['rev-parse', 'dev'])),
+    gitBranchExists: deps.gitBranchExists ?? ((candidate) => gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${candidate}`])),
+    gitWriteProbe: deps.gitWriteProbe ?? (() => gitWriteProbe(rootDir)),
+    ensureWorktreeWritable: deps.ensureWorktreeWritable ?? ensureWorktreeWritable,
+  };
+
+  try {
+    if (preflightDeps.gitBranch() !== 'dev') throw startError('NOT_ON_DEV', '必须从 dev 启动任务');
+    if (preflightDeps.gitStatus()) throw startError('DIRTY_DEV', 'dev 工作区必须干净');
+    if (!/^EWP-\d{3}$/.test(id)) throw startError('TASK_ID_INVALID', `task ID 非法: ${id}`, { id });
+    if (existingIds.includes(id)) throw startError('TASK_ID_CONFLICT', `task 已存在: ${id}`, { id });
+    if (!BRANCH_RE.test(branch)) throw startError('INVALID_BRANCH', `分支前缀非法: ${branch}`, { branch });
+    if (preflightDeps.gitBranchExists(branch)) throw startError('BRANCH_EXISTS', `分支已存在: ${branch}`, { branch });
+    try {
+      preflightDeps.gitWriteProbe();
+    } catch (error) {
+      throw startError('GIT_WRITE_FORBIDDEN', `Git 写权限检查失败: ${error.message}`, { branch });
+    }
+    try {
+      preflightDeps.ensureWorktreeWritable(worktree);
+    } catch (error) {
+      throw normalizePreflightError(error);
+    }
+    return {
+      ok: true,
+      baseSha: preflightDeps.gitBaseSha(),
+      preflight: {
+        ok: true,
+        checkedAt: new Date().toISOString(),
+        checks: {
+          gitBranch: 'dev',
+          gitClean: true,
+          gitWritable: true,
+          taskIdAvailable: true,
+          branchAvailable: true,
+          worktreeWritable: true,
+        },
+        inputs: {
+          id,
+          title,
+          kind,
+          branch,
+          worktree: path.resolve(worktree),
+          allowedPaths,
+          year,
+          date,
+        },
+      },
+    };
+  } catch (error) {
+    const normalized = normalizePreflightError(error);
+    return { ok: false, error: normalized };
+  }
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function writeFiles(worktree, files) {
@@ -158,47 +281,112 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     io.error('✗ 必须提供 --paths，启动任务时明确 allowedPaths');
     return 1;
   }
+  const startRunId = randomUUID();
+  let branch = null;
+  let worktree = null;
+  let createdBranch = false;
+  let createdWorktree = false;
   try {
-    if (git(rootDir, ['branch', '--show-current']) !== 'dev') throw new Error('必须从 dev 启动任务');
-    if (git(rootDir, ['status', '--porcelain'])) throw new Error('dev 工作区必须干净');
     const existingIds = listTasks(rootDir).map((entry) => entry.task?.id).filter(Boolean);
     const id = args.id ?? nextTaskId(existingIds);
-    if (!/^EWP-\d{3}$/.test(id)) throw new Error(`task ID 非法: ${id}`);
-    if (existingIds.includes(id)) throw new Error(`task 已存在: ${id}`);
     const slug = slugifyTitle(args.title);
-    const branch = args.branch ?? deriveBranchName({ kind: args.kind, app: args.app, title: args.title });
-    if (!/^(app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/.test(branch)) {
-      throw new Error(`分支前缀非法: ${branch}`);
-    }
-    const baseSha = git(rootDir, ['rev-parse', 'dev']);
+    branch = args.branch ?? deriveBranchName({ kind: args.kind, app: args.app, title: args.title });
     const year = today().slice(0, 4);
     const noteClass = noteClassFor(args.kind, args.noteClass);
-    const worktree = args.worktree ?? path.resolve(rootDir, '..', `evolveos-${slug}`);
-    ensureEmptyOrMissing(worktree);
+    worktree = args.worktree ?? path.resolve(rootDir, '..', `evolveos-${slug}`);
+    const preflightResult = runStartPreflight({
+      rootDir,
+      id,
+      title: args.title,
+      kind: args.kind,
+      branch,
+      worktree,
+      allowedPaths: args.allowedPaths,
+      existingIds,
+      year,
+      date: today(),
+    });
+    if (!preflightResult.ok) throw preflightResult.error;
     const files = buildStartFiles({
       id,
       title: args.title,
       kind: args.kind,
       branch,
-      baseSha,
+      baseSha: preflightResult.baseSha,
       allowedPaths: args.allowedPaths,
       year,
       date: today(),
       slug,
       noteClass,
       spec: args.spec,
+      startRunId,
+      preflight: preflightResult.preflight,
     });
-    if (gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`])) {
-      throw new Error(`分支已存在: ${branch}`);
-    }
     git(rootDir, ['worktree', 'add', '-b', branch, worktree, 'dev'], { stdio: 'inherit' });
-    writeFiles(worktree, files);
+    createdBranch = true;
+    createdWorktree = true;
+    try {
+      writeFiles(worktree, files);
+    } catch (error) {
+      throw startError('TASK_WRITE_FAILED', `写入启动文件失败: ${error.message}`, {
+        taskPath: files.taskPath,
+        notePath: files.notePath,
+      });
+    }
     git(worktree, ['add', '--', files.taskPath, files.planPath, ...(files.notePath ? [files.notePath] : [])], { stdio: 'inherit' });
     git(worktree, ['commit', '-m', `chore: 初始化 ${id} 任务`], { stdio: 'inherit' });
-    io.log(JSON.stringify({ id, branch, worktree, baseSha, taskPath: files.taskPath, notePath: files.notePath }, null, 2));
+    const initCommit = git(worktree, ['rev-parse', 'HEAD']);
+    files.task.initCommit = initCommit;
+    try {
+      writeFiles(worktree, files);
+    } catch (error) {
+      throw startError('TASK_WRITE_FAILED', `写入启动证据失败: ${error.message}`, {
+        taskPath: files.taskPath,
+        initCommit,
+      });
+    }
+    git(worktree, ['add', '--', files.taskPath], { stdio: 'inherit' });
+    git(worktree, ['commit', '-m', `chore: 记录 ${id} 启动证据`], { stdio: 'inherit' });
+    io.log(JSON.stringify({
+      id,
+      branch,
+      worktree,
+      baseSha: preflightResult.baseSha,
+      startRunId,
+      initCommit,
+      taskPath: files.taskPath,
+      notePath: files.notePath,
+    }, null, 2));
     return 0;
   } catch (error) {
-    io.error(`✗ agent:start 失败: ${error.message}`);
+    const cleanup = { worktreeRemoved: false, branchRemoved: false };
+    if (createdWorktree && worktree) {
+      try {
+        git(rootDir, ['worktree', 'remove', '--force', worktree], { stdio: 'ignore' });
+        cleanup.worktreeRemoved = true;
+      } catch {
+        rmSync(worktree, { recursive: true, force: true });
+        cleanup.worktreeRemoved = true;
+      }
+    }
+    if (createdBranch && branch && gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`])) {
+      try {
+        git(rootDir, ['branch', '-D', branch], { stdio: 'ignore' });
+        cleanup.branchRemoved = true;
+      } catch {
+        cleanup.branchRemoved = false;
+      }
+    }
+    io.error(JSON.stringify({
+      ok: false,
+      code: error.code ?? 'AGENT_START_FAILED',
+      message: error.message,
+      startRunId,
+      branch,
+      worktree,
+      cleanup,
+      details: error.details ?? {},
+    }));
     return 1;
   }
 }

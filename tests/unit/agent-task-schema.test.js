@@ -20,6 +20,13 @@ function validTask(overrides = {}) {
     evidence: [],
     review: null,
     readyHead: null,
+    startRunId: 'run-001',
+    preflight: {
+      ok: true,
+      checkedAt: '2026-08-19T00:00:00.000Z',
+      checks: { gitWritable: true, branchAvailable: true, taskIdAvailable: true, worktreeWritable: true },
+    },
+    initCommit: 'b'.repeat(40),
     ...overrides,
   };
 }
@@ -76,5 +83,17 @@ describe('EWP task schema', () => {
     const result = validateTask(validTask({ status: 'ready' }), taskDirectory);
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('readyHead');
+  });
+
+  test('rejects a task without start evidence', () => {
+    const result = validateTask(validTask({
+      startRunId: '',
+      preflight: null,
+      initCommit: null,
+    }), taskDirectory);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(' ')).toContain('startRunId');
+    expect(result.errors.join(' ')).toContain('preflight');
+    expect(result.errors.join(' ')).toContain('initCommit');
   });
 });

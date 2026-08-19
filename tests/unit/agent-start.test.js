@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
@@ -11,6 +11,10 @@ import {
   parseStartArgs,
   slugifyTitle,
 } from '../../scripts/agent/start-task.js';
+import { main as finishMain } from '../../scripts/agent/finish-task.js';
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const YEAR = TODAY.slice(0, 4);
 
 describe('agent:start', () => {
   test('解析任务启动参数', () => {
@@ -59,8 +63,8 @@ describe('agent:start', () => {
 
   test('实际启动命令创建独立 worktree、task 和 Note', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-'));
-    const worktree = path.join(root, 'worktree');
-    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: 'ignore' });
+    const worktree = path.join(os.tmpdir(), `ewp-worktree-${Date.now()}`);
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     try {
       git(['init', '-b', 'dev']);
       git(['config', 'user.email', 'ewp@example.com']);
@@ -73,9 +77,9 @@ describe('agent:start', () => {
         '--id', 'EWP-010', '--title', 'Codex quota', '--kind', 'tauri', '--app', 'token-tool',
         '--paths', 'src-tauri/src/,src/apps/token-tool/,tests/', '--worktree', worktree,
       ], root, io)).toBe(0);
-      expect(readFileSync(path.join(worktree, '.agents/tasks/2026/EWP-010-codex-quota/task.json'), 'utf8'))
+      expect(readFileSync(path.join(worktree, `.agents/tasks/${YEAR}/EWP-010-codex-quota/task.json`), 'utf8'))
         .toContain('"status": "planned"');
-      expect(readFileSync(path.join(worktree, '.agents/notes/proposed/feature/2026-08-18-codex-quota.md'), 'utf8'))
+      expect(readFileSync(path.join(worktree, `.agents/notes/proposed/feature/${TODAY}-codex-quota.md`), 'utf8'))
         .toContain('**Status:** proposed');
       git(['worktree', 'remove', '--force', worktree]);
       git(['branch', '-D', 'ui/token-tool/codex-quota']);
@@ -83,4 +87,130 @@ describe('agent:start', () => {
       rmSync(root, { recursive: true, force: true });
     }
   }, 30000);
+
+  test('worktree 目录不可写时返回机器可读失败且不留下分支', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-ro-'));
+    const worktree = path.join(os.tmpdir(), `ewp-occupied-${Date.now()}`);
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      writeFileSync(worktree, 'occupied\n');
+      const errors = [];
+      const io = { log() {}, error(message) { errors.push(String(message)); } };
+      expect(startMain([
+        '--id', 'EWP-010', '--title', 'Read only worktree', '--kind', 'chore',
+        '--paths', 'scripts/agent/,tests/unit/', '--worktree', worktree,
+      ], root, io)).toBe(1);
+      expect(errors.join('\n')).toContain('"code":"WORKTREE_NOT_WRITABLE"');
+      expect(git(['branch', '--list', 'chore/read-only-worktree']).trim()).toBe('');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('task 文件写入失败时回滚新建 worktree 和分支', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-write-fail-'));
+    const worktree = path.join(os.tmpdir(), `ewp-write-fail-${Date.now()}`);
+    const git = (args, cwd = root) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      writeFileSync(path.join(root, '.agents'), 'not-a-directory\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      const errors = [];
+      const io = { log() {}, error(message) { errors.push(String(message)); } };
+      expect(startMain([
+        '--id', 'EWP-011', '--title', 'Write fails', '--kind', 'chore',
+        '--paths', 'scripts/agent/,tests/unit/', '--worktree', worktree,
+      ], root, io)).toBe(1);
+      expect(errors.join('\n')).toContain('"code":"TASK_WRITE_FAILED"');
+      expect(existsSync(path.join(worktree, '.git'))).toBe(false);
+      expect(git(['branch', '--list', 'chore/write-fails']).trim()).toBe('');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('后续入口会阻断缺少启动证据的伪造 task', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-forged-'));
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      mkdirSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-012-forged-task'), { recursive: true });
+      writeFileSync(path.join(root, '.agents', 'protocol.json'), JSON.stringify({
+        schemaVersion: 1,
+        taskStates: ['planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
+      }, null, 2));
+      writeFileSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-012-forged-task', 'task.json'), `${JSON.stringify({
+        schemaVersion: 1,
+        id: 'EWP-012',
+        title: 'Forged task',
+        status: 'planned',
+        kind: 'chore',
+        branch: 'chore/forged-task',
+        baseBranch: 'dev',
+        baseSha: 'a'.repeat(40),
+        allowedPaths: ['scripts/agent/'],
+        spec: '.agents/tasks/2026/EWP-012-forged-task/plan.md',
+        notes: [],
+        requiredGates: 'auto',
+        evidence: [],
+        review: null,
+        readyHead: null,
+      }, null, 2)}\n`);
+      writeFileSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-012-forged-task', 'plan.md'), '# forged\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      const errors = [];
+      const io = { log() {}, error(message) { errors.push(String(message)); } };
+      expect(finishMain([
+        '--task', 'EWP-012',
+        '--reviewer', 'Codex',
+        '--review-result', 'approved',
+      ], root, io)).toBe(1);
+      expect(errors.join('\n')).toContain('startRunId');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('预检会把 git 写权限失败标记为机器可读错误', async () => {
+    const module = await import('../../scripts/agent/start-task.js');
+    expect(typeof module.runStartPreflight).toBe('function');
+    const result = module.runStartPreflight({
+      rootDir: 'C:/repo',
+      id: 'EWP-013',
+      title: 'Git denied',
+      kind: 'chore',
+      branch: 'chore/git-denied',
+      worktree: 'C:/tmp/git-denied',
+      allowedPaths: ['scripts/agent/'],
+      existingIds: [],
+      year: YEAR,
+      date: TODAY,
+      deps: {
+        gitBranch: () => 'dev',
+        gitStatus: () => '',
+        gitBaseSha: () => 'a'.repeat(40),
+        gitBranchExists: () => false,
+        gitWriteProbe: () => {
+          throw new Error('permission denied');
+        },
+        ensureWorktreeWritable: () => {},
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error.code).toBe('GIT_WRITE_FORBIDDEN');
+  });
 });
