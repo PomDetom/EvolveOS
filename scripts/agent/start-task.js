@@ -5,6 +5,9 @@ import { accessSync, constants, existsSync, mkdirSync, readdirSync, rmSync, stat
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { listTasks } from './validate-task.js';
+import { listStartRecoveryArtifacts, writeStartRecoveryArtifact } from './start-recovery.js';
+
+export { listStartRecoveryArtifacts } from './start-recovery.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const NOTE_KINDS = new Set(['feature', 'bug-fix', 'architecture', 'process', 'testing', 'app', 'ui', 'tauri', 'release', 'hotfix']);
@@ -114,6 +117,18 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     preflight,
     initCommit,
   };
+  const startRecordPath = `.agents/start-runs/${startRunId}.json`;
+  const startRecord = {
+    schemaVersion: 1,
+    id,
+    title,
+    branch,
+    baseBranch: 'dev',
+    baseSha,
+    startRunId,
+    taskPath,
+    preflight,
+  };
   const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`dev\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
   const noteContent = note ? `# ${title}\n\n**Status:** proposed\n\n**Class:** ${noteClass}\n\n## Problem\n\n<!-- 记录需要跨任务复用的现象或约束。 -->\n\n## Proposal\n\n<!-- 记录本任务的方案和边界。 -->\n\n## Alternatives\n\n- 尚未记录。\n\n## Consequences/Risks\n\n- 尚未记录。\n` : null;
   return {
@@ -121,6 +136,8 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     planPath,
     notePath: note,
     task,
+    startRecordPath,
+    startRecord,
     plan,
     note: noteContent,
   };
@@ -210,6 +227,7 @@ export function runStartPreflight({
   try {
     if (preflightDeps.gitBranch() !== 'dev') throw startError('NOT_ON_DEV', '必须从 dev 启动任务');
     if (preflightDeps.gitStatus()) throw startError('DIRTY_DEV', 'dev 工作区必须干净');
+    if (listStartRecoveryArtifacts(rootDir).length) throw startError('START_RECOVERY_BLOCKED', '存在未恢复的 agent:start 清理记录');
     if (!/^EWP-\d{3}$/.test(id)) throw startError('TASK_ID_INVALID', `task ID 非法: ${id}`, { id });
     if (existingIds.includes(id)) throw startError('TASK_ID_CONFLICT', `task 已存在: ${id}`, { id });
     if (!BRANCH_RE.test(branch)) throw startError('INVALID_BRANCH', `分支前缀非法: ${branch}`, { branch });
@@ -269,6 +287,54 @@ function writeFiles(worktree, files) {
   write(files.taskPath, `${JSON.stringify(files.task, null, 2)}\n`);
   write(files.planPath, files.plan);
   if (files.notePath) write(files.notePath, files.note);
+  write(files.startRecordPath, `${JSON.stringify(files.startRecord, null, 2)}\n`);
+}
+
+export function cleanupStartArtifacts({ rootDir, branch, worktree, startRunId, code, message, details = {}, deps = {} }) {
+  const cleanup = { worktreeRemoved: !worktree, branchRemoved: !branch };
+  const worktreeExists = deps.worktreeExists ?? ((target) => existsSync(target));
+  const removeWorktree = deps.removeWorktree ?? (() => git(rootDir, ['worktree', 'remove', '--force', worktree], { stdio: 'ignore' }));
+  const removeWorktreeFallback = deps.removeWorktreeFallback ?? (() => rmSync(worktree, { recursive: true, force: true }));
+  const branchExists = deps.branchExists ?? (() => gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]));
+  const removeBranch = deps.removeBranch ?? (() => git(rootDir, ['branch', '-D', branch], { stdio: 'ignore' }));
+
+  if (worktree && worktreeExists(worktree)) {
+    try {
+      removeWorktree();
+      cleanup.worktreeRemoved = true;
+    } catch {
+      try {
+        removeWorktreeFallback();
+        cleanup.worktreeRemoved = true;
+      } catch {
+        cleanup.worktreeRemoved = false;
+      }
+    }
+  }
+  if (branch && branchExists()) {
+    try {
+      removeBranch();
+      cleanup.branchRemoved = true;
+    } catch {
+      cleanup.branchRemoved = false;
+    }
+  }
+  let recoveryPath = null;
+  if ((worktree || branch) && (!cleanup.worktreeRemoved || !cleanup.branchRemoved)) {
+    recoveryPath = writeStartRecoveryArtifact(rootDir, {
+      schemaVersion: 1,
+      kind: 'agent-start-cleanup',
+      startRunId,
+      branch,
+      worktree,
+      code,
+      message,
+      details,
+      cleanup,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return { cleanup, recoveryPath };
 }
 
 export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console) {
@@ -333,7 +399,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
         notePath: files.notePath,
       });
     }
-    git(worktree, ['add', '--', files.taskPath, files.planPath, ...(files.notePath ? [files.notePath] : [])], { stdio: 'inherit' });
+    git(worktree, ['add', '--', files.taskPath, files.planPath, files.startRecordPath, ...(files.notePath ? [files.notePath] : [])], { stdio: 'inherit' });
     git(worktree, ['commit', '-m', `chore: 初始化 ${id} 任务`], { stdio: 'inherit' });
     const initCommit = git(worktree, ['rev-parse', 'HEAD']);
     files.task.initCommit = initCommit;
@@ -359,24 +425,15 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     }, null, 2));
     return 0;
   } catch (error) {
-    const cleanup = { worktreeRemoved: false, branchRemoved: false };
-    if (createdWorktree && worktree) {
-      try {
-        git(rootDir, ['worktree', 'remove', '--force', worktree], { stdio: 'ignore' });
-        cleanup.worktreeRemoved = true;
-      } catch {
-        rmSync(worktree, { recursive: true, force: true });
-        cleanup.worktreeRemoved = true;
-      }
-    }
-    if (createdBranch && branch && gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`])) {
-      try {
-        git(rootDir, ['branch', '-D', branch], { stdio: 'ignore' });
-        cleanup.branchRemoved = true;
-      } catch {
-        cleanup.branchRemoved = false;
-      }
-    }
+    const cleanupResult = cleanupStartArtifacts({
+      rootDir,
+      branch: createdBranch ? branch : null,
+      worktree: createdWorktree ? worktree : null,
+      startRunId,
+      code: error.code ?? 'AGENT_START_FAILED',
+      message: error.message,
+      details: error.details ?? {},
+    });
     io.error(JSON.stringify({
       ok: false,
       code: error.code ?? 'AGENT_START_FAILED',
@@ -384,7 +441,8 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
       startRunId,
       branch,
       worktree,
-      cleanup,
+      cleanup: cleanupResult.cleanup,
+      recoveryPath: cleanupResult.recoveryPath,
       details: error.details ?? {},
     }));
     return 1;

@@ -1,5 +1,9 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { validateTask } from '../../scripts/agent/task-schema.js';
+import { validateStartEvidence, validateTask } from '../../scripts/agent/task-schema.js';
 
 const taskDirectory = '.agents/tasks/2026/EWP-001-native-workflow';
 
@@ -96,4 +100,42 @@ describe('EWP task schema', () => {
     expect(result.errors.join(' ')).toContain('preflight');
     expect(result.errors.join(' ')).toContain('initCommit');
   });
+
+  test('rejects a self-consistent task json without agent:start initialization record', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-evidence-forged-'));
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      const baseSha = git(['rev-parse', 'HEAD']);
+      const taskPath = '.agents/tasks/2026/EWP-099-forged/task.json';
+      const task = validTask({
+        id: 'EWP-099',
+        branch: 'chore/forged',
+        baseSha,
+        startRunId: 'forged-run',
+        initCommit: baseSha,
+        preflight: {
+          ok: true,
+          checkedAt: '2026-08-19T00:00:00.000Z',
+          checks: { gitWritable: true, branchAvailable: true, taskIdAvailable: true, worktreeWritable: true },
+        },
+      });
+      mkdirSync(path.join(root, path.dirname(taskPath)), { recursive: true });
+      writeFileSync(path.join(root, taskPath), `${JSON.stringify(task, null, 2)}\n`);
+      git(['add', '.']);
+      git(['commit', '-m', 'forge task']);
+
+      const result = validateStartEvidence(root, task, taskPath);
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join(' ')).toContain('agent:start');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 30000);
 });

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { listStartRecoveryArtifacts } from './start-recovery.js';
 
 const DEFAULT_PROTOCOL = {
   schemaVersion: 1,
@@ -86,9 +87,14 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   return { ok: errors.length === 0, errors };
 }
 
-export function validateStartEvidence(rootDir, task) {
+function gitText(rootDir, args) {
+  return execFileSync('git', args, { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+}
+
+export function validateStartEvidence(rootDir, task, taskPath = null) {
   const errors = [];
   if (!task || typeof task !== 'object') return { ok: false, errors: ['task 必须是 JSON 对象'] };
+  if (listStartRecoveryArtifacts(rootDir).length) errors.push('存在未恢复的 agent:start 清理记录，后续入口已阻断');
   if (!task.startRunId) errors.push('缺少 startRunId，任务不是通过 agent:start 初始化');
   if (!task.preflight || task.preflight.ok !== true) errors.push('缺少成功的 preflight 记录');
   if (!task.preflight?.checks || typeof task.preflight.checks !== 'object') errors.push('preflight.checks 缺失');
@@ -100,7 +106,25 @@ export function validateStartEvidence(rootDir, task) {
         cwd: rootDir,
         stdio: 'ignore',
       });
+      if (!taskPath) {
+        errors.push('缺少 task 路径，无法核验 agent:start 初始化记录');
+      } else {
+        const recordPath = `.agents/start-runs/${task.startRunId}.json`;
+        const record = JSON.parse(gitText(rootDir, ['show', `${task.initCommit}:${recordPath}`]));
+        const initialTask = JSON.parse(gitText(rootDir, ['show', `${task.initCommit}:${taskPath}`]));
+        const parentLine = gitText(rootDir, ['rev-list', '--parents', '-n', '1', task.initCommit]).split(/\s+/);
+        const subject = gitText(rootDir, ['show', '-s', '--format=%s', task.initCommit]);
+        if (parentLine.length !== 2 || parentLine[1] !== task.baseSha) errors.push('initCommit 必须直接基于 task.baseSha 初始化');
+        if (subject !== `chore: 初始化 ${task.id} 任务`) errors.push('initCommit 不是 agent:start 初始化提交');
+        if (record.startRunId !== task.startRunId || record.id !== task.id || record.title !== task.title || record.branch !== task.branch || record.baseSha !== task.baseSha || record.taskPath !== taskPath || JSON.stringify(record.preflight) !== JSON.stringify(task.preflight)) {
+          errors.push('agent:start 启动记录与 task 不匹配');
+        }
+        if (initialTask.id !== task.id || initialTask.branch !== task.branch || initialTask.baseSha !== task.baseSha || initialTask.startRunId !== task.startRunId || JSON.stringify(initialTask.preflight) !== JSON.stringify(task.preflight) || initialTask.initCommit !== '0'.repeat(40)) {
+          errors.push('initCommit 中缺少真实的初始 task 快照');
+        }
+      }
     } catch {
+      errors.push(`agent:start 初始化记录不存在或不可解析: ${task.startRunId}`);
       errors.push(`initCommit 不在当前分支历史中: ${task.initCommit}`);
     }
   }

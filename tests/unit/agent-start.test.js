@@ -5,13 +5,16 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   buildStartFiles,
+  cleanupStartArtifacts,
   deriveBranchName,
+  listStartRecoveryArtifacts,
   main as startMain,
   nextTaskId,
   parseStartArgs,
   slugifyTitle,
 } from '../../scripts/agent/start-task.js';
 import { main as finishMain } from '../../scripts/agent/finish-task.js';
+import { validateStartEvidence } from '../../scripts/agent/task-schema.js';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const YEAR = TODAY.slice(0, 4);
@@ -81,6 +84,14 @@ describe('agent:start', () => {
         .toContain('"status": "planned"');
       expect(readFileSync(path.join(worktree, `.agents/notes/proposed/feature/${TODAY}-codex-quota.md`), 'utf8'))
         .toContain('**Status:** proposed');
+      const task = JSON.parse(readFileSync(path.join(worktree, `.agents/tasks/${YEAR}/EWP-010-codex-quota/task.json`), 'utf8'));
+      expect(task.startRunId).toBeTruthy();
+      expect(task.initCommit).toMatch(/^[0-9a-f]{40}$/);
+      expect(validateStartEvidence(
+        worktree,
+        task,
+        `.agents/tasks/${YEAR}/EWP-010-codex-quota/task.json`,
+      )).toEqual({ ok: true, errors: [] });
       git(['worktree', 'remove', '--force', worktree]);
       git(['branch', '-D', 'ui/token-tool/codex-quota']);
     } finally {
@@ -212,5 +223,39 @@ describe('agent:start', () => {
     });
     expect(result.ok).toBe(false);
     expect(result.error.code).toBe('GIT_WRITE_FORBIDDEN');
+  });
+
+  test('worktree 和 branch 清理均失败时留下恢复记录并阻断后续入口', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-recovery-'));
+    try {
+      const result = cleanupStartArtifacts({
+        rootDir: root,
+        branch: 'chore/residual',
+        worktree: path.join(os.tmpdir(), 'ewp-residual-worktree'),
+        startRunId: 'residual-run',
+        code: 'TASK_WRITE_FAILED',
+        message: '模拟写入失败',
+        deps: {
+          worktreeExists: () => true,
+          removeWorktree: () => { throw new Error('worktree locked'); },
+          removeWorktreeFallback: () => { throw new Error('fallback denied'); },
+          branchExists: () => true,
+          removeBranch: () => { throw new Error('branch checked out'); },
+        },
+      });
+
+      expect(result.cleanup).toEqual({ worktreeRemoved: false, branchRemoved: false });
+      expect(result.recoveryPath.replaceAll('\\', '/')).toContain('.agents/recovery/agent-start/');
+      const artifacts = listStartRecoveryArtifacts(root);
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]).toMatchObject({
+        startRunId: 'residual-run',
+        branch: 'chore/residual',
+        cleanup: { worktreeRemoved: false, branchRemoved: false },
+      });
+      expect(validateStartEvidence(root, { startRunId: 'residual-run' }).errors.join(' ')).toContain('后续入口已阻断');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
