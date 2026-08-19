@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
 import { assessBranchChanges } from '../boundary-check.js';
+import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
 import { createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
@@ -14,7 +15,7 @@ const GATE_REGISTRY = {
   unit: { command: () => 'npm test' },
   e2e: { command: () => 'npm run test:e2e' },
   'shell-smoke': { command: () => 'npm run test:e2e -- --grep shell' },
-  'visual-review': { command: () => 'MANUAL: 记录视觉基线判断' , manual: true },
+  'visual-review': { command: () => 'MANUAL: 记录视觉基线判断', manual: true },
   build: { command: () => 'npm run build' },
   'owner-review': { command: () => 'MANUAL: 记录 framework owner review', manual: true },
   'scripts-unit': { command: () => 'npm test' },
@@ -54,9 +55,20 @@ export function renderDryRun(taskId, plan) {
 
 export { createEvidence };
 
-function writeTask(entry, evidence) {
-  const next = { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] };
-  writeFileSync(entry.taskPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+function writeTask(entry, task) {
+  writeFileSync(entry.taskPath, `${JSON.stringify(task, null, 2)}\n`, 'utf8');
+}
+
+function enforceApproval(rootDir, entry, io) {
+  const { planPath, planText } = readTaskPlan(rootDir, entry.taskPath);
+  const approvalResult = evaluateTaskApproval({ task: entry.task, planText, planPath });
+  if (!approvalResult.ok) {
+    const nextTask = moveTaskToAwaitingApproval(entry.task, approvalResult.scope);
+    writeTask(entry, nextTask);
+    approvalResult.issues.forEach((issue) => io.error(`✗ ${issue}`));
+    return false;
+  }
+  return true;
 }
 
 export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
@@ -77,6 +89,7 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
     [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
     return 1;
   }
+  if (!enforceApproval(rootDir, entry, io)) return 1;
 
   const changedPaths = getChangedPaths(rootDir, entry.task.baseBranch, 'HEAD');
   const kind = assessBranchChanges(entry.task.branch, changedPaths).kind;
@@ -125,7 +138,7 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
     }));
     if (result.exitCode !== 0) failed = true;
   }
-  writeTask(entry, evidence);
+  writeTask(entry, { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] });
   io.log(`写入 ${evidence.length} 条验证证据（head=${headSha}）`);
   return failed ? 1 : 0;
 }

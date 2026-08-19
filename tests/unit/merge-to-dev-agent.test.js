@@ -9,6 +9,18 @@ function readyTask(overrides = {}) {
     status: 'ready',
     branch: 'chore/ewp-skeleton',
     readyHead: head,
+    approval: {
+      status: 'approved',
+      approver: 'Codex',
+      approvedAt: '2026-08-19T00:00:00.000Z',
+      scopeHash: 'd'.repeat(64),
+      scope: {
+        planPath: '.agents/tasks/2026/EWP-001-native-workflow/plan.md',
+        allowedPaths: ['scripts/agent/'],
+        acceptance: ['merge-to-dev 会拒绝未获方案审批的任务'],
+        productAssumptions: [],
+      },
+    },
     evidence: [{ gate: 'build', headSha: head, result: 'success' }],
     review: { reviewedHead: head, findings: { critical: [], important: [] } },
     ...overrides,
@@ -73,12 +85,37 @@ describe('merge-to-dev native readiness', () => {
     expect(report.issues.join(' ')).toContain('评审');
   });
 
-  test('当前 SHA、评审和 evidence 完整时通过', () => {
+  test('enforced 方案审批缺失时阻断', () => {
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: readyTask({ approval: null }),
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: head,
+      approvalIssues: ['缺少方案审批记录'],
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues).toContain('缺少方案审批记录');
+  });
+
+  test('enforced 方案范围变化后阻断', () => {
     const report = evaluateNativeReadiness({
       mode: 'enforced',
       task: readyTask(),
       taskBranch: 'chore/ewp-skeleton',
       branchHead: head,
+      approvalIssues: ['方案范围已变化，需重新审批'],
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues).toContain('方案范围已变化，需重新审批');
+  });
+
+  test('当前 SHA、评审、evidence 和审批完整时通过', () => {
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: readyTask(),
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: head,
+      approvalIssues: [],
     });
     expect(report).toMatchObject({ ok: true, issues: [] });
   });
@@ -97,6 +134,7 @@ describe('merge-to-dev native readiness', () => {
       branchHead: recordHead,
       changeHeadAncestor: true,
       codeChangedAfterHead: false,
+      approvalIssues: [],
     });
     expect(report).toMatchObject({ ok: true, issues: [] });
   });
@@ -114,6 +152,7 @@ describe('merge-to-dev native readiness', () => {
       branchHead: 'c'.repeat(40),
       changeHeadAncestor: true,
       codeChangedAfterHead: true,
+      approvalIssues: [],
     });
     expect(report.ok).toBe(false);
     expect(report.issues).toContain('验证后又发生代码改动');

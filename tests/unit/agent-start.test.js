@@ -61,7 +61,8 @@ describe('agent:start', () => {
     expect(files.taskPath).toBe('.agents/tasks/2026/EWP-010-codex-quota/task.json');
     expect(files.planPath).toBe('.agents/tasks/2026/EWP-010-codex-quota/plan.md');
     expect(files.notePath).toBe('.agents/notes/proposed/feature/2026-08-18-codex-quota.md');
-    expect(files.task).toMatchObject({ id: 'EWP-010', status: 'planned', baseSha: 'a'.repeat(40) });
+    expect(files.task).toMatchObject({ id: 'EWP-010', status: 'awaiting_approval', baseSha: 'a'.repeat(40) });
+    expect(files.task.approval).toMatchObject({ status: 'awaiting_approval' });
   });
 
   test('实际启动命令创建独立 worktree、task 和 Note', () => {
@@ -81,7 +82,7 @@ describe('agent:start', () => {
         '--paths', 'src-tauri/src/,src/apps/token-tool/,tests/', '--worktree', worktree,
       ], root, io)).toBe(0);
       expect(readFileSync(path.join(worktree, `.agents/tasks/${YEAR}/EWP-010-codex-quota/task.json`), 'utf8'))
-        .toContain('"status": "planned"');
+        .toContain('"status": "awaiting_approval"');
       expect(readFileSync(path.join(worktree, `.agents/notes/proposed/feature/${TODAY}-codex-quota.md`), 'utf8'))
         .toContain('**Status:** proposed');
       const task = JSON.parse(readFileSync(path.join(worktree, `.agents/tasks/${YEAR}/EWP-010-codex-quota/task.json`), 'utf8'));
@@ -190,7 +191,7 @@ describe('agent:start', () => {
       mkdirSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-012-forged-task'), { recursive: true });
       writeFileSync(path.join(root, '.agents', 'protocol.json'), JSON.stringify({
         schemaVersion: 1,
-        taskStates: ['planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
+        taskStates: ['awaiting_approval', 'planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
       }, null, 2));
       writeFileSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-012-forged-task', 'task.json'), `${JSON.stringify({
         schemaVersion: 1,

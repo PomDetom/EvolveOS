@@ -65,6 +65,16 @@ function nativeReadinessFor(branch) {
   const entry = listTasksAtRef(ROOT, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
   let branchHead = null;
   try { branchHead = sh(ROOT, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
+  let approvalIssues = [];
+  if (entry?.task) {
+    try {
+      const planPath = ${entry.relativeDirectory}/plan.md;
+      const planText = sh(ROOT, git show :);
+      approvalIssues = evaluateTaskApproval({ task: entry.task, planText, planPath }).issues;
+    } catch (error) {
+      approvalIssues = [无法读取 plan.md: ];
+    }
+  }
   const readiness = evaluateNativeReadiness({
     mode: protocol.mode,
     task: entry?.task ?? null,

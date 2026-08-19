@@ -2,6 +2,7 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './note-gate.js';
 import { findTask } from './validate-task.js';
@@ -50,6 +51,17 @@ function resolveNotePaths(rootDir, notes) {
   });
 }
 
+function enforceApproval(rootDir, entry, io) {
+  const { planPath, planText } = readTaskPlan(rootDir, entry.taskPath);
+  const approvalResult = evaluateTaskApproval({ task: entry.task, planText, planPath });
+  if (!approvalResult.ok) {
+    writeTask(entry, moveTaskToAwaitingApproval(entry.task, approvalResult.scope));
+    approvalResult.issues.forEach((issue) => io.error(`✗ ${issue}`));
+    return false;
+  }
+  return true;
+}
+
 export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console) {
   const { taskId, reviewer, reviewResult } = parseFinishArgs(argv);
   if (!taskId || !reviewer || !reviewResult) {
@@ -72,6 +84,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
     return 1;
   }
+  if (!enforceApproval(rootDir, entry, io)) return 1;
 
   writeTask(entry, { ...entry.task, status: 'verifying' });
   const verifyResult = verifyMain(['--task', taskId], rootDir, io);

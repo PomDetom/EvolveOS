@@ -2,10 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { listStartRecoveryArtifacts } from './start-recovery.js';
+import { APPROVAL_STATUSES } from './approval.js';
 
 const DEFAULT_PROTOCOL = {
   schemaVersion: 1,
-  taskStates: ['planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
+  taskStates: ['awaiting_approval', 'planned', 'implementing', 'verifying', 'reviewing', 'ready', 'blocked', 'cancelled'],
 };
 
 const BRANCH_RE = /^(app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
@@ -22,6 +23,40 @@ function taskDirectoryName(taskDirectory) {
 function appIdFromBranch(branch) {
   const match = /^app\/([^/]+)\//.exec(branch);
   return match?.[1] ?? null;
+}
+
+function validateApproval(approval, errors) {
+  if (approval == null) return;
+  if (typeof approval !== 'object' || Array.isArray(approval)) {
+    errors.push('approval 必须为 null 或对象');
+    return;
+  }
+  if (!APPROVAL_STATUSES.includes(approval.status)) errors.push(`approval.status 非法: ${approval.status}`);
+  if (approval.approver !== null && (typeof approval.approver !== 'string' || !approval.approver.trim())) {
+    errors.push('approval.approver 必须为 null 或非空字符串');
+  }
+  if (approval.approvedAt !== null && (typeof approval.approvedAt !== 'string' || !approval.approvedAt.trim())) {
+    errors.push('approval.approvedAt 必须为 null 或时间字符串');
+  }
+  if (approval.scopeHash !== null && !/^[0-9a-f]{64}$/i.test(approval.scopeHash)) {
+    errors.push('approval.scopeHash 必须为 null 或 64 位哈希');
+  }
+  if (approval.scope !== null) {
+    if (typeof approval.scope !== 'object' || Array.isArray(approval.scope)) {
+      errors.push('approval.scope 必须为 null 或对象');
+    } else {
+      if (typeof approval.scope.planPath !== 'string' || !approval.scope.planPath.trim()) errors.push('approval.scope.planPath 不能为空');
+      if (!Array.isArray(approval.scope.allowedPaths)) errors.push('approval.scope.allowedPaths 必须为数组');
+      if (!Array.isArray(approval.scope.acceptance)) errors.push('approval.scope.acceptance 必须为数组');
+      if (!Array.isArray(approval.scope.productAssumptions)) errors.push('approval.scope.productAssumptions 必须为数组');
+    }
+  }
+  if (approval.status === 'approved') {
+    if (!approval.approver) errors.push('approved approval 必须包含 approver');
+    if (!approval.approvedAt) errors.push('approved approval 必须包含 approvedAt');
+    if (!approval.scopeHash) errors.push('approved approval 必须包含 scopeHash');
+    if (!approval.scope) errors.push('approved approval 必须包含 scope');
+  }
 }
 
 export function readProtocol(rootDir = process.cwd()) {
@@ -67,6 +102,8 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   if (typeof task.startRunId !== 'string' || !task.startRunId.trim()) errors.push('startRunId 不能为空');
   if (!task.preflight || typeof task.preflight !== 'object' || Array.isArray(task.preflight)) errors.push('preflight 必须为对象');
   if (typeof task.initCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(task.initCommit)) errors.push('initCommit 必须为 40 位 Git SHA');
+
+  validateApproval(task.approval, errors);
 
   if (typeof task.id === 'string' && taskDirectoryName(taskDirectory) && !taskDirectoryName(taskDirectory).startsWith(`${task.id}-`)) {
     errors.push(`task id 与目录不一致: ${task.id} / ${taskDirectory}`);

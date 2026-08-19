@@ -12,7 +12,7 @@ function validTask(overrides = {}) {
     schemaVersion: 1,
     id: 'EWP-001',
     title: '建立 EWP 骨架',
-    status: 'planned',
+    status: 'awaiting_approval',
     kind: 'chore',
     branch: 'chore/ewp-skeleton',
     baseBranch: 'dev',
@@ -23,6 +23,18 @@ function validTask(overrides = {}) {
     requiredGates: 'auto',
     evidence: [],
     review: null,
+    approval: {
+      status: 'awaiting_approval',
+      approver: null,
+      approvedAt: null,
+      scopeHash: null,
+      scope: {
+        planPath: '.agents/tasks/2026/EWP-001-native-workflow/plan.md',
+        allowedPaths: ['.agents/', 'scripts/agent/', 'tests/unit/agent-task-schema.test.js'],
+        acceptance: ['verify 会拒绝未获方案审批的任务'],
+        productAssumptions: [],
+      },
+    },
     readyHead: null,
     startRunId: 'run-001',
     preflight: {
@@ -36,14 +48,35 @@ function validTask(overrides = {}) {
 }
 
 describe('EWP task schema', () => {
-  test('accepts a valid minimal task', () => {
+  test('accepts a valid task with awaiting_approval status', () => {
     expect(validateTask(validTask(), taskDirectory)).toEqual({ ok: true, errors: [] });
+  });
+
+  test('legacy task 缺少 approval 字段仍可解析，但不会自动视为 approved', () => {
+    const legacy = validTask();
+    delete legacy.approval;
+    expect(validateTask(legacy, taskDirectory)).toEqual({ ok: true, errors: [] });
   });
 
   test('rejects an unknown status', () => {
     const result = validateTask(validTask({ status: 'draft' }), taskDirectory);
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('status');
+  });
+
+  test('rejects a malformed approved approval record', () => {
+    const result = validateTask(validTask({
+      status: 'planned',
+      approval: {
+        status: 'approved',
+        approver: 'Codex',
+        approvedAt: '2026-08-19T00:00:00.000Z',
+        scopeHash: 'abc',
+        scope: null,
+      },
+    }), taskDirectory);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(' ')).toContain('scopeHash');
   });
 
   test('rejects a task id that does not match its directory', () => {
@@ -69,6 +102,18 @@ describe('EWP task schema', () => {
       kind: 'app',
       branch: 'app/ledger/report',
       allowedPaths: ['docs/ledger.md'],
+      approval: {
+        status: 'awaiting_approval',
+        approver: null,
+        approvedAt: null,
+        scopeHash: null,
+        scope: {
+          planPath: '.agents/tasks/2026/EWP-001-native-workflow/plan.md',
+          allowedPaths: ['docs/ledger.md'],
+          acceptance: ['verify 会拒绝未获方案审批的任务'],
+          productAssumptions: [],
+        },
+      },
     }), taskDirectory);
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('src/apps/ledger/');
@@ -79,6 +124,18 @@ describe('EWP task schema', () => {
       kind: 'tauri',
       branch: 'ui/token-tool/codex-quota',
       allowedPaths: ['src-tauri/src/', 'src/apps/token-tool/'],
+      approval: {
+        status: 'awaiting_approval',
+        approver: null,
+        approvedAt: null,
+        scopeHash: null,
+        scope: {
+          planPath: '.agents/tasks/2026/EWP-001-native-workflow/plan.md',
+          allowedPaths: ['src-tauri/src/', 'src/apps/token-tool/'],
+          acceptance: ['verify 会拒绝未获方案审批的任务'],
+          productAssumptions: ['桌面权限仍由人工 gate 兜底'],
+        },
+      },
     }), taskDirectory);
     expect(result).toEqual({ ok: true, errors: [] });
   });
