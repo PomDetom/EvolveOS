@@ -20,6 +20,29 @@ describe('边界检查（G2：框架/应用门禁）', () => {
       ['src/apps/ledger/pages.js', 'src/apps/ledger/ledger.css', 'tests/unit/ledger.test.js', 'docs/app-ledger.md']);
     expect(r.ok).toBe(true);
   });
+  it('应用分支允许任务治理元数据 → 通过', () => {
+    const r = assessBranchChanges('app/ledger/report', [
+      '.agents/tasks/2026/task-123/task.json',
+      '.agents/start-runs/2026/task-123.json',
+    ]);
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+  });
+  it('应用分支仍拒绝其他治理目录和不在应用目录的产品文件', () => {
+    const r = assessBranchChanges('app/ledger/report', [
+      '.agents/protocol.json',
+      '.agents/reviews/task-123.md',
+      'src/apps/notes/index.js',
+      'src/config/defaults.js',
+    ]);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual([
+      '.agents/protocol.json',
+      '.agents/reviews/task-123.md',
+      'src/apps/notes/index.js',
+      'src/config/defaults.js',
+    ]);
+  });
   it('应用分支触碰其他应用目录 → 失败', () => {
     const r = assessBranchChanges('app/ledger/report', ['src/apps/notes/index.js']);
     expect(r.ok).toBe(false);
