@@ -195,8 +195,13 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
   for (const [index, evidence] of (Array.isArray(task.evidence) ? task.evidence : []).entries()) {
     if (evidence?.taskId !== task.id) errors.push(`evidence[${index}] taskId 与 task 不匹配`);
     if (evidence?.baseSha !== task.baseSha) errors.push(`evidence[${index}] baseSha 与 task 不匹配`);
-    if (typeof evidence?.command !== 'string' || !evidence.command.trim()) errors.push(`evidence[${index}] 缺少 command`);
-    if (evidence?.commandId !== evidence?.command) errors.push(`evidence[${index}] command identity 与 command 不一致`);
+    try {
+      const expected = gateDefinition(evidence?.gate, task.id);
+      if (evidence?.command !== expected.command) errors.push(`evidence[${index}] command 不是 gate registry canonical command`);
+      if (evidence?.commandId != null && evidence.commandId !== expected.commandId) errors.push(`evidence[${index}] commandId 不是 gate registry canonical identity`);
+    } catch {
+      errors.push(`evidence[${index}] gate 未注册: ${evidence?.gate}`);
+    }
   }
   return { ok: errors.length === 0, errors };
 }

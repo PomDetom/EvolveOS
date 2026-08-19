@@ -91,11 +91,19 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
   writeTask(entry, { ...entry.task, status: 'verifying' });
   const finishAfterVerify = (verifyResult) => {
     if (verifyResult !== 0) {
+      const failedVerification = findTask(rootDir, taskId);
+      if (failedVerification && !failedVerification.parseError && failedVerification.task.status !== 'verifying') {
+        writeTask(failedVerification, { ...failedVerification.task, status: 'verifying' });
+      }
       io.error('✗ verify 未通过，任务保持 verifying');
       return 1;
     }
 
     const refreshed = findTask(rootDir, taskId);
+    if (refreshed && !refreshed.parseError) {
+      refreshed.task = { ...refreshed.task, status: 'verifying' };
+      writeTask(refreshed, refreshed.task);
+    }
     const refreshedEvidence = validateStartEvidence(rootDir, refreshed.task, `${refreshed.relativeDirectory}/task.json`, { requireBaselines: true });
     if (!refreshedEvidence.ok) {
       refreshedEvidence.errors.forEach((error) => io.error(`✗ ${error}`));
