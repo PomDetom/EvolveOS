@@ -124,6 +124,35 @@ describe('agent:start', () => {
     }
   }, 30000);
 
+  test('非法 branch 时返回 INVALID_BRANCH 且不创建任何启动产物', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-invalid-branch-'));
+    const worktree = path.join(os.tmpdir(), `ewp-invalid-branch-${Date.now()}`);
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      const errors = [];
+      const io = { log() {}, error(message) { errors.push(String(message)); } };
+
+      expect(startMain([
+        '--id', 'EWP-014', '--title', 'Invalid branch', '--kind', 'chore',
+        '--branch', 'feature/invalid-branch', '--paths', 'scripts/agent/', '--worktree', worktree,
+      ], root, io)).toBe(1);
+
+      expect(errors.join('\n')).toContain('"code":"INVALID_BRANCH"');
+      expect(git(['branch', '--list', 'feature/invalid-branch']).trim()).toBe('');
+      expect(existsSync(worktree)).toBe(false);
+      expect(existsSync(path.join(root, '.agents', 'tasks'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(worktree, { recursive: true, force: true });
+    }
+  }, 30000);
+
   test('task 文件写入失败时回滚新建 worktree 和分支', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-write-fail-'));
     const worktree = path.join(os.tmpdir(), `ewp-write-fail-${Date.now()}`);
