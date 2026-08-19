@@ -72,6 +72,58 @@ test('strip：mock __TAURI__ 渲染真实账户余量（get_config + get_balance
   await expect(chips.nth(0)).toContainText(/· (刚刚|\d+分钟前)/);
 });
 
+test('strip 窗口：超过两个账户时不应把后续账户裁在固定窗口之外', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 64 });
+  await page.addInitScript(() => {
+    window.__TAURI__ = {
+      window: {
+        LogicalSize: class { constructor(width, height) { this.width = width; this.height = height; } },
+        getCurrentWindow: () => ({
+          setSize: (size) => { window.__stripMultiAccountSize__ = [size.width, size.height]; return Promise.resolve(); },
+          onMoved: () => Promise.resolve(() => {}),
+          hide: () => Promise.resolve(),
+        }),
+      },
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === 'get_config') return { accounts: [
+            { id: 'a1', name: 'DeepSeek 主号', kind: 'deepseek' },
+            { id: 'a2', name: 'OpenCode Go', kind: 'opencode_go' },
+            { id: 'a3', name: '团队共享账号', kind: 'deepseek' },
+            { id: 'a4', name: '备用 Codex', kind: 'codex' },
+          ] };
+          if (cmd === 'get_balances') return [
+            { accountId: 'a1', balance: 88.5, currency: 'CNY', lastUpdated: 0 },
+            { accountId: 'a2', windows: [], lastUpdated: 0 },
+            { accountId: 'a3', balance: 12.34, currency: 'USD', lastUpdated: 0 },
+            { accountId: 'a4', windows: [], lastUpdated: 0 },
+          ];
+          return null;
+        },
+      },
+      event: { listen: async () => () => {} },
+    };
+  });
+  await page.goto(STRIP_URL);
+  const strip = page.locator('.strip-root--window .c-strip');
+  const chips = strip.locator('.c-strip-tk__chip');
+  await expect(chips).toHaveCount(4);
+  await expect(chips.nth(3)).toBeVisible();
+  const geometry = await strip.evaluate((el) => ({
+    right: el.getBoundingClientRect().right,
+    bottom: el.getBoundingClientRect().bottom,
+    contentRight: el.querySelector('.c-strip__content').getBoundingClientRect().right,
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    chips: [...el.querySelectorAll('.c-strip-tk__chip')].map((chip) => {
+      const r = chip.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width };
+    }),
+  }));
+  expect(geometry.right).toBeLessThanOrEqual(321);
+  expect(Math.max(...geometry.chips.map((chip) => chip.right))).toBeLessThanOrEqual(321);
+});
+
 test('strip：OpenCode rolling 倒计时每秒递减（data-resets-at 定时器原地更新，不整窗重渲染）', async ({ page }) => {
   await page.addInitScript(() => {
     window.__TAURI__ = {
