@@ -149,6 +149,69 @@ test('tokenTool：Codex 本机额度卡 + 账户编辑器', async ({ page }) => 
   await expect(page.locator('[data-tt-row="codex"]')).toContainText('无需填写密钥');
 });
 
+test('tokenTool：账户展示开关、顺序拖拽与配置实时同步', async ({ page }) => {
+  await page.addInitScript(() => {
+    const config = {
+      accounts: [
+        { id: 'a1', name: '第一账户', kind: 'deepseek', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 },
+        { id: 'a2', name: '第二账户', kind: 'deepseek', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 },
+        { id: 'a3', name: '第三账户', kind: 'codex', baseUrl: '', apiKey: '', workspaceId: null, authCookie: null, warnThreshold: 10 },
+      ],
+    };
+    const invokes = [];
+    const listeners = {};
+    window.__TAURI__ = {
+      window: {
+        getCurrentWindow: () => ({ minimize() {}, toggleMaximize() {}, isMaximized() { return Promise.resolve(false); }, close() {} }),
+        getAllWindows: () => Promise.resolve([]),
+      },
+      core: {
+        invoke: async (cmd, args) => {
+          invokes.push({ cmd, args });
+          if (cmd === 'get_config') return structuredClone(config);
+          if (cmd === 'get_balances') return [];
+          if (cmd === 'save_config') {
+            config.accounts = args.config.accounts;
+            listeners['config-updated']?.({ payload: structuredClone(config) });
+          }
+          return null;
+        },
+      },
+      event: {
+        listen: async (name, handler) => {
+          listeners[name] = handler;
+          return () => { delete listeners[name]; };
+        },
+      },
+    };
+    window.__tokenToolInvokes__ = invokes;
+  });
+  await page.goto(APP_URL);
+  await page.locator('.app-main__nav-l .c-navwheel__item[data-id="token-tool"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(300);
+
+  await expect(page.locator('.tt__row')).toHaveCount(3);
+  await page.locator('.tt__row', { hasText: '第二账户' }).locator('[data-tt-action="toggle-visibility"]').click();
+  await page.waitForTimeout(100);
+  await expect(page.locator('.tt__row', { hasText: '第二账户' }).locator('[data-tt-action="toggle-visibility"]')).toHaveAttribute('aria-pressed', 'false');
+
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="usage"]').click();
+  await page.waitForTimeout(250);
+  await expect(page.locator('.tt__card')).toHaveCount(2);
+  await expect(page.locator('.tt__grid')).not.toContainText('第二账户');
+
+  await page.locator('.app-main__nav-r .c-navwheel__item[data-id="accounts"]').click();
+  await page.waitForTimeout(250);
+  await page.locator('.tt__row', { hasText: '第一账户' }).locator('[data-tt-drag]').dragTo(
+    page.locator('.tt__row', { hasText: '第三账户' }),
+  );
+  await page.waitForTimeout(150);
+  const saves = await page.evaluate(() => window.__tokenToolInvokes__.filter((item) => item.cmd === 'save_config'));
+  expect(saves.at(-1).args.config.accounts.map((account) => account.id)).toEqual(['a2', 'a3', 'a1']);
+});
+
 // 编辑对话框表单值转义：账户名含 `"` 时，name 输入框 value 必须完整回显且原始属性为转义形态
 test('tokenTool：账户管理页编辑对话框表单值转义（含引号账户名）', async ({ page }) => {
   await page.addInitScript(() => {

@@ -140,6 +140,7 @@ mod tests {
                 api_key: String::new(),
                 workspace_id: Some("wrk_test".into()),
                 auth_cookie: Some("secret-cookie".into()),
+                visible: true,
                 warn_threshold: 10.0,
             }],
             ..AppConfig::default()
