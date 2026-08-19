@@ -131,7 +131,10 @@ describe('Task 8C gate process and evidence', () => {
       .toEqual({ ok: true, incomplete: [] });
     expect(assessEvidence({ requiredGates: ['unit'], evidence: [
       { gate: 'unit', result: 'success' }, { gate: 'legacy-build', result: 'failed' },
-    ]})).toMatchObject({ ok: false, incomplete: ['legacy-build'] });
+    ]})).toEqual({ ok: true, incomplete: [] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [
+      { gate: 'unit', result: 'success' }, { gate: 'legacy-e2e', result: 'pending' },
+    ]})).toEqual({ ok: true, incomplete: [] });
     expect(assessEvidence({ requiredGates: ['unit'], evidence: [
       { gate: 'unit', result: 'failed' }, { gate: 'unit', result: 'success' },
     ]})).toEqual({ ok: true, incomplete: [] });

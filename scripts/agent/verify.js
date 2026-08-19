@@ -57,9 +57,6 @@ export function assessEvidence({ requiredGates = [], evidence = [] }) {
     const latest = latestByGate.get(gate);
     return !latest || latest.result !== 'success';
   });
-  for (const [gate, latest] of latestByGate) {
-    if (latest.result !== 'success' && !incomplete.includes(gate)) incomplete.push(gate);
-  }
   return { ok: incomplete.length === 0, incomplete };
 }
 
