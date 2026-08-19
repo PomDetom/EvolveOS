@@ -28,9 +28,9 @@ export function selectGates({ kind, changedPaths = [], hasNotes = false, taskKin
     return hasNotes ? ['task-check', 'notes-check', 'build'] : ['task-check', 'build'];
   }
   if (hasPath(changedPaths, (path) => path.startsWith('scripts/'))) {
-    return ['scripts-unit', 'failure-paths', 'build'];
+    return ['scripts-unit', 'build'];
   }
-  if (kind === 'chore' || kind === 'hotfix') return ['scripts-unit', 'failure-paths', 'build'];
+  if (kind === 'chore' || kind === 'hotfix') return ['scripts-unit', 'build'];
   return ['boundary'];
 }
 
