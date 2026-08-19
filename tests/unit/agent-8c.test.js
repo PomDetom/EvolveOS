@@ -21,13 +21,25 @@ import { main as startMain } from '../../scripts/agent/start-task.js';
 import { findTask } from '../../scripts/agent/validate-task.js';
 import { main as verifyMain } from '../../scripts/agent/verify.js';
 
+function makeWorktreeFixture() {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-git-main-'));
+  const worktree = path.join(os.tmpdir(), `ewp-git-worktree-${Date.now()}`);
+  const git = (args, cwd = root) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  git(['init', '-b', 'dev']);
+  git(['config', 'user.email', 'ewp@example.com']);
+  git(['config', 'user.name', 'EWP Test']);
+  mkdirSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-008-e2e'), { recursive: true });
+  writeFileSync(path.join(root, '.agents', 'tasks', '2026', 'EWP-008-e2e', 'task.json'), JSON.stringify({ id: 'EWP-008', branch: 'chore/ewp-008-e2e' }));
+  git(['add', '.']);
+  git(['commit', '-m', 'fixture']);
+  git(['worktree', 'add', '-b', 'chore/ewp-008-e2e', worktree, 'dev']);
+  return { root, worktree, git };
+}
+
 describe('Task 8C worktree e2e', () => {
   test('从主 checkout 真实入口运行时拒绝，合法 worktree 不误拒绝', () => {
-    const mainRoot = mkdtempSync(path.join(os.tmpdir(), 'ewp-main-'));
-    const worktreeRoot = mkdtempSync(path.join(os.tmpdir(), 'ewp-worktree-'));
+    const { root: mainRoot, worktree: worktreeRoot, git } = makeWorktreeFixture();
     try {
-      mkdirSync(path.join(mainRoot, '.git'));
-      writeFileSync(path.join(worktreeRoot, '.git'), 'gitdir: C:/repo/.git/worktrees/task');
       expect(() => resolveTaskE2EPaths({ rootDir: mainRoot, taskId: 'EWP-008' })).toThrow(/主 checkout/);
       expect(resolveTaskE2EPaths({ rootDir: worktreeRoot, taskId: 'EWP-008' }).rootDir).toBe(worktreeRoot);
       const errors = [];
@@ -35,18 +47,28 @@ describe('Task 8C worktree e2e', () => {
       expect(errors.join('\n')).toContain('主 checkout');
       expect(e2eMain(['--task', 'EWP-008', '--port', '65536'], worktreeRoot, { error: (message) => errors.push(message) })).toBe(1);
       expect(errors.join('\n')).toContain('端口');
+      expect(() => resolveTaskE2EPaths({ rootDir: mainRoot, taskId: 'EWP-009' })).toThrow(/主 checkout/);
+      const ordinaryRoot = mkdtempSync(path.join(os.tmpdir(), 'ewp-ordinary-'));
+      expect(() => resolveTaskE2EPaths({ rootDir: ordinaryRoot, taskId: 'EWP-008' })).toThrow(/Git worktree/);
+      rmSync(ordinaryRoot, { recursive: true, force: true });
+      writeFileSync(path.join(worktreeRoot, '.agents', 'tasks', '2026', 'EWP-008-e2e', 'task.json'), JSON.stringify({ id: 'EWP-008', branch: 'chore/wrong-branch' }));
+      expect(() => resolveTaskE2EPaths({ rootDir: worktreeRoot, taskId: 'EWP-008' })).toThrow(/task.*branch|关联/);
     } finally {
+      try { git(['worktree', 'remove', '--force', worktreeRoot]); } catch {}
+      try { git(['branch', '-D', 'chore/ewp-008-e2e']); } catch {}
       rmSync(mainRoot, { recursive: true, force: true });
       rmSync(worktreeRoot, { recursive: true, force: true });
     }
   });
 
   test('配置根目录不应指向主 checkout，并使用任务端口和日志目录', () => {
-    const paths = resolveTaskE2EPaths({
+    const paths = {
       rootDir: 'C:/repo/worktrees/task-8c',
       mainRoot: 'C:/repo',
       taskId: 'EWP-008',
-    });
+      testDir: 'C:/repo/worktrees/task-8c/tests/e2e',
+      logDir: 'C:/repo/worktrees/task-8c/.agents/logs/e2e/EWP-008',
+    };
     const config = buildWorktreePlaywrightConfig(paths, { port: 5198 });
 
     expect(config.testDir.replaceAll('\\', '/')).toBe('C:/repo/worktrees/task-8c/tests/e2e');
@@ -107,6 +129,9 @@ describe('Task 8C gate process and evidence', () => {
     ]})).toMatchObject({ ok: false, incomplete: ['e2e'] });
     expect(assessEvidence({ requiredGates: ['unit'], evidence: [{ gate: 'unit', result: 'success' }] }))
       .toEqual({ ok: true, incomplete: [] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [
+      { gate: 'unit', result: 'success' }, { gate: 'legacy-build', result: 'failed' },
+    ]})).toMatchObject({ ok: false, incomplete: ['legacy-build'] });
   });
 
   test('真实 verify -> writeTask -> finish 主路径阻断 pending evidence', async () => {

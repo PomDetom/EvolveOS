@@ -55,6 +55,9 @@ export function assessEvidence({ requiredGates = [], evidence = [] }) {
     const latest = [...evidence].reverse().find((item) => item.gate === gate);
     return !latest || latest.result !== 'success';
   });
+  for (const item of evidence) {
+    if (item.result !== 'success' && !incomplete.includes(item.gate)) incomplete.push(item.gate ?? 'unknown');
+  }
   return { ok: incomplete.length === 0, incomplete };
 }
 

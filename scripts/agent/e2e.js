@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -17,12 +18,29 @@ function isMainCheckout(root) {
   return existsSync(gitPath) && statSync(gitPath).isDirectory();
 }
 
+function currentWorktreeBranch(root) {
+  const gitPath = resolve(root, '.git');
+  if (!existsSync(gitPath) || !statSync(gitPath).isFile()) throw new Error('任务 e2e 根目录必须是 Git worktree（不是普通目录或主 checkout）');
+  try {
+    const insideWorktree = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: root, encoding: 'utf8' }).trim();
+    const branch = execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8' }).trim();
+    if (insideWorktree !== 'true' || !branch) throw new Error('Git worktree 分支不可用');
+    return branch;
+  } catch (error) {
+    throw new Error(`任务 e2e 根目录不是可用的 Git worktree: ${error?.message ?? error}`);
+  }
+}
+
 export function resolveTaskE2EPaths({ rootDir, mainRoot = null, taskId }) {
   const root = resolve(rootDir);
   const main = mainRoot ? resolve(mainRoot) : null;
   if ((main && root === main) || isMainCheckout(root)) throw new Error('任务 e2e 根目录不能是主 checkout');
+  const branch = currentWorktreeBranch(root);
+  const entry = findTask(root, taskId);
+  if (!entry || entry.parseError || !entry.task) throw new Error(`任务 e2e task 不存在或不可解析: ${taskId}`);
+  if (entry.task.branch !== branch) throw new Error(`任务 e2e root 与 task 分支未关联: task=${entry.task.branch}, root=${branch}`);
   const logDir = resolve(root, '.agents', 'logs', 'e2e', taskId);
-  return { rootDir: root, mainRoot: main, taskId, testDir: resolve(root, 'tests', 'e2e'), logDir };
+  return { rootDir: root, mainRoot: main, taskId, branch, testDir: resolve(root, 'tests', 'e2e'), logDir };
 }
 
 export function buildWorktreePlaywrightConfig(paths, { port = 5174 } = {}) {
