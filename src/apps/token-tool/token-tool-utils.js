@@ -1,6 +1,7 @@
 // tokenTool 纯函数（无 DOM/Tauri 依赖，可单测）
 import { renderBadge } from '../../components/badge/badge.js';
 import { renderButton } from '../../components/button/button.js';
+import { icon } from '../../components/icon/icon.js';
 import { renderProgress } from '../../components/progress/progress.js';
 
 export function escapeHtml(s) {
@@ -32,6 +33,10 @@ export function formatRelative(epochSecs) {
   const dt = new Date(epochSecs * 1000);
   const pad = (n) => String(n).padStart(2, '0');
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
+export function isAccountVisible(account) {
+  return account?.visible !== false;
 }
 
 // 余量展示页卡片（只读）：头部 = 名称+badge；主体 = 余额/窗口进度；底部 = 上次刷新。
@@ -111,6 +116,10 @@ export function accountRow(account, balance) {
     ? `<span class="tt__row-last" data-tt-last="${balance.lastUpdated}">上次刷新: ${formatRelative(balance.lastUpdated)}</span>`
     : '<span class="tt__row-last">尚未刷新</span>';
   const actions = `
+    <span class="tt__row-drag" data-tt-drag draggable="true" title="拖拽调整顺序" aria-label="拖拽调整顺序">${icon('drag', 16)}</span>
+    <button class="tt__visibility" type="button" data-tt-action="toggle-visibility" aria-pressed="${isAccountVisible(account)}" title="${isAccountVisible(account) ? '隐藏在余量页和悬浮窗中' : '显示在余量页和悬浮窗中'}">
+      ${icon('eye', 15)}<span>${isAccountVisible(account) ? '已展示' : '已隐藏'}</span>
+    </button>
     <span class="tt__row-actions">
       <span data-tt-action="test">${renderButton({ label: '测试', variant: 'secondary', size: 'sm' })}</span>
       <span data-tt-action="edit">${renderButton({ label: '编辑', variant: 'secondary', size: 'sm' })}</span>

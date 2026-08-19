@@ -105,6 +105,29 @@
   padding: var(--space-3) var(--space-4);
   box-shadow: var(--shadow-sm);
 }
+.tt__row--dragging { opacity: 0.45; }
+.tt__row--drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-50); }
+.tt__row-drag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-3);
+  cursor: grab;
+  flex: none;
+}
+.tt__row-drag:active { cursor: grabbing; }
+.tt__visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius-sm) * var(--radius-scale, 1));
+  color: var(--text-3);
+  background: transparent;
+  font-size: var(--font-size-xs);
+}
+.tt__visibility:hover, .tt__visibility[aria-pressed="true"] { color: var(--accent); background: var(--accent-50); }
 .tt__row-main {
   display: flex;
   align-items: center;

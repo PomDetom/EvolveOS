@@ -122,6 +122,16 @@ describe('token-tool utils', () => {
     expect(html).toContain('OpenCode Go');
     expect(html).toContain('data-tt-action="edit"');
   });
+
+  it('accountRow：包含展示开关与拖拽手柄', () => {
+    const html = accountRow(
+      { id: 'a4', name: '隐藏账户', kind: 'deepseek', visible: false },
+      null,
+    );
+    expect(html).toContain('data-tt-action="toggle-visibility"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('data-tt-drag');
+  });
 });
 
 describe('token-tool page', () => {

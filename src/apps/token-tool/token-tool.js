@@ -1,4 +1,4 @@
-// tokenTool 应用页：余额 / OpenCode Go 套餐用量监测（复用 codeplan-usage Rust 后端）。
+// tokenTool 应用页：余额 / OpenCode Go / Codex 套餐用量监测（复用 Rust 后端）。
 // 桌面（Tauri）经 invoke 调 5 命令 + 收 balances-updated 事件；浏览器（无 __TAURI__）只渲染
 // 「需桌面端使用」空态。壳契约：render(ctx) → HTML；mount(pageEl, ctx) → 交互挂载。
 import { renderButton } from '../../components/button/button.js';
@@ -7,7 +7,7 @@ import { renderDialog } from '../../components/dialog/dialog.js';
 import { renderInput } from '../../components/input/input.js';
 import { renderSelect } from '../../components/select/select.js';
 import { toast } from '../../components/toast/toast.js';
-import { accountRow, escapeHtml, formatRelative, usageCard } from './token-tool-utils.js';
+import { accountRow, escapeHtml, formatRelative, isAccountVisible, usageCard } from './token-tool-utils.js';
 import './token-tool.css';
 
 // 页面拆分（module.dir）：'usage' = 余量展示（只读），'accounts' = 账户管理。
@@ -23,7 +23,7 @@ export function tokenToolPage(ctx) {
         ${renderEmptyState({
           iconName: 'bolt',
           title: '需桌面端使用',
-          desc: 'tokenTool 依赖 Tauri 后端抓取 DeepSeek / OpenCode 余额，请在 EvolveOS 桌面端打开。',
+          desc: 'tokenTool 依赖 Tauri 后端抓取 DeepSeek / OpenCode / Codex 额度，请在 EvolveOS 桌面端打开。',
         })}
       </div>`;
   }
@@ -34,7 +34,7 @@ function renderUsagePage(head) {
   return `${head}
     <div class="app-main__page-body">
       <div class="tt__toolbar">
-        <span class="tt__toolbar-hint">账户余量 / OpenCode Go 套餐用量监测</span>
+        <span class="tt__toolbar-hint">账户余量 / OpenCode Go / Codex 套餐用量监测</span>
         <div class="tt__toolbar-actions">
           ${renderButton({ label: '立即刷新', iconName: 'refresh' })}
         </div>
@@ -49,7 +49,7 @@ function renderAccountsPage(head) {
   return `${head}
     <div class="app-main__page-body">
       <div class="tt__toolbar">
-        <span class="tt__toolbar-hint">添加、编辑、测试、删除账户</span>
+        <span class="tt__toolbar-hint">拖拽排序，控制余量页与悬浮窗展示</span>
         <div class="tt__toolbar-actions">
           ${renderButton({ label: '添加账户', variant: 'secondary', iconName: 'plus' })}
         </div>
@@ -76,20 +76,22 @@ export function mountTokenTool(pageEl, ctx) {
   disposes.get(pageEl)?.(); // 壳重渲染复用同一 pageEl → 先释放上次挂载
   let disposed = false;
   let unlisten = null;
+  let unlistenConfig = null;
   let timer = null;
   let config = { accounts: [] };
   let balances = [];
 
   const renderUsage = () => {
     if (disposed || !grid) return;
-    grid.innerHTML = config.accounts.length
-      ? config.accounts
+    const visibleAccounts = config.accounts.filter(isAccountVisible);
+    grid.innerHTML = visibleAccounts.length
+      ? visibleAccounts
           .map((acc) => usageCard(acc, balances.find((b) => b.accountId === acc.id)))
           .join('')
       : renderEmptyState({
           iconName: 'wallet',
-          title: '暂无账户',
-          desc: '前往「账户管理」页添加 DeepSeek 或 OpenCode Go 账户。',
+          title: config.accounts.length ? '暂无展示账户' : '暂无账户',
+          desc: config.accounts.length ? '前往「账户管理」页开启账户展示。' : '前往「账户管理」页添加 DeepSeek、OpenCode 或 Codex 账户。',
         });
   };
 
@@ -102,7 +104,7 @@ export function mountTokenTool(pageEl, ctx) {
       : renderEmptyState({
           iconName: 'list',
           title: '暂无账户',
-          desc: '添加一个 DeepSeek 或 OpenCode Go 账户开始监测。',
+          desc: '添加一个 DeepSeek、OpenCode Go 或 Codex 账户开始监测。',
           action: { label: '添加账户', variant: 'primary', iconName: 'plus' },
         });
   };
@@ -170,6 +172,54 @@ export function mountTokenTool(pageEl, ctx) {
     await saveConfig();
   };
 
+  const toggleVisibility = async (id) => {
+    const account = config.accounts.find((a) => a.id === id);
+    if (!account) return;
+    account.visible = !isAccountVisible(account);
+    await saveConfig();
+  };
+
+  let draggingId = null;
+  const clearDragState = () => {
+    accountsEl?.querySelectorAll('.tt__row--dragging, .tt__row--drag-over').forEach((row) => {
+      row.classList.remove('tt__row--dragging', 'tt__row--drag-over');
+    });
+  };
+  const onDragStart = (e) => {
+    const handle = e.target.closest('[data-tt-drag]');
+    if (!handle) return;
+    const row = handle.closest('.tt__row');
+    draggingId = row?.dataset.ttId ?? null;
+    if (!draggingId) return;
+    e.dataTransfer?.setData('text/plain', draggingId);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    row.classList.add('tt__row--dragging');
+  };
+  const onDragOver = (e) => {
+    const row = e.target.closest('.tt__row');
+    if (!row || !draggingId || row.dataset.ttId === draggingId) return;
+    e.preventDefault();
+    e.dataTransfer && (e.dataTransfer.dropEffect = 'move');
+    accountsEl.querySelectorAll('.tt__row--drag-over').forEach((el) => el.classList.remove('tt__row--drag-over'));
+    row.classList.add('tt__row--drag-over');
+  };
+  const onDrop = async (e) => {
+    const target = e.target.closest('.tt__row');
+    if (!target || !draggingId || target.dataset.ttId === draggingId) return;
+    e.preventDefault();
+    const targetId = target.dataset.ttId;
+    const from = config.accounts.findIndex((a) => a.id === draggingId);
+    const to = config.accounts.findIndex((a) => a.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = config.accounts.splice(from, 1);
+    config.accounts.splice(to, 0, moved);
+    draggingId = null;
+    clearDragState();
+    renderAccounts();
+    await saveConfig();
+  };
+  const onDragEnd = () => { draggingId = null; clearDragState(); };
+
   const onToolbar = (e) => {
     const btn = e.target.closest('.c-btn');
     if (!btn) return;
@@ -195,10 +245,15 @@ export function mountTokenTool(pageEl, ctx) {
     if (action === 'test') testAccount(id);
     else if (action === 'edit') openEditor(id);
     else if (action === 'del') deleteAccount(id);
+    else if (action === 'toggle-visibility') toggleVisibility(id);
   };
 
   toolbar.addEventListener('click', onToolbar);
   accountsEl?.addEventListener('click', onAccounts);
+  accountsEl?.addEventListener('dragstart', onDragStart);
+  accountsEl?.addEventListener('dragover', onDragOver);
+  accountsEl?.addEventListener('drop', onDrop);
+  accountsEl?.addEventListener('dragend', onDragEnd);
 
   const listenPromise = window.__TAURI__.event.listen('balances-updated', (e) => {
     if (disposed) return;
@@ -206,6 +261,12 @@ export function mountTokenTool(pageEl, ctx) {
     renderActive();
   });
   listenPromise.then((un) => { unlisten = un; }).catch(() => {});
+  const configListenPromise = window.__TAURI__.event.listen('config-updated', (e) => {
+    if (disposed) return;
+    config = e.payload ?? { accounts: [] };
+    renderActive();
+  });
+  configListenPromise.then((un) => { unlistenConfig = un; }).catch(() => {});
 
   timer = window.setInterval(renderLastRefreshes, 30 * 1000);
 
@@ -214,8 +275,14 @@ export function mountTokenTool(pageEl, ctx) {
     clearInterval(timer);
     if (unlisten) unlisten();
     else listenPromise.then((un) => un && un()).catch(() => {});
+    if (unlistenConfig) unlistenConfig();
+    else configListenPromise.then((un) => un && un()).catch(() => {});
     toolbar.removeEventListener('click', onToolbar);
     accountsEl?.removeEventListener('click', onAccounts);
+    accountsEl?.removeEventListener('dragstart', onDragStart);
+    accountsEl?.removeEventListener('dragover', onDragOver);
+    accountsEl?.removeEventListener('drop', onDrop);
+    accountsEl?.removeEventListener('dragend', onDragEnd);
   });
 
   load();
@@ -287,6 +354,7 @@ function collectEditor(body) {
     apiKey: isDeepseek ? val('apiKey') : '',
     workspaceId: isOpen ? (val('workspace') || null) : null,
     authCookie: isOpen ? (val('cookie') || null) : null,
+    visible: existing?.visible !== false,
     warnThreshold: 10,
   };
 }

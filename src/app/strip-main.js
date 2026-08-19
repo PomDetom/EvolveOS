@@ -1,5 +1,5 @@
 // FloatStrip 悬浮条入口（Task A5，规格 §5）：body 级独立渲染一个悬浮条实例。
-// 内容 = 实时 token 监测（余量/余额）：Tauri 下 invoke get_config + get_balances 并订阅
+// 内容 = 实时 token 监测（余额/套餐额度）：Tauri 下 invoke get_config + get_balances 并订阅
 // balances-updated（Rust app.emit 广播全窗口）；浏览器无 __TAURI__ 回退占位。
 // main.js 在 ?mode=strip 时动态 import 本模块并调用 mountStripMode()。
 // 组件 CSS 随本模块按需加载（docs 模式零冲击：docs 不 import 本模块，样式不进入 docs）。
@@ -30,8 +30,8 @@ function escapeHtml(v) {
  */
 export function stripAccountStatus(account, balance) {
   if (balance?.error) return 'err';
-  const isOpen = account?.kind === 'opencode_go';
-  if (isOpen) {
+  const isQuota = account?.kind === 'opencode_go' || account?.kind === 'codex';
+  if (isQuota) {
     const wins = balance?.windows ?? [];
     if (!wins.length) return 'none';
     const maxPct = Math.max(...wins.map((w) => w.usedPct ?? 0));
@@ -58,11 +58,12 @@ export function formatCountdown(resetsAt) {
 }
 
 /**
- * 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode=rolling 实时倒计时 + 周/月窗口百分比
+ * 账户值（悬浮条单行口径）：DeepSeek=余额；OpenCode/Codex=套餐窗口剩余百分比
  * （空格拼接，如 1.5h29% 周50% 月80%；rolling 输出含 HTML 倒计时 span，插入 innerHTML）。
  */
 export function stripAccountValue(account, balance) {
   const isOpen = account?.kind === 'opencode_go';
+  const isCodex = account?.kind === 'codex';
   if (isOpen) {
     const wins = balance?.windows ?? [];
     if (!wins.length) return '—';
@@ -73,6 +74,11 @@ export function stripAccountValue(account, balance) {
     if (weekly) parts.push(`周${(weekly.usedPct ?? 0).toFixed(0)}%`);
     if (monthly) parts.push(`月${(monthly.usedPct ?? 0).toFixed(0)}%`);
     return parts.join(' ');
+  }
+  if (isCodex) {
+    const wins = balance?.windows ?? [];
+    if (!wins.length) return '—';
+    return wins.slice(0, 2).map((w) => `${escapeHtml(w.label)} ${(100 - (w.usedPct ?? 0)).toFixed(0)}%`).join(' ');
   }
   return balance?.balance != null ? `${balance.balance.toFixed(2)} ${escapeHtml(balance.currency ?? '')}` : '—';
 }
@@ -102,7 +108,7 @@ export function formatRelative(epochSecs) {
  */
 export function renderStripToken(config, balances) {
   if (!config) return '<div class="c-strip-tk"><span class="c-strip-tk__muted">加载中…</span></div>';
-  const accounts = config.accounts ?? [];
+  const accounts = (config.accounts ?? []).filter((account) => account.visible !== false);
   if (!accounts.length) return '<div class="c-strip-tk"><span class="c-strip-tk__muted">暂无账户</span></div>';
   const chips = accounts.map((acc) => {
     const bal = balances.find((b) => b.accountId === acc.id);
@@ -155,6 +161,10 @@ export function mountStripToken(content, { onData = () => {} } = {}) {
   eventBus.listen('balances-updated', (e) => {
     balances = e.payload ?? [];
     if (config) render(); // config 未加载完时不刷新占位
+  }).catch(() => {});
+  eventBus.listen('config-updated', (e) => {
+    config = e.payload ?? { accounts: [] };
+    render();
   }).catch(() => {});
   // 实时自动更新：倒计时每秒 + 刷新相对时间 30s —— 原地更新 span 文本，不整窗重渲染；
   // content 脱离 DOM 后（窗口关闭）不再更新。

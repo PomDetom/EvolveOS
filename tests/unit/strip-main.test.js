@@ -35,6 +35,23 @@ describe('strip-main 悬浮条 token 渲染', () => {
     expect(html).not.toContain('c-strip-tk__dot--err');
   });
 
+  it('Codex：套餐窗口剩余百分比 + 状态点 ok', () => {
+    const html = renderStripToken(
+      { accounts: [ACC({ id: 'codex-1', name: '本机 Codex', kind: 'codex' })] },
+      [{ accountId: 'codex-1', windows: [{ key: 'primary', label: '7天', usedPct: 11 }], ok: true, error: null, lastUpdated: 0 }],
+    );
+    expect(html).toContain('本机 Codex');
+    expect(html).toContain('7天 89%');
+    expect(html).toContain('c-strip-tk__dot');
+  });
+
+  it('隐藏账户：不进入悬浮条，全部隐藏时显示提示', () => {
+    const config = { accounts: [ACC({ id: 'a1' }), ACC({ id: 'a2', name: '隐藏', visible: false })] };
+    expect(renderStripToken(config, [])).toContain('主号');
+    expect(renderStripToken(config, [])).not.toContain('隐藏');
+    expect(renderStripToken({ accounts: [ACC({ visible: false })] }, [])).toContain('暂无账户');
+  });
+
   it('OpenCode Go：rolling 倒计时 span + 周/月窗口用量全展示（空格拼接）', () => {
     const acc = ACC({ id: 'a2', kind: 'opencode_go', workspaceId: 'wrk', authCookie: 'ck' });
     const html = renderStripToken(

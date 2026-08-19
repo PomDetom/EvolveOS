@@ -24,6 +24,9 @@ pub struct Account {
     pub workspace_id: Option<String>,
     /// opencode 套餐专用: 会话 cookie (DPAPI 加密存储)
     pub auth_cookie: Option<String>,
+    /// 是否参与余量页与悬浮窗展示（账户仍会继续后台刷新）
+    #[serde(default = "default_true")]
+    pub visible: bool,
     /// 保留字段，预警已移除（不再触发任何通知逻辑）
     #[serde(default = "default_threshold")]
     pub warn_threshold: f64,
