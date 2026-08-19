@@ -155,6 +155,13 @@ html[data-strip-material="none"] .c-strip {
 }
 /* 横排账户间距双倍（12→24px，观感拉开；竖排保持原 gap） */
 .c-strip[data-orientation="horizontal"] .c-strip-tk { gap: var(--space-5); }
+/* 独立悬浮窗初始宽度固定为 320px；多账户横排会把后续 chip 推到窗口外。
+   超过两个账户时仅窗口模式改为纵向堆叠，保留所有账户可见；浏览器/普通宽屏仍横排。 */
+.strip-root--window .c-strip[data-orientation="horizontal"] .c-strip-tk--many {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
 .c-strip-tk__chip {
   display: flex;
   align-items: center;

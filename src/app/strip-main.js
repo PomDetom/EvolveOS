@@ -118,7 +118,8 @@ export function renderStripToken(config, balances) {
         <span class="c-strip-tk__value">${stripAccountValue(acc, bal)}</span>${time}
       </div>`;
   }).join('');
-  return `<div class="c-strip-tk">${chips}</div>`;
+  const manyAccounts = accounts.length > 2 ? ' c-strip-tk--many' : '';
+  return `<div class="c-strip-tk${manyAccounts}">${chips}</div>`;
 }
 
 /**

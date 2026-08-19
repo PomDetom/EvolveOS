@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent-start-baseline-update",
+  "taskId": "EWP-018",
+  "id": "EWP-018",
+  "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
+  "baseBranch": "dev",
+  "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+  "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+  "baselines": [
+    {
+      "taskId": "EWP-018",
+      "gate": "boundary",
+      "command": "npm run check:boundary",
+      "commandId": "boundary",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:49:00.286Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "unit",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:23.212Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "e2e",
+      "command": "npm run agent:e2e -- --task EWP-018",
+      "commandId": "e2e",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:56.141Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "visual-review",
+      "command": "MANUAL: 记录视觉基线判断",
+      "commandId": "visual-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:50:56.141Z",
+      "summary": "manual baseline deferred"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:57.661Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "owner-review",
+      "command": "MANUAL: 记录 framework owner review",
+      "commandId": "owner-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:50:57.661Z",
+      "summary": "manual baseline deferred"
+    }
+  ]
+}

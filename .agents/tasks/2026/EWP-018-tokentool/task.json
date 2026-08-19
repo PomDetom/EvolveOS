@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-018",
+  "title": "TokenTool 悬浮窗多账户展示修复",
+  "status": "ready",
+  "kind": "ui",
+  "branch": "ui/token-tool/float-multi-account",
+  "baseBranch": "dev",
+  "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+  "allowedPaths": [
+    "src/app/strip-main.js",
+    "src/components/float-strip/float-strip.css",
+    "tests/e2e/floatstrip.spec.js",
+    ".agents/tasks/2026/EWP-018-tokentool/",
+    ".agents/notes/"
+  ],
+  "spec": "tests/e2e/floatstrip.spec.js",
+  "notes": [
+    ".agents/notes/implemented/feature/2026-08-19-tokentool.md"
+  ],
+  "requiredGates": "auto",
+  "evidence": [
+    {
+      "taskId": "EWP-018",
+      "gate": "boundary",
+      "command": "npm run check:boundary",
+      "commandId": "boundary",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:51:55.680Z",
+      "summary": "> evolveos@0.2.0 check:boundary > node scripts/check-boundary.js [ui/token-tool/float-multi-account] ✓ 框架改动：分支上受影响子系统定向回归；全量仅 dev→main/hotfix→main；框架 owner 评审"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "unit",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:51:56.239Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-011-ui HEAD is now at 09f6791 fixture [chore/baseline-blocks-verify 9a2f3a1] chore: 初始化 EWP-809 任务 3 files changed, 225 insertion…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "e2e",
+      "command": "npm run agent:e2e -- --task EWP-018",
+      "commandId": "e2e",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:53:19.520Z",
+      "summary": "> evolveos@0.2.0 agent:e2e > node scripts/agent/e2e.js --task EWP-018 Running 17 tests using 1 worker [1/17] [chromium] › tests\\e2e\\floatstrip.spec.js:12:1 › 渲染：.c-strip 存在 + token 实时监测（浏览器无后端 → 暂无账户占位） [2/17] [chromium] › tests\\e2e\\floats…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "visual-review",
+      "command": "MANUAL: 记录视觉基线判断",
+      "commandId": "visual-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:56:00.000Z",
+      "summary": "Web-only 视觉评审：基于 17 项 Playwright E2E、固定 320px 视口多账户断言及最终代码审查，窗口模式超过两个账户改为纵向堆叠，账户 chip 均保持在可视边界内；未执行 Tauri/桌面验证。"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:53:53.136Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "owner-review",
+      "command": "MANUAL: 记录 framework owner review",
+      "commandId": "owner-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "headSha": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "testedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T09:56:00.000Z",
+      "summary": "Framework owner review：改动仅涉及悬浮条渲染、对应 UI 样式和 E2E；符合 ui/* allowedPaths，未触碰 src-tauri、数据源或持久化协议；boundary、unit、E2E、build 全部通过。"
+    }
+  ],
+  "review": {
+    "reviewer": "Codex",
+    "result": "approved",
+    "reviewedHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+    "findings": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    }
+  },
+  "changeHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+  "readyHead": "a823f50b1464c6c66c440219dc1f52c443e69bfa",
+  "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
+  "preflight": {
+    "ok": true,
+    "checkedAt": "2026-08-19T09:47:30.517Z",
+    "checks": {
+      "gitBranch": "dev",
+      "baseRef": "dev",
+      "gitClean": true,
+      "gitWritable": true,
+      "taskIdAvailable": true,
+      "branchAvailable": true,
+      "worktreeWritable": true
+    },
+    "inputs": {
+      "id": "EWP-018",
+      "title": "TokenTool 悬浮窗多账户展示修复",
+      "kind": "ui",
+      "branch": "ui/token-tool/float-multi-account",
+      "worktree": "C:\\Repository\\EvolveOS-EWP-011-ui",
+      "allowedPaths": [
+        "src/app/strip-main.js",
+        "src/components/float-strip/float-strip.css",
+        "tests/e2e/floatstrip.spec.js"
+      ],
+      "year": "2026",
+      "date": "2026-08-19",
+      "baseRef": "dev"
+    }
+  },
+  "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+  "baseline": {
+    "taskId": "EWP-018",
+    "gate": "start-preflight",
+    "command": "agent:start preflight",
+    "commandId": "agent:start preflight",
+    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+    "exitCode": 0,
+    "result": "success",
+    "timestamp": "2026-08-19T09:47:30.517Z",
+    "summary": "agent:start preflight passed"
+  },
+  "baselines": [
+    {
+      "taskId": "EWP-018",
+      "gate": "boundary",
+      "command": "npm run check:boundary",
+      "commandId": "boundary",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:49:00.286Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "unit",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:23.212Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "e2e",
+      "command": "npm run agent:e2e -- --task EWP-018",
+      "commandId": "e2e",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:56.141Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "visual-review",
+      "command": "MANUAL: 记录视觉基线判断",
+      "commandId": "visual-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:50:56.141Z",
+      "summary": "manual baseline deferred"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:50:57.661Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "owner-review",
+      "command": "MANUAL: 记录 framework owner review",
+      "commandId": "owner-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:50:57.661Z",
+      "summary": "manual baseline deferred"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "approver": "Codex",
+    "approvedAt": "2026-08-19T09:51:42.722Z",
+    "scopeHash": "c6d9c51f75440cb17934140531f2392bdc85faf356297445153cfea8e2293d80",
+    "scope": {
+      "planPath": ".agents/tasks/2026/EWP-018-tokentool/plan.md",
+      "allowedPaths": [
+        ".agents/notes/",
+        ".agents/tasks/2026/EWP-018-tokentool/",
+        "src/app/strip-main.js",
+        "src/components/float-strip/float-strip.css",
+        "tests/e2e/floatstrip.spec.js"
+      ],
+      "acceptance": [
+        "悬浮窗能稳定展示多个账户，且长名称、窄宽度下不破坏布局。",
+        "仅迁移历史提交中的三个产品文件；不迁移旧 EWP-011 任务元数据。",
+        "通过 Web-only 单元测试、E2E/Playwright、构建和边界检查。",
+        "不执行 Tauri、桌面端或真实机器验证；本任务不属于 native 验证范围。",
+        "审批、验证证据和评审记录绑定到本任务提交。"
+      ],
+      "productAssumptions": [
+        "悬浮窗的多账户展示属于 Web UI 产品行为；验证以浏览器运行时和 Playwright 为准，不需要 Tauri 原生窗口或真实机器证据。",
+        "账户名称可能较长、账户数量可能超过单行可容纳范围；布局应保持可读并避免撑破悬浮条边界。",
+        "本次修复只调整已有悬浮条的展示与对应 E2E 覆盖，不改变账户数据来源、持久化协议或桌面端启动方式。"
+      ]
+    }
+  },
+  "baselineUpdate": {
+    "path": ".agents/start-runs/29d99a8f-c4d3-42c5-84f7-c42e5145298a-baseline-update.json",
+    "taskId": "EWP-018",
+    "id": "EWP-018",
+    "baseBranch": "dev",
+    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+    "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
+    "commit": "539ba0364457238d53e7d5b7a1708329b844c549"
+  }
+}
