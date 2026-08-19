@@ -3,6 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
+import { commitWorkflowRecord, recordTaskActivity } from './activity.js';
 import { getChangedPaths } from './change-scope.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './note-gate.js';
 import { findTask } from './validate-task.js';
@@ -89,6 +90,14 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
   if (!enforceApproval(rootDir, entry, io)) return 1;
 
   writeTask(entry, { ...entry.task, status: 'verifying' });
+  entry.task = { ...entry.task, status: 'verifying' };
+  const verifyingActivity = recordTaskActivity(rootDir, entry, {
+    type: 'status',
+    from: 'implementing',
+    to: 'verifying',
+    checkpoint: 'verification-start',
+  });
+  commitWorkflowRecord(rootDir, [entry.taskPath, verifyingActivity.relativePath], `chore: ${taskId} 进入验证阶段`);
   const finishAfterVerify = (verifyResult) => {
     if (verifyResult !== 0) {
       const failedVerification = findTask(rootDir, taskId);
@@ -145,7 +154,15 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
     writeTask(refreshed, task);
     const reviewPath = resolve(dirname(refreshed.taskPath), 'review.md');
     writeFileSync(reviewPath, renderReview(task, review), 'utf8');
-    io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}）`);
+    const readyActivity = recordTaskActivity(rootDir, refreshed, {
+      type: 'status',
+      from: 'verifying',
+      to: 'ready',
+      changeHead,
+      reviewedHead: changeHead,
+    });
+    const commit = commitWorkflowRecord(rootDir, [refreshed.taskPath, reviewPath, readyActivity.relativePath], `chore: 记录 ${taskId} 验证与评审`);
+    io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}，commit=${commit ?? '已有记录'}）`);
     return 0;
   };
 

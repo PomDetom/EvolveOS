@@ -15,7 +15,9 @@
     ".agents/tasks/2026/EWP-019-ewp/"
   ],
   "spec": ".agents/tasks/2026/EWP-019-ewp/plan.md",
-  "notes": [],
+  "notes": [
+    ".agents/notes/implemented/process/2026-08-19-task-process-checkpoints.md"
+  ],
   "requiredGates": "auto",
   "evidence": [],
   "review": null,

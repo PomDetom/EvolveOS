@@ -109,6 +109,18 @@ describe('merge-to-dev native readiness', () => {
     expect(report.issues).toContain('方案范围已变化，需重新审批');
   });
 
+  test('enforced 过程记录缺失时阻断', () => {
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: readyTask(),
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: head,
+      activityIssues: ['缺少任务过程记录: .agents/tasks/2026/EWP-001/activity.jsonl'],
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues).toContain('缺少任务过程记录: .agents/tasks/2026/EWP-001/activity.jsonl');
+  });
+
   test('当前 SHA、评审、evidence 和审批完整时通过', () => {
     const report = evaluateNativeReadiness({
       mode: 'enforced',

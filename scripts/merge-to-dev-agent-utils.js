@@ -2,7 +2,7 @@ function evidenceHead(evidence) {
   return evidence.testedHead ?? evidence.headSha;
 }
 
-export function evaluateNativeReadiness({ mode, task, taskBranch, branchHead, changeHeadAncestor = true, codeChangedAfterHead = false, approvalIssues = [] }) {
+export function evaluateNativeReadiness({ mode, task, taskBranch, branchHead, changeHeadAncestor = true, codeChangedAfterHead = false, approvalIssues = [], activityIssues = [] }) {
   const issues = [];
   if (!['shadow', 'enforced'].includes(mode)) issues.push(`协议 mode 非法: ${mode}`);
   if (!task) {
@@ -30,7 +30,7 @@ export function evaluateNativeReadiness({ mode, task, taskBranch, branchHead, ch
     const findings = task.review?.findings ?? {};
     if (Array.isArray(findings.critical) && findings.critical.length) issues.push('存在未解决 Critical findings');
     if (Array.isArray(findings.important) && findings.important.length) issues.push('存在未解决 Important findings');
-    issues.push(...approvalIssues);
+    issues.push(...approvalIssues, ...activityIssues);
   }
   return {
     mode,
