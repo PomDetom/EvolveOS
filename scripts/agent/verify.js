@@ -39,9 +39,14 @@ export function assessEvidence({ requiredGates = [], evidence = [] }) {
   return { ok: incomplete.length === 0, incomplete };
 }
 
-export async function executeGate(rootDir, command, runner = runShellCommand) {
+export async function executeGate(rootDir, command, runner = runShellCommand, options = {}) {
   try {
-    return { result: await runner(rootDir, command) };
+    const runnerOptions = options.gate === 'boundary' && options.baseBranch
+      ? { env: { EWP_BOUNDARY_BASE: options.baseBranch } }
+      : null;
+    return {
+      result: runnerOptions ? await runner(rootDir, command, runnerOptions) : await runner(rootDir, command),
+    };
   } catch (error) {
     return { result: { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` } };
   }
@@ -132,7 +137,12 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
       failed = true;
       continue;
     }
-    const { result } = await executeGate(rootDir, gate.command, deps.runShellCommand ?? runShellCommand);
+    const { result } = await executeGate(
+      rootDir,
+      gate.command,
+      deps.runShellCommand ?? runShellCommand,
+      { gate: gate.gate, baseBranch: entry.task.baseBranch },
+    );
     const gateResult = classifyGateResult(result);
     const comparison = classifyBaselineComparison({
       baseline,

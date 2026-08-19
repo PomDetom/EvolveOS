@@ -19,7 +19,7 @@ import { gateDefinition } from '../../scripts/agent/gate-registry.js';
 import { validateStartEvidence } from '../../scripts/agent/task-schema.js';
 import { main as approveMain } from '../../scripts/agent/approve-task.js';
 import { findTask } from '../../scripts/agent/validate-task.js';
-import { main as verifyMain } from '../../scripts/agent/verify.js';
+import { executeGate, main as verifyMain } from '../../scripts/agent/verify.js';
 import { main as finishMain } from '../../scripts/agent/finish-task.js';
 import { main as taskCheckMain } from '../../scripts/agent/validate-task.js';
 
@@ -290,6 +290,44 @@ describe('Task 8D baseline evidence', () => {
       exitCode: 1,
       summary: 'runner unavailable',
     });
+  });
+
+  test('start baseline boundary runner 收到 recovery base 环境且保留 canonical command', () => {
+    const calls = [];
+    const baselines = buildBaselineEvidence({
+      rootDir: 'fixture-worktree',
+      taskId: 'EWP-816',
+      baseSha: 'a'.repeat(40),
+      baseBranch: 'recovery-base',
+      branch: 'app/demo/recovery-baseline',
+      taskKind: 'app',
+      runner: (rootDir, command, options) => {
+        calls.push({ rootDir, command, options });
+        return { exitCode: 0, stdout: '', stderr: '', reason: '' };
+      },
+    });
+    const boundaryCall = calls.find((call) => call.options.gate === 'boundary');
+    expect(boundaryCall).toMatchObject({
+      command: 'npm run check:boundary',
+      options: { baseBranch: 'recovery-base', env: { EWP_BOUNDARY_BASE: 'recovery-base' } },
+    });
+    expect(baselines.find((baseline) => baseline.gate === 'boundary')).toMatchObject({
+      command: 'npm run check:boundary',
+      commandId: 'boundary',
+      result: 'success',
+    });
+  });
+
+  test('verify executeGate 只给 boundary gate 注入 task baseBranch', async () => {
+    const calls = [];
+    const runner = async (...args) => {
+      calls.push(args);
+      return { exitCode: 0, stdout: '', stderr: '', reason: '' };
+    };
+    await executeGate('fixture-worktree', 'npm run check:boundary', runner, { gate: 'boundary', baseBranch: 'recovery-base' });
+    await executeGate('fixture-worktree', 'npm test', runner, { gate: 'unit', baseBranch: 'recovery-base' });
+    expect(calls[0][2]).toEqual({ env: { EWP_BOUNDARY_BASE: 'recovery-base' } });
+    expect(calls[1]).toHaveLength(2);
   });
 
   test('requireBaselines 拒绝补录提交顺序篡改、缺失 gate 和重复 gate', () => {

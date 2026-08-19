@@ -162,9 +162,16 @@ export function buildStartFiles({ id, title, kind, branch, baseBranch = 'dev', b
   };
 }
 
-export function runBaselineCommand(rootDir, command) {
+export function runBaselineCommand(rootDir, command, options = {}) {
+  const env = {
+    ...process.env,
+    ...(options.env ?? {}),
+  };
+  if (options.gate === 'boundary' && options.baseBranch) {
+    env.EWP_BOUNDARY_BASE = options.baseBranch;
+  }
   try {
-    const stdout = execFileSync(command, { cwd: rootDir, encoding: 'utf8', shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const stdout = execFileSync(command, { cwd: rootDir, encoding: 'utf8', shell: true, env, stdio: ['ignore', 'pipe', 'pipe'] });
     return { exitCode: 0, stdout, stderr: '', reason: '' };
   } catch (error) {
     return {
@@ -176,7 +183,7 @@ export function runBaselineCommand(rootDir, command) {
   }
 }
 
-export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKind, hasNotes, initCommit = '0'.repeat(40), deferTaskSpecific = false, runner = runBaselineCommand }) {
+export function buildBaselineEvidence({ rootDir, taskId, baseSha, baseBranch = 'dev', branch, taskKind, hasNotes, initCommit = '0'.repeat(40), deferTaskSpecific = false, runner = runBaselineCommand }) {
   const kind = assessBranchChanges(branch, []).kind;
   const gates = selectGates({ kind, changedPaths: [], hasNotes, taskKind });
   return gates.map((gateName) => {
@@ -188,7 +195,10 @@ export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKi
       result = { skipped: true, exitCode: null, stdout: '', stderr: '', reason: 'task-specific baseline deferred until initCommit exists' };
     } else {
       try {
-        result = runner(rootDir, gate.command, gate);
+        const runnerOptions = gate.gate === 'boundary'
+          ? { ...gate, baseBranch, env: { EWP_BOUNDARY_BASE: baseBranch } }
+          : gate;
+        result = runner(rootDir, gate.command, runnerOptions);
       } catch (error) {
         result = {
           result: 'environmentFailure',
@@ -489,6 +499,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       rootDir: worktree,
       taskId: id,
       baseSha: preflightResult.baseSha,
+      baseBranch: preflightResult.baseBranch,
       branch,
       taskKind: args.kind,
       hasNotes: requiresNote(args.kind),
@@ -524,6 +535,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       rootDir: worktree,
       taskId: id,
       baseSha: preflightResult.baseSha,
+      baseBranch: preflightResult.baseBranch,
       branch,
       taskKind: args.kind,
       hasNotes: requiresNote(args.kind),

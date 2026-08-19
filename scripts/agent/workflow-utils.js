@@ -17,7 +17,13 @@ function killProcessTree(pid) {
 
 export function runShellCommand(rootDir, command, options = {}) {
   const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 120_000;
-  const child = spawn(command, { cwd: rootDir, shell: true, detached: process.platform !== 'win32', windowsHide: true });
+  const child = spawn(command, {
+    cwd: rootDir,
+    shell: true,
+    detached: process.platform !== 'win32',
+    windowsHide: true,
+    env: { ...process.env, ...(options.env ?? {}) },
+  });
   let stdout = '';
   let stderr = '';
   let timedOut = false;
