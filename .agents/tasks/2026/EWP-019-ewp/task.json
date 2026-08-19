@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-019",
   "title": "EWP 过程记录与提交前强制门禁",
-  "status": "planned",
+  "status": "implementing",
   "kind": "chore",
   "branch": "chore/ewp-process-records",
   "baseBranch": "dev",
