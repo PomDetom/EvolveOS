@@ -51,12 +51,14 @@ export function resolveRequiredGates({ requiredGates = 'auto', autoGates = [] })
 }
 
 export function assessEvidence({ requiredGates = [], evidence = [] }) {
+  const latestByGate = new Map();
+  for (const item of evidence) latestByGate.set(item.gate ?? 'unknown', item);
   const incomplete = requiredGates.filter((gate) => {
-    const latest = [...evidence].reverse().find((item) => item.gate === gate);
+    const latest = latestByGate.get(gate);
     return !latest || latest.result !== 'success';
   });
-  for (const item of evidence) {
-    if (item.result !== 'success' && !incomplete.includes(item.gate)) incomplete.push(item.gate ?? 'unknown');
+  for (const [gate, latest] of latestByGate) {
+    if (latest.result !== 'success' && !incomplete.includes(gate)) incomplete.push(gate);
   }
   return { ok: incomplete.length === 0, incomplete };
 }

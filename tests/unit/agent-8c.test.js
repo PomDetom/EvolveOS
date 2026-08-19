@@ -132,6 +132,17 @@ describe('Task 8C gate process and evidence', () => {
     expect(assessEvidence({ requiredGates: ['unit'], evidence: [
       { gate: 'unit', result: 'success' }, { gate: 'legacy-build', result: 'failed' },
     ]})).toMatchObject({ ok: false, incomplete: ['legacy-build'] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [
+      { gate: 'unit', result: 'failed' }, { gate: 'unit', result: 'success' },
+    ]})).toEqual({ ok: true, incomplete: [] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [
+      { gate: 'unit', result: 'pending' }, { gate: 'unit', result: 'success' },
+    ]})).toEqual({ ok: true, incomplete: [] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [
+      { gate: 'unit', result: 'success' }, { gate: 'unit', result: 'failed' },
+    ]})).toMatchObject({ ok: false, incomplete: ['unit'] });
+    expect(assessEvidence({ requiredGates: ['unit'], evidence: [] }))
+      .toEqual({ ok: false, incomplete: ['unit'] });
   });
 
   test('真实 verify -> writeTask -> finish 主路径阻断 pending evidence', async () => {
