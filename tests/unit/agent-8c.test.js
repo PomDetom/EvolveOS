@@ -8,6 +8,7 @@ import {
   createTaskE2EArgs,
   main as e2eMain,
   resolveTaskE2EPaths,
+  resolveTaskE2ESpec,
 } from '../../scripts/agent/e2e.js';
 import {
   classifyGateResult,
@@ -83,6 +84,39 @@ describe('Task 8C worktree e2e', () => {
   test('agent:e2e 支持定向 spec、固定端口和任务日志', () => {
     expect(createTaskE2EArgs({ taskId: 'EWP-008', spec: 'tests/e2e/shell.spec.js', port: 5198 }))
       .toEqual(['playwright', 'test', 'tests/e2e/shell.spec.js', '--config=playwright.config.worktree.js', '--reporter=line']);
+  });
+
+  test('未传 CLI spec 时仅默认使用 task.json 的 tests/e2e 相对 spec', () => {
+    expect(resolveTaskE2ESpec({ taskSpec: 'tests/e2e/floatstrip.spec.js' })).toBe('tests/e2e/floatstrip.spec.js');
+    expect(resolveTaskE2ESpec({ taskSpec: './tests/e2e/floatstrip.spec.js' })).toBe('tests/e2e/floatstrip.spec.js');
+    expect(resolveTaskE2ESpec({ taskSpec: 'plan.md' })).toBeNull();
+    expect(resolveTaskE2ESpec({ cliSpec: 'tests/e2e/explicit.spec.js', taskSpec: 'plan.md' })).toBe('tests/e2e/explicit.spec.js');
+  });
+
+  test('Windows runner 使用 shell 调用 npx.cmd，并报告 spawnSync runner error', () => {
+    const { root, worktree, git } = makeWorktreeFixture();
+    const calls = [];
+    const errors = [];
+    try {
+      writeFileSync(path.join(worktree, '.agents', 'tasks', '2026', 'EWP-008-e2e', 'task.json'), JSON.stringify({
+        id: 'EWP-008', branch: 'chore/ewp-008-e2e', spec: 'tests/e2e/floatstrip.spec.js',
+      }));
+      const result = e2eMain(['--task', 'EWP-008'], worktree, { error: (message) => errors.push(message) }, {
+        platform: 'win32',
+        spawnSync: (...args) => { calls.push(args); return { status: null, error: new Error('npx.cmd unavailable') }; },
+      });
+      expect(result).toBe(1);
+      expect(calls).toHaveLength(1);
+      expect(calls[0][0]).toBe('npx.cmd');
+      expect(calls[0][2]).toMatchObject({ shell: true });
+      expect(calls[0][1]).toContain('tests/e2e/floatstrip.spec.js');
+      expect(errors.join('\n')).toContain('npx.cmd unavailable');
+    } finally {
+      try { git(['worktree', 'remove', '--force', worktree]); } catch {}
+      try { git(['branch', '-D', 'chore/ewp-008-e2e']); } catch {}
+      rmSync(root, { recursive: true, force: true });
+      rmSync(worktree, { recursive: true, force: true });
+    }
   });
 
   test('端口必须是 1-65535 的整数', () => {

@@ -71,6 +71,12 @@ export function createTaskE2EArgs({ taskId, spec = null, port = 5174 }) {
   return args;
 }
 
+export function resolveTaskE2ESpec({ cliSpec = null, taskSpec = null }) {
+  if (cliSpec) return cliSpec;
+  const normalized = asPosix(taskSpec ?? '').replace(/^\.\//, '');
+  return normalized.startsWith('tests/e2e/') ? normalized : null;
+}
+
 function parseArgs(argv) {
   const value = (name, fallback = null) => {
     const index = argv.indexOf(name);
@@ -80,23 +86,31 @@ function parseArgs(argv) {
 }
 
 export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console, deps = {}) {
-  const { taskId, spec, port } = parseArgs(argv);
+  const { taskId, spec: cliSpec, port } = parseArgs(argv);
   if (!taskId) { io.error('用法：npm run agent:e2e -- --task EWP-008 [--spec tests/e2e/foo.spec.js] [--port 5174]'); return 1; }
   try { validatePort(port); } catch (error) { io.error(`✗ ${error.message}`); return 1; }
   let paths;
   try { paths = resolveTaskE2EPaths({ rootDir, taskId }); } catch (error) { io.error(`✗ ${error.message}`); return 1; }
   const entry = findTask(rootDir, taskId);
   if (!entry || entry.parseError) { io.error(`✗ 无法读取 task: ${taskId}`); return 1; }
+  const spec = resolveTaskE2ESpec({ cliSpec, taskSpec: entry.task.spec });
   if (spec && relative(paths.testDir, resolve(rootDir, spec)).startsWith('..')) { io.error('✗ spec 必须位于任务 checkout 的 tests/e2e 下'); return 1; }
   mkdirSync(paths.logDir, { recursive: true });
   const runner = deps.spawnSync ?? spawnSync;
+  const isWindows = deps.platform ?? process.platform === 'win32';
   let result;
   try {
-    result = runner(process.platform === 'win32' ? 'npx.cmd' : 'npx', createTaskE2EArgs({ taskId, spec, port }), {
+    result = runner(isWindows ? 'npx.cmd' : 'npx', createTaskE2EArgs({ taskId, spec, port }), {
       cwd: paths.rootDir, env: { ...process.env, EWP_TASK_ID: taskId, EWP_E2E_PORT: String(port), EWP_E2E_LOG_DIR: paths.logDir }, stdio: 'inherit', windowsHide: true,
+      ...(isWindows ? { shell: true } : {}),
     });
   } catch (error) {
     io.error(`✗ agent:e2e runner exception: ${error?.message ?? error}`);
+    return 1;
+  }
+  if (result?.error) io.error(`✗ agent:e2e runner error: ${result.error.message ?? result.error}`);
+  if (typeof result?.status !== 'number') {
+    if (!result?.error) io.error('✗ agent:e2e runner 未返回退出状态');
     return 1;
   }
   return typeof result.status === 'number' ? result.status : 1;
