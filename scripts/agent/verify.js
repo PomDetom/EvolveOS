@@ -46,6 +46,26 @@ export function makeGatePlan(taskId, gates) {
   });
 }
 
+export function resolveRequiredGates({ requiredGates = 'auto', autoGates = [] }) {
+  return requiredGates === 'auto' ? autoGates : [...requiredGates];
+}
+
+export function assessEvidence({ requiredGates = [], evidence = [] }) {
+  const incomplete = requiredGates.filter((gate) => {
+    const latest = [...evidence].reverse().find((item) => item.gate === gate);
+    return !latest || latest.result !== 'success';
+  });
+  return { ok: incomplete.length === 0, incomplete };
+}
+
+export async function executeGate(rootDir, command, runner = runShellCommand) {
+  try {
+    return { result: await runner(rootDir, command) };
+  } catch (error) {
+    return { result: { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` } };
+  }
+}
+
 export function renderDryRun(taskId, plan) {
   return [
     `task=${taskId}`,
@@ -71,7 +91,7 @@ function enforceApproval(rootDir, entry, io) {
   return true;
 }
 
-export async function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
+export async function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console, deps = {}) {
   const { taskId, dryRun } = parseVerifyArgs(argv);
   if (!taskId) {
     io.error('用法：npm run agent:verify -- --task EWP-004 [--dry-run]');
@@ -99,7 +119,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
     hasNotes: entry.task.notes.length > 0,
     taskKind: entry.task.kind,
   });
-  const plan = makeGatePlan(taskId, gates);
+  const plan = makeGatePlan(taskId, resolveRequiredGates({ requiredGates: entry.task.requiredGates, autoGates: gates }));
   if (dryRun) {
     io.log(renderDryRun(taskId, plan));
     return 0;
@@ -125,12 +145,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
       failed = true;
       continue;
     }
-    let result;
-    try {
-      result = await runShellCommand(rootDir, gate.command);
-    } catch (error) {
-      result = { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` };
-    }
+    const { result } = await executeGate(rootDir, gate.command, deps.runShellCommand ?? runShellCommand);
     const gateResult = classifyGateResult(result);
     evidence.push(createEvidence({
       gate: gate.gate,

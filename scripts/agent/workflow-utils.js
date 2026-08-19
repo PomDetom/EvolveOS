@@ -23,13 +23,16 @@ export function runShellCommand(rootDir, command, options = {}) {
   let timedOut = false;
   child.stdout?.on('data', (chunk) => { stdout += chunk; });
   child.stderr?.on('data', (chunk) => { stderr += chunk; });
-  const result = new Promise((resolve) => {
+  const result = new Promise((resolve, reject) => {
+    let settled = false;
     const timer = setTimeout(() => {
       timedOut = true;
       killProcessTree(child.pid);
       try { child.kill('SIGKILL'); } catch {}
     }, timeoutMs);
     child.on('close', (status, signal) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       const exitCode = typeof status === 'number' && status === 0 && !timedOut ? 0 : (typeof status === 'number' ? status : 1);
       resolve({
@@ -40,6 +43,12 @@ export function runShellCommand(rootDir, command, options = {}) {
         signal: signal ?? null,
         reason: timedOut ? `timeout after ${timeoutMs}ms` : (signal ? `terminated by ${signal}` : (exitCode === 0 ? '' : `exit code ${exitCode}`)),
       });
+    });
+    child.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
     });
   });
   return result;

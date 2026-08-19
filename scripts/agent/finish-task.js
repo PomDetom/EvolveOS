@@ -7,7 +7,9 @@ import { getChangedPaths } from './change-scope.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './note-gate.js';
 import { findTask } from './validate-task.js';
 import { gitSha } from './workflow-utils.js';
-import { main as verifyMain } from './verify.js';
+import { assessBranchChanges } from '../boundary-check.js';
+import { assessEvidence, main as verifyMain, resolveRequiredGates } from './verify.js';
+import { selectGates } from './select-gates.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -62,7 +64,7 @@ function enforceApproval(rootDir, entry, io) {
   return true;
 }
 
-export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console) {
+export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console, deps = {}) {
   const { taskId, reviewer, reviewResult } = parseFinishArgs(argv);
   if (!taskId || !reviewer || !reviewResult) {
     io.error('用法：npm run agent:finish -- --task EWP-010 --reviewer Codex --review-result approved');
@@ -95,6 +97,14 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
 
     const refreshed = findTask(rootDir, taskId);
     const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
+    const kind = assessBranchChanges(refreshed.task.branch, changedPaths).kind;
+    const autoGates = selectGates({ kind, changedPaths, hasNotes: refreshed.task.notes.length > 0, taskKind: refreshed.task.kind });
+    const requiredGates = resolveRequiredGates({ requiredGates: refreshed.task.requiredGates, autoGates });
+    const evidenceCheck = assessEvidence({ requiredGates, evidence: refreshed.task.evidence });
+    if (!evidenceCheck.ok) {
+      io.error(`✗ evidence 未完成: ${evidenceCheck.incomplete.join(', ')}`);
+      return 1;
+    }
     const notePaths = resolveNotePaths(rootDir, refreshed.task.notes ?? []);
     const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
     const noteReport = evaluateNoteRequirement({
@@ -126,7 +136,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     return 0;
   };
 
-  const verifyResult = verifyMain(['--task', taskId], rootDir, io);
+  const verifyResult = (deps.verifyMain ?? verifyMain)(['--task', taskId], rootDir, io);
   return verifyResult instanceof Promise ? verifyResult.then(finishAfterVerify) : finishAfterVerify(verifyResult);
 }
 
