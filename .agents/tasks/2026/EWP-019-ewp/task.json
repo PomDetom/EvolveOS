@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-019",
   "title": "EWP 过程记录与提交前强制门禁",
-  "status": "awaiting_approval",
+  "status": "planned",
   "kind": "chore",
   "branch": "chore/ewp-process-records",
   "baseBranch": "dev",
@@ -102,10 +102,10 @@
     }
   ],
   "approval": {
-    "status": "awaiting_approval",
-    "approver": null,
-    "approvedAt": null,
-    "scopeHash": null,
+    "status": "approved",
+    "approver": "用户授权（本次请求）",
+    "approvedAt": "2026-08-19T11:33:26.740Z",
+    "scopeHash": "ef4f26d2163b905f5379356bae77fd265185b2ec9506f47df7a2192fe2598388",
     "scope": {
       "planPath": ".agents/tasks/2026/EWP-019-ewp/plan.md",
       "allowedPaths": [
@@ -116,10 +116,12 @@
         "tests/unit/"
       ],
       "acceptance": [
-        "明确的可观察结果",
-        "相关自动化验证通过",
-        "验证证据绑定代码提交",
-        "评审记录已写入"
+        "`agent:implement` 产生持久化的 implementing 检查点。",
+        "受 EWP 管理的提交会记录任务、分支、审批状态和暂存路径；无任务或未审批提交被拒绝。",
+        "任务允许路径之外的改动在提交前被拒绝。",
+        "`merge-to-dev` 在 enforced 模式下拒绝缺少任务、审批、过程记录或当前 HEAD 证据的分支。",
+        "正常路径、无任务绕过路径、未审批路径和验证后改码路径均有自动化回归测试。",
+        "使用说明和迁移记录写入仓库；验证证据绑定最终代码提交；评审记录已写入。"
       ],
       "productAssumptions": []
     }
