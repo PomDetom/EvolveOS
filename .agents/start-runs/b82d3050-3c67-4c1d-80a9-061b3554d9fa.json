@@ -80,7 +80,7 @@
     "baseBranch": "dev",
     "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
     "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "0000000000000000000000000000000000000000",
+    "commit": "3b0a9872f80762f261b119b37290aa1c960d98bc",
     "baselines": [
       {
         "taskId": "EWP-019",
