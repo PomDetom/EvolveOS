@@ -20,6 +20,7 @@ import { readProtocol } from './agent/task-schema.js';
 import { listTasksAtRef } from './agent/validate-task.js';
 import { getChangedPaths } from './agent/change-scope.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './agent/note-gate.js';
+import { evaluateTaskApproval } from './agent/approval.js';
 import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -55,24 +56,24 @@ function codeChangedAfter(rootDir, changeHead, branch) {
   return paths.some((file) => !file.startsWith('.agents/tasks/') && !file.startsWith('.agents/notes/'));
 }
 
-function nativeReadinessFor(branch) {
+export function nativeReadinessFor(branch, rootDir = ROOT) {
   let protocol;
   try {
-    protocol = readProtocol(ROOT);
+    protocol = readProtocol(rootDir);
   } catch (error) {
     return { mode: 'shadow', taskId: null, ok: true, issues: [`无法读取 protocol.json: ${error.message}`] };
   }
-  const entry = listTasksAtRef(ROOT, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
+  const entry = listTasksAtRef(rootDir, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
   let branchHead = null;
-  try { branchHead = sh(ROOT, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
+  try { branchHead = sh(rootDir, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
   let approvalIssues = [];
   if (entry?.task) {
     try {
-      const planPath = ${entry.relativeDirectory}/plan.md;
-      const planText = sh(ROOT, git show :);
+      const planPath = `${entry.relativeDirectory}/plan.md`;
+      const planText = sh(rootDir, `git show ${branch}:${planPath}`);
       approvalIssues = evaluateTaskApproval({ task: entry.task, planText, planPath }).issues;
     } catch (error) {
-      approvalIssues = [无法读取 plan.md: ];
+      approvalIssues = [`无法读取 plan.md: ${error.message}`];
     }
   }
   const readiness = evaluateNativeReadiness({
@@ -80,13 +81,14 @@ function nativeReadinessFor(branch) {
     task: entry?.task ?? null,
     taskBranch: branch,
     branchHead,
-    changeHeadAncestor: entry?.task?.changeHead ? shOk(ROOT, `git merge-base --is-ancestor ${entry.task.changeHead} ${branch}`) : true,
-    codeChangedAfterHead: codeChangedAfter(ROOT, entry?.task?.changeHead, branch),
+    changeHeadAncestor: entry?.task?.changeHead ? shOk(rootDir, `git merge-base --is-ancestor ${entry.task.changeHead} ${branch}`) : true,
+    codeChangedAfterHead: codeChangedAfter(rootDir, entry?.task?.changeHead, branch),
+    approvalIssues,
   });
   if (!entry?.task) return readiness;
-  const changedPaths = getChangedPaths(ROOT, 'dev', branch);
+  const changedPaths = getChangedPaths(rootDir, 'dev', branch);
   const notePaths = entry.task.notes ?? [];
-  const existingNotePaths = notePaths.filter((note) => shOk(ROOT, `git cat-file -e ${branch}:${note}`));
+  const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
   const noteReport = evaluateNoteRequirement({
     task: entry.task,
@@ -109,7 +111,7 @@ function main() {
   if (sh(ROOT, 'git branch --show-current') !== 'dev') fail(`须在主 checkout 的 dev 分支上运行（主 checkout 常驻 dev）。当前不在 dev。`);
   if (!shOk(ROOT, `git rev-parse --verify --quiet ${branch}`)) fail(`分支不存在：${branch}`);
 
-  const nativeReadiness = nativeReadinessFor(branch);
+  const nativeReadiness = nativeReadinessFor(branch, ROOT);
   console.log(formatNativeReadiness(nativeReadiness));
   if (nativeReadiness.mode === 'enforced' && !nativeReadiness.ok) {
     fail('native readiness 未通过，中止合并');
