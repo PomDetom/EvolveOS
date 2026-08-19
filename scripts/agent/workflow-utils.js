@@ -84,13 +84,14 @@ export function createEvidence({ taskId, gate, command, commandId, baseSha, head
   };
 }
 
-export function createBaselineEvidence({ taskId, gate, baseSha, command, commandId, exitCode, result, timestamp = new Date().toISOString(), summary = '' }) {
+export function createBaselineEvidence({ taskId, gate, baseSha, command, commandId, initCommit, exitCode, result, timestamp = new Date().toISOString(), summary = '' }) {
   return {
     taskId,
     gate,
     command,
     commandId: commandId ?? command,
     baseSha,
+    ...(initCommit ? { initCommit } : {}),
     exitCode,
     result,
     timestamp,
@@ -101,12 +102,14 @@ export function createBaselineEvidence({ taskId, gate, baseSha, command, command
 export function validateBaselineEvidence(baseline, expected = {}) {
   const errors = [];
   if (!baseline || typeof baseline !== 'object') return { ok: false, errors: ['缺少 baseline evidence'] };
-  for (const [field, label] of [['taskId', 'taskId'], ['baseSha', 'baseSha'], ['gate', 'baseline gate'], ['command', 'baseline command'], ['commandId', 'baseline command identity'], ['result', 'baseline result']]) {
+  const requiredFields = [['taskId', 'taskId'], ['baseSha', 'baseSha'], ['gate', 'baseline gate'], ['command', 'baseline command'], ['commandId', 'baseline command identity'], ['result', 'baseline result']];
+  if (expected.initCommit != null) requiredFields.push(['initCommit', 'baseline initCommit']);
+  for (const [field, label] of requiredFields) {
     if (typeof baseline[field] !== 'string' || !baseline[field].trim()) errors.push(`缺少 ${label}`);
   }
   if (typeof baseline.baseSha === 'string' && !/^[0-9a-f]{40}$/i.test(baseline.baseSha)) errors.push('baseline baseSha 必须为 40 位 Git SHA');
   if (baseline.commandId !== baseline.command && !expected.commandId) errors.push('baseline command identity 与 command 不一致');
-  for (const field of ['taskId', 'baseSha', 'gate', 'command', 'commandId']) {
+  for (const field of ['taskId', 'baseSha', 'gate', 'command', 'commandId', 'initCommit']) {
     if (expected[field] != null && baseline[field] !== expected[field]) errors.push(`baseline ${field} 不匹配`);
   }
   if (!['success', 'failed', 'environmentFailure', 'incomplete', 'pending'].includes(baseline.result)) errors.push(`baseline result 非法: ${baseline.result}`);
@@ -120,6 +123,7 @@ export function classifyBaselineComparison({ baseline, current }) {
     gate: current?.gate,
     command: current?.command,
     commandId: current?.commandId,
+    initCommit: current?.initCommit,
   });
   if (!baselineCheck.ok) return { classification: 'incomplete', blocked: true, errors: baselineCheck.errors };
   if (current?.result === 'environmentFailure') return { classification: 'environmentFailure', blocked: true, errors: [] };

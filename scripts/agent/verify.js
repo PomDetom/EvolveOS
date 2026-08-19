@@ -141,6 +141,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
         gate: gate.gate,
         command: gate.command,
         commandId: gate.commandId,
+        initCommit: entry.task.initCommit,
         baseSha,
         result: result.environmentFailure || String(result.reason ?? '').startsWith('runner exception:') ? 'environmentFailure' : gateResult,
         exitCode: result.exitCode,

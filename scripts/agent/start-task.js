@@ -175,7 +175,7 @@ export function runBaselineCommand(rootDir, command) {
   }
 }
 
-export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKind, hasNotes, runner = runBaselineCommand }) {
+export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKind, hasNotes, initCommit = '0'.repeat(40), deferTaskSpecific = false, runner = runBaselineCommand }) {
   const kind = assessBranchChanges(branch, []).kind;
   const gates = selectGates({ kind, changedPaths: [], hasNotes, taskKind });
   return gates.map((gateName) => {
@@ -183,6 +183,8 @@ export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKi
     let result;
     if (gate.manual) {
       result = { manual: true, exitCode: null, stdout: '', stderr: '', reason: 'manual baseline deferred' };
+    } else if (deferTaskSpecific && gate.command.includes('--task')) {
+      result = { skipped: true, exitCode: null, stdout: '', stderr: '', reason: 'task-specific baseline deferred until initCommit exists' };
     } else {
       try {
         result = runner(rootDir, gate.command, gate);
@@ -202,6 +204,7 @@ export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKi
       baseSha,
       command: gate.command,
       commandId: gate.commandId,
+      initCommit,
       exitCode: result.exitCode,
       result: classifyGateResult(result),
       summary: result.reason ?? '',
@@ -354,6 +357,9 @@ function writeFiles(worktree, files) {
   write(files.planPath, files.plan);
   if (files.notePath) write(files.notePath, files.note);
   write(files.startRecordPath, `${JSON.stringify(files.startRecord, null, 2)}\n`);
+  if (files.baselineUpdatePath && files.baselineUpdate) {
+    write(files.baselineUpdatePath, `${JSON.stringify(files.baselineUpdate, null, 2)}\n`);
+  }
 }
 
 export function cleanupStartArtifacts({ rootDir, branch, worktree, startRunId, code, message, details = {}, deps = {} }) {
@@ -467,17 +473,18 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       });
     }
 
-    const baselines = buildBaselineEvidence({
+    const initialBaselines = buildBaselineEvidence({
       rootDir: worktree,
       taskId: id,
       baseSha: preflightResult.baseSha,
       branch,
       taskKind: args.kind,
       hasNotes: requiresNote(args.kind),
+      deferTaskSpecific: true,
       runner: deps.baselineRunner,
     });
-    files.task.baselines = baselines;
-    files.startRecord.baselines = baselines;
+    files.task.baselines = initialBaselines;
+    files.startRecord.baselines = initialBaselines;
     try {
       writeFiles(worktree, files);
     } catch (error) {
@@ -500,6 +507,60 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
     }
     git(worktree, ['add', '--', files.taskPath], { stdio: 'inherit' });
     git(worktree, ['commit', '-m', `chore: 记录 ${id} 启动证据`], { stdio: 'inherit' });
+
+    const baselines = buildBaselineEvidence({
+      rootDir: worktree,
+      taskId: id,
+      baseSha: preflightResult.baseSha,
+      branch,
+      taskKind: args.kind,
+      hasNotes: requiresNote(args.kind),
+      initCommit,
+      runner: deps.baselineRunner,
+    });
+    const baselineUpdatePath = `.agents/start-runs/${startRunId}-baseline-update.json`;
+    const baselineUpdate = {
+      schemaVersion: 1,
+      kind: 'agent-start-baseline-update',
+      taskId: id,
+      id,
+      startRunId,
+      baseSha: preflightResult.baseSha,
+      initCommit,
+      baselines,
+    };
+    const pendingUpdate = {
+      path: baselineUpdatePath,
+      taskId: id,
+      id,
+      baseSha: preflightResult.baseSha,
+      initCommit,
+      commit: '0'.repeat(40),
+    };
+    files.task.baselines = baselines;
+    files.task.baselineUpdate = pendingUpdate;
+    files.startRecord.baselines = baselines;
+    files.startRecord.baselineUpdate = pendingUpdate;
+    files.baselineUpdatePath = baselineUpdatePath;
+    files.baselineUpdate = baselineUpdate;
+    try {
+      writeFiles(worktree, files);
+    } catch (error) {
+      throw startError('TASK_WRITE_FAILED', `写入 baseline 补录失败: ${error.message}`, {
+        taskPath: files.taskPath,
+        baselineUpdatePath,
+        initCommit,
+      });
+    }
+    git(worktree, ['add', '--', files.taskPath, files.startRecordPath, baselineUpdatePath], { stdio: 'inherit' });
+    git(worktree, ['commit', '-m', `chore: 补录 ${id} baseline`], { stdio: 'inherit' });
+    const baselineUpdateCommit = git(worktree, ['rev-parse', 'HEAD']);
+    const completedUpdate = { ...pendingUpdate, commit: baselineUpdateCommit };
+    files.task.baselineUpdate = completedUpdate;
+    files.startRecord.baselineUpdate = completedUpdate;
+    writeFiles(worktree, files);
+    git(worktree, ['add', '--', files.taskPath, files.startRecordPath], { stdio: 'inherit' });
+    git(worktree, ['commit', '-m', `chore: 记录 ${id} baseline 更新`], { stdio: 'inherit' });
     io.log(JSON.stringify({
       id,
       branch,
@@ -507,6 +568,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       baseSha: preflightResult.baseSha,
       startRunId,
       initCommit,
+      baselineUpdateCommit,
       taskPath: files.taskPath,
       notePath: files.notePath,
     }, null, 2));

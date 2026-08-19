@@ -139,7 +139,9 @@ describe('Task 8D baseline evidence', () => {
           '--branch', scenario.branch, '--paths', 'scripts/agent/', '--worktree', fixture.worktree,
         ], fixture.root, { log() {}, error() {} }, {
           baselineRunner: (rootDir, command, gate) => {
-            runnerCalls.push({ rootDir, command, gate, taskExists: existsSync(path.join(rootDir, '.agents', 'tasks', '2026', `${scenario.id}-${scenario.title.toLowerCase().replaceAll(' ', '-')}`, 'task.json')) });
+            const taskPath = path.join(rootDir, '.agents', 'tasks', '2026', `${scenario.id}-${scenario.title.toLowerCase().replaceAll(' ', '-')}`, 'task.json');
+            const taskFixture = JSON.parse(readFileSync(taskPath, 'utf8'));
+            runnerCalls.push({ rootDir, command, gate, taskExists: existsSync(taskPath), initCommit: taskFixture.initCommit });
             return { exitCode: 0, stdout: 'fixture baseline', stderr: '', reason: '' };
           },
         })).toBe(0);
@@ -150,20 +152,27 @@ describe('Task 8D baseline evidence', () => {
         expect(runnerCalls.find((call) => call.gate.gate === scenario.gate)).toMatchObject({
           rootDir: fixture.worktree,
           taskExists: true,
+          initCommit: expect.stringMatching(/^[0-9a-f]{40}$/),
         });
+        expect(runnerCalls.find((call) => call.gate.gate === scenario.gate).initCommit).not.toBe('0'.repeat(40));
         expect(baseline).toMatchObject({
           taskId: scenario.id,
           baseSha: task.baseSha,
           gate: scenario.gate,
           command: gateDefinition(scenario.gate, scenario.id).command,
           commandId: scenario.gate,
+          initCommit: task.initCommit,
           result: 'success',
           exitCode: 0,
         });
         expect(JSON.parse(readFileSync(path.join(fixture.worktree, '.agents', 'start-runs', `${task.startRunId}.json`), 'utf8')).baselines)
           .toEqual(task.baselines);
         const initialTask = JSON.parse(fixture.git(['show', `${task.initCommit}:${entry.taskPath.replace(`${fixture.worktree}${path.sep}`, '').replaceAll('\\', '/')}`]));
-        expect(initialTask.baselines).toEqual(task.baselines);
+        expect(initialTask.baselines).not.toEqual(task.baselines);
+        expect(initialTask.baselines.find((item) => item.gate === scenario.gate)).toMatchObject({ result: 'incomplete', initCommit: '0'.repeat(40) });
+        const updateCommitRecord = JSON.parse(fixture.git(['show', `${task.baselineUpdate.commit}:${task.baselineUpdate.path}`]));
+        expect(updateCommitRecord).toMatchObject({ taskId: scenario.id, baseSha: task.baseSha, initCommit: task.initCommit });
+        expect(updateCommitRecord.baselines).toEqual(task.baselines);
       } finally {
         try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
         try { fixture.git(['branch', '-D', scenario.branch]); } catch {}
