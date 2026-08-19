@@ -15,4 +15,23 @@
   - legacy task 缺少 `approval` 时不会被误判为已批准，但下游 gate 会继续阻断。
 - 关注点:
   - 本轮状态检查观察到多个 Node 进程且此前存在多次等待超时风险；按要求未启动全量 e2e 或长时间 runner，仅执行 Task 8B 定向 unit 测试。
-  - `merge-to-dev` 侧对审批 scope 的校验依赖分支上的 `plan.md` 与 `task.json` 同步提交；若用户只改工作区未提交，阻断将在本地 `verify/finish` 先发生。
+- `merge-to-dev` 侧对审批 scope 的校验依赖分支上的 `plan.md` 与 `task.json` 同步提交；若用户只改工作区未提交，阻断将在本地 `verify/finish` 先发生。
+
+## 2026-08-19 审查修复轮次
+
+- 状态: DONE_WITH_CONCERNS
+- 修复提交: `69e5ff0` (`fix: 修复 Task 8B merge readiness 门禁`)；报告提交另行记录。
+- 修复内容:
+  - 修复 `scripts/merge-to-dev.js` 的非法模板字符串和错误处理模板，并补齐 `evaluateTaskApproval` 导入。
+  - `nativeReadinessFor` 现在读取目标分支的 `plan.md`，并把 `approvalIssues` 真实传入 `evaluateNativeReadiness`。
+  - 新增真实加载 merge 主入口的回归测试，覆盖未审批、审批漂移、历史 task 无 approval、只有 code review 无 approval 四类阻断行为。
+- 测试命令及结果:
+  - `npm test -- --run --configLoader runner tests/unit/merge-to-dev-entry.test.js`：通过，5/5。
+  - `npm test -- --run --configLoader runner tests/unit/merge-to-dev-entry.test.js tests/unit/merge-to-dev-agent.test.js tests/unit/merge-to-dev.test.js tests/unit/agent-approve.test.js tests/unit/agent-start.test.js tests/unit/agent-task-schema.test.js tests/unit/agent-verify.test.js tests/unit/agent-finish.test.js tests/unit/agent-protocol.test.js`：通过，9 个测试文件、57/57。
+  - `node --check scripts/merge-to-dev.js`：通过。
+  - `node --input-type=module -e "import('./scripts/merge-to-dev.js')..."`：通过，主入口可加载。
+  - `node scripts/merge-to-dev.js`：按预期以退出码 1 输出用法，不执行合并。
+  - `git diff --check`：通过，无 patch 错误。
+- 关注点:
+  - 首次 Vitest 启动因现有 Node 会话占用 `node_modules/.vite-temp` 返回 EPERM；未结束或清理其他会话，改用 `--configLoader runner` 完成同等定向测试。
+  - 未运行全量 e2e 或长时间 runner，未进入 Task 8C。
