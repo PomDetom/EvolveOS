@@ -4,7 +4,7 @@ import { assessBranchChanges } from '../boundary-check.js';
 import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
-import { classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
+import { classifyBaselineComparison, classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
 import { selectGates } from './select-gates.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
@@ -134,7 +134,10 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
   for (const gate of plan) {
     const timestamp = new Date().toISOString();
     if (gate.manual) {
+      const current = { taskId, gate: gate.gate, baseSha, result: 'incomplete', exitCode: null };
+      const comparison = classifyBaselineComparison({ baseline: entry.task.baseline, current });
       evidence.push(createEvidence({
+        taskId,
         gate: gate.gate,
         command: gate.command,
         baseSha,
@@ -143,13 +146,25 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
         result: 'pending',
         timestamp,
         summary: '需要人工证据',
+        classification: comparison.classification,
       }));
       failed = true;
       continue;
     }
     const { result } = await executeGate(rootDir, gate.command, deps.runShellCommand ?? runShellCommand);
     const gateResult = classifyGateResult(result);
+    const comparison = classifyBaselineComparison({
+      baseline: entry.task.baseline,
+      current: {
+        taskId,
+        gate: gate.gate,
+        baseSha,
+        result: result.environmentFailure || String(result.reason ?? '').startsWith('runner exception:') ? 'environmentFailure' : gateResult,
+        exitCode: result.exitCode,
+      },
+    });
     evidence.push(createEvidence({
+      taskId,
       gate: gate.gate,
       command: gate.command,
       baseSha,
@@ -158,6 +173,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
       result: gateResult,
       timestamp,
       summary: summarizeOutput(result.stdout, `${result.stderr} ${result.reason ?? ''}`),
+      classification: comparison.classification,
     }));
     if (gateResult !== 'success') failed = true;
   }

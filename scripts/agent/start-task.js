@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { listTasks } from './validate-task.js';
 import { listStartRecoveryArtifacts, writeStartRecoveryArtifact } from './start-recovery.js';
 import { buildAwaitingApproval, deriveApprovalScope } from './approval.js';
+import { createBaselineEvidence } from './workflow-utils.js';
 
 export { listStartRecoveryArtifacts } from './start-recovery.js';
 
@@ -118,6 +119,15 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     preflight,
     initCommit,
   };
+  task.baseline = createBaselineEvidence({
+    taskId: id,
+    gate: 'start-preflight',
+    baseSha,
+    command: 'agent:start preflight',
+    exitCode: preflight?.ok === true ? 0 : 1,
+    result: preflight?.ok === true ? 'success' : 'failed',
+    summary: preflight?.ok === true ? 'agent:start preflight passed' : 'agent:start preflight failed',
+  });
   const startRecordPath = `.agents/start-runs/${startRunId}.json`;
   const startRecord = {
     schemaVersion: 1,
@@ -129,6 +139,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     startRunId,
     taskPath,
     preflight,
+    baseline: task.baseline,
   };
   const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`dev\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
   task.approval = buildAwaitingApproval({ scope: deriveApprovalScope({ task, planText: plan, planPath }) });

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { listStartRecoveryArtifacts } from './start-recovery.js';
 import { APPROVAL_STATUSES } from './approval.js';
+import { validateBaselineEvidence } from './workflow-utils.js';
 
 const DEFAULT_PROTOCOL = {
   schemaVersion: 1,
@@ -102,6 +103,7 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   if (typeof task.startRunId !== 'string' || !task.startRunId.trim()) errors.push('startRunId 不能为空');
   if (!task.preflight || typeof task.preflight !== 'object' || Array.isArray(task.preflight)) errors.push('preflight 必须为对象');
   if (typeof task.initCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(task.initCommit)) errors.push('initCommit 必须为 40 位 Git SHA');
+  if (task.baseline != null && typeof task.baseline !== 'object') errors.push('baseline 必须为对象');
 
   validateApproval(task.approval, errors);
 
@@ -135,6 +137,8 @@ export function validateStartEvidence(rootDir, task, taskPath = null) {
   if (!task.startRunId) errors.push('缺少 startRunId，任务不是通过 agent:start 初始化');
   if (!task.preflight || task.preflight.ok !== true) errors.push('缺少成功的 preflight 记录');
   if (!task.preflight?.checks || typeof task.preflight.checks !== 'object') errors.push('preflight.checks 缺失');
+  const baselineResult = validateBaselineEvidence(task.baseline, { taskId: task.id, baseSha: task.baseSha });
+  if (!baselineResult.ok) errors.push(...baselineResult.errors);
   if (typeof task.initCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(task.initCommit)) {
     errors.push('缺少合法的 initCommit');
   } else {
@@ -153,10 +157,10 @@ export function validateStartEvidence(rootDir, task, taskPath = null) {
         const subject = gitText(rootDir, ['show', '-s', '--format=%s', task.initCommit]);
         if (parentLine.length !== 2 || parentLine[1] !== task.baseSha) errors.push('initCommit 必须直接基于 task.baseSha 初始化');
         if (subject !== `chore: 初始化 ${task.id} 任务`) errors.push('initCommit 不是 agent:start 初始化提交');
-        if (record.startRunId !== task.startRunId || record.id !== task.id || record.title !== task.title || record.branch !== task.branch || record.baseSha !== task.baseSha || record.taskPath !== taskPath || JSON.stringify(record.preflight) !== JSON.stringify(task.preflight)) {
+        if (record.startRunId !== task.startRunId || record.id !== task.id || record.title !== task.title || record.branch !== task.branch || record.baseSha !== task.baseSha || record.taskPath !== taskPath || JSON.stringify(record.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(record.baseline) !== JSON.stringify(task.baseline)) {
           errors.push('agent:start 启动记录与 task 不匹配');
         }
-        if (initialTask.id !== task.id || initialTask.branch !== task.branch || initialTask.baseSha !== task.baseSha || initialTask.startRunId !== task.startRunId || JSON.stringify(initialTask.preflight) !== JSON.stringify(task.preflight) || initialTask.initCommit !== '0'.repeat(40)) {
+        if (initialTask.id !== task.id || initialTask.branch !== task.branch || initialTask.baseSha !== task.baseSha || initialTask.startRunId !== task.startRunId || JSON.stringify(initialTask.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(initialTask.baseline) !== JSON.stringify(task.baseline) || initialTask.initCommit !== '0'.repeat(40)) {
           errors.push('initCommit 中缺少真实的初始 task 快照');
         }
       }
@@ -164,6 +168,12 @@ export function validateStartEvidence(rootDir, task, taskPath = null) {
       errors.push(`agent:start 初始化记录不存在或不可解析: ${task.startRunId}`);
       errors.push(`initCommit 不在当前分支历史中: ${task.initCommit}`);
     }
+  }
+  for (const [index, evidence] of (Array.isArray(task.evidence) ? task.evidence : []).entries()) {
+    if (evidence?.taskId !== task.id) errors.push(`evidence[${index}] taskId 与 task 不匹配`);
+    if (evidence?.baseSha !== task.baseSha) errors.push(`evidence[${index}] baseSha 与 task 不匹配`);
+    if (typeof evidence?.command !== 'string' || !evidence.command.trim()) errors.push(`evidence[${index}] 缺少 command`);
+    if (evidence?.commandId !== evidence?.command) errors.push(`evidence[${index}] command identity 与 command 不一致`);
   }
   return { ok: errors.length === 0, errors };
 }

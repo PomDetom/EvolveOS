@@ -96,6 +96,11 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
     }
 
     const refreshed = findTask(rootDir, taskId);
+    const refreshedEvidence = validateStartEvidence(rootDir, refreshed.task, `${refreshed.relativeDirectory}/task.json`);
+    if (!refreshedEvidence.ok) {
+      refreshedEvidence.errors.forEach((error) => io.error(`✗ ${error}`));
+      return 1;
+    }
     const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
     const kind = assessBranchChanges(refreshed.task.branch, changedPaths).kind;
     const autoGates = selectGates({ kind, changedPaths, hasNotes: refreshed.task.notes.length > 0, taskKind: refreshed.task.kind });
