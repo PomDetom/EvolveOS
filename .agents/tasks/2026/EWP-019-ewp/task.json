@@ -103,6 +103,48 @@
       "classification": "baselineFailure",
       "timestamp": "2026-08-19T11:55:58.388Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "testedHead": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:01:50.934Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 2d0a9fc fixture [chore/baseline-blocks-verify aa263bc] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "failure-paths",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "failure-paths",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "testedHead": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:03:34.420Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 32ff059 fixture [chore/baseline-blocks-verify de57bcd] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "testedHead": "0b99a0f327c5c725f7200ed087533405bb7df93a",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:05:23.834Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
   "review": null,
