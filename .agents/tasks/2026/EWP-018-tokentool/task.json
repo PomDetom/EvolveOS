@@ -52,7 +52,7 @@
       "baseRef": "dev"
     }
   },
-  "initCommit": "0000000000000000000000000000000000000000",
+  "initCommit": "dfe6b200ef56bbcbe8cd028c1d52174e02ce472f",
   "baseline": {
     "taskId": "EWP-018",
     "gate": "start-preflight",
