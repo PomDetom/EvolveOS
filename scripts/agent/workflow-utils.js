@@ -57,6 +57,7 @@ export function runShellCommand(rootDir, command, options = {}) {
 export function classifyGateResult(result = {}) {
   if (result.manual) return 'pending';
   if (result.skipped) return 'incomplete';
+  if (['success', 'failed', 'environmentFailure', 'incomplete', 'pending'].includes(result.result)) return result.result;
   return result.exitCode === 0 && !result.timedOut ? 'success' : 'failed';
 }
 

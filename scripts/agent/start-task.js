@@ -180,9 +180,22 @@ export function buildBaselineEvidence({ rootDir, taskId, baseSha, branch, taskKi
   const gates = selectGates({ kind, changedPaths: [], hasNotes, taskKind });
   return gates.map((gateName) => {
     const gate = gateDefinition(gateName, taskId);
-    const result = gate.manual || gate.command.includes('--task')
-      ? { skipped: true, exitCode: null, stdout: '', stderr: '', reason: 'task-specific or manual baseline deferred' }
-      : runner(rootDir, gate.command, gate);
+    let result;
+    if (gate.manual) {
+      result = { manual: true, exitCode: null, stdout: '', stderr: '', reason: 'manual baseline deferred' };
+    } else {
+      try {
+        result = runner(rootDir, gate.command, gate);
+      } catch (error) {
+        result = {
+          result: 'environmentFailure',
+          exitCode: 1,
+          stdout: '',
+          stderr: '',
+          reason: error?.message ?? 'baseline runner failed',
+        };
+      }
+    }
     return createBaselineEvidence({
       taskId,
       gate: gate.gate,
@@ -426,15 +439,6 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       date: today(),
     });
     if (!preflightResult.ok) throw preflightResult.error;
-    const baselines = buildBaselineEvidence({
-      rootDir,
-      taskId: id,
-      baseSha: preflightResult.baseSha,
-      branch,
-      taskKind: args.kind,
-      hasNotes: requiresNote(args.kind),
-      runner: deps.baselineRunner,
-    });
     const files = buildStartFiles({
       id,
       title: args.title,
@@ -449,7 +453,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       spec: args.spec,
       startRunId,
       preflight: preflightResult.preflight,
-      baselines,
+      baselines: [],
     });
     git(rootDir, ['worktree', 'add', '-b', branch, worktree, 'dev'], { stdio: 'inherit' });
     createdBranch = true;
@@ -458,6 +462,26 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       writeFiles(worktree, files);
     } catch (error) {
       throw startError('TASK_WRITE_FAILED', `写入启动文件失败: ${error.message}`, {
+        taskPath: files.taskPath,
+        notePath: files.notePath,
+      });
+    }
+
+    const baselines = buildBaselineEvidence({
+      rootDir: worktree,
+      taskId: id,
+      baseSha: preflightResult.baseSha,
+      branch,
+      taskKind: args.kind,
+      hasNotes: requiresNote(args.kind),
+      runner: deps.baselineRunner,
+    });
+    files.task.baselines = baselines;
+    files.startRecord.baselines = baselines;
+    try {
+      writeFiles(worktree, files);
+    } catch (error) {
+      throw startError('TASK_WRITE_FAILED', `写入启动证据失败: ${error.message}`, {
         taskPath: files.taskPath,
         notePath: files.notePath,
       });

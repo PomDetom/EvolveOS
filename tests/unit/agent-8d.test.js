@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
+  buildBaselineEvidence,
   buildStartFiles,
   cleanupStartArtifacts,
   listStartRecoveryArtifacts,
@@ -123,6 +124,70 @@ describe('Task 8D baseline evidence', () => {
       rmSync(fixture.worktree, { recursive: true, force: true });
     }
   }, 30000);
+
+  test('docs task-check 和 app e2e 在 task fixture 生成后写入可比较的初始 baseline', () => {
+    for (const scenario of [
+      { id: 'EWP-810', title: 'Docs task baseline', kind: 'docs', branch: 'docs/task-baseline', gate: 'task-check' },
+      { id: 'EWP-811', title: 'App e2e baseline', kind: 'app', app: 'demo', branch: 'app/demo/e2e-baseline', gate: 'e2e' },
+    ]) {
+      const fixture = makeFixture();
+      const runnerCalls = [];
+      try {
+        expect(startMain([
+          '--id', scenario.id, '--title', scenario.title, '--kind', scenario.kind,
+          ...(scenario.app ? ['--app', scenario.app] : []),
+          '--branch', scenario.branch, '--paths', 'scripts/agent/', '--worktree', fixture.worktree,
+        ], fixture.root, { log() {}, error() {} }, {
+          baselineRunner: (rootDir, command, gate) => {
+            runnerCalls.push({ rootDir, command, gate, taskExists: existsSync(path.join(rootDir, '.agents', 'tasks', '2026', `${scenario.id}-${scenario.title.toLowerCase().replaceAll(' ', '-')}`, 'task.json')) });
+            return { exitCode: 0, stdout: 'fixture baseline', stderr: '', reason: '' };
+          },
+        })).toBe(0);
+
+        const entry = findTask(fixture.worktree, scenario.id);
+        const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+        const baseline = task.baselines.find((item) => item.gate === scenario.gate);
+        expect(runnerCalls.find((call) => call.gate.gate === scenario.gate)).toMatchObject({
+          rootDir: fixture.worktree,
+          taskExists: true,
+        });
+        expect(baseline).toMatchObject({
+          taskId: scenario.id,
+          baseSha: task.baseSha,
+          gate: scenario.gate,
+          command: gateDefinition(scenario.gate, scenario.id).command,
+          commandId: scenario.gate,
+          result: 'success',
+          exitCode: 0,
+        });
+        expect(JSON.parse(readFileSync(path.join(fixture.worktree, '.agents', 'start-runs', `${task.startRunId}.json`), 'utf8')).baselines)
+          .toEqual(task.baselines);
+        const initialTask = JSON.parse(fixture.git(['show', `${task.initCommit}:${entry.taskPath.replace(`${fixture.worktree}${path.sep}`, '').replaceAll('\\', '/')}`]));
+        expect(initialTask.baselines).toEqual(task.baselines);
+      } finally {
+        try { fixture.git(['worktree', 'remove', '--force', fixture.worktree]); } catch {}
+        try { fixture.git(['branch', '-D', scenario.branch]); } catch {}
+        rmSync(fixture.root, { recursive: true, force: true });
+        rmSync(fixture.worktree, { recursive: true, force: true });
+      }
+    }
+  }, 30000);
+
+  test('baseline runner 抛错保留 environmentFailure，而不是伪造 success', () => {
+    const baselines = buildBaselineEvidence({
+      rootDir: 'fixture-worktree',
+      taskId: 'EWP-812',
+      baseSha: 'a'.repeat(40),
+      branch: 'docs/baseline-runner-failure',
+      taskKind: 'docs',
+      runner: () => { throw new Error('runner unavailable'); },
+    });
+    expect(baselines.find((item) => item.gate === 'task-check')).toMatchObject({
+      result: 'environmentFailure',
+      exitCode: 1,
+      summary: 'runner unavailable',
+    });
+  });
 
   test('legacy task without 8D baselines is readable but verification baseline lookup is incomplete', () => {
     expect(validateBaselineEvidence(undefined, { taskId: 'EWP-808', baseSha: 'a'.repeat(40) })).toMatchObject({ ok: false, errors: expect.arrayContaining(['缺少 baseline evidence']) });
