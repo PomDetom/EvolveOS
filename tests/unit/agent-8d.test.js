@@ -23,6 +23,9 @@ import { executeGate, main as verifyMain } from '../../scripts/agent/verify.js';
 import { main as finishMain } from '../../scripts/agent/finish-task.js';
 import { main as taskCheckMain } from '../../scripts/agent/validate-task.js';
 
+const UNIT_COMMAND = gateDefinition('unit', 'test').command;
+const SCRIPTS_UNIT_COMMAND = gateDefinition('scripts-unit', 'test').command;
+
 function makeFixture() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-8d-fixture-'));
   const worktree = path.join(os.tmpdir(), `ewp-8d-worktree-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -76,23 +79,23 @@ describe('Task 8D baseline evidence', () => {
   test('comparison rejects cross-task, cross-SHA and command-tampered baseline evidence', () => {
     const baseline = createBaselineEvidence({
       taskId: 'EWP-802', gate: 'unit', baseSha: 'a'.repeat(40),
-      command: 'npm test', commandId: 'unit', result: 'success', exitCode: 0,
+      command: UNIT_COMMAND, commandId: 'unit', result: 'success', exitCode: 0,
     });
     expect(validateBaselineEvidence(baseline, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), ...gateDefinition('unit', 'EWP-802') })).toEqual({ ok: true, errors: [] });
-    expect(validateBaselineEvidence({ ...baseline, taskId: 'EWP-803' }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: 'npm test' }).ok).toBe(false);
-    expect(validateBaselineEvidence({ ...baseline, baseSha: 'b'.repeat(40) }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: 'npm test' }).ok).toBe(false);
-    expect(validateBaselineEvidence({ ...baseline, command: 'npm test -- --changed' }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: 'npm test' }).ok).toBe(false);
+    expect(validateBaselineEvidence({ ...baseline, taskId: 'EWP-803' }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: UNIT_COMMAND }).ok).toBe(false);
+    expect(validateBaselineEvidence({ ...baseline, baseSha: 'b'.repeat(40) }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: UNIT_COMMAND }).ok).toBe(false);
+    expect(validateBaselineEvidence({ ...baseline, command: 'npm test -- --changed' }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), gate: 'unit', command: UNIT_COMMAND }).ok).toBe(false);
     expect(validateBaselineEvidence({ ...baseline, command: 'npm test -- --changed', commandId: 'unit' }, { taskId: 'EWP-802', baseSha: 'a'.repeat(40), ...gateDefinition('unit', 'EWP-802') }).ok).toBe(false);
   });
 
   test('comparison requires the same registered gate and canonical command', () => {
-    const baseline = createBaselineEvidence({ taskId: 'EWP-806', gate: 'unit', baseSha: 'a'.repeat(40), command: 'npm test', commandId: 'unit', result: 'success', exitCode: 0 });
+    const baseline = createBaselineEvidence({ taskId: 'EWP-806', gate: 'unit', baseSha: 'a'.repeat(40), command: UNIT_COMMAND, commandId: 'unit', result: 'success', exitCode: 0 });
     expect(classifyBaselineComparison({ baseline, current: { taskId: 'EWP-806', gate: 'build', baseSha: 'a'.repeat(40), command: 'npm run build', result: 'success' } })).toMatchObject({ classification: 'incomplete', blocked: true });
   });
 
   test('baseline failure blocks a successful current gate and writes a failure classification', () => {
-    const baseline = createBaselineEvidence({ taskId: 'EWP-807', gate: 'unit', baseSha: 'a'.repeat(40), command: 'npm test', commandId: 'unit', result: 'failed', exitCode: 1 });
-    expect(classifyBaselineComparison({ baseline, current: { taskId: 'EWP-807', gate: 'unit', baseSha: 'a'.repeat(40), command: 'npm test', commandId: 'unit', result: 'success', exitCode: 0 } })).toMatchObject({ classification: 'baselineFailure', blocked: true });
+    const baseline = createBaselineEvidence({ taskId: 'EWP-807', gate: 'unit', baseSha: 'a'.repeat(40), command: UNIT_COMMAND, commandId: 'unit', result: 'failed', exitCode: 1 });
+    expect(classifyBaselineComparison({ baseline, current: { taskId: 'EWP-807', gate: 'unit', baseSha: 'a'.repeat(40), command: UNIT_COMMAND, commandId: 'unit', result: 'success', exitCode: 0 } })).toMatchObject({ classification: 'baselineFailure', blocked: true });
   });
 
   test('真实 verify 主路径：baselineFailure 即使当前 gate 成功也写失败 evidence 并返回非零', async () => {
@@ -189,7 +192,7 @@ describe('Task 8D baseline evidence', () => {
       };
       expect(await verifyMain(['--task', taskId], worktree, io, { runShellCommand: fakeGateRunner })).toBe(0);
       expect(gateCalls.map((call) => call.command)).toEqual([
-        `npm test`, `npm test`, `npm run build`,
+        SCRIPTS_UNIT_COMMAND, SCRIPTS_UNIT_COMMAND, `npm run build`,
       ]);
       const verifiedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
       expect(verifiedTask.evidence.every((evidence) => evidence.baseSha === baseSha)).toBe(true);
@@ -201,7 +204,7 @@ describe('Task 8D baseline evidence', () => {
         verifyMain: (args, rootDir, finishIo) => verifyMain(args, rootDir, finishIo, { runShellCommand: fakeGateRunner }),
       })).toBe(0);
       expect(gateCalls.map((call) => call.command)).toEqual([
-        `npm test`, `npm test`, `npm run build`,
+        SCRIPTS_UNIT_COMMAND, SCRIPTS_UNIT_COMMAND, `npm run build`,
       ]);
       const finishedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
       expect(finishedTask).toMatchObject({ status: 'ready', baseBranch: 'recovery-base', baseSha });
@@ -325,7 +328,7 @@ describe('Task 8D baseline evidence', () => {
       return { exitCode: 0, stdout: '', stderr: '', reason: '' };
     };
     await executeGate('fixture-worktree', 'npm run check:boundary', runner, { gate: 'boundary', baseBranch: 'recovery-base' });
-    await executeGate('fixture-worktree', 'npm test', runner, { gate: 'unit', baseBranch: 'recovery-base' });
+    await executeGate('fixture-worktree', UNIT_COMMAND, runner, { gate: 'unit', baseBranch: 'recovery-base' });
     expect(calls[0][2]).toEqual({ env: { EWP_BOUNDARY_BASE: 'recovery-base' } });
     expect(calls[1]).toHaveLength(2);
   });
@@ -383,11 +386,11 @@ describe('Task 8D baseline evidence', () => {
 
   test('legacy task without 8D baselines is readable but verification baseline lookup is incomplete', () => {
     expect(validateBaselineEvidence(undefined, { taskId: 'EWP-808', baseSha: 'a'.repeat(40) })).toMatchObject({ ok: false, errors: expect.arrayContaining(['缺少 baseline evidence']) });
-    expect(classifyBaselineComparison({ baseline: undefined, current: { taskId: 'EWP-808', gate: 'unit', baseSha: 'a'.repeat(40), command: 'npm test', result: 'success' } })).toMatchObject({ classification: 'incomplete', blocked: true });
+    expect(classifyBaselineComparison({ baseline: undefined, current: { taskId: 'EWP-808', gate: 'unit', baseSha: 'a'.repeat(40), command: UNIT_COMMAND, result: 'success' } })).toMatchObject({ classification: 'incomplete', blocked: true });
   });
 
   test('classification distinguishes baseline, introduced, environment and incomplete failures without making them green', () => {
-    const identity = { taskId: 'EWP-804', gate: 'unit', baseSha: 'a'.repeat(40), command: 'npm test', commandId: 'unit' };
+    const identity = { taskId: 'EWP-804', gate: 'unit', baseSha: 'a'.repeat(40), command: UNIT_COMMAND, commandId: 'unit' };
     const baseline = createBaselineEvidence({ ...identity, result: 'success', exitCode: 0 });
     expect(classifyBaselineComparison({ baseline, current: { ...identity, result: 'failed', exitCode: 1 } })).toMatchObject({ classification: 'introducedFailure', blocked: true });
     expect(classifyBaselineComparison({ baseline: { ...baseline, result: 'failed', exitCode: 1 }, current: { ...identity, result: 'failed', exitCode: 1 } })).toMatchObject({ classification: 'baselineFailure', blocked: true });
