@@ -21,6 +21,7 @@ describe('EWP protocol', () => {
       legacySddRoot: 'docs/superpowers/sdd',
     });
     expect(protocol.taskStates).toEqual([
+      'awaiting_approval',
       'planned',
       'implementing',
       'verifying',

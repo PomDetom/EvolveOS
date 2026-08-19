@@ -31,7 +31,9 @@ export function assessBranchChanges(branch, files) {
     const allowed = (f) =>
       f.startsWith(`src/apps/${appId}/`) || // 本应用目录
       /^tests\/(unit|e2e)\//.test(f) ||     // 测试
-      f.startsWith('docs/');                // 文档
+      f.startsWith('docs/') ||              // 文档
+      f.startsWith('.agents/tasks/') ||     // 任务治理记录
+      f.startsWith('.agents/start-runs/');  // 启动记录
     const violations = files.filter((f) => !allowed(f));
     return {
       kind: 'app',

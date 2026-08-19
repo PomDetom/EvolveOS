@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { readProtocol, validateTask } from './task-schema.js';
+import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
 export function parseTaskArgs(argv) {
   const index = argv.indexOf('--task');
@@ -106,9 +106,10 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
   }
 
   const result = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  if (!result.ok) {
+  const evidenceResult = result.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
+  if (!result.ok || !evidenceResult.ok) {
     io.error(`✗ task ${taskId} 校验失败`);
-    result.errors.forEach((error) => io.error(`  ${error}`));
+    [...result.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
     return 1;
   }
 

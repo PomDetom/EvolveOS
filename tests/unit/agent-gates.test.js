@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { selectGates } from '../../scripts/agent/select-gates.js';
+import { gateDefinition } from '../../scripts/agent/gate-registry.js';
 
 describe('agent:gates', () => {
   test('docs 无 Note 只选择 task-check 与 build', () => {
@@ -29,6 +30,13 @@ describe('agent:gates', () => {
       .toEqual(['web-regression', 'rust-check', 'permission-check', 'desktop-manual']);
     expect(selectGates({ kind: 'chore', changedPaths: ['package.json', 'scripts/release.js'], taskKind: 'release' }))
       .toEqual(['unit', 'e2e', 'build', 'version-consistency', 'user-confirmation']);
+  });
+
+  test('unit 类 gate 使用稳定的单 worker canonical command 且保留 commandId', () => {
+    const command = 'npm test -- --configLoader runner --maxWorkers=1';
+    for (const gate of ['unit', 'scripts-unit', 'failure-paths']) {
+      expect(gateDefinition(gate, 'EWP-014')).toMatchObject({ command, commandId: gate });
+    }
   });
 
   test('非法分支分类返回 boundary gate，阻止自由猜测', () => {

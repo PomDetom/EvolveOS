@@ -1,5 +1,11 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
+
+const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
 describe('边界检查（G2：框架/应用门禁）', () => {
   it('应用分支触碰框架文件 → 失败并列出', () => {
@@ -13,6 +19,29 @@ describe('边界检查（G2：框架/应用门禁）', () => {
     const r = assessBranchChanges('app/ledger/report',
       ['src/apps/ledger/pages.js', 'src/apps/ledger/ledger.css', 'tests/unit/ledger.test.js', 'docs/app-ledger.md']);
     expect(r.ok).toBe(true);
+  });
+  it('应用分支允许任务治理元数据 → 通过', () => {
+    const r = assessBranchChanges('app/ledger/report', [
+      '.agents/tasks/2026/task-123/task.json',
+      '.agents/start-runs/2026/task-123.json',
+    ]);
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+  });
+  it('应用分支仍拒绝其他治理目录和不在应用目录的产品文件', () => {
+    const r = assessBranchChanges('app/ledger/report', [
+      '.agents/protocol.json',
+      '.agents/reviews/task-123.md',
+      'src/apps/notes/index.js',
+      'src/config/defaults.js',
+    ]);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual([
+      '.agents/protocol.json',
+      '.agents/reviews/task-123.md',
+      'src/apps/notes/index.js',
+      'src/config/defaults.js',
+    ]);
   });
   it('应用分支触碰其他应用目录 → 失败', () => {
     const r = assessBranchChanges('app/ledger/report', ['src/apps/notes/index.js']);
@@ -83,5 +112,42 @@ describe('边界检查（G2：框架/应用门禁）', () => {
   it('基分支 dev/main → 跳过门禁', () => {
     expect(assessBranchChanges('dev', ['src/components/x.js']).ok).toBe(true);
     expect(assessBranchChanges('main', ['src/components/x.js']).kind).toBe('base');
+  });
+
+  it('check-boundary 使用 EWP_BOUNDARY_BASE 指向的本地 ref 作为默认范围', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-boundary-base-'));
+    const script = path.resolve('scripts/check-boundary.js');
+    try {
+      git(root, ['init', '-b', 'dev']);
+      git(root, ['config', 'user.email', 'ewp@example.com']);
+      git(root, ['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(root, ['add', '.']);
+      git(root, ['commit', '-m', 'dev']);
+      git(root, ['switch', '-c', 'recovery-base']);
+      writeFileSync(path.join(root, 'src-recovery.js'), 'recovery\n');
+      git(root, ['add', '.']);
+      git(root, ['commit', '-m', 'recovery base']);
+      git(root, ['switch', '-c', 'chore/boundary-base']);
+      mkdirSync(path.join(root, 'scripts'));
+      writeFileSync(path.join(root, 'scripts', 'change.js'), 'current\n');
+      git(root, ['add', '.']);
+      git(root, ['commit', '-m', 'current change']);
+
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root,
+        env: { ...process.env, EWP_BOUNDARY_BASE: 'recovery-base' },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })).not.toThrow();
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root,
+        env: { ...process.env, EWP_BOUNDARY_BASE: '' },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })).toThrow();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

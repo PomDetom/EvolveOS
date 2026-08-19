@@ -2,11 +2,15 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './note-gate.js';
 import { findTask } from './validate-task.js';
 import { gitSha } from './workflow-utils.js';
-import { main as verifyMain } from './verify.js';
+import { assessBranchChanges } from '../boundary-check.js';
+import { assessEvidence, main as verifyMain, resolveRequiredGates } from './verify.js';
+import { selectGates } from './select-gates.js';
+import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -49,7 +53,18 @@ function resolveNotePaths(rootDir, notes) {
   });
 }
 
-export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console) {
+function enforceApproval(rootDir, entry, io) {
+  const { planPath, planText } = readTaskPlan(rootDir, entry.taskPath);
+  const approvalResult = evaluateTaskApproval({ task: entry.task, planText, planPath });
+  if (!approvalResult.ok) {
+    writeTask(entry, moveTaskToAwaitingApproval(entry.task, approvalResult.scope));
+    approvalResult.issues.forEach((issue) => io.error(`✗ ${issue}`));
+    return false;
+  }
+  return true;
+}
+
+export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console, deps = {}) {
   const { taskId, reviewer, reviewResult } = parseFinishArgs(argv);
   if (!taskId || !reviewer || !reviewResult) {
     io.error('用法：npm run agent:finish -- --task EWP-010 --reviewer Codex --review-result approved');
@@ -64,45 +79,78 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     io.error(`✗ 无法读取 task: ${taskId}`);
     return 1;
   }
+  const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
+  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
+  if (!schemaResult.ok || !evidenceResult.ok) {
+    io.error(`✗ task ${taskId} 校验失败`);
+    [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
+    return 1;
+  }
+  if (!enforceApproval(rootDir, entry, io)) return 1;
 
   writeTask(entry, { ...entry.task, status: 'verifying' });
-  const verifyResult = verifyMain(['--task', taskId], rootDir, io);
-  if (verifyResult !== 0) {
-    io.error('✗ verify 未通过，任务保持 verifying');
-    return 1;
-  }
+  const finishAfterVerify = (verifyResult) => {
+    if (verifyResult !== 0) {
+      const failedVerification = findTask(rootDir, taskId);
+      if (failedVerification && !failedVerification.parseError && failedVerification.task.status !== 'verifying') {
+        writeTask(failedVerification, { ...failedVerification.task, status: 'verifying' });
+      }
+      io.error('✗ verify 未通过，任务保持 verifying');
+      return 1;
+    }
 
-  const refreshed = findTask(rootDir, taskId);
-  const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
-  const notePaths = resolveNotePaths(rootDir, refreshed.task.notes ?? []);
-  const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
-  const noteReport = evaluateNoteRequirement({
-    task: refreshed.task,
-    changedPaths,
-    notePaths,
-    noteLifecycles,
-    status: 'ready',
-  });
-  if (!noteReport.ok) {
-    noteReport.issues.forEach((issue) => io.error(`✗ ${issue}`));
-    return 1;
-  }
+    const refreshed = findTask(rootDir, taskId);
+    if (refreshed && !refreshed.parseError) {
+      refreshed.task = { ...refreshed.task, status: 'verifying' };
+      writeTask(refreshed, refreshed.task);
+    }
+    const refreshedEvidence = validateStartEvidence(rootDir, refreshed.task, `${refreshed.relativeDirectory}/task.json`, { requireBaselines: true });
+    if (!refreshedEvidence.ok) {
+      refreshedEvidence.errors.forEach((error) => io.error(`✗ ${error}`));
+      return 1;
+    }
+    const changedPaths = getChangedPaths(rootDir, refreshed.task.baseBranch, 'HEAD');
+    const kind = assessBranchChanges(refreshed.task.branch, changedPaths).kind;
+    const autoGates = selectGates({ kind, changedPaths, hasNotes: refreshed.task.notes.length > 0, taskKind: refreshed.task.kind });
+    const requiredGates = resolveRequiredGates({ requiredGates: refreshed.task.requiredGates, autoGates });
+    const evidenceCheck = assessEvidence({ requiredGates, evidence: refreshed.task.evidence });
+    if (!evidenceCheck.ok) {
+      io.error(`✗ evidence 未完成: ${evidenceCheck.incomplete.join(', ')}`);
+      return 1;
+    }
+    const notePaths = resolveNotePaths(rootDir, refreshed.task.notes ?? []);
+    const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
+    const noteReport = evaluateNoteRequirement({
+      task: refreshed.task,
+      changedPaths,
+      notePaths,
+      noteLifecycles,
+      status: 'ready',
+    });
+    if (!noteReport.ok) {
+      noteReport.issues.forEach((issue) => io.error(`✗ ${issue}`));
+      return 1;
+    }
 
-  const changeHead = gitSha(rootDir, 'HEAD');
-  const review = buildReviewRecord({ reviewer, result: reviewResult, reviewedHead: changeHead });
-  const task = {
-    ...refreshed.task,
-    status: 'ready',
-    notes: notePaths,
-    changeHead,
-    readyHead: changeHead,
-    review,
+    const changeHead = gitSha(rootDir, 'HEAD');
+    const review = buildReviewRecord({ reviewer, result: reviewResult, reviewedHead: changeHead });
+    const task = {
+      ...refreshed.task,
+      status: 'ready',
+      notes: notePaths,
+      changeHead,
+      readyHead: changeHead,
+      review,
+    };
+    writeTask(refreshed, task);
+    const reviewPath = resolve(dirname(refreshed.taskPath), 'review.md');
+    writeFileSync(reviewPath, renderReview(task, review), 'utf8');
+    io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}）`);
+    return 0;
   };
-  writeTask(refreshed, task);
-  const reviewPath = resolve(dirname(refreshed.taskPath), 'review.md');
-  writeFileSync(reviewPath, renderReview(task, review), 'utf8');
-  io.log(`✓ task ${taskId} 已进入 ready（changeHead=${changeHead}）`);
-  return 0;
+
+  const verifyResult = (deps.verifyMain ?? verifyMain)(['--task', taskId], rootDir, io);
+  return verifyResult instanceof Promise ? verifyResult.then(finishAfterVerify) : finishAfterVerify(verifyResult);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) Promise.resolve(main()).then((code) => { process.exitCode = code; });

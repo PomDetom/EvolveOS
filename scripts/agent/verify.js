@@ -1,30 +1,13 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
 import { assessBranchChanges } from '../boundary-check.js';
+import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
 import { getChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
-import { createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
+import { classifyBaselineComparison, classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
+import { GATE_REGISTRY, gateDefinition } from './gate-registry.js';
 import { selectGates } from './select-gates.js';
-
-const GATE_REGISTRY = {
-  'task-check': { command: (taskId) => `npm run agent:task-check -- --task ${taskId}` },
-  'notes-check': { command: (taskId) => `node scripts/agent/validate-notes.js --task ${taskId}` },
-  boundary: { command: () => 'npm run check:boundary' },
-  unit: { command: () => 'npm test' },
-  e2e: { command: () => 'npm run test:e2e' },
-  'shell-smoke': { command: () => 'npm run test:e2e -- --grep shell' },
-  'visual-review': { command: () => 'MANUAL: 记录视觉基线判断' , manual: true },
-  build: { command: () => 'npm run build' },
-  'owner-review': { command: () => 'MANUAL: 记录 framework owner review', manual: true },
-  'scripts-unit': { command: () => 'npm test' },
-  'failure-paths': { command: () => 'npm test' },
-  'web-regression': { command: () => 'npm run test:e2e' },
-  'rust-check': { command: () => 'cargo check --manifest-path src-tauri/Cargo.toml' },
-  'permission-check': { command: () => 'MANUAL: 记录 Tauri 权限检查', manual: true },
-  'desktop-manual': { command: () => 'MANUAL: 记录真实 Windows 桌面验证', manual: true },
-  'version-consistency': { command: () => 'node scripts/agent/check-version.js', manual: false },
-  'user-confirmation': { command: () => 'MANUAL: 记录用户发版确认', manual: true },
-};
+import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
 export { GATE_REGISTRY };
 
@@ -38,10 +21,35 @@ export function parseVerifyArgs(argv) {
 
 export function makeGatePlan(taskId, gates) {
   return gates.map((gate) => {
-    const definition = GATE_REGISTRY[gate];
-    if (!definition) throw new Error(`未注册 gate: ${gate}`);
-    return { gate, command: definition.command(taskId), manual: definition.manual === true };
+    return gateDefinition(gate, taskId);
   });
+}
+
+export function resolveRequiredGates({ requiredGates = 'auto', autoGates = [] }) {
+  return requiredGates === 'auto' ? autoGates : [...requiredGates];
+}
+
+export function assessEvidence({ requiredGates = [], evidence = [] }) {
+  const latestByGate = new Map();
+  for (const item of evidence) latestByGate.set(item.gate ?? 'unknown', item);
+  const incomplete = requiredGates.filter((gate) => {
+    const latest = latestByGate.get(gate);
+    return !latest || latest.result !== 'success';
+  });
+  return { ok: incomplete.length === 0, incomplete };
+}
+
+export async function executeGate(rootDir, command, runner = runShellCommand, options = {}) {
+  try {
+    const runnerOptions = options.gate === 'boundary' && options.baseBranch
+      ? { env: { EWP_BOUNDARY_BASE: options.baseBranch } }
+      : null;
+    return {
+      result: runnerOptions ? await runner(rootDir, command, runnerOptions) : await runner(rootDir, command),
+    };
+  } catch (error) {
+    return { result: { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` } };
+  }
 }
 
 export function renderDryRun(taskId, plan) {
@@ -53,12 +61,23 @@ export function renderDryRun(taskId, plan) {
 
 export { createEvidence };
 
-function writeTask(entry, evidence) {
-  const next = { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] };
-  writeFileSync(entry.taskPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+function writeTask(entry, task) {
+  writeFileSync(entry.taskPath, `${JSON.stringify(task, null, 2)}\n`, 'utf8');
 }
 
-export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
+function enforceApproval(rootDir, entry, io) {
+  const { planPath, planText } = readTaskPlan(rootDir, entry.taskPath);
+  const approvalResult = evaluateTaskApproval({ task: entry.task, planText, planPath });
+  if (!approvalResult.ok) {
+    const nextTask = moveTaskToAwaitingApproval(entry.task, approvalResult.scope);
+    writeTask(entry, nextTask);
+    approvalResult.issues.forEach((issue) => io.error(`✗ ${issue}`));
+    return false;
+  }
+  return true;
+}
+
+export async function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console, deps = {}) {
   const { taskId, dryRun } = parseVerifyArgs(argv);
   if (!taskId) {
     io.error('用法：npm run agent:verify -- --task EWP-004 [--dry-run]');
@@ -69,6 +88,14 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
     io.error(`✗ 无法读取 task: ${taskId}`);
     return 1;
   }
+  const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
+  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
+  if (!schemaResult.ok || !evidenceResult.ok) {
+    io.error(`✗ task ${taskId} 校验失败`);
+    [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
+    return 1;
+  }
+  if (!enforceApproval(rootDir, entry, io)) return 1;
 
   const changedPaths = getChangedPaths(rootDir, entry.task.baseBranch, 'HEAD');
   const kind = assessBranchChanges(entry.task.branch, changedPaths).kind;
@@ -78,7 +105,7 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
     hasNotes: entry.task.notes.length > 0,
     taskKind: entry.task.kind,
   });
-  const plan = makeGatePlan(taskId, gates);
+  const plan = makeGatePlan(taskId, resolveRequiredGates({ requiredGates: entry.task.requiredGates, autoGates: gates }));
   if (dryRun) {
     io.log(renderDryRun(taskId, plan));
     return 0;
@@ -90,38 +117,66 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
   let failed = false;
   for (const gate of plan) {
     const timestamp = new Date().toISOString();
+    const baseline = (entry.task.baselines ?? []).find((item) => item.gate === gate.gate && item.command === gate.command && item.taskId === taskId && item.baseSha === baseSha);
     if (gate.manual) {
+      const current = { taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, result: 'incomplete', exitCode: null };
+      const comparison = classifyBaselineComparison({ baseline, current });
       evidence.push(createEvidence({
+        taskId,
         gate: gate.gate,
         command: gate.command,
+        commandId: gate.commandId,
         baseSha,
         headSha,
         exitCode: null,
         result: 'pending',
         timestamp,
         summary: '需要人工证据',
+        classification: comparison.classification,
       }));
       failed = true;
       continue;
     }
-    const result = runShellCommand(rootDir, gate.command);
+    const { result } = await executeGate(
+      rootDir,
+      gate.command,
+      deps.runShellCommand ?? runShellCommand,
+      { gate: gate.gate, baseBranch: entry.task.baseBranch },
+    );
+    const gateResult = classifyGateResult(result);
+    const comparison = classifyBaselineComparison({
+      baseline,
+      current: {
+        taskId,
+        gate: gate.gate,
+        command: gate.command,
+        commandId: gate.commandId,
+        initCommit: entry.task.initCommit,
+        baseSha,
+        result: result.environmentFailure || String(result.reason ?? '').startsWith('runner exception:') ? 'environmentFailure' : gateResult,
+        exitCode: result.exitCode,
+      },
+    });
     evidence.push(createEvidence({
+      taskId,
       gate: gate.gate,
       command: gate.command,
+      commandId: gate.commandId,
       baseSha,
       headSha,
       exitCode: result.exitCode,
-      result: result.exitCode === 0 ? 'success' : 'failed',
+      result: comparison.blocked && gateResult === 'success' ? 'failed' : gateResult,
       timestamp,
-      summary: summarizeOutput(result.stdout, result.stderr),
+      summary: summarizeOutput(result.stdout, `${result.stderr} ${result.reason ?? ''}`),
+      classification: comparison.classification,
     }));
-    if (result.exitCode !== 0) failed = true;
+    if (gateResult !== 'success' || comparison.blocked) failed = true;
   }
-  writeTask(entry, evidence);
+  writeTask(entry, { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] });
   io.log(`写入 ${evidence.length} 条验证证据（head=${headSha}）`);
   return failed ? 1 : 0;
 }
 
 if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) {
-  process.exitCode = main();
+  main().then((code) => { process.exitCode = code; });
 }
