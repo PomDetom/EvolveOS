@@ -61,6 +61,48 @@
       "classification": "baselineFailure",
       "timestamp": "2026-08-19T11:51:50.466Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "testedHead": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "exitCode": 0,
+      "result": "failed",
+      "classification": "baselineFailure",
+      "timestamp": "2026-08-19T11:52:12.826Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 3ff9109 fixture [chore/baseline-blocks-verify 0f0d5bb] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "failure-paths",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "failure-paths",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "testedHead": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "baselineFailure",
+      "timestamp": "2026-08-19T11:53:58.126Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 5df9a24 fixture [chore/baseline-blocks-verify f0beecb] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "testedHead": "40a0c7df52471115ea8a9435f787a365185a3484",
+      "exitCode": 0,
+      "result": "failed",
+      "classification": "baselineFailure",
+      "timestamp": "2026-08-19T11:55:58.388Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
   "review": null,
@@ -116,10 +158,10 @@
       "commandId": "scripts-unit",
       "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-      "exitCode": 1,
-      "result": "failed",
-      "timestamp": "2026-08-19T11:32:16.647Z",
-      "summary": "Command failed: npm test -- --configLoader runner --maxWorkers=1\nfailed to load config from C:\\Repository\\EvolveOS-EWP-019-process-records\\vitest.config.js\n\n⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯\nError: Cannot find module 'vitest/config' imported from 'C:/Repository/EvolveOS-EWP-019-process-records/vitest.config.js'\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34060:34)\n    at RunnableDevEnvironment.fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34912:10)\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34870:17)\n    at handleInvoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25913:27)\n    at EventEmitter.listenerForInvokeHandler (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25968:19)\n    at EventEmitter.emit (node:events:509:28)\n    at Object.send (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:15125:39)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:535:31)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:584:31)\n    at ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:28) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  runnerError: Error: RunnerError\n      at reviveInvokeError (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:476:64)\n      at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:549:11)\n      at async ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:7)\n      at async request (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1103:83)\n      at async eval (C:/Repository/EvolveOS-EWP-019-process-records/vitest.config.js:4:31)\n      at async ESModulesEvaluator.runInlinedModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:913:3)\n      at async ModuleRunner.directRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1146:59)\n      at async ModuleRunner.cachedRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1053:73)\n      at async ModuleRunner.import (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1014:10)\n      at async runnerImport (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:35282:20)\n}\n\n\n\n"
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T11:59:45.004Z",
+      "summary": ""
     },
     {
       "taskId": "EWP-019",
@@ -128,10 +170,10 @@
       "commandId": "failure-paths",
       "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-      "exitCode": 1,
-      "result": "failed",
-      "timestamp": "2026-08-19T11:32:17.653Z",
-      "summary": "Command failed: npm test -- --configLoader runner --maxWorkers=1\nfailed to load config from C:\\Repository\\EvolveOS-EWP-019-process-records\\vitest.config.js\n\n⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯\nError: Cannot find module 'vitest/config' imported from 'C:/Repository/EvolveOS-EWP-019-process-records/vitest.config.js'\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34060:34)\n    at RunnableDevEnvironment.fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34912:10)\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34870:17)\n    at handleInvoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25913:27)\n    at EventEmitter.listenerForInvokeHandler (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25968:19)\n    at EventEmitter.emit (node:events:509:28)\n    at Object.send (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:15125:39)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:535:31)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:584:31)\n    at ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:28) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  runnerError: Error: RunnerError\n      at reviveInvokeError (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:476:64)\n      at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:549:11)\n      at async ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:7)\n      at async request (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1103:83)\n      at async eval (C:/Repository/EvolveOS-EWP-019-process-records/vitest.config.js:4:31)\n      at async ESModulesEvaluator.runInlinedModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:913:3)\n      at async ModuleRunner.directRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1146:59)\n      at async ModuleRunner.cachedRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1053:73)\n      at async ModuleRunner.import (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1014:10)\n      at async runnerImport (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:35282:20)\n}\n\n\n\n"
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T12:01:18.363Z",
+      "summary": ""
     },
     {
       "taskId": "EWP-019",
@@ -140,10 +182,10 @@
       "commandId": "build",
       "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
       "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-      "exitCode": 1,
-      "result": "failed",
-      "timestamp": "2026-08-19T11:32:18.465Z",
-      "summary": "Command failed: npm run build\nfailed to load config from C:\\Repository\\EvolveOS-EWP-019-process-records\\vite.config.js\nerror during build:\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from C:\\Repository\\EvolveOS-EWP-019-process-records\\vite.config.js.timestamp-1787139138426-cbee061b175978.mjs\n    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)\n    at packageResolve (node:internal/modules/esm/resolve:764:81)\n    at moduleResolve (node:internal/modules/esm/resolve:855:18)\n    at defaultResolve (node:internal/modules/esm/resolve:988:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)\n    at #resolve (node:internal/modules/esm/loader:679:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:162:33)\n"
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T12:01:20.671Z",
+      "summary": ""
     }
   ],
   "approval": {
@@ -178,6 +220,44 @@
     "baseBranch": "dev",
     "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
     "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "efeca09c783a35bc912110ed1a551188d6b4a94b"
+    "commit": "0000000000000000000000000000000000000000",
+    "baselines": [
+      {
+        "taskId": "EWP-019",
+        "gate": "scripts-unit",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "scripts-unit",
+        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-19T11:59:45.004Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-019",
+        "gate": "failure-paths",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "failure-paths",
+        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-19T12:01:18.363Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-019",
+        "gate": "build",
+        "command": "npm run build",
+        "commandId": "build",
+        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-19T12:01:20.671Z",
+        "summary": ""
+      }
+    ]
   }
 }
