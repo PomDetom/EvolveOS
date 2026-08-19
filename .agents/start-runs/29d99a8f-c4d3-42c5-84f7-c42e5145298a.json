@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-018",
+  "title": "TokenTool 悬浮窗多账户展示修复",
+  "branch": "ui/token-tool/float-multi-account",
+  "baseBranch": "dev",
+  "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+  "startRunId": "29d99a8f-c4d3-42c5-84f7-c42e5145298a",
+  "taskPath": ".agents/tasks/2026/EWP-018-tokentool/task.json",
+  "preflight": {
+    "ok": true,
+    "checkedAt": "2026-08-19T09:47:30.517Z",
+    "checks": {
+      "gitBranch": "dev",
+      "baseRef": "dev",
+      "gitClean": true,
+      "gitWritable": true,
+      "taskIdAvailable": true,
+      "branchAvailable": true,
+      "worktreeWritable": true
+    },
+    "inputs": {
+      "id": "EWP-018",
+      "title": "TokenTool 悬浮窗多账户展示修复",
+      "kind": "ui",
+      "branch": "ui/token-tool/float-multi-account",
+      "worktree": "C:\\Repository\\EvolveOS-EWP-011-ui",
+      "allowedPaths": [
+        "src/app/strip-main.js",
+        "src/components/float-strip/float-strip.css",
+        "tests/e2e/floatstrip.spec.js"
+      ],
+      "year": "2026",
+      "date": "2026-08-19",
+      "baseRef": "dev"
+    }
+  },
+  "baseline": {
+    "taskId": "EWP-018",
+    "gate": "start-preflight",
+    "command": "agent:start preflight",
+    "commandId": "agent:start preflight",
+    "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+    "exitCode": 0,
+    "result": "success",
+    "timestamp": "2026-08-19T09:47:30.517Z",
+    "summary": "agent:start preflight passed"
+  },
+  "baselines": [
+    {
+      "taskId": "EWP-018",
+      "gate": "boundary",
+      "command": "npm run check:boundary",
+      "commandId": "boundary",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:47:31.565Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "unit",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:48:57.524Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "e2e",
+      "command": "npm run agent:e2e -- --task EWP-018",
+      "commandId": "e2e",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": null,
+      "result": "incomplete",
+      "timestamp": "2026-08-19T09:48:57.524Z",
+      "summary": "task-specific baseline deferred until initCommit exists"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "visual-review",
+      "command": "MANUAL: 记录视觉基线判断",
+      "commandId": "visual-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:48:57.524Z",
+      "summary": "manual baseline deferred"
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T09:48:59.283Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-018",
+      "gate": "owner-review",
+      "command": "MANUAL: 记录 framework owner review",
+      "commandId": "owner-review",
+      "baseSha": "43c0787e62ac8a1f02ef5db3880a911027dde4a5",
+      "initCommit": "0000000000000000000000000000000000000000",
+      "exitCode": null,
+      "result": "pending",
+      "timestamp": "2026-08-19T09:48:59.283Z",
+      "summary": "manual baseline deferred"
+    }
+  ]
+}
