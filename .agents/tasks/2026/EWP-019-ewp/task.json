@@ -220,7 +220,7 @@
     "baseBranch": "dev",
     "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
     "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
-    "commit": "0000000000000000000000000000000000000000",
+    "commit": "cec17c7235e45ceb552144939201ddb66541a429",
     "baselines": [
       {
         "taskId": "EWP-019",
