@@ -14,6 +14,7 @@ const DEFAULT_PROTOCOL = {
 };
 
 const BRANCH_RE = /^(app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
+const BASE_REF_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 function asPosixPath(value) {
   return String(value ?? '').replaceAll('\\', '/');
@@ -93,7 +94,9 @@ export function validateTask(task, taskDirectory, protocol = DEFAULT_PROTOCOL) {
   if (typeof task.branch !== 'string' || !BRANCH_RE.test(task.branch)) {
     errors.push(`branch 不符合允许前缀: ${task.branch}`);
   }
-  if (task.baseBranch !== 'dev') errors.push('baseBranch 必须为 dev');
+  if (typeof task.baseBranch !== 'string' || !BASE_REF_RE.test(task.baseBranch) || task.baseBranch.includes('..') || task.baseBranch.startsWith('/') || task.baseBranch.endsWith('/')) {
+    errors.push(`baseBranch 不是合法的本地 ref: ${task.baseBranch}`);
+  }
   if (typeof task.baseSha !== 'string' || !/^[0-9a-f]{40}$/i.test(task.baseSha)) errors.push('baseSha 必须为 40 位 Git SHA');
   if (!Array.isArray(task.allowedPaths) || task.allowedPaths.some((path) => typeof path !== 'string' || !path.trim())) {
     errors.push('allowedPaths 必须为非空字符串数组');
@@ -141,6 +144,14 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
   if (!task.startRunId) errors.push('缺少 startRunId，任务不是通过 agent:start 初始化');
   if (!task.preflight || task.preflight.ok !== true) errors.push('缺少成功的 preflight 记录');
   if (!task.preflight?.checks || typeof task.preflight.checks !== 'object') errors.push('preflight.checks 缺失');
+  if (typeof task.baseBranch === 'string' && /^[0-9a-f]{40}$/i.test(task.baseSha ?? '')) {
+    try {
+      const resolvedBaseSha = gitText(rootDir, ['rev-parse', '--verify', '--end-of-options', `refs/heads/${task.baseBranch}`]);
+      if (resolvedBaseSha !== task.baseSha) errors.push('baseBranch 与 baseSha 不一致');
+    } catch {
+      errors.push(`baseBranch 不是当前仓库可验证的本地 ref: ${task.baseBranch}`);
+    }
+  }
   if (options.requireBaselines === true) {
     const baselineResult = validateBaselineEvidence(task.baseline, { taskId: task.id, baseSha: task.baseSha });
     if (!baselineResult.ok) errors.push(...baselineResult.errors);
@@ -189,6 +200,7 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
       errors.push('缺少 baseline update record；旧任务需补录基线');
     } else {
       if (update.taskId !== task.id || update.id !== task.id) errors.push('baseline update record taskId 与 task 不匹配');
+      if (update.baseBranch !== task.baseBranch) errors.push('baseline update record baseBranch 与 task 不匹配');
       if (update.baseSha !== task.baseSha) errors.push('baseline update record baseSha 与 task 不匹配');
       if (update.initCommit !== task.initCommit) errors.push('baseline update record initCommit 与 task 不匹配');
       if (typeof update.path !== 'string' || !update.path) errors.push('缺少 baseline update record 路径');
@@ -203,7 +215,7 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
           const subject = gitText(rootDir, ['show', '-s', '--format=%s', update.commit]);
           if (subject !== `chore: 补录 ${task.id} baseline`) errors.push('baseline update commit 提交信息非法');
           const record = JSON.parse(gitText(rootDir, ['show', `${update.commit}:${asPosixPath(update.path)}`]));
-          if (record.taskId !== task.id || record.id !== task.id || record.baseSha !== task.baseSha || record.initCommit !== task.initCommit || JSON.stringify(record.baselines) !== JSON.stringify(task.baselines)) {
+          if (record.taskId !== task.id || record.id !== task.id || record.baseBranch !== task.baseBranch || record.baseSha !== task.baseSha || record.initCommit !== task.initCommit || JSON.stringify(record.baselines) !== JSON.stringify(task.baselines)) {
             errors.push('baseline update record 与 task 不匹配');
           }
           for (const [index, baseline] of (Array.isArray(record.baselines) ? record.baselines : []).entries()) {
@@ -250,10 +262,10 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
         const subject = gitText(rootDir, ['show', '-s', '--format=%s', task.initCommit]);
         if (parentLine.length !== 2 || parentLine[1] !== task.baseSha) errors.push('initCommit 必须直接基于 task.baseSha 初始化');
         if (subject !== `chore: 初始化 ${task.id} 任务`) errors.push('initCommit 不是 agent:start 初始化提交');
-        if (record.startRunId !== task.startRunId || record.id !== task.id || record.title !== task.title || record.branch !== task.branch || record.baseSha !== task.baseSha || record.taskPath !== taskPath || JSON.stringify(record.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(record.baseline) !== JSON.stringify(task.baseline) || record.baselineUpdate != null) {
+        if (record.startRunId !== task.startRunId || record.id !== task.id || record.title !== task.title || record.branch !== task.branch || record.baseBranch !== task.baseBranch || record.baseSha !== task.baseSha || record.taskPath !== taskPath || JSON.stringify(record.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(record.baseline) !== JSON.stringify(task.baseline) || record.baselineUpdate != null) {
           errors.push('agent:start 启动记录与 task 不匹配');
         }
-        if (initialTask.id !== task.id || initialTask.branch !== task.branch || initialTask.baseSha !== task.baseSha || initialTask.startRunId !== task.startRunId || JSON.stringify(initialTask.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(initialTask.baseline) !== JSON.stringify(task.baseline) || JSON.stringify(initialTask.baselines) !== JSON.stringify(record.baselines) || initialTask.baselineUpdate != null || initialTask.initCommit !== '0'.repeat(40)) {
+        if (initialTask.id !== task.id || initialTask.branch !== task.branch || initialTask.baseBranch !== task.baseBranch || initialTask.baseSha !== task.baseSha || initialTask.startRunId !== task.startRunId || JSON.stringify(initialTask.preflight) !== JSON.stringify(task.preflight) || JSON.stringify(initialTask.baseline) !== JSON.stringify(task.baseline) || JSON.stringify(initialTask.baselines) !== JSON.stringify(record.baselines) || initialTask.baselineUpdate != null || initialTask.initCommit !== '0'.repeat(40)) {
           errors.push('initCommit 中缺少真实的初始 task 快照');
         }
       }

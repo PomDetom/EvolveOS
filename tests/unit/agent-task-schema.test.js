@@ -91,8 +91,13 @@ describe('EWP task schema', () => {
     expect(result.errors.join(' ')).toContain('branch');
   });
 
-  test('rejects a task whose base branch is not dev', () => {
-    const result = validateTask(validTask({ baseBranch: 'main' }), taskDirectory);
+  test('accepts a task whose base branch is a recovery ref', () => {
+    const result = validateTask(validTask({ baseBranch: 'recovery/validated' }), taskDirectory);
+    expect(result).toEqual({ ok: true, errors: [] });
+  });
+
+  test('rejects a malformed base branch ref', () => {
+    const result = validateTask(validTask({ baseBranch: '../outside' }), taskDirectory);
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('baseBranch');
   });

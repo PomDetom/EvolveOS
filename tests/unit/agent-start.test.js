@@ -31,7 +31,13 @@ describe('agent:start', () => {
       kind: 'tauri',
       app: 'token-tool',
       allowedPaths: ['src-tauri/src/', 'src/apps/token-tool/', 'tests/'],
+      baseRef: 'dev',
     });
+  });
+
+  test('解析显式 recovery base ref', () => {
+    expect(parseStartArgs(['--title', '恢复任务', '--paths', 'scripts/agent/', '--base-ref', 'recovery/validated']))
+      .toMatchObject({ baseRef: 'recovery/validated' });
   });
 
   test('从标题生成稳定 slug 和 Tauri 分支名', () => {
@@ -97,6 +103,71 @@ describe('agent:start', () => {
       git(['branch', '-D', 'ui/token-tool/codex-quota']);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('显式 recovery ref 写入真实 baseBranch/baseSha 并从该 ref 创建 initCommit', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-recovery-ref-'));
+    const worktree = path.join(os.tmpdir(), `ewp-recovery-ref-${Date.now()}`);
+    const git = (args, cwd = root) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init dev']);
+      git(['switch', '-c', 'recovery/validated']);
+      writeFileSync(path.join(root, 'RECOVERY.md'), 'validated\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'validated recovery']);
+      const baseSha = git(['rev-parse', 'HEAD']);
+      git(['switch', 'dev']);
+      const io = { log() {}, error() {} };
+
+      expect(startMain([
+        '--id', 'EWP-015', '--title', 'Recovery start', '--kind', 'chore',
+        '--paths', 'scripts/agent/,tests/unit/', '--base-ref', 'recovery/validated', '--worktree', worktree,
+      ], root, io)).toBe(0);
+
+      const taskPath = path.join(worktree, `.agents/tasks/${YEAR}/EWP-015-recovery-start/task.json`);
+      const task = JSON.parse(readFileSync(taskPath, 'utf8'));
+      const record = JSON.parse(readFileSync(path.join(worktree, `.agents/start-runs/${task.startRunId}.json`), 'utf8'));
+      expect(task).toMatchObject({ baseBranch: 'recovery/validated', baseSha });
+      expect(record).toMatchObject({ baseBranch: 'recovery/validated', baseSha });
+      expect(git(['rev-list', '--parents', '-n', '1', task.initCommit], worktree).split(/\s+/)[1]).toBe(baseSha);
+      expect(validateStartEvidence(worktree, task, `.agents/tasks/${YEAR}/EWP-015-recovery-start/task.json`)).toEqual({ ok: true, errors: [] });
+      git(['worktree', 'remove', '--force', worktree]);
+      git(['branch', '-D', 'chore/recovery-start']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(worktree, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test('不存在的 base ref 在 preflight 失败且不污染主仓库', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-start-missing-ref-'));
+    const worktree = path.join(os.tmpdir(), `ewp-missing-ref-${Date.now()}`);
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'dev\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'init']);
+      const errors = [];
+      expect(startMain([
+        '--id', 'EWP-016', '--title', 'Missing recovery ref', '--kind', 'chore',
+        '--paths', 'scripts/agent/', '--base-ref', 'recovery/missing', '--worktree', worktree,
+      ], root, { log() {}, error(message) { errors.push(String(message)); } })).toBe(1);
+      expect(errors.join('\n')).toContain('BASE_REF_INVALID');
+      expect(git(['branch', '--list', 'chore/missing-recovery-ref'])).toBe('');
+      expect(existsSync(worktree)).toBe(false);
+      expect(existsSync(path.join(root, '.agents'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(worktree, { recursive: true, force: true });
     }
   }, 30000);
 

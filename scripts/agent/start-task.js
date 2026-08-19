@@ -35,6 +35,7 @@ export function parseStartArgs(argv) {
     spec: value(argv, '--spec'),
     worktree: value(argv, '--worktree'),
     noteClass: value(argv, '--note-class'),
+    baseRef: value(argv, '--base-ref', 'dev'),
     allowedPaths: paths.split(',').map((item) => item.trim()).filter(Boolean),
   };
 }
@@ -87,7 +88,7 @@ function requiresNote(kind) {
   return NOTE_KINDS.has(kind);
 }
 
-export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths, year, date, slug, noteClass, spec, startRunId, preflight, baselines = [], initCommit = '0'.repeat(40) }) {
+export function buildStartFiles({ id, title, kind, branch, baseBranch = 'dev', baseSha, allowedPaths, year, date, slug, noteClass, spec, startRunId, preflight, baselines = [], initCommit = '0'.repeat(40) }) {
   const taskDirectory = `.agents/tasks/${year}/${id}-${slug}`;
   const taskPath = `${taskDirectory}/task.json`;
   const planPath = `${taskDirectory}/plan.md`;
@@ -108,7 +109,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     status: 'awaiting_approval',
     kind,
     branch,
-    baseBranch: 'dev',
+    baseBranch,
     baseSha,
     allowedPaths: taskAllowedPaths,
     spec: spec ?? planPath,
@@ -138,7 +139,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     id,
     title,
     branch,
-    baseBranch: 'dev',
+    baseBranch,
     baseSha,
     startRunId,
     taskPath,
@@ -146,7 +147,7 @@ export function buildStartFiles({ id, title, kind, branch, baseSha, allowedPaths
     baseline: task.baseline,
     baselines,
   };
-  const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`dev\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
+  const plan = `# ${id} ${title}\n\n## 目标\n\n<!-- 可验证的一句话目标。 -->\n\n## Scope\n\n- Branch: \`${branch}\`\n- Base: \`${baseBranch}\`\n- Allowed paths: ${taskAllowedPaths.map((item) => `\`${item}\``).join(', ')}\n\n## Acceptance\n\n- [ ] 明确的可观察结果\n- [ ] 相关自动化验证通过\n- [ ] 验证证据绑定代码提交\n- [ ] 评审记录已写入\n\n## 执行记录\n\n按 \`planned → implementing → verifying → reviewing → ready\` 更新 task 状态；阻塞时写明原因和恢复条件。\n`;
   task.approval = buildAwaitingApproval({ scope: deriveApprovalScope({ task, planText: plan, planPath }) });
   const noteContent = note ? `# ${title}\n\n**Status:** proposed\n\n**Class:** ${noteClass}\n\n## Problem\n\n<!-- 记录需要跨任务复用的现象或约束。 -->\n\n## Proposal\n\n<!-- 记录本任务的方案和边界。 -->\n\n## Alternatives\n\n- 尚未记录。\n\n## Consequences/Risks\n\n- 尚未记录。\n` : null;
   return {
@@ -282,12 +283,14 @@ export function runStartPreflight({
   existingIds,
   year,
   date,
+  baseRef = 'dev',
   deps = {},
 }) {
   const preflightDeps = {
     gitBranch: deps.gitBranch ?? (() => git(rootDir, ['branch', '--show-current'])),
     gitStatus: deps.gitStatus ?? (() => git(rootDir, ['status', '--porcelain'])),
-    gitBaseSha: deps.gitBaseSha ?? (() => git(rootDir, ['rev-parse', 'dev'])),
+    gitBaseRefExists: deps.gitBaseRefExists ?? (deps.gitBaseSha ? (() => true) : ((candidate) => gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${candidate}`]))),
+    gitBaseSha: deps.gitBaseSha ?? (() => git(rootDir, ['rev-parse', '--verify', '--end-of-options', `refs/heads/${baseRef}`])),
     gitBranchExists: deps.gitBranchExists ?? ((candidate) => gitOk(rootDir, ['show-ref', '--verify', '--quiet', `refs/heads/${candidate}`])),
     gitWriteProbe: deps.gitWriteProbe ?? (() => gitWriteProbe(rootDir)),
     ensureWorktreeWritable: deps.ensureWorktreeWritable ?? ensureWorktreeWritable,
@@ -296,6 +299,10 @@ export function runStartPreflight({
   try {
     if (preflightDeps.gitBranch() !== 'dev') throw startError('NOT_ON_DEV', '必须从 dev 启动任务');
     if (preflightDeps.gitStatus()) throw startError('DIRTY_DEV', 'dev 工作区必须干净');
+    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(baseRef) || baseRef.includes('..') || baseRef.startsWith('/') || baseRef.endsWith('/')) {
+      throw startError('BASE_REF_INVALID', `base ref 非法: ${baseRef}`, { baseRef });
+    }
+    if (!preflightDeps.gitBaseRefExists(baseRef)) throw startError('BASE_REF_INVALID', `base ref 不存在或不是本地 branch: ${baseRef}`, { baseRef });
     if (listStartRecoveryArtifacts(rootDir).length) throw startError('START_RECOVERY_BLOCKED', '存在未恢复的 agent:start 清理记录');
     if (!/^EWP-\d{3}$/.test(id)) throw startError('TASK_ID_INVALID', `task ID 非法: ${id}`, { id });
     if (existingIds.includes(id)) throw startError('TASK_ID_CONFLICT', `task 已存在: ${id}`, { id });
@@ -313,12 +320,14 @@ export function runStartPreflight({
     }
     return {
       ok: true,
+      baseBranch: baseRef,
       baseSha: preflightDeps.gitBaseSha(),
       preflight: {
         ok: true,
         checkedAt: new Date().toISOString(),
         checks: {
           gitBranch: 'dev',
+          baseRef,
           gitClean: true,
           gitWritable: true,
           taskIdAvailable: true,
@@ -334,6 +343,7 @@ export function runStartPreflight({
           allowedPaths,
           year,
           date,
+          baseRef,
         },
       },
     };
@@ -443,6 +453,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       existingIds,
       year,
       date: today(),
+      baseRef: args.baseRef,
     });
     if (!preflightResult.ok) throw preflightResult.error;
     const files = buildStartFiles({
@@ -450,6 +461,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       title: args.title,
       kind: args.kind,
       branch,
+      baseBranch: preflightResult.baseBranch,
       baseSha: preflightResult.baseSha,
       allowedPaths: args.allowedPaths,
       year,
@@ -461,7 +473,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       preflight: preflightResult.preflight,
       baselines: [],
     });
-    git(rootDir, ['worktree', 'add', '-b', branch, worktree, 'dev'], { stdio: 'inherit' });
+    git(rootDir, ['worktree', 'add', '-b', branch, worktree, preflightResult.baseBranch], { stdio: 'inherit' });
     createdBranch = true;
     createdWorktree = true;
     try {
@@ -525,6 +537,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       taskId: id,
       id,
       startRunId,
+      baseBranch: preflightResult.baseBranch,
       baseSha: preflightResult.baseSha,
       initCommit,
       baselines,
@@ -533,6 +546,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
       path: baselineUpdatePath,
       taskId: id,
       id,
+      baseBranch: preflightResult.baseBranch,
       baseSha: preflightResult.baseSha,
       initCommit,
       commit: '0'.repeat(40),
