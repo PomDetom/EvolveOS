@@ -80,14 +80,28 @@ function createReadinessFixture(kind) {
       approvedAt: '2026-08-19T00:00:00.000Z',
       scope: approvalScope,
     });
+  } else if (kind === 'legacy') {
+    delete task.changeHead;
+    delete task.evidence;
+    delete task.review;
+    delete task.startRunId;
+    delete task.preflight;
+    delete task.initCommit;
+    task.readyHead = changeHead;
   } else if (kind === 'code-review-only') {
     task.approval = undefined;
+    task.review = {
+      reviewedHead: changeHead,
+      reviewer: 'Code Reviewer',
+      findings: { critical: [], important: [] },
+    };
   }
   mkdirSync(path.join(root, taskDirectory), { recursive: true });
   writeFileSync(path.join(root, planPath), kind === 'drift' ? driftedPlanText : planText);
   writeFileSync(path.join(root, `${taskDirectory}/task.json`), JSON.stringify(task));
   git(root, ['add', '.agents/tasks']);
   git(root, ['commit', '-m', 'record task evidence']);
+  git(root, ['checkout', 'dev']);
   return { root, branch: task.branch };
 }
 
@@ -104,13 +118,15 @@ describe('merge-to-dev 主入口', () => {
   ])('%s 的 merge readiness 由真实主入口阻断', async (_label, kind, issue) => {
     const fixture = createReadinessFixture(kind);
     try {
-      const { nativeReadinessFor } = await import('../../scripts/merge-to-dev.js');
-      const report = nativeReadinessFor(fixture.branch, fixture.root);
-      expect(report.mode).toBe('enforced');
-      expect(report.ok).toBe(false);
-      expect(report.issues).toContain(issue);
+      const { main } = await import('../../scripts/merge-to-dev.js');
+      expect(() => main({
+        argv: [fixture.branch, '--no-sync', '--no-cleanup'],
+        rootDir: fixture.root,
+        dryRun: true,
+      })).toThrow(new RegExp(`native readiness 未通过[\\s\\S]*${issue}`));
+      expect(git(fixture.root, ['branch', '--show-current'])).toBe('dev');
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
-  });
+  }, 20000);
 });

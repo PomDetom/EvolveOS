@@ -35,3 +35,20 @@
 - 关注点:
   - 首次 Vitest 启动因现有 Node 会话占用 `node_modules/.vite-temp` 返回 EPERM；未结束或清理其他会话，改用 `--configLoader runner` 完成同等定向测试。
   - 未运行全量 e2e 或长时间 runner，未进入 Task 8C。
+
+## 2026-08-19 修复轮次 2
+
+- 状态: DONE
+- 修复内容:
+  - `merge-to-dev` 主入口新增可注入的 `argv`、`rootDir` 和 `dryRun` 参数；默认 CLI 仍使用真实参数、仓库根目录并执行原有同步/边界/合并/清理流程。
+  - 主入口阻断改为抛出带 readiness 明细的错误，由 CLI 顶层统一转换为退出码 1，便于安全入口测试验证实际拒绝结果。
+  - 回归测试不再调用 `nativeReadinessFor()`，而是把临时 Git fixture 置于 `dev` checkout，直接调用完整 `main()`；四类 fixture 均在 readiness 阻断前不会进入合并副作用路径。
+  - 历史 task fixture 移除现代启动、验证和评审证据；仅 code review fixture 保留独立的代码评审记录，两者均明确无方案 approval。
+- 测试及检查:
+  - 先红：旧模块未导出 `main`，4 个真实入口测试均失败并报告 `main is not a function`。
+  - 定向入口测试：5/5 通过。
+  - Task 8B 相关回归集合：9 个测试文件、57/57 通过。
+  - `node --check scripts/merge-to-dev.js`：通过。
+  - `git diff --check`：通过。
+- 安全边界:
+  - 测试只使用临时 Git repository、`rootDir` 注入和 `dryRun`；未真实合并、删除分支或修改 `dev`。
