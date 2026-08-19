@@ -187,6 +187,34 @@
       "classification": "success",
       "timestamp": "2026-08-19T12:09:08.366Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "5715ea8748ee99ab1ef0526e0aeb512bd4107691",
+      "testedHead": "5715ea8748ee99ab1ef0526e0aeb512bd4107691",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-19T12:15:26.530Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-019-process-records HEAD is now at 06f84c0 fixture [chore/baseline-blocks-verify 4767fce] chore: 初始化 EWP-809 任务 3 files changed, …"
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "headSha": "5715ea8748ee99ab1ef0526e0aeb512bd4107691",
+      "testedHead": "5715ea8748ee99ab1ef0526e0aeb512bd4107691",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-19T12:17:21.916Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
   "review": null,
