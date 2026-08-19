@@ -126,6 +126,95 @@ describe('Task 8D baseline evidence', () => {
     }
   }, 30000);
 
+  test('P2 recovery base 回归：start、task-check、verify 和 finish 均绑定 recovery base', async () => {
+    const fixture = makeFixture();
+    const taskId = 'EWP-815';
+    const branch = 'chore/recovery-base-regression';
+    const worktree = fixture.worktree;
+    const io = { log() {}, error() {} };
+    const baselineCalls = [];
+    const gateCalls = [];
+    try {
+      mkdirSync(path.join(fixture.root, 'src-tauri'), { recursive: true });
+      writeFileSync(path.join(fixture.root, 'src-tauri', 'recovery-base-marker.txt'), 'recovery base\n');
+      fixture.git(['switch', '-c', 'recovery-base']);
+      fixture.git(['add', 'src-tauri/recovery-base-marker.txt']);
+      fixture.git(['commit', '-m', 'fixture recovery base']);
+      const baseSha = fixture.git(['rev-parse', 'HEAD']).trim();
+      fixture.git(['switch', 'dev']);
+
+      expect(startMain([
+        '--id', taskId, '--title', 'Recovery base regression', '--kind', 'chore',
+        '--paths', 'scripts/agent/,tests/unit/', '--base-ref', 'recovery-base',
+        '--worktree', worktree,
+      ], fixture.root, io, {
+        baselineRunner: (rootDir, command, gate) => {
+          baselineCalls.push({ rootDir, command, gate: gate.gate });
+          return { exitCode: 0, stdout: 'fake baseline', stderr: '', reason: '' };
+        },
+      })).toBe(0);
+
+      const entry = findTask(worktree, taskId);
+      const taskPath = entry.taskPath.replace(`${worktree}${path.sep}`, '').replaceAll('\\', '/');
+      const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+      expect(task).toMatchObject({ baseBranch: 'recovery-base', baseSha });
+      expect(task.baselines.length).toBeGreaterThan(0);
+      expect(task.baselines.every((baseline) => baseline.baseSha === baseSha)).toBe(true);
+      expect(task.baselineUpdate).toMatchObject({ baseBranch: 'recovery-base', baseSha });
+      const updateRecord = JSON.parse(fixture.git(['show', `${task.baselineUpdate.commit}:${task.baselineUpdate.path}`], worktree));
+      expect(updateRecord).toMatchObject({ baseBranch: 'recovery-base', baseSha });
+      expect(updateRecord.baselines.every((baseline) => baseline.baseSha === baseSha)).toBe(true);
+      expect(baselineCalls.every((call) => call.rootDir === worktree)).toBe(true);
+
+      expect(taskCheckMain(['--task', taskId], worktree, io)).toBe(0);
+      expect(validateStartEvidence(worktree, task, taskPath, { requireBaselines: true })).toEqual({ ok: true, errors: [] });
+
+      writeFileSync(entry.taskPath.replace('task.json', 'plan.md'), [
+        `# ${taskId} Recovery base regression`,
+        '',
+        '## Acceptance',
+        '',
+        '- verify 和 finish 必须使用 task 中的 recovery base ref 与 SHA。',
+        '',
+        '## Product Assumptions',
+        '',
+        '- 不适用',
+        '',
+      ].join('\n'));
+      expect(approveMain(['--task', taskId, '--approver', 'Codex'], worktree, io)).toBe(0);
+
+      const fakeGateRunner = async (rootDir, command) => {
+        gateCalls.push({ rootDir, command });
+        return { exitCode: 0, stdout: 'fake gate', stderr: '', reason: '' };
+      };
+      expect(await verifyMain(['--task', taskId], worktree, io, { runShellCommand: fakeGateRunner })).toBe(0);
+      expect(gateCalls.map((call) => call.command)).toEqual([
+        `npm test`, `npm test`, `npm run build`,
+      ]);
+      const verifiedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+      expect(verifiedTask.evidence.every((evidence) => evidence.baseSha === baseSha)).toBe(true);
+
+      gateCalls.length = 0;
+      expect(await finishMain([
+        '--task', taskId, '--reviewer', 'Codex', '--review-result', 'approved',
+      ], worktree, io, {
+        verifyMain: (args, rootDir, finishIo) => verifyMain(args, rootDir, finishIo, { runShellCommand: fakeGateRunner }),
+      })).toBe(0);
+      expect(gateCalls.map((call) => call.command)).toEqual([
+        `npm test`, `npm test`, `npm run build`,
+      ]);
+      const finishedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
+      expect(finishedTask).toMatchObject({ status: 'ready', baseBranch: 'recovery-base', baseSha });
+      expect(finishedTask.evidence.every((evidence) => evidence.baseSha === baseSha)).toBe(true);
+    } finally {
+      try { fixture.git(['worktree', 'remove', '--force', worktree]); } catch {}
+      try { fixture.git(['branch', '-D', branch]); } catch {}
+      try { fixture.git(['branch', '-D', 'recovery-base']); } catch {}
+      rmSync(fixture.root, { recursive: true, force: true });
+      rmSync(worktree, { recursive: true, force: true });
+    }
+  }, 30000);
+
   test('docs task-check 和 app e2e 在 task fixture 生成后写入可比较的初始 baseline', () => {
     for (const scenario of [
       { id: 'EWP-810', title: 'Docs task baseline', kind: 'docs', branch: 'docs/task-baseline', gate: 'task-check' },
