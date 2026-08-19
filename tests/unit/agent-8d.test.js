@@ -216,7 +216,10 @@ describe('Task 8D baseline evidence', () => {
       const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
       const taskPath = entry.taskPath.replace(`${fixture.worktree}${path.sep}`, '').replaceAll('\\', '/');
       const reordered = { ...task, baselineUpdate: { ...task.baselineUpdate, commit: task.initCommit } };
-      expect(validateStartEvidence(fixture.worktree, reordered, taskPath, { requireBaselines: true }).ok).toBe(false);
+      expect(validateStartEvidence(fixture.worktree, reordered, taskPath, { requireBaselines: true })).toMatchObject({
+        ok: false,
+        errors: expect.arrayContaining(['baseline update commit 必须严格晚于 initCommit']),
+      });
       const missing = { ...task, baselines: task.baselines.filter((item) => item.gate !== 'build') };
       expect(validateStartEvidence(fixture.worktree, missing, taskPath, { requireBaselines: true }).errors.join(' ')).toContain('缺少 baseline gate: build');
       const duplicate = { ...task, baselines: [...task.baselines, task.baselines[0]] };

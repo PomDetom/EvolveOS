@@ -194,6 +194,8 @@ export function validateStartEvidence(rootDir, task, taskPath = null, options = 
       if (typeof update.path !== 'string' || !update.path) errors.push('缺少 baseline update record 路径');
       if (typeof update.commit !== 'string' || !/^[0-9a-f]{40}$/i.test(update.commit) || update.commit === '0'.repeat(40)) {
         errors.push('缺少合法的 baseline update commit');
+      } else if (update.commit === task.initCommit) {
+        errors.push('baseline update commit 必须严格晚于 initCommit');
       } else {
         try {
           execFileSync('git', ['merge-base', '--is-ancestor', task.initCommit, update.commit], { cwd: rootDir, stdio: 'ignore' });
