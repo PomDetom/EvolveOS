@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "mode": "shadow",
+  "mode": "enforced",
   "baseBranch": "dev",
   "taskRoot": ".agents/tasks",
   "legacySddRoot": "docs/superpowers/sdd",

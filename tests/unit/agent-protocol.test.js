@@ -9,13 +9,13 @@ function readProtocol() {
 }
 
 describe('EWP protocol', () => {
-  test('defines the fixed protocol schema and shadow mode', () => {
+  test('defines the fixed protocol schema and enforced mode', () => {
     expect(existsSync(protocolPath)).toBe(true);
 
     const protocol = readProtocol();
     expect(protocol).toMatchObject({
       schemaVersion: 1,
-      mode: 'shadow',
+      mode: 'enforced',
       baseBranch: 'dev',
       taskRoot: '.agents/tasks',
       legacySddRoot: 'docs/superpowers/sdd',

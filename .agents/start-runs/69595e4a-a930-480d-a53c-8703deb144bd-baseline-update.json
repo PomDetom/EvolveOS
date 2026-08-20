@@ -1,0 +1,35 @@
+{
+  "path": ".agents/start-runs/69595e4a-a930-480d-a53c-8703deb144bd-baseline-update.json",
+  "taskId": "EWP-020",
+  "id": "EWP-020",
+  "baseBranch": "dev",
+  "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+  "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+  "commit": "0000000000000000000000000000000000000000",
+  "baselines": [
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:29:46.100Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:29:47.748Z",
+      "summary": ""
+    }
+  ]
+}

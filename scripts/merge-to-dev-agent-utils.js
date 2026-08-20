@@ -2,6 +2,15 @@ function evidenceHead(evidence) {
   return evidence.testedHead ?? evidence.headSha;
 }
 
+function latestEvidenceByGate(evidence = []) {
+  const latest = new Map();
+  evidence.forEach((record, index) => {
+    const key = record.commandId ?? record.gate ?? `unknown-${index}`;
+    latest.set(key, record);
+  });
+  return [...latest.values()];
+}
+
 export function evaluateNativeReadiness({ mode, task, taskBranch, branchHead, changeHeadAncestor = true, codeChangedAfterHead = false, approvalIssues = [], activityIssues = [] }) {
   const issues = [];
   if (!['shadow', 'enforced'].includes(mode)) issues.push(`协议 mode 非法: ${mode}`);
@@ -16,13 +25,14 @@ export function evaluateNativeReadiness({ mode, task, taskBranch, branchHead, ch
     } else if (task.readyHead !== branchHead) {
       issues.push('readyHead 不等于待合入分支 HEAD');
     }
-    if (!Array.isArray(task.evidence) || task.evidence.length === 0) {
+    const evidence = latestEvidenceByGate(task.evidence);
+    if (evidence.length === 0) {
       issues.push('缺少验证 evidence');
     } else {
-      for (const evidence of task.evidence) {
+      for (const record of evidence) {
         const expectedHead = task.changeHead ?? branchHead;
-        if (evidenceHead(evidence) !== expectedHead) issues.push(`evidence headSha 过期: ${evidence.gate ?? 'unknown'}`);
-        if (evidence.result !== 'success') issues.push(`evidence 未成功: ${evidence.gate ?? 'unknown'}`);
+        if (evidenceHead(record) !== expectedHead) issues.push(`evidence headSha 过期: ${record.gate ?? 'unknown'}`);
+        if (record.result !== 'success') issues.push(`evidence 未成功: ${record.gate ?? 'unknown'}`);
       }
     }
     const expectedReviewHead = task.changeHead ?? branchHead;

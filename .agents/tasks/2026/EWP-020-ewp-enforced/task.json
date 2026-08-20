@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-020",
+  "title": "EWP 历史证据聚合与 enforced 激活",
+  "status": "ready",
+  "kind": "chore",
+  "branch": "chore/ewp-enforced-activation",
+  "baseBranch": "dev",
+  "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+  "allowedPaths": [
+    "scripts/agent/",
+    "scripts/",
+    "tests/unit/",
+    ".agents/",
+    ".agents/tasks/2026/EWP-020-ewp-enforced/"
+  ],
+  "spec": ".agents/tasks/2026/EWP-020-ewp-enforced/plan.md",
+  "notes": [
+    ".agents/notes/implemented/process/2026-08-20-ewp-enforced-activation.md"
+  ],
+  "requiredGates": "auto",
+  "evidence": [
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "testedHead": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-20T01:21:54.800Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-020-enforced HEAD is now at decdd1e fixture [chore/baseline-blocks-verify 24046ce] chore: 初始化 EWP-809 任务 3 files changed, 201 ins…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "testedHead": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:23:41.228Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "testedHead": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-20T01:23:53.536Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-020-enforced ❯ tests/unit/agent-protocol.test.js (1 test | 1 failed) 13ms × EWP protocol > defines the fixed protocol schema and …"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "testedHead": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:25:52.716Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+      "testedHead": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:30:11.502Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-020-enforced HEAD is now at 8849601 fixture [chore/baseline-blocks-verify b73243b] chore: 初始化 EWP-809 任务 3 files changed, 201 ins…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+      "testedHead": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:32:04.262Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    }
+  ],
+  "review": {
+    "reviewer": "用户授权（本次请求）",
+    "result": "approved",
+    "reviewedHead": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+    "findings": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    }
+  },
+  "changeHead": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+  "readyHead": "c62616ccfc5c52a4f5c92a7133375e082165ec91",
+  "startRunId": "69595e4a-a930-480d-a53c-8703deb144bd",
+  "preflight": {
+    "ok": true,
+    "checkedAt": "2026-08-20T01:13:51.686Z",
+    "checks": {
+      "gitBranch": "dev",
+      "baseRef": "dev",
+      "gitClean": true,
+      "gitWritable": true,
+      "taskIdAvailable": true,
+      "branchAvailable": true,
+      "worktreeWritable": true
+    },
+    "inputs": {
+      "id": "EWP-020",
+      "title": "EWP 历史证据聚合与 enforced 激活",
+      "kind": "chore",
+      "branch": "chore/ewp-enforced-activation",
+      "worktree": "C:\\Repository\\EvolveOS-EWP-020-enforced",
+      "allowedPaths": [
+        "scripts/agent/",
+        "scripts/",
+        "tests/unit/",
+        ".agents/"
+      ],
+      "year": "2026",
+      "date": "2026-08-20",
+      "baseRef": "dev"
+    }
+  },
+  "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+  "baseline": {
+    "taskId": "EWP-020",
+    "gate": "start-preflight",
+    "command": "agent:start preflight",
+    "commandId": "agent:start preflight",
+    "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+    "exitCode": 0,
+    "result": "success",
+    "timestamp": "2026-08-20T01:13:51.687Z",
+    "summary": "agent:start preflight passed"
+  },
+  "baselines": [
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:29:46.100Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:29:47.748Z",
+      "summary": ""
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "approver": "用户授权（本次请求）",
+    "approvedAt": "2026-08-20T01:14:38.300Z",
+    "scopeHash": "2631c8dd5381da48e1214fdf699cb64a3220c46655870ac71ab213dcc698fe78",
+    "scope": {
+      "planPath": ".agents/tasks/2026/EWP-020-ewp-enforced/plan.md",
+      "allowedPaths": [
+        ".agents/",
+        ".agents/tasks/2026/EWP-020-ewp-enforced/",
+        "scripts/",
+        "scripts/agent/",
+        "tests/unit/"
+      ],
+      "acceptance": [
+        "同一 gate 的历史 evidence 只保留最新记录参与 readiness 判定，当前成功记录不再被旧记录覆盖。",
+        "enforced 模式下，完整的最新 evidence、审批、过程记录和评审通过；验证后代码改动仍被阻断。",
+        "`.agents/protocol.json` 切换为 `enforced`，并提供提交守卫安装/运行验证。",
+        "相关自动化回归测试通过，验证证据绑定当前代码 HEAD，评审记录已写入。"
+      ],
+      "productAssumptions": []
+    }
+  },
+  "baselineUpdate": {
+    "path": ".agents/start-runs/69595e4a-a930-480d-a53c-8703deb144bd-baseline-update.json",
+    "taskId": "EWP-020",
+    "id": "EWP-020",
+    "baseBranch": "dev",
+    "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+    "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+    "commit": "e5e388b8009f60ed6c07b81268d98cd199bf2a78",
+    "baselines": [
+      {
+        "taskId": "EWP-020",
+        "gate": "scripts-unit",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "scripts-unit",
+        "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+        "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:29:46.100Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-020",
+        "gate": "build",
+        "command": "npm run build",
+        "commandId": "build",
+        "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+        "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:29:47.748Z",
+        "summary": ""
+      }
+    ]
+  }
+}
