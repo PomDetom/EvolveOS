@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-021",
   "title": "EWP 提交守卫拦截空提交绕过",
-  "status": "planned",
+  "status": "implementing",
   "kind": "bug-fix",
   "branch": "chore/ewp-empty-commit-guard",
   "baseBranch": "dev",
