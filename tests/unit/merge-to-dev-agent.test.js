@@ -151,6 +151,28 @@ describe('merge-to-dev native readiness', () => {
     expect(report).toMatchObject({ ok: true, issues: [] });
   });
 
+  test('历史 evidence 不覆盖同一 gate 的最新成功记录', () => {
+    const recordHead = 'c'.repeat(40);
+    const report = evaluateNativeReadiness({
+      mode: 'enforced',
+      task: {
+        ...readyTask(),
+        changeHead: head,
+        evidence: [
+          { gate: 'build', commandId: 'build', testedHead: 'a'.repeat(40), result: 'failed' },
+          { gate: 'build', commandId: 'build', testedHead: head, result: 'success' },
+        ],
+        review: { reviewedHead: head, findings: { critical: [], important: [] } },
+      },
+      taskBranch: 'chore/ewp-skeleton',
+      branchHead: recordHead,
+      changeHeadAncestor: true,
+      codeChangedAfterHead: false,
+      approvalIssues: [],
+    });
+    expect(report).toMatchObject({ ok: true, issues: [] });
+  });
+
   test('代码在验证后变化时阻断', () => {
     const report = evaluateNativeReadiness({
       mode: 'enforced',

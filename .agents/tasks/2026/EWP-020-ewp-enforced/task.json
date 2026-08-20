@@ -15,7 +15,9 @@
     ".agents/tasks/2026/EWP-020-ewp-enforced/"
   ],
   "spec": ".agents/tasks/2026/EWP-020-ewp-enforced/plan.md",
-  "notes": [],
+  "notes": [
+    ".agents/notes/implemented/process/2026-08-20-ewp-enforced-activation.md"
+  ],
   "requiredGates": "auto",
   "evidence": [],
   "review": null,
