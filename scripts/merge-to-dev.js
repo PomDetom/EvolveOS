@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,7 @@ import { evaluateNoteRequirement, noteLifecycleForPath } from './agent/note-gate
 import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-function sh(cwd, cmd) { return execFileSync(cmd, { cwd, encoding: 'utf8' }).trim(); }
+function sh(cwd, cmd) { return execSync(cmd, { cwd, encoding: 'utf8' }).trim(); }
 function shOk(cwd, cmd) { try { sh(cwd, cmd); return true; } catch { return false; } }
 const fail = (message) => { throw new Error(message); };
 
@@ -116,7 +116,9 @@ export function main({ argv = process.argv.slice(2), rootDir = ROOT, dryRun = fa
     if (wt) mergeWithMessage(wt, 'git merge dev', 'merge: 同步 dev 到分支（基线同步）');
     else { sh(rootDir, `git checkout ${branch}`); mergeWithMessage(rootDir, 'git merge dev', 'merge: 同步 dev 到分支（基线同步）'); sh(rootDir, 'git checkout dev'); }
   }
-  if (!shOk(rootDir, `node scripts/check-boundary.js dev...${branch} ${branch}`)) fail('check:boundary 未通过，中止合并');
+  const boundaryPaths = getChangedPaths(rootDir, 'dev', branch);
+  const boundary = assessBranchChanges(branch, boundaryPaths);
+  if (!boundary.ok) fail(`check:boundary 未通过，中止合并: ${boundary.violations.join(', ')}`);
   const readiness = nativeReadinessFor(branch, rootDir);
   console.log(formatNativeReadiness(readiness));
   if (!readiness.ok) fail(`live readiness 未通过，中止合并\n${readiness.issues.join('\n')}`);
