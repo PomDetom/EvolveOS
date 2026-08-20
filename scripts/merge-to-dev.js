@@ -38,7 +38,7 @@ function currentBranchEvidence(rootDir, branch, worktree = null) {
 function readReviewAtRef(rootDir, branch, relativeDirectory) {
   try {
     const content = sh(rootDir, `git show ${branch}:${relativeDirectory}/review.md`);
-    const subjectHead = /(?:Subject|Reviewed) head:\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
+    const subjectHead = /(?:Subject|Reviewed)\s+head:\*{2}\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
     const result = /\*\*Result:\*\*\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
     const importantSection = /### Important\s+([\s\S]*?)(?=### Minor|$)/i.exec(content)?.[1] ?? '';
