@@ -1,6 +1,6 @@
 # EV-023 独立语义评审
 
-**Subject head:** `dc9c09e2288c1daeb932ce9c3b7017d1e7a03354`
+**Subject head:** `5441dfa0cbb17550787ead78c74381b4b9d10644`
 **Reviewer:** Wegener（独立语义评审）
 **Result:** approved
 
