@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-021",
   "title": "EWP 提交守卫拦截空提交绕过",
-  "status": "awaiting_approval",
+  "status": "planned",
   "kind": "bug-fix",
   "branch": "chore/ewp-empty-commit-guard",
   "baseBranch": "dev",
@@ -93,10 +93,10 @@
     }
   ],
   "approval": {
-    "status": "awaiting_approval",
-    "approver": null,
-    "approvedAt": null,
-    "scopeHash": null,
+    "status": "approved",
+    "approver": "用户授权（本次请求）",
+    "approvedAt": "2026-08-20T01:34:50.751Z",
+    "scopeHash": "3003bcf4490e60b95bd9bf83275437d7de92a3b22dfa488130de302aa3864970",
     "scope": {
       "planPath": ".agents/tasks/2026/EWP-021-ewp/plan.md",
       "allowedPaths": [
@@ -108,10 +108,9 @@
         "tests/unit/"
       ],
       "acceptance": [
-        "明确的可观察结果",
-        "相关自动化验证通过",
-        "验证证据绑定代码提交",
-        "评审记录已写入"
+        "`dev`/`main` 上的普通提交和空提交均被 pre-commit 守卫拒绝，合并提交仍可通过。",
+        "有自动化回归测试覆盖空提交绕过路径和既有正常/未审批路径。",
+        "验证证据绑定当前代码提交，评审记录已写入。"
       ],
       "productAssumptions": []
     }
