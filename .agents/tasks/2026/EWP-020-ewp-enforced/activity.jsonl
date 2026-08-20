@@ -1,1 +1,2 @@
 {"schemaVersion":1,"eventId":"f64c73e3-a59d-4679-b2b3-d7553bcc3534","taskId":"EWP-020","branch":"chore/ewp-enforced-activation","createdAt":"2026-08-20T01:14:38.302Z","type":"approval","status":"planned","scopeHash":"2631c8dd5381da48e1214fdf699cb64a3220c46655870ac71ab213dcc698fe78","approver":"用户授权（本次请求）"}
+{"schemaVersion":1,"eventId":"0773c5ee-35d4-4833-95f1-b749c5deb23b","taskId":"EWP-020","branch":"chore/ewp-enforced-activation","createdAt":"2026-08-20T01:14:59.265Z","type":"status","from":"planned","to":"implementing","checkpoint":"implementation-start"}

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-020",
   "title": "EWP 历史证据聚合与 enforced 激活",
-  "status": "planned",
+  "status": "implementing",
   "kind": "chore",
   "branch": "chore/ewp-enforced-activation",
   "baseBranch": "dev",
