@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-020",
   "title": "EWP 历史证据聚合与 enforced 激活",
-  "status": "implementing",
+  "status": "verifying",
   "kind": "chore",
   "branch": "chore/ewp-enforced-activation",
   "baseBranch": "dev",
@@ -19,7 +19,36 @@
     ".agents/notes/implemented/process/2026-08-20-ewp-enforced-activation.md"
   ],
   "requiredGates": "auto",
-  "evidence": [],
+  "evidence": [
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "testedHead": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-20T01:21:54.800Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-020-enforced HEAD is now at decdd1e fixture [chore/baseline-blocks-verify 24046ce] chore: 初始化 EWP-809 任务 3 files changed, 201 ins…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "testedHead": "ac5d8ca535016dbbeee747fec002838d83567ed0",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:23:41.228Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    }
+  ],
   "review": null,
   "changeHead": null,
   "readyHead": null,
