@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "id": "EV-022",
+  "title": "实现 Repository-native Agent Development Protocol v2",
+  "branch": "chore/ewp-v2",
+  "baseBranch": "dev",
+  "baseSha": "f45c6810e3417fcd08d61375ed388ca365124ae1",
+  "intent": "将 EvolveOS 工作流从持久化 FSM 收敛为 Git 驱动的事实协议，保留最小 recovery manifest，并按真实 diff 选择验证门禁。",
+  "allowedPaths": [
+    ".agents/",
+    ".github/",
+    "scripts/",
+    "docs/",
+    "tests/",
+    "AGENTS.md",
+    "README.md",
+    "package.json",
+    "package-lock.json",
+    "src/AGENTS.md"
+  ],
+  "acceptance": [
+    "protocol.json 使用 schemaVersion 2 且不再建模 workflow stages",
+    "task 只保存 intent、scope、references 和 recovery state",
+    "scope/checks/verify 根据 Git diff 工作，verify 不写 task evidence",
+    "hook 不要求 task/approval 且不写 activity，merge 使用实时 readiness",
+    "Notes、CI、构建和壳 smoke 验证通过"
+  ],
+  "references": {
+    "spec": null,
+    "plan": ".agents/tasks/2026/EV-022-ewp-v2/plan.md",
+    "notes": [
+      ".agents/notes/proposed/process/2026-08-20-ewp-v2-repository-native-agent-development.md"
+    ]
+  },
+  "recovery": {
+    "state": "active",
+    "blockedReason": null
+  }
+}

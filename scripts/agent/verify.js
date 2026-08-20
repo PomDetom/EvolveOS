@@ -1,182 +1,126 @@
 #!/usr/bin/env node
-import { writeFileSync } from 'node:fs';
-import { assessBranchChanges } from '../boundary-check.js';
-import { moveTaskToAwaitingApproval, evaluateTaskApproval, readTaskPlan } from './approval.js';
-import { getChangedPaths } from './change-scope.js';
-import { findTask } from './validate-task.js';
-import { classifyBaselineComparison, classifyGateResult, createEvidence, gitSha, runShellCommand, summarizeOutput } from './workflow-utils.js';
-import { GATE_REGISTRY, gateDefinition } from './gate-registry.js';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { getChangedPaths, hashChangedPaths } from './change-scope.js';
+import { gateDefinition } from './gate-registry.js';
 import { selectGates } from './select-gates.js';
-import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
-
-export { GATE_REGISTRY };
+import { findTask } from './validate-task.js';
+import { classifyGateResult, runShellCommand, summarizeOutput, gitSha } from './workflow-utils.js';
 
 export function parseVerifyArgs(argv) {
-  const index = argv.indexOf('--task');
+  const value = (name, fallback = null) => {
+    const index = argv.indexOf(name);
+    return index >= 0 ? argv[index + 1] ?? fallback : fallback;
+  };
   return {
-    taskId: index >= 0 ? argv[index + 1] ?? null : null,
+    taskId: value('--task'),
+    base: value('--base', 'dev'),
+    head: value('--head', 'HEAD'),
     dryRun: argv.includes('--dry-run'),
+    noCache: argv.includes('--no-cache'),
   };
 }
 
-export function makeGatePlan(taskId, gates) {
-  return gates.map((gate) => {
-    return gateDefinition(gate, taskId);
-  });
+export function makeGatePlan(taskIdOrGates, maybeGates, context = {}) {
+  const gates = Array.isArray(taskIdOrGates) ? taskIdOrGates : maybeGates;
+  const taskId = Array.isArray(taskIdOrGates) ? null : taskIdOrGates;
+  return (gates ?? []).map((gate) => gateDefinition(gate, { ...context, taskId }));
 }
 
-export function resolveRequiredGates({ requiredGates = 'auto', autoGates = [] }) {
-  return requiredGates === 'auto' ? autoGates : [...requiredGates];
-}
-
-export function assessEvidence({ requiredGates = [], evidence = [] }) {
-  const latestByGate = new Map();
-  for (const item of evidence) latestByGate.set(item.gate ?? 'unknown', item);
-  const incomplete = requiredGates.filter((gate) => {
-    const latest = latestByGate.get(gate);
-    return !latest || latest.result !== 'success';
-  });
-  return { ok: incomplete.length === 0, incomplete };
-}
-
-export async function executeGate(rootDir, command, runner = runShellCommand, options = {}) {
-  try {
-    const runnerOptions = options.gate === 'boundary' && options.baseBranch
-      ? { env: { EWP_BOUNDARY_BASE: options.baseBranch } }
-      : null;
-    return {
-      result: runnerOptions ? await runner(rootDir, command, runnerOptions) : await runner(rootDir, command),
-    };
-  } catch (error) {
-    return { result: { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}` } };
-  }
-}
-
-export function renderDryRun(taskId, plan) {
+export function renderDryRun(taskIdOrPlan, maybePlan) {
+  const plan = Array.isArray(taskIdOrPlan) ? taskIdOrPlan : maybePlan;
+  const taskId = Array.isArray(taskIdOrPlan) ? null : taskIdOrPlan;
   return [
-    `task=${taskId}`,
+    ...(taskId ? [`task=${taskId}`] : []),
     ...plan.map((entry, index) => `${index + 1}. ${entry.gate} | ${entry.command}`),
   ].join('\n');
 }
 
-export { createEvidence };
-
-function writeTask(entry, task) {
-  writeFileSync(entry.taskPath, `${JSON.stringify(task, null, 2)}\n`, 'utf8');
+export function createEvidence({ taskId = null, gate, command, commandId, baseSha, headSha, changedPathsHash, exitCode = null, result, timestamp = new Date().toISOString(), summary = '' }) {
+  return { schemaVersion: 2, taskId, gate, command, commandId: commandId ?? gate, baseSha, headSha, changedPathsHash, exitCode, result, timestamp, summary };
 }
 
-function enforceApproval(rootDir, entry, io) {
-  const { planPath, planText } = readTaskPlan(rootDir, entry.taskPath);
-  const approvalResult = evaluateTaskApproval({ task: entry.task, planText, planPath });
-  if (!approvalResult.ok) {
-    const nextTask = moveTaskToAwaitingApproval(entry.task, approvalResult.scope);
-    writeTask(entry, nextTask);
-    approvalResult.issues.forEach((issue) => io.error(`✗ ${issue}`));
-    return false;
+export function assessEvidence({ requiredGates = [], evidence = [], headSha = null, changedPathsHash = null }) {
+  const latest = new Map();
+  for (const item of evidence) latest.set(item.commandId ?? item.gate, item);
+  const incomplete = requiredGates.filter((gate) => {
+    const item = latest.get(gate);
+    return !item || item.result !== 'success' || (headSha && item.headSha !== headSha) || (changedPathsHash && item.changedPathsHash !== changedPathsHash);
+  });
+  return { ok: incomplete.length === 0, incomplete };
+}
+
+// Migration compatibility: v2 callers pass the gates selected from Git, while
+// old callers may still use the former requiredGates='auto' helper.
+export function resolveRequiredGates({ requiredGates = 'auto', autoGates = [] } = {}) {
+  return requiredGates === 'auto' ? [...autoGates] : [...requiredGates];
+}
+
+export async function executeGate(rootDir, command, runner = runShellCommand, options = {}) {
+  try {
+    const result = await runner(rootDir, command, options);
+    return { result };
+  } catch (error) {
+    return { result: { exitCode: 1, stdout: '', stderr: '', reason: `runner exception: ${error?.message ?? error}`, environmentFailure: true } };
   }
-  return true;
+}
+
+function evidenceDirectory(rootDir) {
+  const gitPath = execFileSync('git', ['rev-parse', '--git-path', 'evolve-agent/evidence'], { cwd: rootDir, encoding: 'utf8' }).trim();
+  return resolve(rootDir, gitPath);
+}
+
+export function evidenceCachePath(rootDir, branch = 'current') {
+  return resolve(evidenceDirectory(rootDir), `${branch.replace(/[^A-Za-z0-9._-]+/g, '_')}.json`);
+}
+
+export function readCachedEvidence(rootDir, branch = 'current') {
+  const path = evidenceCachePath(rootDir, branch);
+  try { return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null; } catch { return null; }
+}
+
+export async function runStatelessVerification({ rootDir = process.cwd(), taskId = null, base = 'dev', head = 'HEAD', changedPaths = null, gates = null, runner = runShellCommand, writeCache = true } = {}) {
+  const paths = changedPaths ?? getChangedPaths(rootDir, base, head);
+  const selectedGates = gates ?? selectGates({ changedPaths: paths });
+  const plan = makeGatePlan(taskId, selectedGates, { rootDir, base, head, changedPaths: paths });
+  const baseSha = gitSha(rootDir, base);
+  const headSha = gitSha(rootDir, head);
+  const changedPathsHash = hashChangedPaths(paths);
+  const evidence = [];
+  for (const gate of plan) {
+    if (gate.manual) {
+      evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, result: 'pending', summary: '需要人工 evidence' }));
+      continue;
+    }
+    const { result } = await executeGate(rootDir, gate.command, runner, { gate: gate.gate, baseBranch: base });
+    const resultName = classifyGateResult(result);
+    evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, exitCode: result.exitCode, result: resultName, summary: summarizeOutput(result.stdout, `${result.stderr ?? ''} ${result.reason ?? ''}`) }));
+  }
+  const report = { schemaVersion: 2, taskId, base, head, baseSha, headSha, changedPathsHash, changedPaths: paths, gates: selectedGates, evidence, ok: evidence.every((item) => item.result === 'success') };
+  if (writeCache) {
+    const branch = execFileSync('git', ['branch', '--show-current'], { cwd: rootDir, encoding: 'utf8' }).trim() || 'detached';
+    const path = evidenceCachePath(rootDir, branch);
+    mkdirSync(resolve(path, '..'), { recursive: true });
+    writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    report.cachePath = path;
+  }
+  return report;
 }
 
 export async function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console, deps = {}) {
-  const { taskId, dryRun } = parseVerifyArgs(argv);
-  if (!taskId) {
-    io.error('用法：npm run agent:verify -- --task EWP-004 [--dry-run]');
-    return 1;
-  }
-  const entry = findTask(rootDir, taskId);
-  if (!entry || entry.parseError) {
-    io.error(`✗ 无法读取 task: ${taskId}`);
-    return 1;
-  }
-  const schemaResult = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  const evidenceResult = schemaResult.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
-  if (!schemaResult.ok || !evidenceResult.ok) {
-    io.error(`✗ task ${taskId} 校验失败`);
-    [...schemaResult.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
-    return 1;
-  }
-  if (!enforceApproval(rootDir, entry, io)) return 1;
-
-  const changedPaths = getChangedPaths(rootDir, entry.task.baseBranch, 'HEAD');
-  const kind = assessBranchChanges(entry.task.branch, changedPaths).kind;
-  const gates = selectGates({
-    kind,
-    changedPaths,
-    hasNotes: entry.task.notes.length > 0,
-    taskKind: entry.task.kind,
-  });
-  const plan = makeGatePlan(taskId, resolveRequiredGates({ requiredGates: entry.task.requiredGates, autoGates: gates }));
-  if (dryRun) {
-    io.log(renderDryRun(taskId, plan));
-    return 0;
-  }
-
-  const baseSha = entry.task.baseSha;
-  const headSha = gitSha(rootDir, 'HEAD');
-  const evidence = [];
-  let failed = false;
-  for (const gate of plan) {
-    const timestamp = new Date().toISOString();
-    const baseline = (entry.task.baselines ?? []).find((item) => item.gate === gate.gate && item.command === gate.command && item.taskId === taskId && item.baseSha === baseSha);
-    if (gate.manual) {
-      const current = { taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, result: 'incomplete', exitCode: null };
-      const comparison = classifyBaselineComparison({ baseline, current });
-      evidence.push(createEvidence({
-        taskId,
-        gate: gate.gate,
-        command: gate.command,
-        commandId: gate.commandId,
-        baseSha,
-        headSha,
-        exitCode: null,
-        result: 'pending',
-        timestamp,
-        summary: '需要人工证据',
-        classification: comparison.classification,
-      }));
-      failed = true;
-      continue;
-    }
-    const { result } = await executeGate(
-      rootDir,
-      gate.command,
-      deps.runShellCommand ?? runShellCommand,
-      { gate: gate.gate, baseBranch: entry.task.baseBranch },
-    );
-    const gateResult = classifyGateResult(result);
-    const comparison = classifyBaselineComparison({
-      baseline,
-      current: {
-        taskId,
-        gate: gate.gate,
-        command: gate.command,
-        commandId: gate.commandId,
-        initCommit: entry.task.initCommit,
-        baseSha,
-        result: result.environmentFailure || String(result.reason ?? '').startsWith('runner exception:') ? 'environmentFailure' : gateResult,
-        exitCode: result.exitCode,
-      },
-    });
-    evidence.push(createEvidence({
-      taskId,
-      gate: gate.gate,
-      command: gate.command,
-      commandId: gate.commandId,
-      baseSha,
-      headSha,
-      exitCode: result.exitCode,
-      result: comparison.blocked && gateResult === 'success' ? 'failed' : gateResult,
-      timestamp,
-      summary: summarizeOutput(result.stdout, `${result.stderr} ${result.reason ?? ''}`),
-      classification: comparison.classification,
-    }));
-    if (gateResult !== 'success' || comparison.blocked) failed = true;
-  }
-  writeTask(entry, { ...entry.task, evidence: [...(Array.isArray(entry.task.evidence) ? entry.task.evidence : []), ...evidence] });
-  io.log(`写入 ${evidence.length} 条验证证据（head=${headSha}）`);
-  return failed ? 1 : 0;
+  const args = parseVerifyArgs(argv);
+  const task = args.taskId ? findTask(rootDir, args.taskId)?.task ?? null : null;
+  if (args.taskId && !task) { io.error(`✗ 无法读取 recovery task: ${args.taskId}`); return 1; }
+  const base = task?.baseBranch ?? args.base;
+  let paths;
+  try { paths = getChangedPaths(rootDir, base, args.head); } catch (error) { io.error(`✗ 无法读取 Git diff: ${error.message}`); return 1; }
+  const gates = selectGates({ changedPaths: paths, taskKind: task?.taskKind });
+  const plan = makeGatePlan(args.taskId, gates, { rootDir, base, head: args.head, changedPaths: paths });
+  if (args.dryRun) { io.log(renderDryRun(args.taskId, plan)); return 0; }
+  const report = await runStatelessVerification({ rootDir, taskId: args.taskId, base, head: args.head, changedPaths: paths, gates, runner: deps.runShellCommand ?? runShellCommand, writeCache: !args.noCache });
+  io.log(JSON.stringify(report, null, 2));
+  return report.ok ? 0 : 1;
 }
 
-if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) {
-  main().then((code) => { process.exitCode = code; });
-}
+if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) Promise.resolve(main()).then((code) => { process.exitCode = code; });

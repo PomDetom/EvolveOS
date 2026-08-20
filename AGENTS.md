@@ -29,14 +29,14 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 
 - 长期规则读取根和相关子目录的 `AGENTS.md`；当前 native task 读取 `.agents/tasks/<年份>/<task-id>/`，协议读取 `.agents/protocol.json`。
 - 新任务使用 `.agents` 的 task/plan/review 与 `scripts/agent/` 校验工具；`docs/superpowers/sdd/` 仅用于历史任务恢复和审计。
-- 迁移期仍允许 Superpowers 作为执行兼容层，但任务状态、验证证据和评审记录以仓库文件与 Git SHA 为准。
+- 新任务以 Git HEAD/diff、`.agents` recovery manifest、Note 和真实 review 为准；`docs/superpowers/sdd/` 只读保留为历史证据。
 
 ## 默认不同于常规
 
 - **零运行时依赖、零框架**：不要引入任何 npm 运行时依赖，组件无抽象封装。
 - **应用只能改自己的目录**（`src/apps/<id>/` + 该应用测试 + docs），禁止碰框架目录（`src/components|styles|config|app|scenes|demo|motion|assets`、`vite.config`、`package.json`）。
 - **任务在独立 worktree 执行**（仓库根同级 `evolveos-<slug>`），不在主 checkout 直接改；主 checkout 常驻 dev（集成分支）。**禁止直接在 dev 上修改** —— 任何改动一律另开分支（从 dev 检出）完成，修改 + 测试全部通过后才合并入 dev。
-- **测试仅 Web 环境**（Vitest + Playwright），不做 webview 真机验证。
+- **测试按变更风险选择**（Vitest + Playwright）；涉及 window/tray/permission/filesystem/process/OS integration 的 Tauri 改动必须补真实 Windows evidence。
 - 界面参数修改必须走配置链路 `defaults → store → apply`，禁止绕过直接写 CSS 变量 / `data-theme` / `data-accent`。
 
 ## 工作流红线
@@ -53,5 +53,5 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 ## 提交与语言约定
 
 - 提交信息中文，前缀 `feat:` / `fix:` / `docs:` / `chore:` / `merge:` / `release:`。
-- 子代理驱动：每任务 TDD + 独立评审；计划/工作/提交留痕入 `docs/superpowers/sdd/`（`progress-*.md` 账本为唯一权威）。
+- 复杂或共享改动需要独立 semantic review；执行结果由 Git/命令/CI/人工 evidence 证明，不能由脚本伪造 review。
 - 版本治理：package.json 为唯一版本源；发版走 `npm run release`（bump → CHANGELOG → test+build 门禁 → 提交）→ dev→main 全量回归 → tag `vX.Y.Z`。

@@ -1,30 +1,19 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-const RECOVERY_ROOT = '.agents/recovery/agent-start';
-
-export function recoveryDirectory(rootDir) {
-  return resolve(rootDir, RECOVERY_ROOT);
+function recoveryRoot(rootDir) {
+  const gitPath = execFileSync('git', ['rev-parse', '--git-path', 'evolve-agent/recovery'], { cwd: rootDir, encoding: 'utf8' }).trim();
+  return resolve(rootDir, gitPath);
 }
 
-export function recoveryFile(rootDir, startRunId) {
-  return resolve(recoveryDirectory(rootDir), `${startRunId}.json`);
+export function listStartRecoveryArtifacts(rootDir = process.cwd()) {
+  try { const root = recoveryRoot(rootDir); return readdirSync(root).filter((file) => file.endsWith('.json')).map((file) => ({ path: resolve(root, file), ...JSON.parse(requireRead(resolve(root, file))) })); } catch { return []; }
 }
 
-export function listStartRecoveryArtifacts(rootDir) {
-  const directory = recoveryDirectory(rootDir);
-  try {
-    return readdirSync(directory, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-      .map((entry) => JSON.parse(readFileSync(resolve(directory, entry.name), 'utf8')));
-  } catch {
-    return [];
-  }
-}
+function requireRead(path) { return readFileSync(path, 'utf8'); }
 
-export function writeStartRecoveryArtifact(rootDir, artifact) {
-  mkdirSync(recoveryDirectory(rootDir), { recursive: true });
-  const target = recoveryFile(rootDir, artifact.startRunId);
-  writeFileSync(target, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
-  return target;
+export function writeStartRecoveryArtifact(rootDir, record) {
+  const root = recoveryRoot(rootDir); mkdirSync(root, { recursive: true });
+  const file = resolve(root, `${Date.now()}-recovery.json`); writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, 'utf8'); return file;
 }

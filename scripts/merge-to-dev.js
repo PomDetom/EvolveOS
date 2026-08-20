@@ -1,192 +1,123 @@
 #!/usr/bin/env node
-// scripts/merge-to-dev.js —— 合并分支入 dev 的统一入口（方案2）+ 基线同步（方案3）。
-// 治三类坑：
-//   ① `git branch -d` 只判断「并入当前分支」—— 合入 dev 后站在 dev 删分支必报 not fully merged；
-//   ② 基线漂移 —— 分支开自旧 dev，合前 dev 已前进，三方合并/意外冲突；
-//   ③ 手工多步易漏（check:boundary / --no-ff / 祖先验证删分支 / worktree 清理）。
-// 流程：基线同步（分支落后 dev 自动并入 dev）→ check:boundary → `--no-ff` 合并（`merge:` 文案）
-//       → 祖先验证后删分支 + 移除 worktree。
-// 分支常在独立 worktree 持有（AGENTS.md：任务在独立 worktree 执行）—— 本脚本**不 checkout 待合分支**：
-// 基线同步在分支 worktree 内执行（git -C）；check:boundary 用显式 dev...<分支> <分支> 从 dev 校验。
-// 用法：node scripts/merge-to-dev.js <分支名> [--message "merge: 摘要"] [--no-sync] [--no-cleanup]
-// 须在主 checkout 的 dev 分支上运行（主 checkout 常驻 dev）。
-import { execSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
-import { readProtocol } from './agent/task-schema.js';
+import { assessBranchChanges } from './boundary-check.js';
+import { buildChangeScope, getChangedPaths, hashChangedPaths } from './agent/change-scope.js';
 import { listTasksAtRef } from './agent/validate-task.js';
-import { getChangedPaths } from './agent/change-scope.js';
+import { selectGates } from './agent/select-gates.js';
+import { readCachedEvidence } from './agent/verify.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './agent/note-gate.js';
-import { evaluateTaskApproval } from './agent/approval.js';
 import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+function sh(cwd, cmd) { return execFileSync(cmd, { cwd, encoding: 'utf8' }).trim(); }
+function shOk(cwd, cmd) { try { sh(cwd, cmd); return true; } catch { return false; } }
+const fail = (message) => { throw new Error(message); };
 
-function sh(cwd, cmd) {
-  return execSync(cmd, { cwd, encoding: 'utf-8' }).trim();
-}
-function shOk(cwd, cmd) {
-  try { sh(cwd, cmd); return true; } catch { return false; }
-}
-const fail = (msg) => { throw new Error(msg); };
-
-// 中文文案经临时文件传入 git（规避 Windows cmd.exe 代码页把 UTF-8 中文转成乱码）
-function mergeWithMessage(cwd, cmd, msg) {
-  const f = path.join(os.tmpdir(), `merge-to-dev-${process.pid}.txt`);
-  writeFileSync(f, msg, 'utf8');
-  try { sh(cwd, `${cmd} -F "${f}"`); } finally { try { unlinkSync(f); } catch { /* noop */ } }
+function mergeWithMessage(cwd, cmd, message) {
+  const file = path.join(os.tmpdir(), `merge-to-dev-${process.pid}.txt`);
+  writeFileSync(file, message, 'utf8');
+  try { sh(cwd, `${cmd} -F "${file}"`); } finally { try { unlinkSync(file); } catch {} }
 }
 
-// 分支上挂载的 worktree 路径（porcelain 块：worktree <path> / branch refs/heads/<name>）
-function worktreesOn(branch, rootDir = ROOT) {
-  return sh(rootDir, `git worktree list --porcelain`)
-    .split('\n\n')
-    .filter((b) => b.includes(`branch refs/heads/${branch}`))
-    .map((b) => b.split('\n')[0].replace('worktree ', '').trim());
+export function worktreesOn(branch, rootDir = ROOT) {
+  return sh(rootDir, 'git worktree list --porcelain').split('\n\n')
+    .filter((block) => block.includes(`branch refs/heads/${branch}`))
+    .map((block) => block.split('\n')[0].replace('worktree ', '').trim());
 }
 
-function codeChangedAfter(rootDir, changeHead, branch) {
-  if (!changeHead) return false;
-  const paths = sh(rootDir, `git diff --name-only ${changeHead}..${branch}`)
-    .split('\n')
-    .filter(Boolean);
-  return paths.some((file) => !file.startsWith('.agents/tasks/') && !file.startsWith('.agents/notes/'));
+function currentBranchEvidence(rootDir, branch, worktree = null) {
+  const candidate = worktree ? readCachedEvidence(worktree, branch) : readCachedEvidence(rootDir, branch);
+  return candidate?.evidence ?? [];
 }
 
-function activityIssuesAtRef(rootDir, branch, entry) {
-  if (!entry?.task?.startRunId) return [];
-  const activityPath = `${entry.relativeDirectory}/activity.jsonl`;
-  let records;
+function readReviewAtRef(rootDir, branch, relativeDirectory) {
   try {
-    records = sh(rootDir, `git show ${branch}:${activityPath}`)
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
-  } catch {
-    return [`缺少任务过程记录: ${activityPath}`];
-  }
-  const issues = [];
-  if (!records.some((record) => record.type === 'status' && record.to === 'implementing')) {
-    issues.push('过程记录缺少 implementing 检查点');
-  }
-  if (!records.some((record) => record.type === 'commit-intent')) {
-    issues.push('过程记录缺少代码提交检查点');
-  }
-  return issues;
+    const content = sh(rootDir, `git show ${branch}:${relativeDirectory}/review.md`);
+    const subjectHead = /(?:Subject|Reviewed) head:\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
+    const result = /\*\*Result:\*\*\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
+    const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
+    const importantSection = /### Important\s+([\s\S]*?)(?=### Minor|$)/i.exec(content)?.[1] ?? '';
+    const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
+    return { subjectHead, result, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
+  } catch { return null; }
+}
+
+function requiresRecoveryTask(changedPaths) {
+  return changedPaths.some((file) =>
+    file.startsWith('src-tauri/') || file.startsWith('scripts/agent/') || file.startsWith('.agents/')
+    || /^src\/(components|styles|config|app|scenes|demo|motion|assets)\//.test(file)
+    || /^(package\.json|package-lock\.json|vite\.config|vitest\.config|playwright\.config)/.test(file),
+  );
+}
+
+function requiresReview(changedPaths) {
+  return requiresRecoveryTask(changedPaths) || changedPaths.some((file) => file.startsWith('scripts/') || file.startsWith('src-tauri/'));
 }
 
 export function nativeReadinessFor(branch, rootDir = ROOT) {
-  let protocol;
-  try {
-    protocol = readProtocol(rootDir);
-  } catch (error) {
-    return { mode: 'shadow', taskId: null, ok: true, issues: [`无法读取 protocol.json: ${error.message}`] };
-  }
-  const entry = listTasksAtRef(rootDir, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
-  let branchHead = null;
-  try { branchHead = sh(rootDir, `git rev-parse --verify ${branch}`); } catch { /* branch existence is checked by caller */ }
-  let approvalIssues = [];
-  if (entry?.task) {
-    try {
-      const planPath = `${entry.relativeDirectory}/plan.md`;
-      const planText = sh(rootDir, `git show ${branch}:${planPath}`);
-      approvalIssues = evaluateTaskApproval({ task: entry.task, planText, planPath }).issues;
-    } catch (error) {
-      approvalIssues = [`无法读取 plan.md: ${error.message}`];
-    }
-  }
-  const readiness = evaluateNativeReadiness({
-    mode: protocol.mode,
-    task: entry?.task ?? null,
-    taskBranch: branch,
-    branchHead,
-    changeHeadAncestor: entry?.task?.changeHead ? shOk(rootDir, `git merge-base --is-ancestor ${entry.task.changeHead} ${branch}`) : true,
-    codeChangedAfterHead: codeChangedAfter(rootDir, entry?.task?.changeHead, branch),
-    approvalIssues,
-    activityIssues: activityIssuesAtRef(rootDir, branch, entry),
-  });
-  if (!entry?.task) return readiness;
   const changedPaths = getChangedPaths(rootDir, 'dev', branch);
-  const notePaths = entry.task.notes ?? [];
+  const boundary = assessBranchChanges(branch, changedPaths);
+  const entry = listTasksAtRef(rootDir, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
+  const task = entry?.task ?? null;
+  const scope = buildChangeScope({ task, base: 'dev', head: branch, branch, changedPaths });
+  const gates = selectGates({ changedPaths });
+  const worktree = worktreesOn(branch, rootDir)[0] ?? null;
+  const evidence = currentBranchEvidence(rootDir, branch, worktree);
+  const headSha = sh(rootDir, `git rev-parse --verify ${branch}`);
+  const baseSha = sh(rootDir, 'git rev-parse --verify dev');
+  const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
+  const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
-  const noteLifecycles = Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)]));
   const noteReport = evaluateNoteRequirement({
-    task: entry.task,
-    changedPaths,
-    notePaths,
-    existingNotePaths,
-    noteLifecycles,
-    status: entry.task.status,
+    task, changedPaths, notePaths, existingNotePaths,
+    noteLifecycles: Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)])),
+    requireImplemented: requiresReview(changedPaths),
   });
-  const issues = [...readiness.issues, ...noteReport.issues];
-  return { ...readiness, issues, ok: readiness.mode === 'shadow' || issues.length === 0 };
+  const readiness = evaluateNativeReadiness({
+    task, taskBranch: branch, branchHead: headSha, baseSha,
+    changedPathsHash: hashChangedPaths(changedPaths), requiredGates: gates, evidence, review,
+    boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
+    scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
+    noteIssues: noteReport.issues, requireTask: requiresRecoveryTask(changedPaths),
+    requireReview: requiresReview(changedPaths), requireEvidence: gates.length > 0,
+  });
+  return { ...readiness, changedPaths, gates, boundary, taskId: task?.id ?? null };
 }
 
 export function main({ argv = process.argv.slice(2), rootDir = ROOT, dryRun = false } = {}) {
   const { branch, message, noSync, noCleanup } = parseArgs(argv);
   if (!branch) fail('用法：node scripts/merge-to-dev.js <分支名> [--message "merge: 摘要"] [--no-sync] [--no-cleanup]');
   if (branch === 'dev' || branch === 'main') fail('禁止合并 dev/main 本身');
-  if (branch.startsWith('hotfix/')) console.warn('⚠ hotfix 通常先合 main 再同步回 dev，确认这是你的意图。');
-
-  if (sh(rootDir, 'git branch --show-current') !== 'dev') fail(`须在主 checkout 的 dev 分支上运行（主 checkout 常驻 dev）。当前不在 dev。`);
+  if (sh(rootDir, 'git branch --show-current') !== 'dev') fail('须在主 checkout 的 dev 分支上运行（主 checkout 常驻 dev）');
   if (!shOk(rootDir, `git rev-parse --verify --quiet ${branch}`)) fail(`分支不存在：${branch}`);
 
-  const nativeReadiness = nativeReadinessFor(branch, rootDir);
-  console.log(formatNativeReadiness(nativeReadiness));
-  if (nativeReadiness.mode === 'enforced' && !nativeReadiness.ok) {
-    fail(`native readiness 未通过，中止合并\n${nativeReadiness.issues.join('\n')}`);
-  }
-  if (dryRun) return { ok: true, branch, nativeReadiness };
-
   const wts = worktreesOn(branch, rootDir);
-  const wt = wts[0] ?? null; // 待合分支的 worktree（主 checkout 常驻 dev，正常不含该分支）
-
-  // ① 基线同步（方案3）：分支落后 dev → 先并入 dev（或 rebase），防三方漂移
-  const behind = !shOk(rootDir, `git merge-base --is-ancestor dev ${branch}`);
-  if (behind) {
+  const wt = wts[0] ?? null;
+  if (!shOk(rootDir, `git merge-base --is-ancestor dev ${branch}`)) {
     if (noSync) fail(`分支 ${branch} 落后 dev，先同步再合并（--no-sync 已阻止自动并入）`);
-    console.log(`→ ${branch} 落后 dev，先并入 dev（基线同步）`);
     if (wt) mergeWithMessage(wt, 'git merge dev', 'merge: 同步 dev 到分支（基线同步）');
-    else {
-      sh(rootDir, `git checkout ${branch}`);
-      mergeWithMessage(rootDir, 'git merge dev', 'merge: 同步 dev 到分支（基线同步）');
-      sh(rootDir, 'git checkout dev');
-    }
+    else { sh(rootDir, `git checkout ${branch}`); mergeWithMessage(rootDir, 'git merge dev', 'merge: 同步 dev 到分支（基线同步）'); sh(rootDir, 'git checkout dev'); }
   }
+  if (!shOk(rootDir, `node scripts/check-boundary.js dev...${branch} ${branch}`)) fail('check:boundary 未通过，中止合并');
+  const readiness = nativeReadinessFor(branch, rootDir);
+  console.log(formatNativeReadiness(readiness));
+  if (!readiness.ok) fail(`live readiness 未通过，中止合并\n${readiness.issues.join('\n')}`);
+  if (dryRun) return { ok: true, branch, readiness };
 
-  // ② 边界门禁：从 dev 校验待合分支（显式范围 + 分支名，无需 checkout 分支）
-  if (!shOk(rootDir, `node scripts/check-boundary.js dev...${branch} ${branch}`)) {
-    fail('check:boundary 未通过，中止合并');
-  }
-
-  // ③ --no-ff 合并（merge: 文案）
-  const msg = message ?? `merge: ${branch} 合入 dev`;
-  mergeWithMessage(rootDir, `git merge --no-ff ${branch}`, msg);
-  console.log(`✓ 已合并 ${branch} → dev（${msg}）`);
-
-  // ④ 祖先验证后删分支 + 移除 worktree（绕过 `git branch -d` 只看当前分支的坑）
-  if (noCleanup) return;
-  if (!shOk(rootDir, `git merge-base --is-ancestor ${branch} dev`)) {
-    console.warn(`⚠ ${branch} 未成为 dev 祖先，跳过删分支（手动检查）`);
-    return;
-  }
-  for (const w of wts) {
-    if (shOk(rootDir, `git worktree remove ${w}`)) console.log(`✓ 已移除 worktree：${w}`);
-    else console.warn(`⚠ 移除 worktree 失败（可能含未提交改动）：${w}，手动处理`);
-  }
+  const mergeMessage = message ?? `merge: ${branch} 合入 dev`;
+  mergeWithMessage(rootDir, `git merge --no-ff ${branch}`, mergeMessage);
+  console.log(`✓ 已合并 ${branch} → dev（${mergeMessage}）`);
+  if (noCleanup || !shOk(rootDir, `git merge-base --is-ancestor ${branch} dev`)) return;
+  for (const worktree of wts) if (shOk(rootDir, `git worktree remove ${worktree}`)) console.log(`✓ 已移除 worktree：${worktree}`);
   sh(rootDir, `git branch -D ${branch}`);
   console.log(`✓ 已删除分支：${branch}`);
 }
 
-// 直接执行时跑主流程；被单测 import 时不执行（parseArgs 等纯函数可测）
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    main();
-  } catch (error) {
-    console.error(`✗ ${error.message}`);
-    process.exitCode = 1;
-  }
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  try { main(); } catch (error) { console.error(`✗ ${error.message}`); process.exitCode = 1; }
 }

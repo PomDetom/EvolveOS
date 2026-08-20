@@ -13,11 +13,12 @@ export const FRAMEWORK_FILE_RE = [
 // 文档分支允许：docs/ 目录 + 仓库根 *.md（README/CHANGELOG/CLAUDE）。
 const ROOT_MD_RE = /^[^/]+\.md$/;
 // 维护分支允许：scripts/ tests/ src-tauri/ + 锁文件/.gitignore/package.json/构建配置（不碰 src/）。
-const CHORE_PREFIXES = ['scripts/', 'tests/', 'src-tauri/', '.agents/'];
+const CHORE_PREFIXES = ['scripts/', 'tests/', 'src-tauri/', '.agents/', '.github/'];
 const CHORE_FILE_RE = [
   /\.lock$/, /^package-lock\.json$/, /^\.gitignore$/, /^package\.json$/,
   /^vite\.config/, /^vitest\.config/, /^playwright\.config/,
-  /^AGENTS\.md$/, /^docs\/AGENTS\.md$/,
+  /^AGENTS\.md$/, /^README\.md$/, /^CHANGELOG\.md$/, /^CLAUDE\.md$/,
+  /^docs\/AGENTS\.md$/, /^src\/AGENTS\.md$/,
 ];
 
 export function assessBranchChanges(branch, files) {
@@ -32,8 +33,8 @@ export function assessBranchChanges(branch, files) {
       f.startsWith(`src/apps/${appId}/`) || // 本应用目录
       /^tests\/(unit|e2e)\//.test(f) ||     // 测试
       f.startsWith('docs/') ||              // 文档
-      f.startsWith('.agents/tasks/') ||     // 任务治理记录
-      f.startsWith('.agents/start-runs/');  // 启动记录
+      f.startsWith('.agents/tasks/') ||     // recovery manifest
+      f.startsWith('.agents/notes/');      // shared decisions
     const violations = files.filter((f) => !allowed(f));
     return {
       kind: 'app',
