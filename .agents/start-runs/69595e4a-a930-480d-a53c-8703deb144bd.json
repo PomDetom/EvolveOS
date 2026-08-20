@@ -57,7 +57,7 @@
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-20T01:21:30.207Z",
+      "timestamp": "2026-08-20T01:29:46.100Z",
       "summary": ""
     },
     {
@@ -69,7 +69,7 @@
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-20T01:21:34.828Z",
+      "timestamp": "2026-08-20T01:29:47.748Z",
       "summary": ""
     }
   ],
@@ -80,7 +80,7 @@
     "baseBranch": "dev",
     "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
     "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
-    "commit": "aa1d4f353e502a5c8ee38cda53cb8c1b5114e226",
+    "commit": "0000000000000000000000000000000000000000",
     "baselines": [
       {
         "taskId": "EWP-020",
@@ -91,7 +91,7 @@
         "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-20T01:21:30.207Z",
+        "timestamp": "2026-08-20T01:29:46.100Z",
         "summary": ""
       },
       {
@@ -103,7 +103,7 @@
         "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-20T01:21:34.828Z",
+        "timestamp": "2026-08-20T01:29:47.748Z",
         "summary": ""
       }
     ]

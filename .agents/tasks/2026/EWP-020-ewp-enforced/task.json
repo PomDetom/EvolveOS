@@ -47,6 +47,34 @@
       "classification": "success",
       "timestamp": "2026-08-20T01:23:41.228Z",
       "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "testedHead": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "exitCode": 1,
+      "result": "failed",
+      "classification": "introducedFailure",
+      "timestamp": "2026-08-20T01:23:53.536Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-020-enforced ❯ tests/unit/agent-protocol.test.js (1 test | 1 failed) 13ms × EWP protocol > defines the fixed protocol schema and …"
+    },
+    {
+      "taskId": "EWP-020",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+      "headSha": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "testedHead": "f665df054fe8e4f88e52f03d87ba80fadea27f03",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:25:52.716Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
     }
   ],
   "review": null,
@@ -104,7 +132,7 @@
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-20T01:21:30.207Z",
+      "timestamp": "2026-08-20T01:29:46.100Z",
       "summary": ""
     },
     {
@@ -116,7 +144,7 @@
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
       "exitCode": 0,
       "result": "success",
-      "timestamp": "2026-08-20T01:21:34.828Z",
+      "timestamp": "2026-08-20T01:29:47.748Z",
       "summary": ""
     }
   ],
@@ -150,7 +178,7 @@
     "baseBranch": "dev",
     "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
     "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
-    "commit": "aa1d4f353e502a5c8ee38cda53cb8c1b5114e226",
+    "commit": "0000000000000000000000000000000000000000",
     "baselines": [
       {
         "taskId": "EWP-020",
@@ -161,7 +189,7 @@
         "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-20T01:21:30.207Z",
+        "timestamp": "2026-08-20T01:29:46.100Z",
         "summary": ""
       },
       {
@@ -173,7 +201,7 @@
         "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
         "exitCode": 0,
         "result": "success",
-        "timestamp": "2026-08-20T01:21:34.828Z",
+        "timestamp": "2026-08-20T01:29:47.748Z",
         "summary": ""
       }
     ]
