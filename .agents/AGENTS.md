@@ -8,6 +8,8 @@
 - 所有迁移任务从 `dev` 创建分支和 worktree；不得直接在 `dev` 修改。
 - v2 没有 `shadow/enforced` 状态；Git boundary、hooks 和 merge gate 本身就是 enforcement。
 - 自动验证证据放在 `.git/evolve-agent/evidence/`，绑定 base/head/changedPathsHash；HEAD 改变后缓存失效。
+- v2.1 的 scope/checks/verify/merge 必须复用同一 change snapshot；evidence 同时校验 baseSha、headSha、changedPathsHash 和内容 changeFingerprint。
+- v2 recovery manifest 只允许协议字段，未知字段不得作为隐式 workflow 状态或 evidence 存储。
 - `.agents/tasks/` 保存当前任务事实；普通单应用局部改动不强制创建 Note。
 - `.agents/notes/` 只保存跨任务的架构、流程、测试、功能、修复和简化决策原因；不要用 Note 复制实施日志。
 - `docs/superpowers/sdd/` 是冻结的历史证据，不迁移、不删除、不覆盖、不新增原始 `.diff`。

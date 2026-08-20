@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { assessBranchChanges } from '../boundary-check.js';
 import { execFileSync } from 'node:child_process';
-import { getChangedPaths, classifyChangedPaths } from './change-scope.js';
+import { buildChangeSnapshot, classifyChangedPaths } from './change-scope.js';
 import { findTask } from './validate-task.js';
 
 const RELEASE_PATH = /^(CHANGELOG\.md|scripts\/release\.js|src-tauri\/tauri\.conf\.json)$/;
@@ -14,7 +14,7 @@ export function selectGates({ kind = null, changedPaths = [], taskKind = null, i
   const gates = [];
   const add = (...items) => items.forEach((item) => { if (!gates.includes(item)) gates.push(item); });
   if (kind === 'invalid') return ['boundary'];
-  if (includeBoundary && kind !== 'docs') add('boundary');
+  if (includeBoundary && kind !== 'base') add('boundary');
 
   if (taskKind === 'release' || hasPath(paths, (path) => RELEASE_PATH.test(path))) return [...(includeBoundary ? ['boundary'] : []), 'unit', 'e2e', 'build', 'version-consistency', 'user-confirmation'];
   if (hasPath(paths, (path) => path.startsWith('docs/') || path.startsWith('.agents/') || path.endsWith('.md'))) add('docs-check');
@@ -25,7 +25,7 @@ export function selectGates({ kind = null, changedPaths = [], taskKind = null, i
     if (classification.desktopOnly) add('desktop-manual');
   }
   if (classification.surfaces.includes('workflow') || classification.surfaces.includes('scripts')) {
-    add('scripts-unit', 'workflow-fixture');
+    add('scripts-unit', 'workflow-fixture', 'build');
   }
   if (classification.surfaces.includes('framework') || kind === 'ui') {
     add('unit', 'affected-smoke', 'build', 'owner-review');
@@ -52,10 +52,10 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
   if (taskId && !task) { io.error(`✗ 无法读取 recovery task: ${taskId}`); return 1; }
   try {
     const base = task?.baseBranch ?? requestedBase;
-    const changedPaths = getChangedPaths(rootDir, base, 'HEAD');
+    const snapshot = buildChangeSnapshot(rootDir, base, 'HEAD');
     const branch = execBranch(rootDir);
-    const kind = assessBranchChanges(branch, changedPaths).kind;
-    io.log(JSON.stringify({ taskId, base, head: 'HEAD', kind, classification: classifyChangedPaths(changedPaths), changedPaths, gates: selectGates({ kind, changedPaths, taskKind: task?.kind }) }));
+    const kind = assessBranchChanges(branch, snapshot.changedPaths).kind;
+    io.log(JSON.stringify({ ...snapshot, taskId, kind, classification: classifyChangedPaths(snapshot.changedPaths), gates: selectGates({ kind, changedPaths: snapshot.changedPaths, taskKind: task?.kind, includeBoundary: true }) }));
     return 0;
   } catch (error) {
     io.error(`✗ 无法选择 checks: ${error.message}`);

@@ -22,7 +22,7 @@ task 缺失、scope 越界、gate 未注册、命令失败、证据 head SHA 过
 
 ## Procedure
 
-1. 运行 `npm run agent:scope -- --task <id> --base dev --head HEAD`。
-2. 运行 `npm run agent:verify -- --task <id> --dry-run` 复核命令顺序。
+1. 运行 `npm run agent:scope -- --task <id> --base dev --head HEAD`，确认输出的 change snapshot。
+2. 运行 `npm run agent:checks -- --task <id>` 和 `npm run agent:verify -- --task <id> --dry-run`，确认两者基于同一组 changed paths 路由门禁。
 3. 运行正式 verify；摘要写入 evidence，不写完整日志。
-4. 证据全部绑定当前 HEAD 后，将 task 交给 review Skill。
+4. 确认证据同时绑定当前 baseSha、headSha、changedPathsHash 和 changeFingerprint 后，将 task 交给 review Skill。
