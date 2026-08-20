@@ -33,7 +33,7 @@
 
 ## 验证要求
 
-- 测试仅在 Web 环境执行：单测（Vitest）+ 浏览器交互测试（Playwright），不做 webview 真机验证。
+- 普通 Web/app 改动使用 Vitest + Playwright；涉及 Tauri window/tray/permission/filesystem/process/OS integration 时，必须补真实 Windows 桌面 evidence。
 - 逻辑/配置改动 → `npm test`（单测全量）。
 - 组件/交互/场景改动 → `npm run test:e2e`（全量交互；用 `--config=playwright.config.worktree.js`，端口 5174 自起 server）。
 - 主题默认 `theme:'system'`：涉及主题的测试须显式 seed `theme:'light'|'dark'`。

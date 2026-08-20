@@ -1,41 +1,36 @@
 const NOTE_ROOT = '.agents/notes/';
-const TASK_ROOT = '.agents/tasks/';
 const DOC_ROOT = 'docs/';
-const NOTE_REQUIRED_KINDS = new Set(['feature', 'bug-fix', 'architecture', 'process', 'testing', 'app', 'ui', 'tauri', 'release', 'hotfix']);
 
-function normalize(value) {
-  return String(value ?? '').replaceAll('\\', '/');
+function normalize(value) { return String(value ?? '').replaceAll('\\', '/'); }
+function noteLifecycle(notePath) { return normalize(notePath).match(/^\.agents\/notes\/([^/]+)\//)?.[1] ?? null; }
+function documentationOnly(path) { const file = normalize(path); return file.startsWith(DOC_ROOT) || file.startsWith(NOTE_ROOT) || file.endsWith('.md'); }
+
+export function noteRequiredForPaths(changedPaths = []) {
+  const paths = changedPaths.map(normalize).filter((path) => !documentationOnly(path));
+  const appIds = new Set(paths.map((path) => /^src\/apps\/([^/]+)\//.exec(path)?.[1]).filter(Boolean));
+  return paths.some((path) =>
+    /^src\/(components|styles|config|app|scenes|demo|motion|assets)\//.test(path)
+    || path.startsWith('src-tauri/')
+    || path.startsWith('scripts/agent/')
+    || path.startsWith('.github/')
+    || /^(package\.json|package-lock\.json|vite\.config|vitest\.config|playwright\.config)/.test(path),
+  ) || appIds.size > 1;
 }
 
-function noteLifecycle(notePath) {
-  const match = normalize(notePath).match(/^\.agents\/notes\/([^/]+)\//);
-  return match?.[1] ?? null;
-}
-
-function isDocumentationOnly(path) {
-  const normalized = normalize(path);
-  return normalized.startsWith(TASK_ROOT) || normalized.startsWith(NOTE_ROOT) || normalized.startsWith(DOC_ROOT) || normalized.endsWith('.md');
-}
-
-export function evaluateNoteRequirement({ task, changedPaths = [], notePaths = [], existingNotePaths = notePaths, noteLifecycles = {}, status = task?.status }) {
-  const normalizedPaths = changedPaths.map(normalize);
-  const required = NOTE_REQUIRED_KINDS.has(task?.kind) && normalizedPaths.some((path) => !isDocumentationOnly(path));
-  if (!required) return { ok: true, required: false, issues: [] };
-
+export function evaluateNoteRequirement({ task = null, changedPaths = [], notePaths = null, existingNotePaths = [], noteLifecycles = {}, requireImplemented = false } = {}) {
+  const required = noteRequiredForPaths(changedPaths);
+  const normalizedNotes = (notePaths ?? task?.references?.notes ?? []).map(normalize);
+  if (!required) return { ok: true, required: false, issues: [], notePaths: normalizedNotes };
   const issues = [];
-  const normalizedNotes = notePaths.map(normalize);
-  if (!normalizedNotes.length) issues.push('非平凡改动必须关联 Agent Note');
+  if (!normalizedNotes.length) issues.push('该变更面需要 Agent Note（shared framework / Tauri / workflow / build policy）');
   const existing = new Set(existingNotePaths.map(normalize));
   normalizedNotes.filter((note) => !existing.has(note)).forEach((note) => issues.push(`Agent Note 文件不存在: ${note}`));
-  if (status === 'ready' && !normalizedNotes.some((note) => noteLifecycle(note) === 'implemented')) {
-    issues.push('ready 任务必须关联 implemented Agent Note');
-  }
   for (const note of normalizedNotes) {
-    if (noteLifecycles[note] === 'rejected') issues.push(`任务不能关联 rejected Agent Note: ${note}`);
+    const lifecycle = noteLifecycles[note] ?? noteLifecycle(note);
+    if (lifecycle === 'rejected' || lifecycle === 'archived') issues.push(`不能关联 ${lifecycle} Agent Note: ${note}`);
+    if (requireImplemented && lifecycle !== 'implemented') issues.push(`merge 前 Note 必须位于 implemented: ${note}`);
   }
-  return { ok: issues.length === 0, required: true, issues };
+  return { ok: issues.length === 0, required: true, issues, notePaths: normalizedNotes };
 }
 
-export function noteLifecycleForPath(notePath) {
-  return noteLifecycle(notePath);
-}
+export function noteLifecycleForPath(notePath) { return noteLifecycle(notePath); }

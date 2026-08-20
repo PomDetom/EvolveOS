@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
+import { readProtocol, validateTask } from './task-schema.js';
 
 export function parseTaskArgs(argv) {
   const index = argv.indexOf('--task');
@@ -14,109 +14,70 @@ function taskEntries(rootDir) {
   if (!existsSync(taskRoot)) return [];
   const entries = [];
   for (const year of readdirSync(taskRoot, { withFileTypes: true })) {
-    if (!year.isDirectory()) continue;
-    const yearPath = resolve(taskRoot, year.name);
-    for (const taskDirectory of readdirSync(yearPath, { withFileTypes: true })) {
+    if (!year.isDirectory() || !/^\d{4}$/.test(year.name)) continue;
+    for (const taskDirectory of readdirSync(resolve(taskRoot, year.name), { withFileTypes: true })) {
       if (!taskDirectory.isDirectory()) continue;
-      const directory = resolve(yearPath, taskDirectory.name);
-      entries.push({
-        directory,
-        relativeDirectory: relative(rootDir, directory).replaceAll('\\', '/'),
-      });
+      const directory = resolve(taskRoot, year.name, taskDirectory.name);
+      const taskPath = resolve(directory, 'task.json');
+      if (!existsSync(taskPath)) continue;
+      try {
+        entries.push({ directory, relativeDirectory: relative(rootDir, directory).replaceAll('\\', '/'), taskPath, task: JSON.parse(readFileSync(taskPath, 'utf8')) });
+      } catch (error) {
+        entries.push({ directory, relativeDirectory: relative(rootDir, directory).replaceAll('\\', '/'), taskPath, parseError: error });
+      }
     }
   }
   return entries;
 }
 
 export function findTask(rootDir, taskId) {
-  for (const entry of taskEntries(rootDir)) {
-    if (!entry.directory.split(/[\\/]/).pop().startsWith(`${taskId}-`)) continue;
-    const taskPath = resolve(entry.directory, 'task.json');
-    if (!existsSync(taskPath)) return { ...entry, taskPath, parseError: new Error('缺少 task.json') };
-    try {
-      return { ...entry, taskPath, task: JSON.parse(readFileSync(taskPath, 'utf8')) };
-    } catch (error) {
-      return { ...entry, taskPath, parseError: error };
-    }
-  }
-  return null;
+  return taskEntries(rootDir).find((entry) => entry.task?.schemaVersion === 2 && (entry.task?.id === taskId || entry.directory.split(/[\\/]/).pop().startsWith(`${taskId}-`))) ?? null;
 }
 
 export function listTasks(rootDir) {
-  return taskEntries(rootDir).map((entry) => {
-    const taskPath = resolve(entry.directory, 'task.json');
-    try {
-      return { ...entry, taskPath, task: JSON.parse(readFileSync(taskPath, 'utf8')) };
-    } catch (error) {
-      return { ...entry, taskPath, parseError: error };
-    }
-  });
+  return taskEntries(rootDir).filter((entry) => entry.task?.schemaVersion === 2 || entry.parseError);
 }
 
 function gitFilesAtRef(rootDir, ref) {
-  const output = execFileSync('git', ['ls-tree', '-r', '--name-only', ref, '.agents/tasks'], {
-    cwd: rootDir,
-    encoding: 'utf8',
-  });
-  return output.split(/\r?\n/).filter((file) => file.endsWith('/task.json'));
+  try {
+    return execFileSync('git', ['ls-tree', '-r', '--name-only', ref, '.agents/tasks'], { cwd: rootDir, encoding: 'utf8' })
+      .split(/\r?\n/).filter((file) => file.endsWith('/task.json'));
+  } catch {
+    return [];
+  }
 }
 
 export function listTasksAtRef(rootDir, ref) {
   return gitFilesAtRef(rootDir, ref).map((taskPath) => {
     const directory = taskPath.slice(0, -'/task.json'.length);
-    const relativeDirectory = directory.replaceAll('\\', '/');
     try {
-      const raw = execFileSync('git', ['show', `${ref}:${taskPath}`], { cwd: rootDir, encoding: 'utf8' });
-      return {
-        directory: resolve(rootDir, directory),
-        relativeDirectory,
-        taskPath: resolve(rootDir, taskPath),
-        task: JSON.parse(raw),
-      };
+      const task = JSON.parse(execFileSync('git', ['show', `${ref}:${taskPath}`], { cwd: rootDir, encoding: 'utf8' }));
+      return { directory: resolve(rootDir, directory), relativeDirectory: directory.replaceAll('\\', '/'), taskPath: resolve(rootDir, taskPath), task };
     } catch (error) {
-      return {
-        directory: resolve(rootDir, directory),
-        relativeDirectory,
-        taskPath: resolve(rootDir, taskPath),
-        parseError: error,
-      };
+      return { directory: resolve(rootDir, directory), relativeDirectory: directory.replaceAll('\\', '/'), taskPath: resolve(rootDir, taskPath), parseError: error };
     }
-  });
+  }).filter((entry) => entry.task?.schemaVersion === 2 || entry.parseError);
 }
 
 export function findTaskAtRef(rootDir, ref, taskId) {
-  return listTasksAtRef(rootDir, ref).find((entry) => entry.task?.id === taskId) ?? null;
+  return listTasksAtRef(rootDir, ref).find((entry) => entry.task?.schemaVersion === 2 && entry.task?.id === taskId) ?? null;
 }
 
 export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {
   const { taskId } = parseTaskArgs(argv);
-  if (!taskId) {
-    io.error('用法：npm run agent:task-check -- --task EWP-001');
-    return 1;
+  const entries = taskId ? [findTask(rootDir, taskId)].filter(Boolean) : listTasks(rootDir);
+  if (taskId && !entries.length) { io.error(`✗ 未找到 task: ${taskId}`); return 1; }
+  if (!entries.length) { io.log('暂无 recovery task'); return 0; }
+  const protocol = readProtocol(rootDir);
+  const failures = [];
+  for (const entry of entries) {
+    if (entry.parseError) { failures.push(`${entry.relativeDirectory}/task.json 无法解析: ${entry.parseError.message}`); continue; }
+    const result = validateTask(entry.task, entry.relativeDirectory, protocol);
+    if (!result.ok) failures.push(...result.errors.map((error) => `${entry.task.id}: ${error}`));
   }
-
-  const entry = findTask(rootDir, taskId);
-  if (!entry) {
-    io.error(`✗ 未找到 task: ${taskId}`);
-    return 1;
-  }
-  if (entry.parseError) {
-    io.error(`✗ ${entry.relativeDirectory}/task.json 无法解析: ${entry.parseError.message}`);
-    return 1;
-  }
-
-  const result = validateTask(entry.task, entry.relativeDirectory, readProtocol(rootDir));
-  const evidenceResult = result.ok ? validateStartEvidence(rootDir, entry.task, `${entry.relativeDirectory}/task.json`, { requireBaselines: true }) : { ok: true, errors: [] };
-  if (!result.ok || !evidenceResult.ok) {
-    io.error(`✗ task ${taskId} 校验失败`);
-    [...result.errors, ...evidenceResult.errors].forEach((error) => io.error(`  ${error}`));
-    return 1;
-  }
-
-  io.log(`✓ task ${taskId} 校验通过（${entry.task.status}）`);
+  if (failures.length) { failures.forEach((error) => io.error(`✗ ${error}`)); return 1; }
+  io.log(`✓ recovery task 校验通过（${entries.length} 个）`);
   return 0;
 }
 
-if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) {
-  process.exitCode = main();
-}
+if (process.argv[1] && new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href === import.meta.url) process.exitCode = main();

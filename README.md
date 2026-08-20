@@ -79,4 +79,4 @@ docs/                       # 规格 / 计划 / 执行留痕（全部集中在�
 - 图标全部内联 SVG（24×24，stroke 1.8）；文案中文
 - `data-theme`/`data-accent`/`data-motion` 挂 `<html>`
 - 滑动导航选中锚点为黄金比例 38.2%；滑动窗口纯图标，名称由标题栏承担
-- 测试仅在 Web 环境执行（不跑 webview 真机验证）
+- 测试按变更风险选择：普通 Web/app 使用 Vitest + Playwright；Tauri OS integration 改动需补真实 Windows evidence

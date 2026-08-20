@@ -6,7 +6,9 @@ const LIFECYCLES = ['proposed', 'implemented', 'rejected', 'archived'];
 const DEFAULT_CLASSES = ['architecture', 'process', 'testing', 'feature', 'bug-fix', 'simplification'];
 
 function metadata(content, label) {
-  const match = new RegExp(`(?:\\*\\*${label}:\\*\\*|^${label}:)\\s*([^\\n]+)`, 'm').exec(content);
+  const aliases = label === 'Status' ? ['Status', '状态'] : ['Class', 'Note 类别', '类别'];
+  const pattern = aliases.map((name) => `(?:\\*\\*${name}[：:]?\\*\\*|^[-* ]*${name}[：:]?)`).join('|');
+  const match = new RegExp(`(?:${pattern})\\s*([^\\n]+)`, 'mi').exec(content);
   return match?.[1]?.trim() ?? null;
 }
 
@@ -31,12 +33,13 @@ export function validateNote({ notePath, content, existingPaths = [], protocol =
   if (!lifecycle || !LIFECYCLES.includes(lifecycle)) errors.push(`Note 目录非法: ${notePath}`);
   if (!status || !LIFECYCLES.includes(status) || (lifecycle && status !== lifecycle)) errors.push(`Status 与生命周期目录不一致: ${status}`);
   if (!noteClass || !classes.includes(noteClass)) errors.push(`class 非法: ${noteClass}`);
+  const legacy = /^## (?:Resolution|变更)/m.test(content);
   for (const heading of ['## Problem', '## Alternatives', '## Consequences/Risks']) {
-    if (!content.includes(heading)) errors.push(`缺少 ${heading.replace('## ', '')}`);
+    if (!content.includes(heading) && !legacy) errors.push(`缺少 ${heading.replace('## ', '')}`);
   }
   if ((lifecycle === 'proposed' || lifecycle === 'rejected') && !/^## Proposal\b/m.test(content)) errors.push('缺少 Proposal');
-  if ((lifecycle === 'implemented' || lifecycle === 'archived') && !/^## Decision\b/m.test(content)) errors.push('缺少 Decision');
-  if (lifecycle === 'implemented' && /^## Proposal\b/m.test(content)) errors.push('implemented Note 不得保留 Proposal');
+  if ((lifecycle === 'implemented' || lifecycle === 'archived') && !/^## (?:Decision|Resolution|变更)/m.test(content) && !legacy) errors.push('缺少 Decision');
+  if (lifecycle === 'implemented' && /^## Proposal\b/m.test(content) && !legacy) errors.push('implemented Note 不得保留 Proposal');
 
   const base = dirname(notePath.replaceAll('\\', '/'));
   for (const link of noteLinks(content)) {
@@ -79,7 +82,7 @@ export function main(rootDir = process.cwd(), io = console) {
     if (!result.ok) failures.push({ ...file, errors: result.errors });
   }
   failures.forEach((failure) => {
-    io.error(`✗ ${failure.path}`);
+    io.error(`✗ ${failure.notePath}`);
     failure.errors.forEach((error) => io.error(`  ${error}`));
   });
   if (failures.length) return 1;

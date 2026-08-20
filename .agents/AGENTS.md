@@ -4,10 +4,10 @@
 
 ## 长期规则
 
-- 协议配置位于 `.agents/protocol.json`，任务状态使用 JSON；说明、计划、评审和 Note 使用 Markdown。
+- 协议配置位于 `.agents/protocol.json`；task JSON 只保存恢复事实，不保存执行阶段。
 - 所有迁移任务从 `dev` 创建分支和 worktree；不得直接在 `dev` 修改。
-- `mode: shadow` 只报告 native readiness，不改变现有 boundary、merge-to-dev 或 release 行为；只有完成真实试点后才可切换 `enforced`。
-- task、验证证据和评审记录必须绑定 Git SHA；HEAD 改变后旧证据失效。
+- v2 没有 `shadow/enforced` 状态；Git boundary、hooks 和 merge gate 本身就是 enforcement。
+- 自动验证证据放在 `.git/evolve-agent/evidence/`，绑定 base/head/changedPathsHash；HEAD 改变后缓存失效。
 - `.agents/tasks/` 保存当前任务事实；普通单应用局部改动不强制创建 Note。
 - `.agents/notes/` 只保存跨任务的架构、流程、测试、功能、修复和简化决策原因；不要用 Note 复制实施日志。
 - `docs/superpowers/sdd/` 是冻结的历史证据，不迁移、不删除、不覆盖、不新增原始 `.diff`。
@@ -19,4 +19,5 @@
 - 任务验证：使用 `scripts/agent/` 下的校验、scope、gate 和 evidence 工具。
 - 任务评审：写入 task 目录的 `review.md`，评审 SHA 必须等于当前 HEAD。
 - 流程决策：先查 `.agents/notes/`，再按 Note 生命周期写入对应目录。
-- Superpowers 仍可作为迁移期执行兼容层，但 task 状态和 evidence 不得依赖具体模型或平台。
+- 旧生命周期脚本仅作为迁移兼容层，不得成为新任务入口；task 状态和 evidence 不得依赖具体模型或平台。
+- 旧 `.agents/tasks` schema 1、`activity.jsonl` 和 `.agents/start-runs/` 仅作历史兼容读取；v2 不新增、不更新这些文件。

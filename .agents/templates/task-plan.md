@@ -10,13 +10,15 @@
 - Base: `dev`
 - Allowed paths: 与 task.json 保持一致
 
+## Implementation approach
+
+- 描述实施如何分段，以及每段的可验证结果。
+
 ## Acceptance
 
-- [ ] 明确的可观察结果
-- [ ] 相关自动化验证通过
-- [ ] 所有证据绑定当前 HEAD
-- [ ] 评审记录已写入
+- 明确的可观察结果
+- 相关自动化验证通过
 
-## 执行记录
+## Risks / open questions
 
-按 `planned → implementing → verifying → reviewing → ready` 更新 task 状态；阻塞时写明原因和恢复条件。
+只记录风险和未决问题，不记录执行日志或状态迁移。

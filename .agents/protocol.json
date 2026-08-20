@@ -1,19 +1,8 @@
 {
-  "schemaVersion": 1,
-  "mode": "enforced",
+  "schemaVersion": 2,
   "baseBranch": "dev",
   "taskRoot": ".agents/tasks",
   "legacySddRoot": "docs/superpowers/sdd",
-  "taskStates": [
-    "awaiting_approval",
-    "planned",
-    "implementing",
-    "verifying",
-    "reviewing",
-    "ready",
-    "blocked",
-    "cancelled"
-  ],
   "noteClasses": [
     "architecture",
     "process",
