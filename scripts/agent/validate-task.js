@@ -31,7 +31,8 @@ function taskEntries(rootDir) {
 }
 
 export function findTask(rootDir, taskId) {
-  return taskEntries(rootDir).find((entry) => entry.task?.schemaVersion === 2 && (entry.task?.id === taskId || entry.directory.split(/[\\/]/).pop().startsWith(`${taskId}-`))) ?? null;
+  return taskEntries(rootDir).find((entry) => [1, 2].includes(entry.task?.schemaVersion)
+    && (entry.task?.id === taskId || entry.directory.split(/[\\/]/).pop().startsWith(`${taskId}-`))) ?? null;
 }
 
 export function listTasks(rootDir) {

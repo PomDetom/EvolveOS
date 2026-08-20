@@ -6,6 +6,12 @@ EWP 把 EvolveOS 的任务事实、执行边界、验证证据和评审记录放
 
 协议配置见 [`protocol.json`](protocol.json)。v2 不保存 Agent 的执行阶段；Git HEAD、diff、分支和 merge-base 是执行事实，task 只保存跨会话恢复所需的 intent/scope/decision。不存在 `shadow/enforced` 迁移状态。
 
+## v2.1 改进
+
+v2.1 将当前工作树的 `baseSha`、`headSha`、排序去重后的 `changedPaths`、`changedPathsHash` 和内容 `changeFingerprint` 组成单一 change snapshot。`agent:scope`、`agent:checks`、`agent:verify` 与 merge readiness 必须使用同一组事实；验证 evidence 同时绑定这些指纹，任一项变化都必须重新验证。
+
+v2 recovery manifest 使用严格字段集合：未知字段和旧 FSM/evidence 字段均拒绝，历史 schema 1 task 仍只读兼容。自动 evidence 继续写入 worktree-local `.git/evolve-agent/evidence/`，不写 tracked task。
+
 ## 目录职责
 
 - `tasks/`：需要跨会话恢复的最小 JSON manifest，以及可选 plan/review。

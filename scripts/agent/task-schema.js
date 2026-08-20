@@ -12,11 +12,16 @@ const DEFAULT_PROTOCOL = {
 const BRANCH_RE = /^(?:app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
 const BASE_REF_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const RECOVERY_STATES = ['active', 'blocked', 'cancelled', 'closed'];
+const V2_TASK_FIELDS = new Set([
+  'schemaVersion', 'id', 'title', 'branch', 'baseBranch', 'baseSha', 'intent',
+  'allowedPaths', 'acceptance', 'references', 'recovery', 'approval',
+]);
 const LEGACY_FIELDS = [
   'status', 'kind', 'spec', 'notes', 'requiredGates', 'evidence', 'review',
   'changeHead', 'readyHead', 'baseline', 'baselines', 'baselineUpdate',
   'preflight', 'startRunId', 'initCommit',
 ];
+const APPROVAL_FIELDS = new Set(['required', 'scopeHash', 'approvedBy', 'approvedAt']);
 
 function asPosixPath(value) {
   return String(value ?? '').replaceAll('\\', '/');
@@ -38,6 +43,7 @@ function validateApproval(approval, errors) {
     errors.push('approval 必须为 null 或对象');
     return;
   }
+  for (const field of Object.keys(approval)) if (!APPROVAL_FIELDS.has(field)) errors.push(`approval 不得包含未定义字段: ${field}`);
   if (typeof approval.required !== 'boolean') errors.push('approval.required 必须为布尔值');
   if (approval.required === true) {
     if (typeof approval.scopeHash !== 'string' || !/^[0-9a-f]{64}$/i.test(approval.scopeHash)) errors.push('required approval 必须包含 64 位 scopeHash');
@@ -83,7 +89,7 @@ export function readProtocol(rootDir = process.cwd()) {
 export function validateTask(task, taskDirectory = '', protocol) {
   const errors = [];
   if (!task || typeof task !== 'object' || Array.isArray(task)) return { ok: false, errors: ['task 必须是 JSON 对象'] };
-  if (task.schemaVersion === 1 && protocol === undefined) return validateLegacyTask(task, taskDirectory);
+  if (task.schemaVersion === 1) return validateLegacyTask(task, taskDirectory);
   protocol ??= DEFAULT_PROTOCOL;
 
   const requiredFields = [
@@ -93,6 +99,7 @@ export function validateTask(task, taskDirectory = '', protocol) {
   for (const field of requiredFields) if (!(field in task)) errors.push(`缺少字段: ${field}`);
 
   if (task.schemaVersion !== 2) errors.push('schemaVersion 必须为 2');
+  for (const field of Object.keys(task)) if (!V2_TASK_FIELDS.has(field)) errors.push(`v2 task 不得包含未定义字段: ${field}`);
   if (typeof task.id !== 'string' || !/^(?:EWP|EV)-\d{3,}$/.test(task.id)) errors.push('id 必须匹配 EWP-000 或 EV-000 格式');
   if (typeof task.title !== 'string' || !task.title.trim()) errors.push('title 不能为空');
   if (typeof task.branch !== 'string' || !BRANCH_RE.test(task.branch)) errors.push(`branch 不符合允许前缀: ${task.branch}`);
@@ -108,6 +115,7 @@ export function validateTask(task, taskDirectory = '', protocol) {
   if (!references || typeof references !== 'object' || Array.isArray(references)) {
     errors.push('references 必须为对象');
   } else {
+    for (const field of Object.keys(references)) if (!['spec', 'plan', 'notes'].includes(field)) errors.push(`references 不得包含未定义字段: ${field}`);
     for (const field of ['spec', 'plan']) {
       if (references[field] != null && (typeof references[field] !== 'string' || !validRelativePath(references[field]))) errors.push(`references.${field} 必须为 null 或安全相对路径`);
     }
@@ -118,6 +126,7 @@ export function validateTask(task, taskDirectory = '', protocol) {
   if (!recovery || typeof recovery !== 'object' || Array.isArray(recovery)) {
     errors.push('recovery 必须为对象');
   } else {
+    for (const field of Object.keys(recovery)) if (!['state', 'blockedReason'].includes(field)) errors.push(`recovery 不得包含未定义字段: ${field}`);
     if (!RECOVERY_STATES.includes(recovery.state)) errors.push(`recovery.state 非法: ${recovery.state}`);
     if (recovery.blockedReason !== null && (typeof recovery.blockedReason !== 'string' || !recovery.blockedReason.trim())) errors.push('recovery.blockedReason 必须为 null 或非空字符串');
     if (recovery.state === 'blocked' && !recovery.blockedReason) errors.push('blocked task 必须包含 blockedReason');

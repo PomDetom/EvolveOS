@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "id": "EV-023",
+  "title": "实现工作流改进方案 v2.1",
+  "branch": "chore/ewp-v2-1",
+  "baseBranch": "dev",
+  "baseSha": "8ad528dffef57f831f6d42a889d6432ceb85a4cb",
+  "intent": "在 repository-native 工作流 v2 的基础上统一变更快照、加强 recovery manifest 边界，并让验证与 merge readiness 使用同一组实时事实。",
+  "allowedPaths": [
+    ".agents/",
+    "scripts/",
+    "tests/unit/",
+    "AGENTS.md",
+    "README.md",
+    "docs/"
+  ],
+  "acceptance": [
+    "scope、checks、verify 和 merge readiness 对同一工作树使用一致的 changed paths、路径哈希、内容指纹和分支事实",
+    "v2 recovery manifest 只允许协议定义的字段，未知字段和旧 FSM 字段均被拒绝",
+    "验证证据在 HEAD、base、changed paths 或同一路径内容变化后不能被错误复用，仍写入 worktree-local Git evidence",
+    "工作流契约测试、文档检查、构建和边界检查通过"
+  ],
+  "references": {
+    "spec": null,
+    "plan": ".agents/tasks/2026/EV-023-ewp-v2-1/plan.md",
+    "notes": [
+      ".agents/notes/implemented/process/2026-08-20-ewp-v2-repository-native-agent-development.md"
+    ]
+  },
+  "recovery": {
+    "state": "active",
+    "blockedReason": null
+  }
+}

@@ -1,4 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { getChangedPaths } from '../../scripts/agent/change-scope.js';
 import { selectGates } from '../../scripts/agent/select-gates.js';
@@ -35,7 +38,7 @@ describe('repository-native workflow v2', () => {
   test('checks route from changed paths without a task', () => {
     expect(selectGates({ changedPaths: ['docs/workflow.md'] })).toEqual(['docs-check']);
     expect(selectGates({ changedPaths: ['src/apps/notes/notes.js'] })).toEqual(['unit', 'app-e2e', 'build']);
-    expect(selectGates({ changedPaths: ['scripts/agent/verify.js'] })).toEqual(['scripts-unit', 'workflow-fixture']);
+    expect(selectGates({ changedPaths: ['scripts/agent/verify.js'] })).toEqual(['scripts-unit', 'workflow-fixture', 'build']);
     expect(selectGates({ changedPaths: ['src-tauri/src/main.rs', 'src-tauri/capabilities/default.json'] })).toEqual(['rust-check', 'web-contract', 'permission-check', 'desktop-manual']);
     expect(selectGates({ changedPaths: ['.agents/notes/proposed/process/note.md', 'scripts/agent/verify.js', 'tests/unit/agent-v2.test.js', 'package.json'] })).toEqual([
       'docs-check',
@@ -49,7 +52,22 @@ describe('repository-native workflow v2', () => {
   });
 
   test('scope includes untracked files in the current worktree', () => {
-    expect(getChangedPaths(process.cwd())).toContain('tests/unit/agent-v2.test.js');
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-v2-untracked-'));
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      git(['config', 'core.autocrlf', 'false']);
+      writeFileSync(path.join(root, 'tracked.txt'), 'base\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'base']);
+      writeFileSync(path.join(root, 'untracked.txt'), 'new\n');
+
+      expect(getChangedPaths(root)).toContain('untracked.txt');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test('merge readiness binds evidence to current facts', () => {

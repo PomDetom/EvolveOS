@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { assessBranchChanges } from '../boundary-check.js';
 import { findTask } from './validate-task.js';
 
@@ -15,24 +17,65 @@ export function parseScopeArgs(argv) {
 }
 
 export function getChangedPaths(rootDir, base = 'dev', head = 'HEAD') {
-  const output = execFileSync('git', ['diff', '--name-only', `${base}...${head}`], { cwd: rootDir, encoding: 'utf8' });
-  const paths = output.split(/\r?\n/).map(normalize).filter(Boolean);
+  const readPaths = (args) => execFileSync('git', [...args, '-z'], { cwd: rootDir, encoding: 'utf8' })
+    .split('\0').map(normalize).filter(Boolean);
+  const paths = readPaths(['diff', '--name-only', `${base}...${head}`]);
   // During implementation HEAD is the last commit while the real change can
   // still be staged/unstaged. Merge/read-at-ref callers pass an explicit branch
   // ref and therefore only inspect committed facts.
   if (head === 'HEAD') {
     for (const args of [['diff', '--name-only'], ['diff', '--cached', '--name-only']]) {
-      const working = execFileSync('git', args, { cwd: rootDir, encoding: 'utf8' });
-      paths.push(...working.split(/\r?\n/).map(normalize).filter(Boolean));
+      paths.push(...readPaths(args));
     }
-    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: rootDir, encoding: 'utf8' });
-    paths.push(...untracked.split(/\r?\n/).map(normalize).filter(Boolean));
+    paths.push(...readPaths(['ls-files', '--others', '--exclude-standard']));
   }
   return [...new Set(paths)].sort();
 }
 
 export function hashChangedPaths(changedPaths = []) {
-  return createHash('sha256').update([...new Set(changedPaths.map(normalize))].sort().join('\n')).digest('hex');
+  const paths = [...new Set(changedPaths.map(normalize))].sort();
+  // Keep the v2 path hash readable by the pre-v2.1 dev merge gate for ordinary
+  // paths; switch to NUL framing as soon as a legal filename could be ambiguous.
+  const separator = paths.some((path) => path.includes('\n')) ? '\0' : '\n';
+  return createHash('sha256').update(paths.join(separator)).digest('hex');
+}
+
+function gitDiff(rootDir, args) {
+  return execFileSync('git', args, { cwd: rootDir, encoding: 'buffer' });
+}
+
+export function hashChangeFingerprint(rootDir, base = 'dev', head = 'HEAD', changedPaths = null) {
+  const hash = createHash('sha256');
+  const paths = changedPaths ?? getChangedPaths(rootDir, base, head);
+  hash.update(`paths\0${[...new Set(paths.map(normalize))].sort().join('\0')}\0`);
+  hash.update(gitDiff(rootDir, ['diff', '--binary', '--full-index', `${base}...${head}`]));
+  if (head === 'HEAD') {
+    hash.update(gitDiff(rootDir, ['diff', '--binary', '--full-index', 'HEAD']));
+    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard', '-z'], { cwd: rootDir, encoding: 'utf8' });
+    for (const file of untracked.split('\0').filter(Boolean).map(normalize).sort()) {
+      hash.update(`untracked\0${file}\0`);
+      hash.update(readFileSync(resolve(rootDir, file)));
+    }
+  }
+  return hash.digest('hex');
+}
+
+export function buildChangeSnapshot(rootDir, base = 'dev', head = 'HEAD') {
+  const changedPaths = getChangedPaths(rootDir, base, head);
+  const branch = execFileSync('git', ['branch', '--show-current'], { cwd: rootDir, encoding: 'utf8' }).trim() || null;
+  const baseSha = execFileSync('git', ['rev-parse', '--verify', base], { cwd: rootDir, encoding: 'utf8' }).trim();
+  const headSha = execFileSync('git', ['rev-parse', '--verify', head], { cwd: rootDir, encoding: 'utf8' }).trim();
+  return {
+    base,
+    head,
+    branch,
+    baseSha,
+    headSha,
+    changedPaths,
+    changedPathsHash: hashChangedPaths(changedPaths),
+    changeFingerprint: hashChangeFingerprint(rootDir, base, head, changedPaths),
+    classification: classifyChangedPaths(changedPaths),
+  };
 }
 
 export function classifyPath(path) {
@@ -82,10 +125,9 @@ export function buildChangeScope({ task = null, base = 'dev', head = 'HEAD', cha
 }
 
 export function inspectChangeScope({ rootDir = process.cwd(), base = 'dev', head = 'HEAD', task = null } = {}) {
-  const changedPaths = getChangedPaths(rootDir, base, head);
-  const branch = execFileSync('git', ['branch', '--show-current'], { cwd: rootDir, encoding: 'utf8' }).trim();
-  const boundary = assessBranchChanges(branch, changedPaths);
-  return { ...buildChangeScope({ task, base, head, branch, changedPaths }), boundary };
+  const snapshot = buildChangeSnapshot(rootDir, base, head);
+  const boundary = assessBranchChanges(snapshot.branch, snapshot.changedPaths);
+  return { ...buildChangeScope({ task, base, head, branch: snapshot.branch, changedPaths: snapshot.changedPaths }), boundary, snapshot };
 }
 
 export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io = console) {

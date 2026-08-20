@@ -58,6 +58,10 @@ describe('EWP task schema', () => {
     expect(validateTask(legacy, taskDirectory)).toEqual({ ok: true, errors: [] });
   });
 
+  test('legacy task remains readable when the v2 protocol is supplied', () => {
+    expect(validateTask(validTask(), taskDirectory, { schemaVersion: 2 })).toEqual({ ok: true, errors: [] });
+  });
+
   test('rejects an unknown status', () => {
     const result = validateTask(validTask({ status: 'draft' }), taskDirectory);
     expect(result.ok).toBe(false);

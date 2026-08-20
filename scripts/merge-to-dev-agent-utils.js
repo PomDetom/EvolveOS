@@ -4,7 +4,7 @@ function latestEvidenceByGate(evidence = []) {
   return [...latest.values()];
 }
 
-export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha = null, headSha = null, changedPathsHash = null }) {
+export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha = null, headSha = null, changedPathsHash = null, changeFingerprint = null }) {
   const latest = new Map(latestEvidenceByGate(evidence).map((record) => [record.commandId ?? record.gate, record]));
   const issues = [];
   for (const gate of requiredGates) {
@@ -14,6 +14,7 @@ export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha =
     if (baseSha && record.baseSha !== baseSha) issues.push(`evidence baseSha 过期: ${gate}`);
     if (headSha && record.headSha !== headSha) issues.push(`evidence headSha 过期: ${gate}`);
     if (changedPathsHash && record.changedPathsHash !== changedPathsHash) issues.push(`evidence changedPathsHash 过期: ${gate}`);
+    if (changeFingerprint && record.changeFingerprint !== changeFingerprint) issues.push(`evidence changeFingerprint 过期: ${gate}`);
   }
   return { ok: issues.length === 0, issues };
 }
@@ -36,13 +37,14 @@ export function reviewReadiness({ review = null, headSha = null, required = fals
 export function evaluateNativeReadiness({
   mode = 'v2', task = null, taskBranch = null, branchHead = null, baseSha = null,
   changedPathsHash = null, requiredGates = [], evidence = task?.evidence ?? [], review = task?.review ?? null,
-  boundaryOk = true, boundaryIssues = [], scopeIssues = [], noteIssues = [], approvalIssues = [],
+  changeFingerprint = null,
+  boundaryOk = true, boundaryIssues = [], scopeIssues = [], taskIssues = [], noteIssues = [], approvalIssues = [],
   requireTask = false, requireReview = false, requireEvidence = true, humanIssues = [],
   reviewSubjectHeads = [],
 }) {
   const issues = [];
   if (!boundaryOk) issues.push(...boundaryIssues);
-  issues.push(...scopeIssues, ...noteIssues, ...approvalIssues, ...humanIssues);
+  issues.push(...scopeIssues, ...taskIssues, ...noteIssues, ...approvalIssues, ...humanIssues);
   if (!task) {
     if (requireTask) issues.push('该变更需要 recovery task，但未找到对应 task');
   } else {
@@ -53,7 +55,7 @@ export function evaluateNativeReadiness({
     if (task.baseSha && baseSha && task.baseSha !== baseSha) issues.push('task baseSha 与当前 base 不一致');
     if (task.approval?.required === true && (!task.approval.approvedBy || !task.approval.approvedAt || !task.approval.scopeHash)) issues.push('task 需要 human approval 但缺少批准事实');
   }
-  if (requireEvidence && requiredGates.length) issues.push(...evidenceReadiness({ evidence, requiredGates, baseSha, headSha: branchHead, changedPathsHash }).issues);
+  if (requireEvidence && requiredGates.length) issues.push(...evidenceReadiness({ evidence, requiredGates, baseSha, headSha: branchHead, changedPathsHash, changeFingerprint }).issues);
   issues.push(...reviewReadiness({ review, headSha: branchHead, required: requireReview, acceptedSubjectHeads: reviewSubjectHeads }).issues);
   return { mode, taskId: task?.id ?? null, ok: issues.length === 0, issues };
 }

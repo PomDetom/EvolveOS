@@ -6,7 +6,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
 import { assessBranchChanges } from './boundary-check.js';
-import { buildChangeScope, getChangedPaths, hashChangedPaths } from './agent/change-scope.js';
+import { buildChangeScope, buildChangeSnapshot, getChangedPaths } from './agent/change-scope.js';
+import { readProtocol, validateTask } from './agent/task-schema.js';
 import { listTasksAtRef } from './agent/validate-task.js';
 import { selectGates } from './agent/select-gates.js';
 import { readCachedEvidence } from './agent/verify.js';
@@ -72,16 +73,17 @@ function requiresReview(changedPaths) {
 }
 
 export function nativeReadinessFor(branch, rootDir = ROOT) {
-  const changedPaths = getChangedPaths(rootDir, 'dev', branch);
+  const snapshot = buildChangeSnapshot(rootDir, 'dev', branch);
+  const changedPaths = snapshot.changedPaths;
   const boundary = assessBranchChanges(branch, changedPaths);
   const entry = listTasksAtRef(rootDir, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
   const task = entry?.task ?? null;
+  const taskSchema = task ? validateTask(task, entry.relativeDirectory, readProtocol(rootDir)) : { ok: true, errors: [] };
   const scope = buildChangeScope({ task, base: 'dev', head: branch, branch, changedPaths });
-  const gates = selectGates({ changedPaths });
+  const gates = selectGates({ changedPaths, includeBoundary: true });
   const worktree = worktreesOn(branch, rootDir)[0] ?? null;
   const evidence = currentBranchEvidence(rootDir, branch, worktree);
-  const headSha = sh(rootDir, `git rev-parse --verify ${branch}`);
-  const baseSha = sh(rootDir, 'git rev-parse --verify dev');
+  const { headSha, baseSha, changedPathsHash, changeFingerprint } = snapshot;
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
   const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
   const notePaths = task?.references?.notes ?? [];
@@ -93,13 +95,14 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   });
   const readiness = evaluateNativeReadiness({
     task, taskBranch: branch, branchHead: headSha, baseSha,
-    changedPathsHash: hashChangedPaths(changedPaths), requiredGates: gates, evidence, review,
+    changedPathsHash, changeFingerprint, requiredGates: gates, evidence, review,
     boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
     scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
+    taskIssues: taskSchema.errors.map((error) => `task schema 无效: ${error}`),
     noteIssues: noteReport.issues, requireTask: requiresRecoveryTask(changedPaths),
     requireReview: requiresReview(changedPaths), reviewSubjectHeads, requireEvidence: gates.length > 0,
   });
-  return { ...readiness, changedPaths, gates, boundary, taskId: task?.id ?? null };
+  return { ...readiness, changedPaths, gates, boundary, snapshot, taskId: task?.id ?? null };
 }
 
 export function main({ argv = process.argv.slice(2), rootDir = ROOT, dryRun = false } = {}) {
