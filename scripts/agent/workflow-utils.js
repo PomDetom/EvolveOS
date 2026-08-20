@@ -10,7 +10,8 @@ function killProcessTree(pid) {
 }
 
 export function runShellCommand(rootDir, command, options = {}) {
-  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 120_000;
+  const defaultTimeoutMs = options.gate === 'e2e' ? 600_000 : ['app-e2e', 'affected-smoke', 'shell-smoke'].includes(options.gate) ? 300_000 : 120_000;
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeoutMs;
   const child = spawn(command, { cwd: rootDir, shell: true, detached: process.platform !== 'win32', windowsHide: true, env: { ...process.env, ...(options.env ?? {}) } });
   let stdout = ''; let stderr = ''; let timedOut = false;
   child.stdout?.on('data', (chunk) => { stdout += chunk; });
