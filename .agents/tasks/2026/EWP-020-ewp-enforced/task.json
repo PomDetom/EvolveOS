@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "EWP-020",
   "title": "EWP 历史证据聚合与 enforced 激活",
-  "status": "awaiting_approval",
+  "status": "planned",
   "kind": "chore",
   "branch": "chore/ewp-enforced-activation",
   "baseBranch": "dev",
@@ -90,10 +90,10 @@
     }
   ],
   "approval": {
-    "status": "awaiting_approval",
-    "approver": null,
-    "approvedAt": null,
-    "scopeHash": null,
+    "status": "approved",
+    "approver": "用户授权（本次请求）",
+    "approvedAt": "2026-08-20T01:14:38.300Z",
+    "scopeHash": "2631c8dd5381da48e1214fdf699cb64a3220c46655870ac71ab213dcc698fe78",
     "scope": {
       "planPath": ".agents/tasks/2026/EWP-020-ewp-enforced/plan.md",
       "allowedPaths": [
@@ -104,10 +104,10 @@
         "tests/unit/"
       ],
       "acceptance": [
-        "明确的可观察结果",
-        "相关自动化验证通过",
-        "验证证据绑定代码提交",
-        "评审记录已写入"
+        "同一 gate 的历史 evidence 只保留最新记录参与 readiness 判定，当前成功记录不再被旧记录覆盖。",
+        "enforced 模式下，完整的最新 evidence、审批、过程记录和评审通过；验证后代码改动仍被阻断。",
+        "`.agents/protocol.json` 切换为 `enforced`，并提供提交守卫安装/运行验证。",
+        "相关自动化回归测试通过，验证证据绑定当前代码 HEAD，评审记录已写入。"
       ],
       "productAssumptions": []
     }
