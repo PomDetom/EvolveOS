@@ -53,6 +53,10 @@ describe('repository-native workflow v2.1', () => {
     expect(hashChangedPaths(['a\nb', 'c'])).not.toBe(hashChangedPaths(['a', 'b\nc']));
   });
 
+  test('ordinary path hashes remain compatible with the pre-v2.1 merge gate', () => {
+    expect(hashChangedPaths(['b', 'a'])).toBe(hashChangedPaths(['a', 'b']));
+  });
+
   test('rejects unknown fields in a v2 recovery manifest', () => {
     const task = {
       schemaVersion: 2,

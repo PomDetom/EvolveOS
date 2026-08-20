@@ -33,7 +33,11 @@ export function getChangedPaths(rootDir, base = 'dev', head = 'HEAD') {
 }
 
 export function hashChangedPaths(changedPaths = []) {
-  return createHash('sha256').update([...new Set(changedPaths.map(normalize))].sort().join('\0')).digest('hex');
+  const paths = [...new Set(changedPaths.map(normalize))].sort();
+  // Keep the v2 path hash readable by the pre-v2.1 dev merge gate for ordinary
+  // paths; switch to NUL framing as soon as a legal filename could be ambiguous.
+  const separator = paths.some((path) => path.includes('\n')) ? '\0' : '\n';
+  return createHash('sha256').update(paths.join(separator)).digest('hex');
 }
 
 function gitDiff(rootDir, args) {
