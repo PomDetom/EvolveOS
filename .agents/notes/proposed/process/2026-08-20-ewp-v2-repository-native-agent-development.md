@@ -76,3 +76,7 @@ protocol 升为 schemaVersion 2；旧 task/activity/start-runs 仅作历史兼�
 - 失去强制步骤感，Agent 需要更好地进行动态路由。
 - CI/merge gate 必须承担更多机械保证。
 - 需要团队维护清晰的 Note、review 和人工 evidence 质量。
+
+## Test suite migration
+
+仓库保留 EWP v1 workflow tests 供历史审计，但它们断言已移除的 status、approval、baseline、activity 和 start-run artifacts，因此不进入 v2 默认 Vitest gate。v2 contract suite 是当前 workflow 回归面；应用与设计系统测试仍保留在默认 suite 中。

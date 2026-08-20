@@ -18,13 +18,13 @@ export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha =
   return { ok: issues.length === 0, issues };
 }
 
-export function reviewReadiness({ review = null, headSha = null, required = false } = {}) {
+export function reviewReadiness({ review = null, headSha = null, required = false, acceptedSubjectHeads = [] } = {}) {
   if (!required) return { ok: true, issues: [] };
   const subjectHead = review?.subjectHead ?? review?.reviewedHead;
   const issues = [];
   if (!review || !subjectHead) issues.push('缺少真实 semantic review artifact');
   else {
-    if (headSha && subjectHead !== headSha) issues.push('review subjectHead 不等于待合入分支 HEAD');
+    if (headSha && subjectHead !== headSha && !acceptedSubjectHeads.includes(subjectHead)) issues.push('review subjectHead 不等于待合入分支 HEAD');
     if (review.result !== 'approved') issues.push('review result 不是 approved');
     const findings = review.findings ?? {};
     if (Array.isArray(findings.critical) && findings.critical.length) issues.push('存在未解决 Critical findings');
@@ -38,6 +38,7 @@ export function evaluateNativeReadiness({
   changedPathsHash = null, requiredGates = [], evidence = task?.evidence ?? [], review = task?.review ?? null,
   boundaryOk = true, boundaryIssues = [], scopeIssues = [], noteIssues = [], approvalIssues = [],
   requireTask = false, requireReview = false, requireEvidence = true, humanIssues = [],
+  reviewSubjectHeads = [],
 }) {
   const issues = [];
   if (!boundaryOk) issues.push(...boundaryIssues);
@@ -53,7 +54,7 @@ export function evaluateNativeReadiness({
     if (task.approval?.required === true && (!task.approval.approvedBy || !task.approval.approvedAt || !task.approval.scopeHash)) issues.push('task 需要 human approval 但缺少批准事实');
   }
   if (requireEvidence && requiredGates.length) issues.push(...evidenceReadiness({ evidence, requiredGates, baseSha, headSha: branchHead, changedPathsHash }).issues);
-  issues.push(...reviewReadiness({ review, headSha: branchHead, required: requireReview }).issues);
+  issues.push(...reviewReadiness({ review, headSha: branchHead, required: requireReview, acceptedSubjectHeads: reviewSubjectHeads }).issues);
   return { mode, taskId: task?.id ?? null, ok: issues.length === 0, issues };
 }
 

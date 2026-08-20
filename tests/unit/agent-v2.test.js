@@ -78,4 +78,20 @@ describe('repository-native workflow v2', () => {
       requireReview: false,
     }).ok).toBe(false);
   });
+
+  test('review remains valid when only its tracked artifact follows the reviewed head', () => {
+    const reviewedHead = 'b'.repeat(40);
+    const branchHead = 'c'.repeat(40);
+    const task = { schemaVersion: 2, id: 'EV-022', branch: 'chore/recovery', baseSha: 'a'.repeat(40), recovery: { state: 'active' } };
+    expect(evaluateNativeReadiness({
+      task,
+      taskBranch: task.branch,
+      branchHead,
+      baseSha: task.baseSha,
+      review: { subjectHead: reviewedHead, result: 'approved', findings: { critical: [], important: [] } },
+      reviewSubjectHeads: [reviewedHead],
+      requireReview: true,
+      requireEvidence: false,
+    })).toMatchObject({ ok: true, issues: [] });
+  });
 });

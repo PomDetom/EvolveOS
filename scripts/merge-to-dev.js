@@ -47,6 +47,18 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
   } catch { return null; }
 }
 
+function acceptedReviewSubjectHeads(rootDir, branch, branchHead, review, relativeDirectory) {
+  const subjectHead = review?.subjectHead;
+  if (!subjectHead || subjectHead === branchHead || !shOk(rootDir, `git merge-base --is-ancestor ${subjectHead} ${branch}`)) return [];
+  const changedAfterReview = sh(rootDir, `git diff --name-only ${subjectHead}..${branch}`)
+    .split(/\r?\n/).filter(Boolean);
+  const reviewPath = `${relativeDirectory}/review.md`;
+  const metadataOnly = changedAfterReview.length > 0 && changedAfterReview.every((file) =>
+    file === reviewPath || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
+  );
+  return metadataOnly ? [subjectHead] : [];
+}
+
 function requiresRecoveryTask(changedPaths) {
   return changedPaths.some((file) =>
     file.startsWith('src-tauri/') || file.startsWith('scripts/agent/') || file.startsWith('.agents/')
@@ -71,6 +83,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   const headSha = sh(rootDir, `git rev-parse --verify ${branch}`);
   const baseSha = sh(rootDir, 'git rev-parse --verify dev');
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
+  const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
   const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteReport = evaluateNoteRequirement({
@@ -84,7 +97,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
     boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
     scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
     noteIssues: noteReport.issues, requireTask: requiresRecoveryTask(changedPaths),
-    requireReview: requiresReview(changedPaths), requireEvidence: gates.length > 0,
+    requireReview: requiresReview(changedPaths), reviewSubjectHeads, requireEvidence: gates.length > 0,
   });
   return { ...readiness, changedPaths, gates, boundary, taskId: task?.id ?? null };
 }
