@@ -1,6 +1,6 @@
 # EV-022 Review
 
-**Subject head:** `03bf0f5`
+**Subject head:** `88b3f6713f7002e6f2e810fcf2c55ac530369ede`
 
 **Reviewer:** `用户确认`
 
@@ -33,3 +33,4 @@ None.
 - Default Vitest excludes only explicitly retired v1 FSM suites; v2 contract tests and application/design-system tests remain active.
 - Merge readiness binds evidence to base/head/path hash and accepts this review artifact as metadata-only trailing history.
 - E2E gate timeout is sized for the actual 45-test shell smoke duration.
+- Merge entry runs v2 boundary facts directly from the branch implementation when invoked from the main checkout.
