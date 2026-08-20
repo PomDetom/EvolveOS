@@ -1,6 +1,6 @@
 # EV-022 Review
 
-**Subject head:** `d5e97bd`
+**Subject head:** `03bf0f5`
 
 **Reviewer:** `用户确认`
 
@@ -32,3 +32,4 @@ None.
 - v2 scope includes staged, unstaged, and untracked paths.
 - Default Vitest excludes only explicitly retired v1 FSM suites; v2 contract tests and application/design-system tests remain active.
 - Merge readiness binds evidence to base/head/path hash and accepts this review artifact as metadata-only trailing history.
+- E2E gate timeout is sized for the actual 45-test shell smoke duration.
