@@ -215,7 +215,7 @@ describe('Task 8C gate process and evidence', () => {
         runShellCommand: async () => { throw new Error('fake runner unavailable'); },
       })).toBe(1);
       const failedEvidence = JSON.parse(readFileSync(findTask(worktree, 'EWP-088').taskPath, 'utf8')).evidence;
-      expect(failedEvidence).toHaveLength(3);
+      expect(failedEvidence).toHaveLength(2);
       expect(failedEvidence.every((item) => item.result === 'failed')).toBe(true);
       expect(failedEvidence[0].summary).toContain('runner exception: fake runner unavailable');
 
@@ -224,7 +224,6 @@ describe('Task 8C gate process and evidence', () => {
         const task = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
         writeFileSync(entry.taskPath, `${JSON.stringify({ ...task, evidence: [
           { gate: 'scripts-unit', result: 'pending' },
-          { gate: 'failure-paths', result: 'success' },
           { gate: 'build', result: 'success' },
         ] }, null, 2)}\n`);
         return 0;

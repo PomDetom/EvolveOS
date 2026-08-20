@@ -56,6 +56,28 @@ function codeChangedAfter(rootDir, changeHead, branch) {
   return paths.some((file) => !file.startsWith('.agents/tasks/') && !file.startsWith('.agents/notes/'));
 }
 
+function activityIssuesAtRef(rootDir, branch, entry) {
+  if (!entry?.task?.startRunId) return [];
+  const activityPath = `${entry.relativeDirectory}/activity.jsonl`;
+  let records;
+  try {
+    records = sh(rootDir, `git show ${branch}:${activityPath}`)
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch {
+    return [`缺少任务过程记录: ${activityPath}`];
+  }
+  const issues = [];
+  if (!records.some((record) => record.type === 'status' && record.to === 'implementing')) {
+    issues.push('过程记录缺少 implementing 检查点');
+  }
+  if (!records.some((record) => record.type === 'commit-intent')) {
+    issues.push('过程记录缺少代码提交检查点');
+  }
+  return issues;
+}
+
 export function nativeReadinessFor(branch, rootDir = ROOT) {
   let protocol;
   try {
@@ -84,6 +106,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
     changeHeadAncestor: entry?.task?.changeHead ? shOk(rootDir, `git merge-base --is-ancestor ${entry.task.changeHead} ${branch}`) : true,
     codeChangedAfterHead: codeChangedAfter(rootDir, entry?.task?.changeHead, branch),
     approvalIssues,
+    activityIssues: activityIssuesAtRef(rootDir, branch, entry),
   });
   if (!entry?.task) return readiness;
   const changedPaths = getChangedPaths(rootDir, 'dev', branch);

@@ -4,7 +4,7 @@ EWP 把 EvolveOS 的任务事实、执行边界、验证证据和评审记录放
 
 ## 当前模式
 
-协议配置见 [`protocol.json`](protocol.json)。迁移初期为 `shadow`：native gate 生成 readiness 报告，但原有 `check:boundary`、`merge-to-dev`、TDD、独立评审和发版确认继续是实际门禁。Task 9 的三个真实试点完成并 review 后，才可以执行 Task 10 的 `shadow → enforced` 切换。
+协议配置见 [`protocol.json`](protocol.json)。当前仍处于迁移期 `shadow`：native gate 生成 readiness 报告；EWP-019 先补齐过程记录和可选提交守卫，完成真实试点后再单独批准 `shadow → enforced` 激活。
 
 ## 目录职责
 
@@ -17,8 +17,10 @@ EWP 把 EvolveOS 的任务事实、执行边界、验证证据和评审记录放
 ## 执行入口
 
 - `npm run agent:start -- --title "标题" --kind <kind> --paths <path1,path2>`：必须从干净的 `dev` 启动；自动创建任务 ID、独立 worktree、`task.json`、`plan.md` 和非平凡任务的 proposed Note，并提交初始化记录。
+- `npm run agent:approve -- --task <id> --approver <name>` 与 `npm run agent:implement -- --task <id>` 会分别提交审批检查点和 implementing 检查点，并在任务目录追加 `activity.jsonl`。
+- `node scripts/agent/install-hooks.js` 可在用户确认后安装 pre-commit 守卫；已有非 EWP hook 时拒绝覆盖。
 - `npm run agent:finish -- --task <id> --reviewer <name> --review-result approved`：运行验证、检查改动范围和 Note，并将任务推进到 `ready`；验证和评审绑定代码 `changeHead`，后续只追加任务记录不会使证据失效。
-- `merge-to-dev` 从待合入分支读取 task，而不是依赖主 checkout 是否已经包含 task 文件；`shadow` 只告警，`enforced` 才阻断。
+- `merge-to-dev` 从待合入分支读取 task，而不是依赖主 checkout 是否已经包含 task 文件；当前 `shadow` 只告警，`enforced` 激活后才阻断。
 
 首批 Skill 的职责依次是 start、plan、implement、verify、review；它们都必须引用 task/spec/Note/Git 作为 source of truth，不以模型或聊天平台作为状态源。Notes 使用 `proposed/implemented/rejected/archived` 生命周期，可通过 `npm run agent:notes-check` 校验。
 

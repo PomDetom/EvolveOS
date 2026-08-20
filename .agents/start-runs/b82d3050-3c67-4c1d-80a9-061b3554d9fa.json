@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-019",
+  "title": "EWP 过程记录与提交前强制门禁",
+  "branch": "chore/ewp-process-records",
+  "baseBranch": "dev",
+  "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+  "startRunId": "b82d3050-3c67-4c1d-80a9-061b3554d9fa",
+  "taskPath": ".agents/tasks/2026/EWP-019-ewp/task.json",
+  "preflight": {
+    "ok": true,
+    "checkedAt": "2026-08-19T11:32:11.343Z",
+    "checks": {
+      "gitBranch": "dev",
+      "baseRef": "dev",
+      "gitClean": true,
+      "gitWritable": true,
+      "taskIdAvailable": true,
+      "branchAvailable": true,
+      "worktreeWritable": true
+    },
+    "inputs": {
+      "id": "EWP-019",
+      "title": "EWP 过程记录与提交前强制门禁",
+      "kind": "chore",
+      "branch": "chore/ewp-process-records",
+      "worktree": "C:\\Repository\\EvolveOS-EWP-019-process-records",
+      "allowedPaths": [
+        "scripts/agent/",
+        "scripts/",
+        "tests/unit/",
+        ".agents/"
+      ],
+      "year": "2026",
+      "date": "2026-08-19",
+      "baseRef": "dev"
+    }
+  },
+  "baseline": {
+    "taskId": "EWP-019",
+    "gate": "start-preflight",
+    "command": "agent:start preflight",
+    "commandId": "agent:start preflight",
+    "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+    "exitCode": 0,
+    "result": "success",
+    "timestamp": "2026-08-19T11:32:11.343Z",
+    "summary": "agent:start preflight passed"
+  },
+  "baselines": [
+    {
+      "taskId": "EWP-019",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T12:27:27.989Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-019",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+      "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-19T12:27:30.249Z",
+      "summary": ""
+    }
+  ],
+  "baselineUpdate": {
+    "path": ".agents/start-runs/b82d3050-3c67-4c1d-80a9-061b3554d9fa-baseline-update.json",
+    "taskId": "EWP-019",
+    "id": "EWP-019",
+    "baseBranch": "dev",
+    "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+    "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+    "commit": "ebb58444f2584ced5f7bf86e06da872bbc144dfc",
+    "baselines": [
+      {
+        "taskId": "EWP-019",
+        "gate": "scripts-unit",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "scripts-unit",
+        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-19T12:27:27.989Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-019",
+        "gate": "build",
+        "command": "npm run build",
+        "commandId": "build",
+        "baseSha": "0a0df6f1b869a227d44a7cc88660fe2d5c6c816a",
+        "initCommit": "8206a88ff863e1b32480404ad3f1a5c0c360144e",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-19T12:27:30.249Z",
+        "summary": ""
+      }
+    ]
+  }
+}

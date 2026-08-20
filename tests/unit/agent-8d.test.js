@@ -192,7 +192,7 @@ describe('Task 8D baseline evidence', () => {
       };
       expect(await verifyMain(['--task', taskId], worktree, io, { runShellCommand: fakeGateRunner })).toBe(0);
       expect(gateCalls.map((call) => call.command)).toEqual([
-        SCRIPTS_UNIT_COMMAND, SCRIPTS_UNIT_COMMAND, `npm run build`,
+        SCRIPTS_UNIT_COMMAND, `npm run build`,
       ]);
       const verifiedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
       expect(verifiedTask.evidence.every((evidence) => evidence.baseSha === baseSha)).toBe(true);
@@ -204,7 +204,7 @@ describe('Task 8D baseline evidence', () => {
         verifyMain: (args, rootDir, finishIo) => verifyMain(args, rootDir, finishIo, { runShellCommand: fakeGateRunner }),
       })).toBe(0);
       expect(gateCalls.map((call) => call.command)).toEqual([
-        SCRIPTS_UNIT_COMMAND, SCRIPTS_UNIT_COMMAND, `npm run build`,
+        SCRIPTS_UNIT_COMMAND, `npm run build`,
       ]);
       const finishedTask = JSON.parse(readFileSync(entry.taskPath, 'utf8'));
       expect(finishedTask).toMatchObject({ status: 'ready', baseBranch: 'recovery-base', baseSha });

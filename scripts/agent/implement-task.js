@@ -2,6 +2,7 @@
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { evaluateTaskApproval, readTaskPlan } from './approval.js';
+import { commitWorkflowRecord, recordTaskActivity } from './activity.js';
 import { findTask } from './validate-task.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 
@@ -69,8 +70,21 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
     io.log('dry-run：不执行实现代码动作，也不写入 task');
     return 0;
   }
-  if (entry.task.status !== 'implementing') writeTask(entry, { ...entry.task, status: 'implementing' });
-  io.log(`✓ task ${taskId} 已进入 implementing；本入口不执行实现代码动作`);
+  if (entry.task.status !== 'implementing') {
+    const task = { ...entry.task, status: 'implementing' };
+    writeTask(entry, task);
+    entry.task = task;
+    const activity = recordTaskActivity(rootDir, entry, {
+      type: 'status',
+      from: 'planned',
+      to: 'implementing',
+      checkpoint: 'implementation-start',
+    });
+    const commit = commitWorkflowRecord(rootDir, [entry.taskPath, activity.relativePath], `chore: ${taskId} 进入实现阶段`);
+    io.log(`✓ task ${taskId} 已进入 implementing（checkpoint=${commit ?? '已有记录'}）；本入口不执行实现代码动作`);
+    return 0;
+  }
+  io.log(`✓ task ${taskId} 已处于 implementing；本入口不执行实现代码动作`);
   return 0;
 }
 

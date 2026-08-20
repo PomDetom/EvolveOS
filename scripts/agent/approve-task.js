@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildApprovedApproval, evaluateApprovalScope, readTaskPlan } from './approval.js';
+import { commitWorkflowRecord, recordTaskActivity } from './activity.js';
 import { readProtocol, validateStartEvidence, validateTask } from './task-schema.js';
 import { findTask } from './validate-task.js';
 
@@ -60,7 +61,14 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console)
     }),
   };
   writeTask(entry, task);
-  io.log(`✓ task ${taskId} 已记录方案审批（scopeHash=${task.approval.scopeHash}）`);
+  const activity = recordTaskActivity(rootDir, entry, {
+    type: 'approval',
+    status: task.status,
+    scopeHash: task.approval.scopeHash,
+    approver: task.approval.approver,
+  });
+  const commit = commitWorkflowRecord(rootDir, [entry.taskPath, activity.relativePath], `chore: 记录 ${taskId} 方案审批`);
+  io.log(`✓ task ${taskId} 已记录方案审批（scopeHash=${task.approval.scopeHash}，commit=${commit ?? '已有记录'}）`);
   return 0;
 }
 

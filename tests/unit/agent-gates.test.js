@@ -25,7 +25,7 @@ describe('agent:gates', () => {
 
   test('scripts、Tauri、release 各自选择专属 gate', () => {
     expect(selectGates({ kind: 'chore', changedPaths: ['scripts/agent/status.js'] }))
-      .toEqual(['scripts-unit', 'failure-paths', 'build']);
+      .toEqual(['scripts-unit', 'build']);
     expect(selectGates({ kind: 'chore', changedPaths: ['src-tauri/src/main.rs'] }))
       .toEqual(['web-regression', 'rust-check', 'permission-check', 'desktop-manual']);
     expect(selectGates({ kind: 'chore', changedPaths: ['package.json', 'scripts/release.js'], taskKind: 'release' }))
