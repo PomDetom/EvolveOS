@@ -42,13 +42,16 @@ function isMergeCommit(rootDir) {
 }
 
 export function guardCommit(rootDir = process.cwd(), io = console) {
-  const paths = stagedPaths(rootDir);
-  if (!paths.length) return 0;
-
   const branch = git(rootDir, ['branch', '--show-current']);
   if (branch === 'dev' || branch === 'main') {
     if (isMergeCommit(rootDir)) return 0;
     io.error(`EWP commit guard: 禁止直接在 ${branch} 提交；请使用 agent:start 创建任务分支`);
+    return 1;
+  }
+
+  const paths = stagedPaths(rootDir);
+  if (!paths.length) {
+    io.error(`EWP commit guard: 禁止在 ${branch || 'detached HEAD'} 创建空提交`);
     return 1;
   }
 
@@ -99,4 +102,3 @@ export function guardCommit(rootDir = process.cwd(), io = console) {
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
   process.exitCode = guardCommit();
 }
-

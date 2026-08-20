@@ -96,4 +96,14 @@ describe('EWP commit guard', () => {
       fixture.cleanup();
     }
   });
+
+  test('empty commit on dev is rejected even without staged paths', () => {
+    const fixture = setup();
+    try {
+      git(fixture.root, ['switch', 'dev']);
+      expect(guardCommit(fixture.root, { error() {} })).toBe(1);
+    } finally {
+      fixture.cleanup();
+    }
+  });
 });

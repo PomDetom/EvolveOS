@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "id": "EWP-021",
+  "title": "EWP 提交守卫拦截空提交绕过",
+  "status": "ready",
+  "kind": "bug-fix",
+  "branch": "chore/ewp-empty-commit-guard",
+  "baseBranch": "dev",
+  "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+  "allowedPaths": [
+    "scripts/agent/",
+    "scripts/",
+    "tests/unit/",
+    ".agents/",
+    ".agents/tasks/2026/EWP-021-ewp/",
+    ".agents/notes/"
+  ],
+  "spec": ".agents/tasks/2026/EWP-021-ewp/plan.md",
+  "notes": [
+    ".agents/notes/implemented/process/2026-08-20-ewp-empty-commit-guard.md"
+  ],
+  "requiredGates": "auto",
+  "evidence": [
+    {
+      "taskId": "EWP-021",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "headSha": "05376b033981c7417f21ed4b3a42041bfac5c311",
+      "testedHead": "05376b033981c7417f21ed4b3a42041bfac5c311",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:40:33.991Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-021-empty-guard HEAD is now at a0f2bd3 fixture [chore/baseline-blocks-verify 4f185f7] chore: 初始化 EWP-809 任务 3 files changed, 201 …"
+    },
+    {
+      "taskId": "EWP-021",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "headSha": "05376b033981c7417f21ed4b3a42041bfac5c311",
+      "testedHead": "05376b033981c7417f21ed4b3a42041bfac5c311",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:42:25.152Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    },
+    {
+      "taskId": "EWP-021",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "headSha": "b47e97e3b18cb49abc96c148de438a687d049844",
+      "testedHead": "b47e97e3b18cb49abc96c148de438a687d049844",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:46:29.336Z",
+      "summary": "> evolveos@0.2.0 test > vitest run --configLoader runner --maxWorkers=1 RUN v3.2.7 C:/Repository/EvolveOS-EWP-021-empty-guard HEAD is now at 75fa2a2 fixture [chore/baseline-blocks-verify 6bbdb2d] chore: 初始化 EWP-809 任务 3 files changed, 201 …"
+    },
+    {
+      "taskId": "EWP-021",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "headSha": "b47e97e3b18cb49abc96c148de438a687d049844",
+      "testedHead": "b47e97e3b18cb49abc96c148de438a687d049844",
+      "exitCode": 0,
+      "result": "success",
+      "classification": "success",
+      "timestamp": "2026-08-20T01:48:16.351Z",
+      "summary": "> evolveos@0.2.0 build > vite build vite v7.3.6 building client environment for production... transforming... ✓ 120 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.42 kB │ gzip: 0.29 kB dist/assets/Alibaba…"
+    }
+  ],
+  "review": {
+    "reviewer": "用户授权（本次请求）",
+    "result": "approved",
+    "reviewedHead": "b47e97e3b18cb49abc96c148de438a687d049844",
+    "findings": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    }
+  },
+  "changeHead": "b47e97e3b18cb49abc96c148de438a687d049844",
+  "readyHead": "b47e97e3b18cb49abc96c148de438a687d049844",
+  "startRunId": "8b4ac439-b49b-4979-aa3b-b933765ead96",
+  "preflight": {
+    "ok": true,
+    "checkedAt": "2026-08-20T01:33:51.257Z",
+    "checks": {
+      "gitBranch": "dev",
+      "baseRef": "dev",
+      "gitClean": true,
+      "gitWritable": true,
+      "taskIdAvailable": true,
+      "branchAvailable": true,
+      "worktreeWritable": true
+    },
+    "inputs": {
+      "id": "EWP-021",
+      "title": "EWP 提交守卫拦截空提交绕过",
+      "kind": "bug-fix",
+      "branch": "chore/ewp-empty-commit-guard",
+      "worktree": "C:\\Repository\\EvolveOS-EWP-021-empty-guard",
+      "allowedPaths": [
+        "scripts/agent/",
+        "scripts/",
+        "tests/unit/",
+        ".agents/"
+      ],
+      "year": "2026",
+      "date": "2026-08-20",
+      "baseRef": "dev"
+    }
+  },
+  "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+  "baseline": {
+    "taskId": "EWP-021",
+    "gate": "start-preflight",
+    "command": "agent:start preflight",
+    "commandId": "agent:start preflight",
+    "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+    "exitCode": 0,
+    "result": "success",
+    "timestamp": "2026-08-20T01:33:51.257Z",
+    "summary": "agent:start preflight passed"
+  },
+  "baselines": [
+    {
+      "taskId": "EWP-021",
+      "gate": "scripts-unit",
+      "command": "npm test -- --configLoader runner --maxWorkers=1",
+      "commandId": "scripts-unit",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:46:09.426Z",
+      "summary": ""
+    },
+    {
+      "taskId": "EWP-021",
+      "gate": "build",
+      "command": "npm run build",
+      "commandId": "build",
+      "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+      "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:46:11.371Z",
+      "summary": ""
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "approver": "用户授权（本次请求）",
+    "approvedAt": "2026-08-20T01:34:50.751Z",
+    "scopeHash": "3003bcf4490e60b95bd9bf83275437d7de92a3b22dfa488130de302aa3864970",
+    "scope": {
+      "planPath": ".agents/tasks/2026/EWP-021-ewp/plan.md",
+      "allowedPaths": [
+        ".agents/",
+        ".agents/notes/",
+        ".agents/tasks/2026/EWP-021-ewp/",
+        "scripts/",
+        "scripts/agent/",
+        "tests/unit/"
+      ],
+      "acceptance": [
+        "`dev`/`main` 上的普通提交和空提交均被 pre-commit 守卫拒绝，合并提交仍可通过。",
+        "有自动化回归测试覆盖空提交绕过路径和既有正常/未审批路径。",
+        "验证证据绑定当前代码提交，评审记录已写入。"
+      ],
+      "productAssumptions": []
+    }
+  },
+  "baselineUpdate": {
+    "path": ".agents/start-runs/8b4ac439-b49b-4979-aa3b-b933765ead96-baseline-update.json",
+    "taskId": "EWP-021",
+    "id": "EWP-021",
+    "baseBranch": "dev",
+    "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+    "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+    "commit": "29b5a801fd44e19a3cb774810b012352959ba737",
+    "baselines": [
+      {
+        "taskId": "EWP-021",
+        "gate": "scripts-unit",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "scripts-unit",
+        "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+        "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:46:09.426Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-021",
+        "gate": "build",
+        "command": "npm run build",
+        "commandId": "build",
+        "baseSha": "71be333de5032a215bf0b1ecbff3eaba0a30b047",
+        "initCommit": "9509277533ae96e89fa6a29918bf4b2ecec50731",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:46:11.371Z",
+        "summary": ""
+      }
+    ]
+  }
+}
