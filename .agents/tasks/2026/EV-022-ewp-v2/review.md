@@ -1,6 +1,6 @@
 # EV-022 Review
 
-**Subject head:** `88b3f6713f7002e6f2e810fcf2c55ac530369ede`
+**Subject head:** `ce33743bc63cf0eb8b6f06c883a8bb60bac46496`
 
 **Reviewer:** `用户确认`
 
@@ -34,3 +34,4 @@ None.
 - Merge readiness binds evidence to base/head/path hash and accepts this review artifact as metadata-only trailing history.
 - E2E gate timeout is sized for the actual 45-test shell smoke duration.
 - Merge entry runs v2 boundary facts directly from the branch implementation when invoked from the main checkout.
+- Merge entry review parsing accepts the repository's Markdown bold heading format.
