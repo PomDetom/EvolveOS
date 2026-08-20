@@ -73,10 +73,10 @@
       "commandId": "scripts-unit",
       "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
-      "exitCode": 1,
-      "result": "failed",
-      "timestamp": "2026-08-20T01:14:01.051Z",
-      "summary": "Command failed: npm test -- --configLoader runner --maxWorkers=1\nfailed to load config from C:\\Repository\\EvolveOS-EWP-020-enforced\\vitest.config.js\n\n⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯\nError: Cannot find module 'vitest/config' imported from 'C:/Repository/EvolveOS-EWP-020-enforced/vitest.config.js'\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34060:34)\n    at RunnableDevEnvironment.fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34912:10)\n    at fetchModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:34870:17)\n    at handleInvoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25913:27)\n    at EventEmitter.listenerForInvokeHandler (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:25968:19)\n    at EventEmitter.emit (node:events:509:28)\n    at Object.send (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:15125:39)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:535:31)\n    at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:584:31)\n    at ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:28) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  runnerError: Error: RunnerError\n      at reviveInvokeError (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:476:64)\n      at Object.invoke (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:549:11)\n      at async ModuleRunner.getModuleInformation (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1086:7)\n      at async request (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1103:83)\n      at async eval (C:/Repository/EvolveOS-EWP-020-enforced/vitest.config.js:4:31)\n      at async ESModulesEvaluator.runInlinedModule (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:913:3)\n      at async ModuleRunner.directRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1146:59)\n      at async ModuleRunner.cachedRequest (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1053:73)\n      at async ModuleRunner.import (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/module-runner.js:1014:10)\n      at async runnerImport (file:///C:/Repository/EvolveOS/node_modules/vite/dist/node/chunks/config.js:35282:20)\n}\n\n\n\n"
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:21:30.207Z",
+      "summary": ""
     },
     {
       "taskId": "EWP-020",
@@ -85,10 +85,10 @@
       "commandId": "build",
       "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
       "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
-      "exitCode": 1,
-      "result": "failed",
-      "timestamp": "2026-08-20T01:14:02.025Z",
-      "summary": "Command failed: npm run build\nfailed to load config from C:\\Repository\\EvolveOS-EWP-020-enforced\\vite.config.js\nerror during build:\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from C:\\Repository\\EvolveOS-EWP-020-enforced\\vite.config.js.timestamp-1787188441965-deed1906906e68.mjs\n    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)\n    at packageResolve (node:internal/modules/esm/resolve:764:81)\n    at moduleResolve (node:internal/modules/esm/resolve:855:18)\n    at defaultResolve (node:internal/modules/esm/resolve:988:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)\n    at #resolve (node:internal/modules/esm/loader:679:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:162:33)\n"
+      "exitCode": 0,
+      "result": "success",
+      "timestamp": "2026-08-20T01:21:34.828Z",
+      "summary": ""
     }
   ],
   "approval": {
@@ -121,6 +121,32 @@
     "baseBranch": "dev",
     "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
     "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
-    "commit": "7a35cf0b6d4016dbdc990f377b0fbd5d7c07bb44"
+    "commit": "0000000000000000000000000000000000000000",
+    "baselines": [
+      {
+        "taskId": "EWP-020",
+        "gate": "scripts-unit",
+        "command": "npm test -- --configLoader runner --maxWorkers=1",
+        "commandId": "scripts-unit",
+        "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+        "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:21:30.207Z",
+        "summary": ""
+      },
+      {
+        "taskId": "EWP-020",
+        "gate": "build",
+        "command": "npm run build",
+        "commandId": "build",
+        "baseSha": "5c2dbb9780ed713e81d073fa25f62b97363ed0de",
+        "initCommit": "963525773ec7a1407217551fe91690c06d9b9362",
+        "exitCode": 0,
+        "result": "success",
+        "timestamp": "2026-08-20T01:21:34.828Z",
+        "summary": ""
+      }
+    ]
   }
 }
