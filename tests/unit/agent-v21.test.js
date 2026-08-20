@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { buildChangeSnapshot, hashChangeFingerprint } from '../../scripts/agent/change-scope.js';
+import { buildChangeSnapshot, hashChangedPaths, hashChangeFingerprint } from '../../scripts/agent/change-scope.js';
 import { assessEvidence, createEvidence } from '../../scripts/agent/verify.js';
 import { validateTask } from '../../scripts/agent/task-schema.js';
 import { evaluateNativeReadiness } from '../../scripts/merge-to-dev-agent-utils.js';
@@ -49,6 +49,10 @@ describe('repository-native workflow v2.1', () => {
     }
   });
 
+  test('path hashes remain unambiguous for paths containing newlines', () => {
+    expect(hashChangedPaths(['a\nb', 'c'])).not.toBe(hashChangedPaths(['a', 'b\nc']));
+  });
+
   test('rejects unknown fields in a v2 recovery manifest', () => {
     const task = {
       schemaVersion: 2,
@@ -69,6 +73,28 @@ describe('repository-native workflow v2.1', () => {
 
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('workflowStage');
+  });
+
+  test('rejects unknown nested approval fields in a v2 recovery manifest', () => {
+    const task = {
+      schemaVersion: 2,
+      id: 'EV-999',
+      title: '恢复任务',
+      branch: 'chore/recovery',
+      baseBranch: 'dev',
+      baseSha: 'a'.repeat(40),
+      intent: '跨会话恢复',
+      allowedPaths: ['scripts/'],
+      acceptance: ['可恢复'],
+      references: { spec: null, plan: null, notes: [] },
+      recovery: { state: 'active', blockedReason: null },
+      approval: { required: false, status: 'ready' },
+    };
+
+    const result = validateTask(task, '.agents/tasks/2026/EV-999-recovery');
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(' ')).toContain('approval');
   });
 
   test('workflow tooling always carries the build gate', () => {

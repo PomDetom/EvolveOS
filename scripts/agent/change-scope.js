@@ -33,7 +33,7 @@ export function getChangedPaths(rootDir, base = 'dev', head = 'HEAD') {
 }
 
 export function hashChangedPaths(changedPaths = []) {
-  return createHash('sha256').update([...new Set(changedPaths.map(normalize))].sort().join('\n')).digest('hex');
+  return createHash('sha256').update([...new Set(changedPaths.map(normalize))].sort().join('\0')).digest('hex');
 }
 
 function gitDiff(rootDir, args) {
@@ -43,7 +43,7 @@ function gitDiff(rootDir, args) {
 export function hashChangeFingerprint(rootDir, base = 'dev', head = 'HEAD', changedPaths = null) {
   const hash = createHash('sha256');
   const paths = changedPaths ?? getChangedPaths(rootDir, base, head);
-  hash.update(`paths\0${[...new Set(paths.map(normalize))].sort().join('\n')}\0`);
+  hash.update(`paths\0${[...new Set(paths.map(normalize))].sort().join('\0')}\0`);
   hash.update(gitDiff(rootDir, ['diff', '--binary', '--full-index', `${base}...${head}`]));
   if (head === 'HEAD') {
     hash.update(gitDiff(rootDir, ['diff', '--binary', '--full-index', 'HEAD']));

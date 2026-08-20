@@ -21,6 +21,7 @@ const LEGACY_FIELDS = [
   'changeHead', 'readyHead', 'baseline', 'baselines', 'baselineUpdate',
   'preflight', 'startRunId', 'initCommit',
 ];
+const APPROVAL_FIELDS = new Set(['required', 'scopeHash', 'approvedBy', 'approvedAt']);
 
 function asPosixPath(value) {
   return String(value ?? '').replaceAll('\\', '/');
@@ -42,6 +43,7 @@ function validateApproval(approval, errors) {
     errors.push('approval 必须为 null 或对象');
     return;
   }
+  for (const field of Object.keys(approval)) if (!APPROVAL_FIELDS.has(field)) errors.push(`approval 不得包含未定义字段: ${field}`);
   if (typeof approval.required !== 'boolean') errors.push('approval.required 必须为布尔值');
   if (approval.required === true) {
     if (typeof approval.scopeHash !== 'string' || !/^[0-9a-f]{64}$/i.test(approval.scopeHash)) errors.push('required approval 必须包含 64 位 scopeHash');
