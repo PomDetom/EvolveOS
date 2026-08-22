@@ -11,6 +11,8 @@
 
 Evolve Workflow Protocol 迁移规格：[`docs/superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md`](superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md)。该规格只固定迁移约束；`docs/superpowers/sdd/` 的历史留痕仍按下文规则保留。
 
+文档规则只约束格式、质量和协作证据，不定义 workflow lifecycle 状态；workflow requirements 以 `.agents/protocol.json` 与 Change Policy 为准。TDD、独立 semantic review、pre-flight 和基线复跑仍是质量护栏。
+
 ## 工作流红线（子代理驱动开发）
 
 - 每任务 TDD：写失败测试 → 确认红 → 实现 → 跑绿 → 提交。

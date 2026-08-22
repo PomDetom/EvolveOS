@@ -31,6 +31,12 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 - 新任务使用 `.agents` 的 task/plan/review 与 `scripts/agent/` 校验工具；`docs/superpowers/sdd/` 仅用于历史任务恢复和审计。
 - 新任务以 Git HEAD/diff、`.agents` recovery manifest、Note 和真实 review 为准；`docs/superpowers/sdd/` 只读保留为历史证据。
 
+## Workflow authority
+
+- `.agents/protocol.json` 与 `scripts/agent/change-policy.js` 是 workflow requirements 的唯一来源。
+- skills 只消费 Policy 并执行专业操作，不得新增独立 lifecycle 状态、重复解释 changed paths 或把 task 当作流程状态机。
+- 旧 Superpowers/FSM 资料只作历史兼容读取，不作为新任务入口或执行依据。
+
 ## 默认不同于常规
 
 - **零运行时依赖、零框架**：不要引入任何 npm 运行时依赖，组件无抽象封装。
@@ -41,7 +47,7 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 
 ## 工作流红线
 
-- **分支**：前缀 `app/<id>/*` `ui/*` `docs/*` `chore/*` `hotfix/*`，一律从 dev 检出（hotfix 例外可从 main）。**禁止直接在 dev 上修改**：任何改动只在分支上完成，修改 + 测试（定向回归 + build + 壳冒烟）全部通过后才合并入 dev，随后经 `npm run merge-to-dev` 清理（见下）；main 只从 dev `--no-ff` 合并（=一次发版），hotfix 唯一直合 main 豁免随后同步回 dev；未知前缀 `check:boundary` 拒绝。
+- **分支**：前缀 `app/<id>/*` `ui/*` `native/*` `framework/*` `docs/*` `chore/*` `hotfix/*`，一律从 dev 检出（hotfix 例外可从 main）。**禁止直接在 dev 上修改**：任何改动只在分支上完成，修改 + 测试（定向回归 + build + 壳冒烟）全部通过后才合并入 dev，随后经 `npm run merge-to-dev` 清理（见下）；main 只从 dev `--no-ff` 合并（=一次发版），hotfix 唯一直合 main 豁免随后同步回 dev；未知前缀 `check:boundary` 拒绝。
 - **合并入 dev**：统一 `npm run merge-to-dev -- <分支>`（scripts/merge-to-dev.js），自动完成：基线同步（分支落后 dev 先并入 dev，防三方漂移）→ `check:boundary` → `--no-ff` 合并（`merge:` 文案）→ 祖先验证后删分支 + 移除 worktree。禁手工 `git branch -d`（只判并入当前分支，合入 dev 后必报 not fully merged）。
 - **回归**：全量回归只在 dev→main / hotfix→main 两个点跑；dev 阶段只跑改动影响面定向测试 + build + 壳冒烟。
 - **发版前必先征询用户意见**：dev→main / hotfix→main / bump / tag / push 等任一发版动作前，先列出版本号、范围、验证证据，等用户明确同意再执行（任何发版都需询问意见，不自动发版）。

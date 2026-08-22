@@ -48,6 +48,20 @@ export function assessBranchChanges(branch, files) {
     return { kind: 'ui', ok: true, violations: [], note: '框架改动：分支上受影响子系统定向回归；全量仅 dev→main/hotfix→main；框架 owner 评审' };
   }
 
+  if (/^framework\//.test(branch)) {
+    const allowed = (f) => FRAMEWORK_PREFIXES.some((prefix) => f.startsWith(prefix))
+      || /^tests\/(unit|e2e)\//.test(f) || f.startsWith('docs/') || f.startsWith('.agents/tasks/') || f.startsWith('.agents/notes/') || f === 'AGENTS.md' || f === 'docs/AGENTS.md';
+    const violations = files.filter((f) => !allowed(f));
+    return { kind: 'framework', ok: violations.length === 0, violations, note: violations.length === 0 ? '框架改动，边界通过' : `框架分支触碰边界外文件 ${violations.length} 个` };
+  }
+
+  if (/^native\//.test(branch)) {
+    const allowed = (f) => f.startsWith('src-tauri/') || /^tests\/(unit|e2e)\//.test(f)
+      || f.startsWith('docs/') || f.startsWith('.agents/tasks/') || f.startsWith('.agents/notes/') || f === 'AGENTS.md' || f === 'src-tauri/AGENTS.md';
+    const violations = files.filter((f) => !allowed(f));
+    return { kind: 'native', ok: violations.length === 0, violations, note: violations.length === 0 ? 'native 改动，边界通过' : `native 分支触碰边界外文件 ${violations.length} 个` };
+  }
+
   if (/^docs\//.test(branch)) {
     const violations = files.filter((f) => !(f.startsWith('docs/') || ROOT_MD_RE.test(f)));
     return {
@@ -79,6 +93,6 @@ export function assessBranchChanges(branch, files) {
     kind: 'invalid',
     ok: false,
     violations: [branch],
-    note: '分支名不合规，须用 app/<id>/<name> | ui/<name> | docs/<name> | chore/<name> | hotfix/<name>',
+    note: '分支名不合规，须用 app/<id>/<name> | ui/<name> | native/<name> | framework/<name> | docs/<name> | chore/<name> | hotfix/<name>',
   };
 }

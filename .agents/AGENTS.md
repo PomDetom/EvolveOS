@@ -10,6 +10,7 @@
 - 自动验证证据放在 `.git/evolve-agent/evidence/`，绑定 base/head/changedPathsHash；HEAD 改变后缓存失效。
 - v2.1 的 scope/checks/verify/merge 必须复用同一 change snapshot；evidence 同时校验 baseSha、headSha、changedPathsHash 和内容 changeFingerprint。
 - v2 recovery manifest 只允许协议字段，未知字段不得作为隐式 workflow 状态或 evidence 存储。
+- Workflow authority 只有 `.agents/protocol.json` 与 `scripts/agent/change-policy.js`；operation skills 只能执行 Policy 要求，不得自行引入 lifecycle 状态或重复解释 changed paths。
 - `.agents/tasks/` 保存当前任务事实；普通单应用局部改动不强制创建 Note。
 - `.agents/notes/` 只保存跨任务的架构、流程、测试、功能、修复和简化决策原因；不要用 Note 复制实施日志。
 - `docs/superpowers/sdd/` 是冻结的历史证据，不迁移、不删除、不覆盖、不新增原始 `.diff`。
@@ -21,5 +22,5 @@
 - 任务验证：使用 `scripts/agent/` 下的校验、scope、gate 和 evidence 工具。
 - 任务评审：写入 task 目录的 `review.md`，评审 SHA 必须等于当前 HEAD。
 - 流程决策：先查 `.agents/notes/`，再按 Note 生命周期写入对应目录。
-- 旧生命周期脚本仅作为迁移兼容层，不得成为新任务入口；task 状态和 evidence 不得依赖具体模型或平台。
+- 旧生命周期 skill 不再作为 active workflow 入口；历史 task/schema 与历史文档仅作只读兼容读取，task 状态和 evidence 不得依赖具体模型或平台。
 - 旧 `.agents/tasks` schema 1、`activity.jsonl` 和 `.agents/start-runs/` 仅作历史兼容读取；v2 不新增、不更新这些文件。

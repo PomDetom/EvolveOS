@@ -6,7 +6,9 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
 import { assessBranchChanges } from './boundary-check.js';
-import { buildChangeScope, buildChangeSnapshot, getChangedPaths } from './agent/change-scope.js';
+import { buildChangeScope, buildChangeSnapshot, getChangedPaths, hashChangeFingerprint } from './agent/change-scope.js';
+import { evaluateChangePolicy } from './agent/change-policy.js';
+import { validateHumanAttestation } from './agent/attestation.js';
 import { readProtocol, validateTask } from './agent/task-schema.js';
 import { listTasksAtRef } from './agent/validate-task.js';
 import { selectGates } from './agent/select-gates.js';
@@ -41,11 +43,32 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     const content = sh(rootDir, `git show ${branch}:${relativeDirectory}/review.md`);
     const subjectHead = /(?:Subject|Reviewed)\s+head:\*{2}\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
     const result = /\*\*Result:\*\*\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
+    const changeFingerprint = /(?:Change fingerprint|changeFingerprint):\*{2}\s*`?([0-9a-f]{64})`?/i.exec(content)?.[1] ?? null;
+    const reviewer = /(?:Reviewer|reviewer):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
+    const reviewTime = /(?:Review time|reviewTime):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
     const importantSection = /### Important\s+([\s\S]*?)(?=### Minor|$)/i.exec(content)?.[1] ?? '';
-    const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
-    return { subjectHead, result, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
+    const parseIssues = [];
+    if (!criticalSection.trim()) parseIssues.push('review 缺少 Critical 段落或明确结论');
+    if (!importantSection.trim()) parseIssues.push('review 缺少 Important 段落或明确结论');
+    const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．.]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
+    return { subjectHead, changeFingerprint, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
   } catch { return null; }
+}
+
+function attestationsAtRef(rootDir, branch, relativeDirectory, names, policyHash, snapshot) {
+  const issues = [];
+  for (const name of names) {
+    const relativePath = `${relativeDirectory}/attestations/${name}.json`;
+    try {
+      const content = sh(rootDir, `git show ${branch}:${relativePath}`);
+      const result = validateHumanAttestation(JSON.parse(content), { policyHash, snapshot, name });
+      if (!result.ok) result.errors.forEach((error) => issues.push(`attestation ${name}: ${error}`));
+    } catch {
+      issues.push(`缺少 human attestation: ${relativePath}`);
+    }
+  }
+  return issues;
 }
 
 function acceptedReviewSubjectHeads(rootDir, branch, branchHead, review, relativeDirectory) {
@@ -54,55 +77,58 @@ function acceptedReviewSubjectHeads(rootDir, branch, branchHead, review, relativ
   const changedAfterReview = sh(rootDir, `git diff --name-only ${subjectHead}..${branch}`)
     .split(/\r?\n/).filter(Boolean);
   const reviewPath = `${relativeDirectory}/review.md`;
+  const reviewStatuses = sh(rootDir, `git diff --name-status ${subjectHead}..${branch}`)
+    .split(/\r?\n/).filter(Boolean)
+    .map((line) => line.split(/\t/))
+    .filter((parts) => parts.slice(1).includes(reviewPath));
+  const reviewAddedOnce = reviewStatuses.length === 1 && reviewStatuses[0][0] === 'A';
   const metadataOnly = changedAfterReview.length > 0 && changedAfterReview.every((file) =>
-    file === reviewPath || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
+    (file === reviewPath && reviewAddedOnce) || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
   );
   return metadataOnly ? [subjectHead] : [];
-}
-
-function requiresRecoveryTask(changedPaths) {
-  return changedPaths.some((file) =>
-    file.startsWith('src-tauri/') || file.startsWith('scripts/agent/') || file.startsWith('.agents/')
-    || /^src\/(components|styles|config|app|scenes|demo|motion|assets)\//.test(file)
-    || /^(package\.json|package-lock\.json|vite\.config|vitest\.config|playwright\.config)/.test(file),
-  );
-}
-
-function requiresReview(changedPaths) {
-  return requiresRecoveryTask(changedPaths) || changedPaths.some((file) => file.startsWith('scripts/') || file.startsWith('src-tauri/'));
 }
 
 export function nativeReadinessFor(branch, rootDir = ROOT) {
   const snapshot = buildChangeSnapshot(rootDir, 'dev', branch);
   const changedPaths = snapshot.changedPaths;
   const boundary = assessBranchChanges(branch, changedPaths);
+  const policy = evaluateChangePolicy({ snapshot, branchKind: boundary.kind });
   const entry = listTasksAtRef(rootDir, branch).find((candidate) => candidate.task?.branch === branch) ?? null;
   const task = entry?.task ?? null;
   const taskSchema = task ? validateTask(task, entry.relativeDirectory, readProtocol(rootDir)) : { ok: true, errors: [] };
   const scope = buildChangeScope({ task, base: 'dev', head: branch, branch, changedPaths });
-  const gates = selectGates({ changedPaths, includeBoundary: true });
+  const gates = selectGates({ kind: boundary.kind, changedPaths, includeBoundary: true, policy, snapshot });
   const worktree = worktreesOn(branch, rootDir)[0] ?? null;
   const evidence = currentBranchEvidence(rootDir, branch, worktree);
   const { headSha, baseSha, changedPathsHash, changeFingerprint } = snapshot;
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
   const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
+  const reviewFingerprint = review?.subjectHead ? hashChangeFingerprint(rootDir, 'dev', review.subjectHead) : null;
   const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteReport = evaluateNoteRequirement({
     task, changedPaths, notePaths, existingNotePaths,
     noteLifecycles: Object.fromEntries(notePaths.map((note) => [note, noteLifecycleForPath(note)])),
-    requireImplemented: requiresReview(changedPaths),
+    requireImplemented: policy.requiresReview,
+    policy,
+    snapshot,
+    branchKind: boundary.kind,
   });
+  const provenanceIssues = [];
+  if (task?.createdFromSha && !shOk(rootDir, `git merge-base --is-ancestor ${task.createdFromSha} ${branch}`)) provenanceIssues.push('task createdFromSha 不是待合入分支的祖先');
+  const attestationIssues = entry ? attestationsAtRef(rootDir, branch, entry.relativeDirectory, policy.requiredAttestations, policy.policyHash, snapshot) : policy.requiredAttestations.map((name) => `缺少 human attestation: ${name}`);
   const readiness = evaluateNativeReadiness({
-    task, taskBranch: branch, branchHead: headSha, baseSha,
-    changedPathsHash, changeFingerprint, requiredGates: gates, evidence, review,
+    task, taskBranch: branch, branchHead: headSha, baseSha, policy,
+    changedPathsHash, changeFingerprint, reviewFingerprint, policyHash: policy.policyHash, startSnapshot: snapshot, endSnapshot: snapshot, requiredGates: gates, evidence, review,
     boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
     scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
     taskIssues: taskSchema.errors.map((error) => `task schema 无效: ${error}`),
-    noteIssues: noteReport.issues, requireTask: requiresRecoveryTask(changedPaths),
-    requireReview: requiresReview(changedPaths), reviewSubjectHeads, requireEvidence: gates.length > 0,
+    provenanceIssues,
+    attestationIssues,
+    noteIssues: noteReport.issues, humanIssues: review?.parseIssues ?? [], requireTask: policy.requiresTask,
+    requireReview: policy.requiresReview, reviewSubjectHeads, requireEvidence: gates.length > 0,
   });
-  return { ...readiness, changedPaths, gates, boundary, snapshot, taskId: task?.id ?? null };
+  return { ...readiness, changedPaths, gates, boundary, snapshot, policy, taskId: task?.id ?? null };
 }
 
 export function main({ argv = process.argv.slice(2), rootDir = ROOT, dryRun = false } = {}) {

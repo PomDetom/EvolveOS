@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "id": "EV-024",
+  "title": "EWP v2.2 Policy Unification",
+  "branch": "chore/ewp-v2-2",
+  "baseBranch": "dev",
+  "baseSha": "b4a546d1791a232f9a3339cd5803b730b7cb9e1f",
+  "createdFromSha": "b4a546d1791a232f9a3339cd5803b730b7cb9e1f",
+  "intent": "将 EWP v2.1 的变更快照、门禁、Note、评审、attestation 和 merge 收敛为单一 Change Policy 消费链。",
+  "allowedPaths": [
+    ".agents/",
+    "scripts/agent/",
+    "scripts/",
+    "tests/unit/",
+    "package.json",
+    "AGENTS.md",
+    "docs/"
+  ],
+  "acceptance": [
+    "旧生命周期 skill 不再作为新 workflow 入口，FSM 语言仅保留在明确的 legacy/archive 兼容范围",
+    "scope、checks、verify、notes、review、merge 均消费同一 Change Policy 结果",
+    "自动 evidence 绑定 policyHash、startSnapshot 和 endSnapshot，并拒绝执行期间快照漂移",
+    "task provenance 与 branch facts 明确，Task ID 统一使用 EV- 前缀且不再参与运行时流程状态",
+    "Policy matrix、消费者一致性和迁移兼容性测试通过"
+  ],
+  "references": {
+    "spec": null,
+    "plan": ".agents/tasks/2026/EV-024-ewp-v2-2/plan.md",
+    "notes": [
+    ".agents/notes/implemented/process/2026-08-22-ewp-v2-2-policy-unification.md"
+    ]
+  },
+  "recovery": {
+    "state": "active",
+    "blockedReason": null
+  }
+}
