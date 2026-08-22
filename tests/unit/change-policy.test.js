@@ -138,6 +138,18 @@ describe('EWP v2.2 Change Policy', () => {
     }
   });
 
+  test('review fingerprint is evaluated at the reviewed subject head', async () => {
+    const { reviewReadiness } = await import('../../scripts/merge-to-dev-agent-utils.js');
+    const subjectHead = 'b'.repeat(40);
+    expect(reviewReadiness({
+      review: { subjectHead, changeFingerprint: 'a'.repeat(64), result: 'approved', reviewer: 'agent', reviewTime: '2026-08-22T00:00:00Z', findings: { critical: [], important: [] } },
+      headSha: 'c'.repeat(40),
+      reviewFingerprint: 'a'.repeat(64),
+      required: true,
+      acceptedSubjectHeads: [subjectHead],
+    })).toEqual({ ok: true, issues: [] });
+  });
+
   test('new recovery manifests use createdFromSha provenance without a lifecycle state', () => {
     const result = validateTask({
       schemaVersion: 2,

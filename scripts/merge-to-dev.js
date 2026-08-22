@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
 import { assessBranchChanges } from './boundary-check.js';
-import { buildChangeScope, buildChangeSnapshot, getChangedPaths } from './agent/change-scope.js';
+import { buildChangeScope, buildChangeSnapshot, getChangedPaths, hashChangeFingerprint } from './agent/change-scope.js';
 import { evaluateChangePolicy } from './agent/change-policy.js';
 import { validateHumanAttestation } from './agent/attestation.js';
 import { readProtocol, validateTask } from './agent/task-schema.js';
@@ -95,6 +95,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   const { headSha, baseSha, changedPathsHash, changeFingerprint } = snapshot;
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
   const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
+  const reviewFingerprint = review?.subjectHead ? hashChangeFingerprint(rootDir, 'dev', review.subjectHead) : null;
   const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteReport = evaluateNoteRequirement({
@@ -110,7 +111,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   const attestationIssues = entry ? attestationsAtRef(rootDir, branch, entry.relativeDirectory, policy.requiredAttestations, policy.policyHash, snapshot) : policy.requiredAttestations.map((name) => `缺少 human attestation: ${name}`);
   const readiness = evaluateNativeReadiness({
     task, taskBranch: branch, branchHead: headSha, baseSha, policy,
-    changedPathsHash, changeFingerprint, policyHash: policy.policyHash, startSnapshot: snapshot, endSnapshot: snapshot, requiredGates: gates, evidence, review,
+    changedPathsHash, changeFingerprint, reviewFingerprint, policyHash: policy.policyHash, startSnapshot: snapshot, endSnapshot: snapshot, requiredGates: gates, evidence, review,
     boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
     scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
     taskIssues: taskSchema.errors.map((error) => `task schema 无效: ${error}`),
