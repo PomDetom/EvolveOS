@@ -1,6 +1,6 @@
 # EWP v2.2 Policy Unification
 
-**Status:** proposed
+**Status:** implemented
 
 **Class:** process
 
@@ -8,7 +8,7 @@
 
 EWP v2.1 已建立 Git facts、change snapshot 和 evidence binding，但 `select-gates`、Note gate、verify 与 merge 仍各自解释 changed paths。旧 lifecycle skills 还保留 `planned`、`implementing`、`verifying`、`reviewing`、`ready` 语言，导致 Agent 可能同时参考 v1 FSM 和 v2 recovery manifest。
 
-## Proposal
+## Decision
 
 新增 repository-native `change-policy.js` 作为唯一规则解释层。它消费 immutable change snapshot 和 branch taxonomy，稳定输出 classification、task/note/check/review/attestation 要求及 policyHash；scope、checks、verify、note、review、merge 只消费该结果。旧 lifecycle skills 作为新入口删除，历史读取兼容单独标明，不再产生新的 FSM 状态、task 字段、gate 或 evidence 类型。
 

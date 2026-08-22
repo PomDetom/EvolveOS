@@ -27,7 +27,7 @@
     "spec": null,
     "plan": ".agents/tasks/2026/EV-024-ewp-v2-2/plan.md",
     "notes": [
-      ".agents/notes/proposed/process/2026-08-22-ewp-v2-2-policy-unification.md"
+    ".agents/notes/implemented/process/2026-08-22-ewp-v2-2-policy-unification.md"
     ]
   },
   "recovery": {
