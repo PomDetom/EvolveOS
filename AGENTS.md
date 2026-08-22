@@ -31,6 +31,12 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 - 新任务使用 `.agents` 的 task/plan/review 与 `scripts/agent/` 校验工具；`docs/superpowers/sdd/` 仅用于历史任务恢复和审计。
 - 新任务以 Git HEAD/diff、`.agents` recovery manifest、Note 和真实 review 为准；`docs/superpowers/sdd/` 只读保留为历史证据。
 
+## Workflow authority
+
+- `.agents/protocol.json` 与 `scripts/agent/change-policy.js` 是 workflow requirements 的唯一来源。
+- skills 只消费 Policy 并执行专业操作，不得新增独立 lifecycle 状态、重复解释 changed paths 或把 task 当作流程状态机。
+- 旧 Superpowers/FSM 资料只作历史兼容读取，不作为新任务入口或执行依据。
+
 ## 默认不同于常规
 
 - **零运行时依赖、零框架**：不要引入任何 npm 运行时依赖，组件无抽象封装。
