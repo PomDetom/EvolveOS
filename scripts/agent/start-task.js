@@ -82,7 +82,7 @@ export function runStartPreflight({ rootDir, id, branch, worktree, baseRef = 'de
   if (d.branch() !== 'dev') errors.push('必须从 dev 启动任务');
   if (d.status()) errors.push('dev 工作区必须干净');
   if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(baseRef) || baseRef.includes('..') || baseRef.startsWith('/') || baseRef.endsWith('/') || !d.baseExists(baseRef)) errors.push(`base ref 不存在或非法: ${baseRef}`);
-  if (!/^(?:EWP|EV)-\d{3,}$/.test(id)) errors.push(`task ID 非法: ${id}`);
+  if (!/^EV-\d{3,}$/.test(id)) errors.push(`新 task ID 必须匹配 EV-000 格式: ${id}`);
   if (!BRANCH_RE.test(branch)) errors.push(`分支前缀非法: ${branch}`);
   if (d.branchExists(branch)) errors.push(`分支已存在: ${branch}`);
   try { d.writable(worktree); } catch (error) { errors.push(`worktree 不可写: ${error.message}`); }
@@ -91,6 +91,7 @@ export function runStartPreflight({ rootDir, id, branch, worktree, baseRef = 'de
 }
 
 export function buildRecoveryTask({ id, title, branch, baseBranch, baseSha, intent, allowedPaths, acceptance = [], spec = null, plan = null, notes = [] }) {
+  if (!/^EV-\d{3,}$/.test(id)) throw new Error(`新 task ID 必须匹配 EV-000 格式: ${id}`);
   return {
     schemaVersion: 2, id, title, branch, baseBranch, createdFromSha: baseSha, intent, allowedPaths, acceptance,
     references: { spec, plan, notes }, recovery: { state: 'active', blockedReason: null },

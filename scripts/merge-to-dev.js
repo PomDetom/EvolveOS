@@ -48,8 +48,11 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     const reviewTime = /(?:Review time|reviewTime):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
     const importantSection = /### Important\s+([\s\S]*?)(?=### Minor|$)/i.exec(content)?.[1] ?? '';
+    const parseIssues = [];
+    if (!criticalSection.trim()) parseIssues.push('review 缺少 Critical 段落或明确结论');
+    if (!importantSection.trim()) parseIssues.push('review 缺少 Important 段落或明确结论');
     const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．.]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
-    return { subjectHead, changeFingerprint, reviewer, reviewTime, result, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
+    return { subjectHead, changeFingerprint, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
   } catch { return null; }
 }
 
@@ -74,8 +77,13 @@ function acceptedReviewSubjectHeads(rootDir, branch, branchHead, review, relativ
   const changedAfterReview = sh(rootDir, `git diff --name-only ${subjectHead}..${branch}`)
     .split(/\r?\n/).filter(Boolean);
   const reviewPath = `${relativeDirectory}/review.md`;
+  const reviewStatuses = sh(rootDir, `git diff --name-status ${subjectHead}..${branch}`)
+    .split(/\r?\n/).filter(Boolean)
+    .map((line) => line.split(/\t/))
+    .filter((parts) => parts.slice(1).includes(reviewPath));
+  const reviewAddedOnce = reviewStatuses.length === 1 && reviewStatuses[0][0] === 'A';
   const metadataOnly = changedAfterReview.length > 0 && changedAfterReview.every((file) =>
-    file === reviewPath || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
+    (file === reviewPath && reviewAddedOnce) || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
   );
   return metadataOnly ? [subjectHead] : [];
 }
@@ -117,7 +125,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
     taskIssues: taskSchema.errors.map((error) => `task schema 无效: ${error}`),
     provenanceIssues,
     attestationIssues,
-    noteIssues: noteReport.issues, requireTask: policy.requiresTask,
+    noteIssues: noteReport.issues, humanIssues: review?.parseIssues ?? [], requireTask: policy.requiresTask,
     requireReview: policy.requiresReview, reviewSubjectHeads, requireEvidence: gates.length > 0,
   });
   return { ...readiness, changedPaths, gates, boundary, snapshot, policy, taskId: task?.id ?? null };

@@ -10,6 +10,7 @@ import { validateTask } from '../../scripts/agent/task-schema.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { runStatelessVerification } from '../../scripts/agent/verify.js';
 import { nextTaskId } from '../../scripts/agent/start-task.js';
+import { buildRecoveryTask } from '../../scripts/agent/start-task.js';
 
 function snapshot(changedPaths, branch = 'chore/policy') {
   return {
@@ -209,5 +210,6 @@ describe('EWP v2.2 Change Policy', () => {
 
   test('new task ids use EV prefix while accounting for historical EWP ids', () => {
     expect(nextTaskId(['EWP-021', 'EV-022', 'EV-007'])).toBe('EV-023');
+    expect(() => buildRecoveryTask({ id: 'EWP-023', title: 'legacy', branch: 'chore/legacy', baseBranch: 'dev', baseSha: 'a'.repeat(40), intent: 'legacy', allowedPaths: ['scripts/'] })).toThrow(/EV-000/);
   });
 });
