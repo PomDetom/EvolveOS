@@ -1,24 +1,15 @@
-const NOTE_ROOT = '.agents/notes/';
-const DOC_ROOT = 'docs/';
+import { evaluateChangePolicy } from './change-policy.js';
 
 function normalize(value) { return String(value ?? '').replaceAll('\\', '/'); }
 function noteLifecycle(notePath) { return normalize(notePath).match(/^\.agents\/notes\/([^/]+)\//)?.[1] ?? null; }
-function documentationOnly(path) { const file = normalize(path); return file.startsWith(DOC_ROOT) || file.startsWith(NOTE_ROOT) || file.endsWith('.md'); }
 
-export function noteRequiredForPaths(changedPaths = []) {
-  const paths = changedPaths.map(normalize).filter((path) => !documentationOnly(path));
-  const appIds = new Set(paths.map((path) => /^src\/apps\/([^/]+)\//.exec(path)?.[1]).filter(Boolean));
-  return paths.some((path) =>
-    /^src\/(components|styles|config|app|scenes|demo|motion|assets)\//.test(path)
-    || path.startsWith('src-tauri/')
-    || path.startsWith('scripts/agent/')
-    || path.startsWith('.github/')
-    || /^(package\.json|package-lock\.json|vite\.config|vitest\.config|playwright\.config)/.test(path),
-  ) || appIds.size > 1;
+export function noteRequiredForPaths(changedPaths = [], options = {}) {
+  return evaluateChangePolicy({ snapshot: options.snapshot, changedPaths, branchKind: options.branchKind }).requiresNote;
 }
 
-export function evaluateNoteRequirement({ task = null, changedPaths = [], notePaths = null, existingNotePaths = [], noteLifecycles = {}, requireImplemented = false } = {}) {
-  const required = noteRequiredForPaths(changedPaths);
+export function evaluateNoteRequirement({ task = null, changedPaths = [], notePaths = null, existingNotePaths = [], noteLifecycles = {}, requireImplemented = false, policy = null, snapshot = null, branchKind = null } = {}) {
+  const resolvedPolicy = policy ?? evaluateChangePolicy({ snapshot, changedPaths, branchKind });
+  const required = resolvedPolicy.requiresNote;
   const normalizedNotes = (notePaths ?? task?.references?.notes ?? []).map(normalize);
   if (!required) return { ok: true, required: false, issues: [], notePaths: normalizedNotes };
   const issues = [];

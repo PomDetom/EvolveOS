@@ -9,11 +9,11 @@ const DEFAULT_PROTOCOL = {
   noteClasses: ['architecture', 'process', 'testing', 'feature', 'bug-fix', 'simplification'],
 };
 
-const BRANCH_RE = /^(?:app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
+const BRANCH_RE = /^(?:app\/[^/]+\/.+|ui\/.+|native\/.+|framework\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
 const BASE_REF_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const RECOVERY_STATES = ['active', 'blocked', 'cancelled', 'closed'];
 const V2_TASK_FIELDS = new Set([
-  'schemaVersion', 'id', 'title', 'branch', 'baseBranch', 'baseSha', 'intent',
+  'schemaVersion', 'id', 'title', 'branch', 'baseBranch', 'baseSha', 'createdFromSha', 'intent',
   'allowedPaths', 'acceptance', 'references', 'recovery', 'approval',
 ]);
 const LEGACY_FIELDS = [
@@ -93,8 +93,8 @@ export function validateTask(task, taskDirectory = '', protocol) {
   protocol ??= DEFAULT_PROTOCOL;
 
   const requiredFields = [
-    'schemaVersion', 'id', 'title', 'branch', 'baseBranch', 'baseSha',
-    'intent', 'allowedPaths', 'acceptance', 'references', 'recovery',
+    'schemaVersion', 'id', 'title', 'branch', 'baseBranch', 'intent',
+    'allowedPaths', 'acceptance', 'references', 'recovery',
   ];
   for (const field of requiredFields) if (!(field in task)) errors.push(`缺少字段: ${field}`);
 
@@ -106,7 +106,9 @@ export function validateTask(task, taskDirectory = '', protocol) {
   if (typeof task.baseBranch !== 'string' || !BASE_REF_RE.test(task.baseBranch) || task.baseBranch.includes('..') || task.baseBranch.startsWith('/') || task.baseBranch.endsWith('/')) {
     errors.push(`baseBranch 不是合法的本地 ref: ${task.baseBranch}`);
   }
-  if (typeof task.baseSha !== 'string' || !/^[0-9a-f]{40}$/i.test(task.baseSha)) errors.push('baseSha 必须为 40 位 Git SHA');
+  if (task.createdFromSha == null && task.baseSha == null) errors.push('task 必须包含 createdFromSha（历史 task 可使用 baseSha）');
+  if (task.createdFromSha != null && (typeof task.createdFromSha !== 'string' || !/^[0-9a-f]{40}$/i.test(task.createdFromSha))) errors.push('createdFromSha 必须为 40 位 Git SHA');
+  if (task.baseSha != null && (typeof task.baseSha !== 'string' || !/^[0-9a-f]{40}$/i.test(task.baseSha))) errors.push('baseSha 必须为 40 位 Git SHA');
   if (typeof task.intent !== 'string' || !task.intent.trim()) errors.push('intent 不能为空');
   if (!Array.isArray(task.allowedPaths) || task.allowedPaths.length === 0 || task.allowedPaths.some((path) => !validRelativePath(path))) errors.push('allowedPaths 必须为非空的安全相对路径数组');
   if (!Array.isArray(task.acceptance) || task.acceptance.some((item) => typeof item !== 'string' || !item.trim())) errors.push('acceptance 必须为字符串数组');

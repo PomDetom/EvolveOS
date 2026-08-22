@@ -142,6 +142,24 @@ describe('repository-native workflow v2.1', () => {
     expect(result.issues).toContain('evidence changeFingerprint 过期: build');
   });
 
+  test('evidence is stale when policy or start/end snapshot facts change', () => {
+    const snapshot = { baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), changedPathsHash: 'paths', changeFingerprint: 'content' };
+    const evidence = createEvidence({
+      gate: 'build',
+      baseSha: snapshot.baseSha,
+      headSha: snapshot.headSha,
+      changedPathsHash: snapshot.changedPathsHash,
+      changeFingerprint: snapshot.changeFingerprint,
+      policyHash: 'policy-a',
+      startSnapshot: snapshot,
+      endSnapshot: snapshot,
+      result: 'success',
+    });
+
+    expect(assessEvidence({ requiredGates: ['build'], evidence: [evidence], ...snapshot, policyHash: 'policy-a', startSnapshot: snapshot, endSnapshot: snapshot })).toEqual({ ok: true, incomplete: [] });
+    expect(assessEvidence({ requiredGates: ['build'], evidence: [evidence], ...snapshot, policyHash: 'policy-b', startSnapshot: snapshot, endSnapshot: snapshot })).toEqual({ ok: false, incomplete: ['build'] });
+  });
+
   test('v2.1 task is recorded as a recovery manifest, not an FSM record', () => {
     const task = JSON.parse(readFileSync('.agents/tasks/2026/EV-023-ewp-v2-1/task.json', 'utf8'));
     expect(task).toMatchObject({ schemaVersion: 2, recovery: { state: 'active' } });

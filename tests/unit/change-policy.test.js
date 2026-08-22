@@ -1,5 +1,14 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { evaluateChangePolicy, stablePolicySerialize } from '../../scripts/agent/change-policy.js';
+import { buildChangeSnapshot } from '../../scripts/agent/change-scope.js';
+import { selectGates } from '../../scripts/agent/select-gates.js';
+import { validateTask } from '../../scripts/agent/task-schema.js';
+import { assessBranchChanges } from '../../scripts/boundary-check.js';
+import { runStatelessVerification } from '../../scripts/agent/verify.js';
 
 function snapshot(changedPaths, branch = 'chore/policy') {
   return {
@@ -72,5 +81,83 @@ describe('EWP v2.2 Change Policy', () => {
     expect(policy.classification.branchKind).toBe('framework');
     expect(policy).not.toHaveProperty('status');
     expect(policy).not.toHaveProperty('state');
+  });
+
+  test('checks and verify consume the same policy hash and gate list', async () => {
+    const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
+    const policy = evaluateChangePolicy({ snapshot: currentSnapshot });
+    const gates = selectGates({ kind: 'chore', changedPaths: currentSnapshot.changedPaths, policy, snapshot: currentSnapshot, includeBoundary: true });
+    const report = await runStatelessVerification({
+      rootDir: process.cwd(),
+      base: 'dev',
+      head: 'HEAD',
+      snapshot: currentSnapshot,
+      changedPaths: currentSnapshot.changedPaths,
+      policy,
+      gates: [],
+      runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
+      writeCache: false,
+    });
+
+    expect(gates.slice(1)).toEqual(policy.requiredChecks);
+    expect(report.policyHash).toBe(policy.policyHash);
+    expect(report.startSnapshot).toEqual(report.endSnapshot);
+    expect(report.snapshotStable).toBe(true);
+  });
+
+  test('verify rejects a worktree snapshot that drifts during gate execution', async () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-v22-drift-'));
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'base\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'base']);
+      const start = buildChangeSnapshot(root, 'dev', 'HEAD');
+      const report = await runStatelessVerification({
+        rootDir: root,
+        base: 'dev',
+        head: 'HEAD',
+        snapshot: start,
+        changedPaths: [],
+        policy: evaluateChangePolicy({ snapshot: start, changedPaths: [] }),
+        gates: ['build'],
+        runner: async () => {
+          writeFileSync(path.join(root, 'drift.txt'), 'changed during check\n');
+          return { exitCode: 0, stdout: '', stderr: '' };
+        },
+        writeCache: false,
+      });
+
+      expect(report.snapshotStable).toBe(false);
+      expect(report.ok).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('new recovery manifests use createdFromSha provenance without a lifecycle state', () => {
+    const result = validateTask({
+      schemaVersion: 2,
+      id: 'EV-024',
+      title: 'Policy',
+      branch: 'chore/policy',
+      baseBranch: 'dev',
+      createdFromSha: 'a'.repeat(40),
+      intent: '统一策略',
+      allowedPaths: ['scripts/'],
+      acceptance: ['通过'],
+      references: { spec: null, plan: null, notes: [] },
+      recovery: { state: 'active', blockedReason: null },
+    }, '.agents/tasks/2026/EV-024-policy');
+
+    expect(result).toEqual({ ok: true, errors: [] });
+  });
+
+  test('native and framework branches have explicit boundary taxonomy', () => {
+    expect(assessBranchChanges('native/window', ['src-tauri/src/window.rs']).kind).toBe('native');
+    expect(assessBranchChanges('framework/button', ['src/components/button.js']).kind).toBe('framework');
   });
 });

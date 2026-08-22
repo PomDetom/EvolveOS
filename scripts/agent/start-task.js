@@ -4,9 +4,10 @@ import { accessSync, constants, existsSync, mkdirSync, readdirSync, rmSync, writ
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { listTasks } from './validate-task.js';
+import { installHooks } from './install-hooks.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const BRANCH_RE = /^(?:app\/[^/]+\/.+|ui\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
+const BRANCH_RE = /^(?:app\/[^/]+\/.+|ui\/.+|native\/.+|framework\/.+|docs\/.+|chore\/.+|hotfix\/.+)$/;
 
 function git(rootDir, args, options = {}) { return execFileSync('git', args, { cwd: rootDir, encoding: 'utf8', ...options }).trim(); }
 function gitOk(rootDir, args) { try { git(rootDir, args, { stdio: 'ignore' }); return true; } catch { return false; } }
@@ -40,6 +41,8 @@ export function deriveBranchName({ kind = 'chore', app = null, title }) {
   const slug = slugifyTitle(title);
   if (kind === 'app') { if (!app) throw new Error('app 任务必须提供 --app'); return `app/${app}/${slug}`; }
   if (kind === 'ui' || kind === 'tauri') return `ui/${slug}`;
+  if (kind === 'native') return `native/${slug}`;
+  if (kind === 'framework') return `framework/${slug}`;
   if (kind === 'docs') return `docs/${slug}`;
   if (kind === 'hotfix') return `hotfix/${slug}`;
   return `chore/${slug}`;
@@ -89,7 +92,7 @@ export function runStartPreflight({ rootDir, id, branch, worktree, baseRef = 'de
 
 export function buildRecoveryTask({ id, title, branch, baseBranch, baseSha, intent, allowedPaths, acceptance = [], spec = null, plan = null, notes = [] }) {
   return {
-    schemaVersion: 2, id, title, branch, baseBranch, baseSha, intent, allowedPaths, acceptance,
+    schemaVersion: 2, id, title, branch, baseBranch, createdFromSha: baseSha, intent, allowedPaths, acceptance,
     references: { spec, plan, notes }, recovery: { state: 'active', blockedReason: null },
   };
 }
@@ -114,9 +117,11 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
   const preflight = runStartPreflight({ rootDir, id, branch, worktree, baseRef: args.baseRef, deps });
   if (!preflight.ok) { preflight.errors.forEach((error) => io.error(`✗ ${error}`)); return 1; }
   let created = false;
+  let hookPath = null;
   try {
     git(rootDir, ['worktree', 'add', '-b', branch, worktree, preflight.baseBranch], { stdio: 'inherit' });
     created = true;
+    hookPath = installHooks(worktree);
     let taskPath = null;
     if (!args.noTask) {
       if (!args.allowedPaths.length) throw new Error('创建 recovery task 必须提供 --paths；简单修改可使用 --no-task');
@@ -132,7 +137,7 @@ export function main(argv = process.argv.slice(2), rootDir = ROOT, io = console,
         if (!existsSync(planPath)) writeFileSync(planPath, `# ${id} ${args.title}\n\n## Goal\n\n${args.title}\n\n## Scope\n\n${args.allowedPaths.map((item) => `- ${item}`).join('\n')}\n\n## Implementation approach\n\n\n## Acceptance\n\n${args.acceptance.map((item) => `- ${item}`).join('\n')}\n\n## Risks / open questions\n\n`, 'utf8');
       }
     }
-    io.log(JSON.stringify({ ok: true, id: args.noTask ? null : id, branch, worktree, baseSha: preflight.baseSha, taskPath, note: '未运行 baseline；未创建 Note；未切换 workflow state' }, null, 2));
+    io.log(JSON.stringify({ ok: true, id: args.noTask ? null : id, branch, worktree, createdFromSha: preflight.baseSha, taskPath, hookPath, note: '未运行 baseline；未创建 Note；不写入 workflow lifecycle state' }, null, 2));
     return 0;
   } catch (error) {
     if (created) {

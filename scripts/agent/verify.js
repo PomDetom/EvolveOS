@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildChangeSnapshot, hashChangeFingerprint, hashChangedPaths } from './change-scope.js';
+import { evaluateChangePolicy } from './change-policy.js';
 import { gateDefinition } from './gate-registry.js';
 import { selectGates } from './select-gates.js';
 import { findTask } from './validate-task.js';
@@ -37,16 +38,34 @@ export function renderDryRun(taskIdOrPlan, maybePlan) {
   ].join('\n');
 }
 
-export function createEvidence({ taskId = null, gate, command, commandId, baseSha, headSha, changedPathsHash, changeFingerprint = null, exitCode = null, result, timestamp = new Date().toISOString(), summary = '' }) {
-  return { schemaVersion: 2, taskId, gate, command, commandId: commandId ?? gate, baseSha, headSha, changedPathsHash, changeFingerprint, exitCode, result, timestamp, summary };
+export function snapshotEvidenceFacts(snapshot = {}) {
+  return {
+    baseSha: snapshot.baseSha ?? null,
+    headSha: snapshot.headSha ?? null,
+    changedPathsHash: snapshot.changedPathsHash ?? null,
+    changeFingerprint: snapshot.changeFingerprint ?? null,
+  };
 }
 
-export function assessEvidence({ requiredGates = [], evidence = [], baseSha = null, headSha = null, changedPathsHash = null, changeFingerprint = null }) {
+export function snapshotsMatch(startSnapshot, endSnapshot) {
+  const start = snapshotEvidenceFacts(startSnapshot);
+  const end = snapshotEvidenceFacts(endSnapshot);
+  return start.baseSha === end.baseSha
+    && start.headSha === end.headSha
+    && start.changedPathsHash === end.changedPathsHash
+    && start.changeFingerprint === end.changeFingerprint;
+}
+
+export function createEvidence({ taskId = null, gate, command, commandId, baseSha, headSha, changedPathsHash, changeFingerprint = null, policyHash = null, startSnapshot = null, endSnapshot = null, exitCode = null, result, timestamp = new Date().toISOString(), summary = '' }) {
+  return { schemaVersion: 2, taskId, gate, command, commandId: commandId ?? gate, baseSha, headSha, changedPathsHash, changeFingerprint, policyHash, startSnapshot, endSnapshot, exitCode, result, timestamp, summary };
+}
+
+export function assessEvidence({ requiredGates = [], evidence = [], baseSha = null, headSha = null, changedPathsHash = null, changeFingerprint = null, policyHash = null, startSnapshot = null, endSnapshot = null }) {
   const latest = new Map();
   for (const item of evidence) latest.set(item.commandId ?? item.gate, item);
   const incomplete = requiredGates.filter((gate) => {
     const item = latest.get(gate);
-    return !item || item.result !== 'success' || (baseSha && item.baseSha !== baseSha) || (headSha && item.headSha !== headSha) || (changedPathsHash && item.changedPathsHash !== changedPathsHash) || (changeFingerprint && item.changeFingerprint !== changeFingerprint);
+    return !item || item.result !== 'success' || (baseSha && item.baseSha !== baseSha) || (headSha && item.headSha !== headSha) || (changedPathsHash && item.changedPathsHash !== changedPathsHash) || (changeFingerprint && item.changeFingerprint !== changeFingerprint) || (policyHash && item.policyHash !== policyHash) || (startSnapshot && !snapshotsMatch(startSnapshot, item.startSnapshot)) || (endSnapshot && !snapshotsMatch(endSnapshot, item.endSnapshot));
   });
   return { ok: incomplete.length === 0, incomplete };
 }
@@ -80,28 +99,39 @@ export function readCachedEvidence(rootDir, branch = 'current') {
   try { return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null; } catch { return null; }
 }
 
-export async function runStatelessVerification({ rootDir = process.cwd(), taskId = null, base = 'dev', head = 'HEAD', changedPaths = null, gates = null, snapshot = null, runner = runShellCommand, writeCache = true } = {}) {
+export async function runStatelessVerification({ rootDir = process.cwd(), taskId = null, base = 'dev', head = 'HEAD', changedPaths = null, gates = null, snapshot = null, policy = null, runner = runShellCommand, writeCache = true } = {}) {
   const initialFacts = snapshot ?? buildChangeSnapshot(rootDir, base, head);
   const paths = changedPaths ?? initialFacts.changedPaths;
   const facts = changedPaths
     ? { ...initialFacts, changedPaths: paths, changedPathsHash: hashChangedPaths(paths), changeFingerprint: hashChangeFingerprint(rootDir, base, head, paths) }
     : initialFacts;
-  const selectedGates = gates ?? selectGates({ changedPaths: paths, includeBoundary: true });
+  const resolvedPolicy = policy ?? evaluateChangePolicy({ snapshot: facts, changedPaths: paths });
+  const selectedGates = gates ?? selectGates({ changedPaths: paths, includeBoundary: true, policy: resolvedPolicy, snapshot: facts });
   const plan = makeGatePlan(taskId, selectedGates, { rootDir, base, head, changedPaths: paths, snapshot: facts });
   const baseSha = facts.baseSha ?? gitSha(rootDir, base);
   const headSha = facts.headSha ?? gitSha(rootDir, head);
   const changedPathsHash = facts.changedPathsHash ?? hashChangedPaths(paths);
+  const startSnapshot = snapshotEvidenceFacts(facts);
   const evidence = [];
   for (const gate of plan) {
     if (gate.manual) {
-      evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, result: 'pending', summary: '需要人工 evidence' }));
+      evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, policyHash: resolvedPolicy.policyHash, startSnapshot, result: 'pending', summary: '需要人工 evidence' }));
       continue;
     }
     const { result } = await executeGate(rootDir, gate.command, runner, { gate: gate.gate, baseBranch: base });
     const resultName = classifyGateResult(result);
-    evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, exitCode: result.exitCode, result: resultName, summary: summarizeOutput(result.stdout, `${result.stderr ?? ''} ${result.reason ?? ''}`) }));
+    evidence.push(createEvidence({ taskId, gate: gate.gate, command: gate.command, commandId: gate.commandId, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, policyHash: resolvedPolicy.policyHash, startSnapshot, exitCode: result.exitCode, result: resultName, summary: summarizeOutput(result.stdout, `${result.stderr ?? ''} ${result.reason ?? ''}`) }));
   }
-  const report = { schemaVersion: 2, taskId, base, head, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, changedPaths: paths, gates: selectedGates, evidence, snapshot: { baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint }, ok: evidence.every((item) => item.result === 'success') };
+  let endFacts;
+  try {
+    endFacts = buildChangeSnapshot(rootDir, base, head);
+  } catch (error) {
+    endFacts = { ...facts, snapshotError: error.message };
+  }
+  const endSnapshot = snapshotEvidenceFacts(endFacts);
+  const snapshotStable = snapshotsMatch(startSnapshot, endSnapshot);
+  const finalizedEvidence = evidence.map((item) => ({ ...item, endSnapshot }));
+  const report = { schemaVersion: 2, taskId, base, head, baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint, policyHash: resolvedPolicy.policyHash, policy: resolvedPolicy, requiredAttestations: resolvedPolicy.requiredAttestations, startSnapshot, endSnapshot, snapshotStable, changedPaths: paths, gates: selectedGates, evidence: finalizedEvidence, snapshot: { baseSha, headSha, changedPathsHash, changeFingerprint: facts.changeFingerprint }, ok: snapshotStable && finalizedEvidence.every((item) => item.result === 'success') };
   if (writeCache) {
     const branch = execFileSync('git', ['branch', '--show-current'], { cwd: rootDir, encoding: 'utf8' }).trim() || 'detached';
     const path = evidenceCachePath(rootDir, branch);
@@ -120,10 +150,11 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
   let snapshot;
   try { snapshot = buildChangeSnapshot(rootDir, base, args.head); } catch (error) { io.error(`✗ 无法读取 Git diff: ${error.message}`); return 1; }
   const paths = snapshot.changedPaths;
-  const gates = selectGates({ changedPaths: paths, taskKind: task?.kind, includeBoundary: true });
-  const plan = makeGatePlan(args.taskId, gates, { rootDir, base, head: args.head, changedPaths: paths });
+  const policy = evaluateChangePolicy({ snapshot, branchKind: task?.kind === 'release' ? 'release' : undefined });
+  const gates = selectGates({ changedPaths: paths, taskKind: task?.kind, includeBoundary: true, policy, snapshot });
+  const plan = makeGatePlan(args.taskId, gates, { rootDir, base, head: args.head, changedPaths: paths, snapshot, policy });
   if (args.dryRun) { io.log(renderDryRun(args.taskId, plan)); return 0; }
-  const report = await runStatelessVerification({ rootDir, taskId: args.taskId, base, head: args.head, changedPaths: paths, gates, snapshot, runner: deps.runShellCommand ?? runShellCommand, writeCache: !args.noCache });
+  const report = await runStatelessVerification({ rootDir, taskId: args.taskId, base, head: args.head, changedPaths: paths, gates, snapshot, policy, runner: deps.runShellCommand ?? runShellCommand, writeCache: !args.noCache });
   io.log(JSON.stringify(report, null, 2));
   return report.ok ? 0 : 1;
 }

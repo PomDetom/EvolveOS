@@ -118,7 +118,5 @@ export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.ch
 }
 
 export function policyGates(policy = {}) {
-  const gates = [];
-  addUnique(gates, ...(policy.requiredChecks ?? []), ...(policy.requiredAttestations ?? []));
-  return gates;
+  return [...(policy.requiredChecks ?? [])];
 }
