@@ -49,8 +49,8 @@ export function deriveBranchName({ kind = 'chore', app = null, title }) {
 }
 
 export function nextTaskId(ids) {
-  const max = ids.reduce((highest, id) => Math.max(highest, Number(/^EWP-(\d+)$/.exec(id)?.[1] ?? 0)), 0);
-  return `EWP-${String(max + 1).padStart(3, '0')}`;
+  const max = ids.reduce((highest, id) => Math.max(highest, Number(/^(?:EV|EWP)-(\d+)$/.exec(id)?.[1] ?? 0)), 0);
+  return `EV-${String(max + 1).padStart(3, '0')}`;
 }
 
 function nearestExistingParent(target) {

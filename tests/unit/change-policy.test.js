@@ -9,6 +9,7 @@ import { selectGates } from '../../scripts/agent/select-gates.js';
 import { validateTask } from '../../scripts/agent/task-schema.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { runStatelessVerification } from '../../scripts/agent/verify.js';
+import { nextTaskId } from '../../scripts/agent/start-task.js';
 
 function snapshot(changedPaths, branch = 'chore/policy') {
   return {
@@ -94,7 +95,7 @@ describe('EWP v2.2 Change Policy', () => {
       snapshot: currentSnapshot,
       changedPaths: currentSnapshot.changedPaths,
       policy,
-      gates: [],
+      gates,
       runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
       writeCache: false,
     });
@@ -123,9 +124,42 @@ describe('EWP v2.2 Change Policy', () => {
         snapshot: start,
         changedPaths: [],
         policy: evaluateChangePolicy({ snapshot: start, changedPaths: [] }),
-        gates: ['build'],
+        gates: ['boundary'],
         runner: async () => {
           writeFileSync(path.join(root, 'drift.txt'), 'changed during check\n');
+          return { exitCode: 0, stdout: '', stderr: '' };
+        },
+        writeCache: false,
+      });
+
+      expect(report.snapshotStable).toBe(false);
+      expect(report.ok).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('verify rejects an end snapshot that cannot be read', async () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ewp-v22-snapshot-error-'));
+    const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    try {
+      git(['init', '-b', 'dev']);
+      git(['config', 'user.email', 'ewp@example.com']);
+      git(['config', 'user.name', 'EWP Test']);
+      writeFileSync(path.join(root, 'README.md'), 'base\n');
+      git(['add', '.']);
+      git(['commit', '-m', 'base']);
+      const start = buildChangeSnapshot(root, 'dev', 'HEAD');
+      const report = await runStatelessVerification({
+        rootDir: root,
+        base: 'dev',
+        head: 'HEAD',
+        snapshot: start,
+        changedPaths: [],
+        policy: evaluateChangePolicy({ snapshot: start, changedPaths: [] }),
+        gates: ['boundary'],
+        runner: async () => {
+          rmSync(root, { recursive: true, force: true });
           return { exitCode: 0, stdout: '', stderr: '' };
         },
         writeCache: false,
@@ -171,5 +205,9 @@ describe('EWP v2.2 Change Policy', () => {
   test('native and framework branches have explicit boundary taxonomy', () => {
     expect(assessBranchChanges('native/window', ['src-tauri/src/window.rs']).kind).toBe('native');
     expect(assessBranchChanges('framework/button', ['src/components/button.js']).kind).toBe('framework');
+  });
+
+  test('new task ids use EV prefix while accounting for historical EWP ids', () => {
+    expect(nextTaskId(['EWP-021', 'EV-022', 'EV-007'])).toBe('EV-023');
   });
 });

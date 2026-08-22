@@ -48,7 +48,7 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     const reviewTime = /(?:Review time|reviewTime):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
     const importantSection = /### Important\s+([\s\S]*?)(?=### Minor|$)/i.exec(content)?.[1] ?? '';
-    const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
+    const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．.]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
     return { subjectHead, changeFingerprint, reviewer, reviewTime, result, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
   } catch { return null; }
 }

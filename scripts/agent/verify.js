@@ -44,6 +44,7 @@ export function snapshotEvidenceFacts(snapshot = {}) {
     headSha: snapshot.headSha ?? null,
     changedPathsHash: snapshot.changedPathsHash ?? null,
     changeFingerprint: snapshot.changeFingerprint ?? null,
+    snapshotError: snapshot.snapshotError ?? null,
   };
 }
 
@@ -53,7 +54,8 @@ export function snapshotsMatch(startSnapshot, endSnapshot) {
   return start.baseSha === end.baseSha
     && start.headSha === end.headSha
     && start.changedPathsHash === end.changedPathsHash
-    && start.changeFingerprint === end.changeFingerprint;
+    && start.changeFingerprint === end.changeFingerprint
+    && start.snapshotError === end.snapshotError;
 }
 
 export function createEvidence({ taskId = null, gate, command, commandId, baseSha, headSha, changedPathsHash, changeFingerprint = null, policyHash = null, startSnapshot = null, endSnapshot = null, exitCode = null, result, timestamp = new Date().toISOString(), summary = '' }) {
@@ -106,7 +108,9 @@ export async function runStatelessVerification({ rootDir = process.cwd(), taskId
     ? { ...initialFacts, changedPaths: paths, changedPathsHash: hashChangedPaths(paths), changeFingerprint: hashChangeFingerprint(rootDir, base, head, paths) }
     : initialFacts;
   const resolvedPolicy = policy ?? evaluateChangePolicy({ snapshot: facts, changedPaths: paths });
-  const selectedGates = gates ?? selectGates({ changedPaths: paths, includeBoundary: true, policy: resolvedPolicy, snapshot: facts });
+  const canonicalGates = selectGates({ changedPaths: paths, includeBoundary: true, policy: resolvedPolicy, snapshot: facts });
+  if (gates && JSON.stringify(gates) !== JSON.stringify(canonicalGates)) throw new Error('调用方 gates 与 Change Policy 不一致');
+  const selectedGates = canonicalGates;
   const plan = makeGatePlan(taskId, selectedGates, { rootDir, base, head, changedPaths: paths, snapshot: facts });
   const baseSha = facts.baseSha ?? gitSha(rootDir, base);
   const headSha = facts.headSha ?? gitSha(rootDir, head);

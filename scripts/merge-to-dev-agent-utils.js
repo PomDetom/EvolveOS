@@ -11,7 +11,8 @@ function snapshotMatches(expected, actual) {
   return expected.baseSha === actual.baseSha
     && expected.headSha === actual.headSha
     && expected.changedPathsHash === actual.changedPathsHash
-    && expected.changeFingerprint === actual.changeFingerprint;
+    && expected.changeFingerprint === actual.changeFingerprint
+    && (expected.snapshotError ?? null) === (actual.snapshotError ?? null);
 }
 
 export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha = null, headSha = null, changedPathsHash = null, changeFingerprint = null, policyHash = null, startSnapshot = null, endSnapshot = null }) {
@@ -60,10 +61,12 @@ export function evaluateNativeReadiness({
   requireTask = false, requireReview = false, requireEvidence = true, humanIssues = [],
   reviewSubjectHeads = [],
 }) {
-  const resolvedRequiredGates = requiredGates.length ? requiredGates : policyGates(policy ?? {});
+  const resolvedRequiredGates = policy ? policyGates(policy) : requiredGates;
+  const suppliedPolicyGates = requiredGates.filter((gate) => gate !== 'boundary');
   const resolvedRequireTask = policy?.requiresTask ?? requireTask;
   const resolvedRequireReview = policy?.requiresReview ?? requireReview;
   const issues = [];
+  if (policy && requiredGates.length && JSON.stringify(suppliedPolicyGates) !== JSON.stringify(resolvedRequiredGates)) issues.push('requiredGates 与 Change Policy 不一致');
   if (!boundaryOk) issues.push(...boundaryIssues);
   issues.push(...scopeIssues, ...taskIssues, ...provenanceIssues, ...noteIssues, ...approvalIssues, ...attestationIssues, ...humanIssues);
   if (!task) {
