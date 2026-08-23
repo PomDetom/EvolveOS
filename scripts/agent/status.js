@@ -4,14 +4,64 @@ import { findTask, listTasks, parseTaskArgs } from './validate-task.js';
 
 function git(rootDir, args) { return execFileSync('git', args, { cwd: rootDir, encoding: 'utf8' }).trim(); }
 
-export function summarizeTaskStatus({ task, currentBranch, sourceIsDevAncestor = false, changedPaths = [] }) {
+function trailer(body, name) {
+  return body.split(/\r?\n/).find((line) => new RegExp(`^${name}:\\s*`, 'i').test(line))?.replace(new RegExp(`^${name}:\\s*`, 'i'), '').trim() ?? null;
+}
+
+export function findIntegratedTask(rootDir, taskId, expectedBranch = null) {
+  if (!taskId) return null;
+  try {
+    const log = git(rootDir, ['log', 'dev', '--format=%H%x1f%B%x1e']);
+    for (const record of log.split('\x1e')) {
+      const separator = record.indexOf('\x1f');
+      if (separator < 0) continue;
+      const commit = record.slice(0, separator).trim();
+      const body = record.slice(separator + 1);
+      if (trailer(body, 'Task') !== taskId) continue;
+      const sourceBranch = trailer(body, 'Source-Branch');
+      const sourceHead = trailer(body, 'Source-Head');
+      if (!sourceBranch || !/^[0-9a-f]{40}$/i.test(sourceHead ?? '')) continue;
+      if (expectedBranch && sourceBranch !== expectedBranch) continue;
+      let parents;
+      try { parents = git(rootDir, ['rev-list', '--parents', '-n', '1', commit]).split(/\s+/); } catch { continue; }
+      if (parents.length < 3) continue;
+      try { execFileSync('git', ['merge-base', '--is-ancestor', sourceHead, commit], { cwd: rootDir, stdio: 'ignore' }); } catch { continue; }
+      return {
+        integrated: true,
+        commit,
+        sourceBranch,
+        sourceHead,
+      };
+    }
+  } catch { /* dev may not exist in a minimal fixture */ }
+  return null;
+}
+
+export function summarizeTaskStatus({ task, currentBranch, sourceIsDevAncestor = false, changedPaths = [], integration = null }) {
   const recoveryState = task?.recovery?.state ?? 'unknown';
+  if (integration?.integrated) {
+    return {
+      id: task?.id ?? null,
+      branch: task?.branch ?? null,
+      currentBranch,
+      recoveryState,
+      merged: true,
+      integrated: true,
+      integrationCommit: integration.commit,
+      sourceHead: integration.sourceHead,
+      sourceBranch: integration.sourceBranch,
+      changedPaths: changedPaths.length,
+      resumable: false,
+      next: null,
+    };
+  }
   return {
     id: task?.id ?? null,
     branch: task?.branch ?? null,
     currentBranch,
     recoveryState,
     merged: Boolean(sourceIsDevAncestor),
+    integrated: false,
     changedPaths: changedPaths.length,
     resumable: recoveryState === 'active' || recoveryState === 'blocked',
     next: recoveryState === 'blocked' ? 'resolve blockedReason' : recoveryState === 'active' ? 'inspect Git diff and continue' : null,
@@ -36,7 +86,12 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
   if (!entries.length) { io.log(JSON.stringify({ id: null, currentBranch, recoveryState: 'none', resumable: false })); return 0; }
   entries.forEach((entry) => {
     if (entry.parseError) io.log(JSON.stringify({ id: null, error: entry.parseError.message }));
-    else io.log(JSON.stringify(summarizeTaskStatus({ task: entry.task, currentBranch, sourceIsDevAncestor: sourceIsDevAncestor(rootDir, entry.task.branch) })));
+    else io.log(JSON.stringify(summarizeTaskStatus({
+      task: entry.task,
+      currentBranch,
+      sourceIsDevAncestor: sourceIsDevAncestor(rootDir, entry.task.branch),
+      integration: findIntegratedTask(rootDir, entry.task.id, entry.task.branch),
+    })));
   });
   return entries.some((entry) => entry.parseError) ? 1 : 0;
 }

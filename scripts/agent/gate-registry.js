@@ -12,12 +12,8 @@ const GATES = {
   'workflow-fixture': { command: () => 'npm test -- --configLoader runner --maxWorkers=1', description: 'workflow fixture 单测' },
   'rust-check': { command: () => 'cargo check --manifest-path src-tauri/Cargo.toml', description: 'Tauri Rust check' },
   'web-contract': { command: () => 'npm test -- --configLoader runner --maxWorkers=1', description: '前端/Rust contract check' },
-  'permission-check': { command: () => 'MANUAL: 记录 Tauri capability/permission review', manual: true, description: 'Tauri 权限判断' },
+  'permission-schema-check': { command: () => 'node scripts/agent/permission-schema-check.js', description: 'Tauri capability JSON/schema 机械检查' },
   'version-consistency': { command: () => 'node scripts/agent/check-version.js', description: '版本一致性' },
-  'owner-review': { command: () => 'MANUAL: 记录 framework owner semantic review', manual: true, description: 'framework owner review' },
-  'visual-review': { command: () => 'MANUAL: 记录真实浏览器视觉判断', manual: true, description: '视觉判断' },
-  'desktop-manual': { command: () => 'MANUAL: 记录真实 Windows/Tauri 桌面验证', manual: true, description: '真实桌面验证' },
-  'user-confirmation': { command: () => 'MANUAL: 记录用户 release approval', manual: true, description: '用户发版确认' },
 };
 
 export const GATE_REGISTRY = Object.fromEntries(Object.entries(GATES).map(([gate, definition]) => [gate, { ...definition, commandId: gate }]));

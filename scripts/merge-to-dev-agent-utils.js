@@ -33,7 +33,7 @@ export function evidenceReadiness({ evidence = [], requiredGates = [], baseSha =
   return { ok: issues.length === 0, issues };
 }
 
-export function reviewReadiness({ review = null, headSha = null, changeFingerprint = null, reviewFingerprint = null, required = false, acceptedSubjectHeads = [] } = {}) {
+export function reviewReadiness({ review = null, headSha = null, changeFingerprint = null, reviewFingerprint = null, policyHash = null, required = false, acceptedSubjectHeads = [] } = {}) {
   if (!required) return { ok: true, issues: [] };
   const subjectHead = review?.subjectHead ?? review?.reviewedHead;
   const expectedFingerprint = reviewFingerprint ?? changeFingerprint;
@@ -45,7 +45,8 @@ export function reviewReadiness({ review = null, headSha = null, changeFingerpri
     if (review.result !== 'approved') issues.push('review result 不是 approved');
     if (requiresFreshMetadata && !review.reviewer) issues.push('review 缺少 reviewer');
     if (requiresFreshMetadata && !review.reviewTime) issues.push('review 缺少 reviewTime');
-    if (expectedFingerprint && review.changeFingerprint !== expectedFingerprint) issues.push('review changeFingerprint 过期');
+    if (expectedFingerprint && (review.subjectFingerprint ?? review.changeFingerprint) !== expectedFingerprint) issues.push('review subjectFingerprint 过期');
+    if (policyHash && review.policyHash !== policyHash) issues.push('review policyHash 过期或缺失');
     const findings = review.findings ?? {};
     if (Array.isArray(findings.critical) && findings.critical.length) issues.push('存在未解决 Critical findings');
     if (Array.isArray(findings.important) && findings.important.length) issues.push('存在未解决 Important findings');
@@ -59,7 +60,7 @@ export function evaluateNativeReadiness({
   changeFingerprint = null, reviewFingerprint = null, policyHash = null, startSnapshot = null, endSnapshot = null,
   boundaryOk = true, boundaryIssues = [], scopeIssues = [], taskIssues = [], provenanceIssues = [], noteIssues = [], approvalIssues = [], attestationIssues = [],
   requireTask = false, requireReview = false, requireEvidence = true, humanIssues = [],
-  reviewSubjectHeads = [],
+  reviewSubjectHeads = [], currentHeadSha = null,
 }) {
   const resolvedRequiredGates = policy ? policyGates(policy) : requiredGates;
   const suppliedPolicyGates = requiredGates.filter((gate) => gate !== 'boundary');
@@ -80,7 +81,7 @@ export function evaluateNativeReadiness({
     if (task.approval?.required === true && (!task.approval.approvedBy || !task.approval.approvedAt || !task.approval.scopeHash)) issues.push('task 需要 human approval 但缺少批准事实');
   }
   if (requireEvidence && resolvedRequiredGates.length) issues.push(...evidenceReadiness({ evidence, requiredGates: resolvedRequiredGates, baseSha, headSha: branchHead, changedPathsHash, changeFingerprint, policyHash, startSnapshot, endSnapshot }).issues);
-  issues.push(...reviewReadiness({ review, headSha: branchHead, changeFingerprint, reviewFingerprint, required: resolvedRequireReview, acceptedSubjectHeads: reviewSubjectHeads }).issues);
+  issues.push(...reviewReadiness({ review, headSha: currentHeadSha ?? branchHead, changeFingerprint, reviewFingerprint, policyHash, required: resolvedRequireReview, acceptedSubjectHeads: reviewSubjectHeads }).issues);
   return { mode, taskId: task?.id ?? null, policyHash: policy?.policyHash ?? null, requiredGates: resolvedRequiredGates, ok: issues.length === 0, issues };
 }
 

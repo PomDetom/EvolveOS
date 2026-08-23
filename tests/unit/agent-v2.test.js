@@ -39,7 +39,7 @@ describe('repository-native workflow v2', () => {
     expect(selectGates({ changedPaths: ['docs/workflow.md'] })).toEqual(['docs-check']);
     expect(selectGates({ changedPaths: ['src/apps/notes/notes.js'] })).toEqual(['unit', 'app-e2e', 'build']);
     expect(selectGates({ changedPaths: ['scripts/agent/verify.js'] })).toEqual(['scripts-unit', 'workflow-fixture', 'build']);
-    expect(selectGates({ changedPaths: ['src-tauri/src/main.rs', 'src-tauri/capabilities/default.json'] })).toEqual(['rust-check', 'web-contract', 'permission-check']);
+    expect(selectGates({ changedPaths: ['src-tauri/src/main.rs', 'src-tauri/capabilities/default.json'] })).toEqual(['rust-check', 'web-contract', 'permission-schema-check']);
     expect(selectGates({ changedPaths: ['.agents/notes/proposed/process/note.md', 'scripts/agent/verify.js', 'tests/unit/agent-v2.test.js', 'package.json'] })).toEqual([
       'docs-check',
       'notes-check',

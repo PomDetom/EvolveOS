@@ -20,7 +20,7 @@
 
 - 新建或恢复任务：读取 `.agents/tasks/<年份>/<task-id>/task.json` 和同目录计划。
 - 任务验证：使用 `scripts/agent/` 下的校验、scope、gate 和 evidence 工具。
-- 任务评审：写入 task 目录的 `review.md`，评审 SHA 必须等于当前 HEAD。
+- 任务评审：写入 task 目录的 `review.md`，绑定真实 `Subject head` 与 fingerprint；subject 后只允许当前 task 的 `review.md` 和 `attestations/*.json` 作为 trailing artifact，其余变更使判断失效。
 - 流程决策：先查 `.agents/notes/`，再按 Note 生命周期写入对应目录。
 - 旧生命周期 skill 不再作为 active workflow 入口；历史 task/schema 与历史文档仅作只读兼容读取，task 状态和 evidence 不得依赖具体模型或平台。
 - 旧 `.agents/tasks` schema 1、`activity.jsonl` 和 `.agents/start-runs/` 仅作历史兼容读取；v2 不新增、不更新这些文件。

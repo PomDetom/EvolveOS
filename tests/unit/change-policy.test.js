@@ -61,9 +61,9 @@ describe('EWP v2.2 Change Policy', () => {
       classification: expect.objectContaining({ primary: 'tauri', desktopOnly: true }),
       requiresTask: true,
       requiresNote: true,
-      requiredChecks: ['rust-check', 'web-contract', 'permission-check'],
+      requiredChecks: ['rust-check', 'web-contract', 'permission-schema-check'],
       requiresReview: true,
-      requiredAttestations: ['desktop-manual'],
+      requiredAttestations: ['permission-review', 'desktop-manual'],
     });
   });
 
