@@ -13,7 +13,9 @@ export function artifactRole(file) {
   if (path === 'AGENTS.md' || path.endsWith('/AGENTS.md')
     || path === '.agents/protocol.json' || path === '.agents/README.md'
     || path.startsWith('.agents/skills/')) return 'governance';
-  if (path.startsWith('.agents/tasks/')) return 'sidecar';
+  if (/^\.agents\/tasks\/[^/]+\/[^/]+\/(?:task\.json|plan\.md|review\.md)$/.test(path)
+    || /^\.agents\/tasks\/[^/]+\/[^/]+\/attestations\/[^/]+\.json$/.test(path)) return 'sidecar';
+  if (path.startsWith('.agents/tasks/')) return 'other';
   if (path.startsWith('.agents/notes/')) return 'decision';
   if (/^(?:src|src-tauri|scripts|tests)\//.test(path)
     || /^(?:package(?:-lock)?\.json|vite\.config\.[^/]+|vitest\.config\.[^/]+|playwright\.config\.[^/]+|index\.html)$/.test(path)

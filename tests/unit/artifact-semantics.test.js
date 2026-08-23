@@ -13,7 +13,8 @@ import { checkPermissionSchemas } from '../../scripts/agent/permission-schema-ch
 import { GATE_REGISTRY } from '../../scripts/agent/gate-registry.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { buildIntegrationMessage } from '../../scripts/merge-to-dev.js';
-import { isAncestor, resolveSubjectSnapshot, subjectBindingIssues, trailingArtifactIssues } from '../../scripts/agent/subject-artifact.js';
+import { evaluateNativeReadiness, reviewReadiness } from '../../scripts/merge-to-dev-agent-utils.js';
+import { isAncestor, isAllowedTrailingArtifact, resolveSubjectSnapshot, subjectBindingIssues, trailingArtifactIssues } from '../../scripts/agent/subject-artifact.js';
 
 function git(root, args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -30,8 +31,9 @@ function makeFixture() {
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'base']);
   git(root, ['switch', '-c', 'native/fixture']);
-  writeFileSync(path.join(root, 'src-tauri-placeholder'), 'created\n');
-  writeFileSync(path.join(root, 'src-tauri-capability-placeholder'), '{"identifier":"default","permissions":["core:default"]}\n');
+  mkdirSync(path.join(root, 'src-tauri', 'capabilities'), { recursive: true });
+  writeFileSync(path.join(root, 'src-tauri', 'native.rs'), 'created\n');
+  writeFileSync(path.join(root, 'src-tauri', 'capabilities', 'default.json'), '{"identifier":"default","permissions":["core:default"]}\n');
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'subject code A']);
   return { root, taskDirectory };
@@ -43,6 +45,7 @@ describe('EWP v2.2.1 artifact semantics', () => {
     expect(artifactRole('.agents/skills/foo/SKILL.md')).toBe('governance');
     expect(artifactRole('.agents/notes/implemented/process/note.md')).toBe('decision');
     expect(artifactRole('.agents/tasks/2026/EV-025/task.json')).toBe('sidecar');
+    expect(artifactRole('.agents/tasks/2026/EV-025/evil.js')).toBe('other');
     expect(artifactRole('src/apps/notes/index.js')).toBe('subject');
     expect(classifyArtifacts(['src/apps/notes/index.js', '.agents/tasks/2026/EV-025/task.json']).subjectPaths)
       .toEqual(['src/apps/notes/index.js']);
@@ -56,6 +59,8 @@ describe('EWP v2.2.1 artifact semantics', () => {
     expect(policy.requiredChecks).toEqual(['unit', 'app-e2e', 'build']);
     const subjectOnly = evaluateChangePolicy({ changedPaths: ['src/apps/notes/index.js'], snapshot: { branch: 'app/notes/example' } });
     expect(policy.policyHash).toBe(subjectOnly.policyHash);
+    const unknownTaskArtifact = evaluateChangePolicy({ changedPaths: ['.agents/tasks/2026/EV-025/evil.js'], snapshot: { branch: 'chore/example' } });
+    expect(unknownTaskArtifact.requiresTask).toBe(true);
   });
 
   test('tauri kind maps to native and legacy ui uses framework boundary', () => {
@@ -63,12 +68,41 @@ describe('EWP v2.2.1 artifact semantics', () => {
     expect(deriveBranchName({ kind: 'ui', title: 'Framework shell' })).toBe('framework/framework-shell');
     expect(assessBranchChanges('ui/legacy-shell', ['src/components/button/button.css']).kind).toBe('framework');
     expect(assessBranchChanges('ui/legacy-shell', ['src/apps/notes/index.js']).ok).toBe(false);
+    expect(isAllowedTrailingArtifact('.agents/tasks/2026/EV-025/attestations/desktop-manual.json', '.agents/tasks/2026/EV-025')).toBe(true);
+    expect(isAllowedTrailingArtifact('.agents/tasks/2026/EV-025/attestations/nested/desktop-manual.json', '.agents/tasks/2026/EV-025')).toBe(false);
   });
 
   test('permission schema is mechanical and gate registry has no manual entries', () => {
     expect(checkPermissionSchemas(process.cwd())).toMatchObject({ ok: true });
     expect(Object.values(GATE_REGISTRY).every((gate) => gate.manual !== true)).toBe(true);
     expect(readFileSync('scripts/agent/gate-registry.js', 'utf8')).not.toMatch(/MANUAL:/);
+  });
+
+  test('review readiness binds subject fingerprint and policy hash', () => {
+    const subjectHead = 'a'.repeat(40);
+    const subjectFingerprint = 'b'.repeat(64);
+    const policyHash = 'c'.repeat(64);
+    const review = {
+      subjectHead,
+      subjectFingerprint,
+      policyHash,
+      reviewer: 'Independent reviewer',
+      reviewTime: '2026-08-23T10:00:00.000Z',
+      result: 'approved',
+      findings: { critical: [], important: [] },
+    };
+    expect(reviewReadiness({ review, headSha: subjectHead, reviewFingerprint: subjectFingerprint, policyHash, required: true }))
+      .toEqual({ ok: true, issues: [] });
+    expect(reviewReadiness({ review: { ...review, policyHash: 'd'.repeat(64) }, headSha: subjectHead, reviewFingerprint: subjectFingerprint, policyHash, required: true }).issues)
+      .toContain('review policyHash 过期或缺失');
+    const staleReview = evaluateNativeReadiness({
+      task: { schemaVersion: 2, id: 'EV-025', branch: 'chore/example', recovery: { state: 'active' } },
+      taskBranch: 'chore/example', branchHead: subjectHead, currentHeadSha: 'd'.repeat(40),
+      policy: { policyHash, requiresTask: true, requiresReview: true, requiredChecks: [] },
+      policyHash, review, reviewFingerprint: subjectFingerprint, requireEvidence: false,
+    });
+    expect(staleReview.ok).toBe(false);
+    expect(staleReview.issues).toContain('review subjectHead 不等于待合入分支 HEAD');
   });
 
   test('trailing attestation after subject commit is accepted, code after it is stale', () => {
@@ -102,7 +136,7 @@ describe('EWP v2.2.1 artifact semantics', () => {
         .toEqual({ ok: true, errors: [] });
       expect(trailingArtifactIssues(root, { subjectHead, branch: 'HEAD', taskDirectory })).toMatchObject({ ok: true, issues: [] });
 
-      writeFileSync(path.join(root, 'src-tauri-placeholder'), 'subject code C\n');
+      writeFileSync(path.join(root, 'src-tauri', 'native.rs'), 'subject code C\n');
       git(root, ['add', '.']);
       git(root, ['commit', '-m', 'subject code C']);
       expect(trailingArtifactIssues(root, { subjectHead, branch: 'HEAD', taskDirectory }).ok).toBe(false);
@@ -116,6 +150,8 @@ describe('EWP v2.2.1 artifact semantics', () => {
     try {
       const sourceHead = git(root, ['rev-parse', 'native/fixture']);
       git(root, ['switch', 'dev']);
+      git(root, ['commit', '--allow-empty', '-m', `Task: EV-026\n\nSource-Branch: native/fixture\nSource-Head: ${sourceHead}`]);
+      expect(findIntegratedTask(root, 'EV-026')).toBeNull();
       git(root, ['merge', '--no-ff', 'native/fixture', '-m', buildIntegrationMessage('merge: fixture 合入 dev', {
         taskId: 'EV-025', branch: 'native/fixture', sourceHead,
       })]);

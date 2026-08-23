@@ -13,7 +13,10 @@ function git(rootDir, args) {
 export function isAllowedTrailingArtifact(file, taskDirectory) {
   const path = normalize(file);
   const taskDir = normalize(taskDirectory).replace(/\/+$/, '');
-  return path === `${taskDir}/review.md` || (path.startsWith(`${taskDir}/attestations/`) && path.endsWith('.json'));
+  if (path === `${taskDir}/review.md`) return true;
+  const prefix = `${taskDir}/attestations/`;
+  const relative = path.startsWith(prefix) ? path.slice(prefix.length) : '';
+  return Boolean(relative) && !relative.includes('/') && relative.endsWith('.json');
 }
 
 export function resolveSubjectSnapshot(rootDir, { base = 'dev', subjectHead } = {}) {

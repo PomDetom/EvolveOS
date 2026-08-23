@@ -1,6 +1,6 @@
 # EWP v2.2.1 Artifact Semantics
 
-**Status:** proposed
+**Status:** implemented
 
 **Class:** process
 
@@ -8,13 +8,13 @@
 
 v2.2 已统一 Change Policy，但 changed paths 中仍混合业务 subject、治理规则、决策 Note 和 workflow sidecar。`*.md` 的优先级、task/Note sidecar 的风险升级以及 review/attestation 的 trailing 事实边界，可能使同一业务 diff 在不同消费者中获得错误风险语义。
 
-## Proposal
+## Decision
 
-本 Note 提议以 Subject Change、Governance Change、Decision Artifact 和 Workflow Sidecar 四类语义重写 Policy 输入与判断 artifact freshness。
+本 Note 以 Subject Change、Governance Change、Decision Artifact 和 Workflow Sidecar 四类语义重写 Policy 输入与判断 artifact freshness。
 
 ## Subject Change
 
-subject 是真正被验证的业务、框架、native、脚本和配置改动。Policy 的 task、review、checks 和 attestation 风险主要由 subject 与 governance 推导；task.json、plan、review 和 attestation 不应把 app-local subject 自动升级为 workflow change。
+subject 是真正被验证的业务、框架、native、脚本、测试和配置改动。Policy 的 task、review、checks 和 attestation 风险主要由 subject 与 governance 推导；task.json、plan、review 和 attestation 不应把 app-local subject 自动升级为 workflow change。
 
 ## Governance Change
 
@@ -40,4 +40,4 @@ artifact 语义分类与 subject-head 模型会增加 merge readiness 的事实�
 
 ## Evidence
 
-最终结论以 EV-025 的真实 Git fixture、Policy matrix、verify evidence、独立 semantic review 和 merge readiness 为准。
+真实 Git fixture 覆盖 trailing attestation 接受、subject 变更后失效、policy hash 对 sidecar 稳定、Git trailer 集成状态和 ui/framework 边界；全量验证与独立 semantic review 作为收尾证据写入当前 task review。

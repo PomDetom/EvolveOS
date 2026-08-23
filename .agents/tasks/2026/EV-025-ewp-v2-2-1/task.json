@@ -27,10 +27,10 @@
     "scope、checks、verify、merge 仍消费同一 policyHash，且不新增 persisted lifecycle state"
   ],
   "references": {
-    "spec": null,
-    "plan": ".agents/tasks/2026/EV-025-ewp-v2-2-1/plan.md",
-    "notes": [
-      ".agents/notes/proposed/process/2026-08-23-ewp-v2-2-1-artifact-semantics.md"
+      "spec": null,
+      "plan": ".agents/tasks/2026/EV-025-ewp-v2-2-1/plan.md",
+      "notes": [
+      ".agents/notes/implemented/process/2026-08-23-ewp-v2-2-1-artifact-semantics.md"
     ]
   },
   "recovery": {

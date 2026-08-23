@@ -57,6 +57,7 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     const subjectHead = /(?:Subject|Reviewed)\s+head:\*{2}\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
     const result = /\*\*Result:\*\*\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const subjectFingerprint = /(?:Subject fingerprint|Change fingerprint|subjectFingerprint|changeFingerprint):\*{2}\s*`?([0-9a-f]{64})`?/i.exec(content)?.[1] ?? null;
+    const policyHash = /(?:Policy hash|policyHash):\*{2}\s*`?([0-9a-f]{64})`?/i.exec(content)?.[1] ?? null;
     const reviewer = /(?:Reviewer|reviewer):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const reviewTime = /(?:Review time|reviewTime):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
@@ -65,7 +66,7 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     if (!criticalSection.trim()) parseIssues.push('review 缺少 Critical 段落或明确结论');
     if (!importantSection.trim()) parseIssues.push('review 缺少 Important 段落或明确结论');
     const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．.]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
-    return { subjectHead, subjectFingerprint, changeFingerprint: subjectFingerprint, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
+    return { subjectHead, subjectFingerprint, changeFingerprint: subjectFingerprint, policyHash, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
   } catch { return null; }
 }
 
@@ -108,10 +109,11 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   const gates = selectGates({ kind: boundary.kind, changedPaths, includeBoundary: true, policy, snapshot });
   const worktree = worktreesOn(branch, rootDir)[0] ?? null;
   const evidence = currentBranchEvidence(rootDir, branch, worktree);
-  const { headSha, baseSha, changedPathsHash, changeFingerprint } = snapshot;
+  const { headSha } = snapshot;
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
   const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
-  const reviewFingerprint = review?.subjectHead ? resolveSubjectSnapshot(rootDir, { base: 'dev', subjectHead: review.subjectHead }).changeFingerprint : null;
+  const subjectSnapshot = review?.subjectHead ? resolveSubjectSnapshot(rootDir, { base: 'dev', subjectHead: review.subjectHead }) : snapshot;
+  const reviewFingerprint = review?.subjectHead ? subjectSnapshot.changeFingerprint : null;
   const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteReport = evaluateNoteRequirement({
@@ -126,8 +128,9 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   if (task?.createdFromSha && !shOk(rootDir, `git merge-base --is-ancestor ${task.createdFromSha} ${branch}`)) provenanceIssues.push('task createdFromSha 不是待合入分支的祖先');
   const attestationIssues = entry ? attestationsAtRef(rootDir, branch, entry.relativeDirectory, policy.requiredAttestations, policy.policyHash, snapshot, review?.subjectHead) : policy.requiredAttestations.map((name) => `缺少 human attestation: ${name}`);
   const readiness = evaluateNativeReadiness({
-    task, taskBranch: branch, branchHead: headSha, baseSha, policy,
-    changedPathsHash, changeFingerprint, reviewFingerprint, policyHash: policy.policyHash, startSnapshot: snapshot, endSnapshot: snapshot, requiredGates: gates, evidence, review,
+    task, taskBranch: branch, branchHead: subjectSnapshot.headSha, baseSha: subjectSnapshot.baseSha, policy,
+    changedPathsHash: subjectSnapshot.changedPathsHash, changeFingerprint: subjectSnapshot.changeFingerprint, reviewFingerprint, currentHeadSha: headSha,
+    policyHash: policy.policyHash, startSnapshot: subjectSnapshot, endSnapshot: subjectSnapshot, requiredGates: gates, evidence, review,
     boundaryOk: boundary.ok, boundaryIssues: boundary.violations.map((file) => `boundary violation: ${file}`),
     scopeIssues: scope.violations.map((file) => `task allowedPaths violation: ${file}`),
     taskIssues: taskSchema.errors.map((error) => `task schema 无效: ${error}`),

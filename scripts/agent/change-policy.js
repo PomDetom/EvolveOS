@@ -38,7 +38,7 @@ function primarySurface(classification, paths) {
 }
 
 function buildClassification(paths, branchKind, artifacts) {
-  const riskPaths = [...artifacts.subjectPaths, ...artifacts.docsPaths];
+  const riskPaths = [...artifacts.subjectPaths, ...artifacts.docsPaths, ...artifacts.otherPaths];
   const base = classifyChangedPaths(riskPaths);
   const surfaces = [...new Set([
     ...(artifacts.governancePaths.length ? ['governance'] : []),
@@ -82,7 +82,7 @@ export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.ch
   const appLocal = hasSurface('app') && classification.surfaces.every((surface) => ['app', 'tests', 'docs'].includes(surface));
   const docsOnly = classification.docsOnly;
   const governance = artifacts.governancePaths.length > 0;
-  const workflow = hasSurface('workflow') || hasSurface('scripts') || governance;
+  const workflow = hasSurface('workflow') || hasSurface('scripts') || governance || artifacts.otherPaths.length > 0;
   const framework = hasSurface('framework') || branchKind === 'framework' || branchKind === 'ui';
   const tauri = hasSurface('tauri') || branchKind === 'native';
   const build = hasSurface('build');

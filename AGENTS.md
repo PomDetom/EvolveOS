@@ -10,7 +10,7 @@ npm run dev                       # 开发服务器 localhost:5173
 npm test                          # Vitest 单测
 npm run test:e2e                  # Playwright 交互测试
 npx playwright test --config=playwright.config.worktree.js   # e2e 用 worktree 配置（端口 5174 新鲜 server）
-npm run build                     # 生产构建（每次提交前必跑）
+npm run build                     # 生产构建（由 Change Policy 按风险选择；发版前必跑）
 npm run check:boundary            # 分支/边界门禁（合并前跑）
 npm run merge-to-dev -- <分支>    # 合并分支入 dev（基线同步 → check:boundary → --no-ff → 祖先验证删分支）
 npm run release -- patch|minor|major   # 半自动发版
@@ -49,7 +49,7 @@ npm run set-version -- X.Y.Z      # 同步 package.json / Cargo.toml / tauri.con
 
 - **分支**：前缀 `app/<id>/*` `ui/*` `native/*` `framework/*` `docs/*` `chore/*` `hotfix/*`，一律从 dev 检出（hotfix 例外可从 main）。`ui/*` 是 `framework/*` 的历史别名，沿用 framework 边界；任务启动的 `tauri` kind 统一生成 `native/*`。**禁止直接在 dev 上修改**：任何改动只在分支上完成，具体 required checks/review/attestation 由 Change Policy 决定，通过后才合并入 dev，随后经 `npm run merge-to-dev` 清理（见下）；main 只从 dev `--no-ff` 合并（=一次发版），hotfix 唯一直合 main 豁免随后同步回 dev；未知前缀 `check:boundary` 拒绝。
 - **合并入 dev**：统一 `npm run merge-to-dev -- <分支>`（scripts/merge-to-dev.js），自动完成：基线同步（分支落后 dev 先并入 dev，防三方漂移）→ `check:boundary` → `--no-ff` 合并（`merge:` 文案）→ 祖先验证后删分支 + 移除 worktree。禁手工 `git branch -d`（只判并入当前分支，合入 dev 后必报 not fully merged）。
-- **回归**：全量回归只在 dev→main / hotfix→main 两个点跑；dev 阶段只跑改动影响面定向测试 + build + 壳冒烟。
+- **回归**：全量回归只在 dev→main / hotfix→main 两个点跑；dev 阶段按 Change Policy 跑改动影响面验证。
 - **发版前必先征询用户意见**：dev→main / hotfix→main / bump / tag / push 等任一发版动作前，先列出版本号、范围、验证证据，等用户明确同意再执行（任何发版都需询问意见，不自动发版）。
 - 合并前 `npm run check:boundary`（分支名 + 边界双校验）。
 - Change Policy 选择提交前的检查与人工事实；逻辑改动仍遵循 TDD（红→绿→提交），框架改动沿用 framework owner review 护栏。

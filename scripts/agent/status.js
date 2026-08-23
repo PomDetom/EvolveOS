@@ -8,7 +8,7 @@ function trailer(body, name) {
   return body.split(/\r?\n/).find((line) => new RegExp(`^${name}:\\s*`, 'i').test(line))?.replace(new RegExp(`^${name}:\\s*`, 'i'), '').trim() ?? null;
 }
 
-export function findIntegratedTask(rootDir, taskId) {
+export function findIntegratedTask(rootDir, taskId, expectedBranch = null) {
   if (!taskId) return null;
   try {
     const log = git(rootDir, ['log', 'dev', '--format=%H%x1f%B%x1e']);
@@ -18,11 +18,19 @@ export function findIntegratedTask(rootDir, taskId) {
       const commit = record.slice(0, separator).trim();
       const body = record.slice(separator + 1);
       if (trailer(body, 'Task') !== taskId) continue;
+      const sourceBranch = trailer(body, 'Source-Branch');
+      const sourceHead = trailer(body, 'Source-Head');
+      if (!sourceBranch || !/^[0-9a-f]{40}$/i.test(sourceHead ?? '')) continue;
+      if (expectedBranch && sourceBranch !== expectedBranch) continue;
+      let parents;
+      try { parents = git(rootDir, ['rev-list', '--parents', '-n', '1', commit]).split(/\s+/); } catch { continue; }
+      if (parents.length < 3) continue;
+      try { execFileSync('git', ['merge-base', '--is-ancestor', sourceHead, commit], { cwd: rootDir, stdio: 'ignore' }); } catch { continue; }
       return {
         integrated: true,
         commit,
-        sourceBranch: trailer(body, 'Source-Branch'),
-        sourceHead: trailer(body, 'Source-Head'),
+        sourceBranch,
+        sourceHead,
       };
     }
   } catch { /* dev may not exist in a minimal fixture */ }
@@ -82,7 +90,7 @@ export function main(argv = process.argv.slice(2), rootDir = process.cwd(), io =
       task: entry.task,
       currentBranch,
       sourceIsDevAncestor: sourceIsDevAncestor(rootDir, entry.task.branch),
-      integration: findIntegratedTask(rootDir, entry.task.id),
+      integration: findIntegratedTask(rootDir, entry.task.id, entry.task.branch),
     })));
   });
   return entries.some((entry) => entry.parseError) ? 1 : 0;

@@ -20,6 +20,14 @@
 5. 收缩 docs/AGENTS.md 的职责，补充 merge trailer integrated 识别，迁移 `tauri → native` 并保持 `ui` legacy alias 的相同边界。
 6. 执行真实 Git fixture、全量受影响测试、build、docs/Note/task/boundary 检查和独立 semantic review。
 
+## Implementation result
+
+- P0：`permission-check` 已替换为自动化 capability schema check，gate registry 不再包含 MANUAL gate。
+- Artifact semantics：Policy 已区分 subject/governance/decision/sidecar，sidecar 不升级 app-local 风险，policy hash 排除 trailing sidecar 的路径变化。
+- Freshness：review 与 human attestation 绑定 subject head/fingerprint；subject 后仅允许当前 task 的 `review.md` 与 `attestations/*.json`。
+- Routing/status：`tauri` 新任务生成 `native/*`，`ui/*` 按 framework 边界检查，集成状态由 Git trailers 读取，不写入 lifecycle state。
+- Verification：定向 27/27、全量 247/247 单测、production build、boundary/docs/Note/task/permission checks 均通过。
+
 ## Policy semantics
 
 | Artifact role | Examples | Risk input | Freshness role |

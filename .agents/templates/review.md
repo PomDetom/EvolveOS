@@ -2,6 +2,10 @@
 
 **Subject head:** `<commit SHA>`
 
+**Subject fingerprint:** `<sha256>`
+
+**Policy hash:** `<sha256>`
+
 **Reviewer:** `<reviewer>`
 
 **Result:** `approved | changes-requested`
