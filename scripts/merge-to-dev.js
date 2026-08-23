@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './merge-to-dev-utils.js';
 import { assessBranchChanges } from './boundary-check.js';
-import { buildChangeScope, buildChangeSnapshot, getChangedPaths, hashChangeFingerprint } from './agent/change-scope.js';
+import { buildChangeScope, buildChangeSnapshot } from './agent/change-scope.js';
 import { evaluateChangePolicy } from './agent/change-policy.js';
 import { validateHumanAttestation } from './agent/attestation.js';
 import { readProtocol, validateTask } from './agent/task-schema.js';
@@ -15,11 +15,17 @@ import { selectGates } from './agent/select-gates.js';
 import { readCachedEvidence } from './agent/verify.js';
 import { evaluateNoteRequirement, noteLifecycleForPath } from './agent/note-gate.js';
 import { evaluateNativeReadiness, formatNativeReadiness } from './merge-to-dev-agent-utils.js';
+import { isAncestor, resolveSubjectSnapshot, subjectBindingIssues, trailingArtifactIssues } from './agent/subject-artifact.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function sh(cwd, cmd) { return execSync(cmd, { cwd, encoding: 'utf8' }).trim(); }
 function shOk(cwd, cmd) { try { sh(cwd, cmd); return true; } catch { return false; } }
 const fail = (message) => { throw new Error(message); };
+
+function getChangedPaths(rootDir, base, head) {
+  const output = sh(rootDir, `git diff --name-only --diff-filter=ACMR ${base}..${head}`);
+  return output ? output.split(/\r?\n/).filter(Boolean) : [];
+}
 
 function mergeWithMessage(cwd, cmd, message) {
   const file = path.join(os.tmpdir(), `merge-to-dev-${process.pid}.txt`);
@@ -33,6 +39,13 @@ export function worktreesOn(branch, rootDir = ROOT) {
     .map((block) => block.split('\n')[0].replace('worktree ', '').trim());
 }
 
+export function buildIntegrationMessage(message, { taskId = null, branch, sourceHead } = {}) {
+  const lines = [];
+  if (taskId) lines.push(`Task: ${taskId}`);
+  lines.push(`Source-Branch: ${branch}`, `Source-Head: ${sourceHead}`);
+  return `${String(message ?? `merge: ${branch} 合入 dev`).trimEnd()}\n\n${lines.join('\n')}\n`;
+}
+
 function currentBranchEvidence(rootDir, branch, worktree = null) {
   const candidate = worktree ? readCachedEvidence(worktree, branch) : readCachedEvidence(rootDir, branch);
   return candidate?.evidence ?? [];
@@ -43,7 +56,7 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     const content = sh(rootDir, `git show ${branch}:${relativeDirectory}/review.md`);
     const subjectHead = /(?:Subject|Reviewed)\s+head:\*{2}\s*`?([0-9a-f]{40})`?/i.exec(content)?.[1] ?? null;
     const result = /\*\*Result:\*\*\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
-    const changeFingerprint = /(?:Change fingerprint|changeFingerprint):\*{2}\s*`?([0-9a-f]{64})`?/i.exec(content)?.[1] ?? null;
+    const subjectFingerprint = /(?:Subject fingerprint|Change fingerprint|subjectFingerprint|changeFingerprint):\*{2}\s*`?([0-9a-f]{64})`?/i.exec(content)?.[1] ?? null;
     const reviewer = /(?:Reviewer|reviewer):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const reviewTime = /(?:Review time|reviewTime):\*{2}\s*`?([^\n`]+)`?/i.exec(content)?.[1]?.trim() ?? null;
     const criticalSection = /### Critical\s+([\s\S]*?)(?=### Important|### Minor|$)/i.exec(content)?.[1] ?? '';
@@ -52,18 +65,24 @@ function readReviewAtRef(rootDir, branch, relativeDirectory) {
     if (!criticalSection.trim()) parseIssues.push('review 缺少 Critical 段落或明确结论');
     if (!importantSection.trim()) parseIssues.push('review 缺少 Important 段落或明确结论');
     const findings = (section) => section && !/^\s*(?:无|none|没有)[。.．.]?\s*$/i.test(section.trim()) ? ['review finding'] : [];
-    return { subjectHead, changeFingerprint, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
+    return { subjectHead, subjectFingerprint, changeFingerprint: subjectFingerprint, reviewer, reviewTime, result, parseIssues, findings: { critical: findings(criticalSection), important: findings(importantSection) } };
   } catch { return null; }
 }
 
-function attestationsAtRef(rootDir, branch, relativeDirectory, names, policyHash, snapshot) {
+function attestationsAtRef(rootDir, branch, relativeDirectory, names, policyHash, snapshot, expectedSubjectHead = null) {
   const issues = [];
   for (const name of names) {
     const relativePath = `${relativeDirectory}/attestations/${name}.json`;
     try {
       const content = sh(rootDir, `git show ${branch}:${relativePath}`);
-      const result = validateHumanAttestation(JSON.parse(content), { policyHash, snapshot, name });
+      const attestation = JSON.parse(content);
+      if (expectedSubjectHead && attestation.subjectHead !== expectedSubjectHead) issues.push(`attestation ${name}: subjectHead 与 review 不一致`);
+      const subjectSnapshot = resolveSubjectSnapshot(rootDir, { base: 'dev', subjectHead: attestation.subjectHead });
+      if (!isAncestor(rootDir, attestation.subjectHead, branch)) issues.push(`attestation ${name}: subjectHead 不是分支祖先`);
+      subjectBindingIssues(attestation, { subjectSnapshot, policyHash }).forEach((error) => issues.push(`attestation ${name}: ${error}`));
+      const result = validateHumanAttestation(attestation, { policyHash, subjectSnapshot, currentSnapshot: snapshot, name });
       if (!result.ok) result.errors.forEach((error) => issues.push(`attestation ${name}: ${error}`));
+      trailingArtifactIssues(rootDir, { subjectHead: attestation.subjectHead, branch, taskDirectory: relativeDirectory }).issues.forEach((error) => issues.push(`attestation ${name}: ${error}`));
     } catch {
       issues.push(`缺少 human attestation: ${relativePath}`);
     }
@@ -74,18 +93,7 @@ function attestationsAtRef(rootDir, branch, relativeDirectory, names, policyHash
 function acceptedReviewSubjectHeads(rootDir, branch, branchHead, review, relativeDirectory) {
   const subjectHead = review?.subjectHead;
   if (!subjectHead || subjectHead === branchHead || !shOk(rootDir, `git merge-base --is-ancestor ${subjectHead} ${branch}`)) return [];
-  const changedAfterReview = sh(rootDir, `git diff --name-only ${subjectHead}..${branch}`)
-    .split(/\r?\n/).filter(Boolean);
-  const reviewPath = `${relativeDirectory}/review.md`;
-  const reviewStatuses = sh(rootDir, `git diff --name-status ${subjectHead}..${branch}`)
-    .split(/\r?\n/).filter(Boolean)
-    .map((line) => line.split(/\t/))
-    .filter((parts) => parts.slice(1).includes(reviewPath));
-  const reviewAddedOnce = reviewStatuses.length === 1 && reviewStatuses[0][0] === 'A';
-  const metadataOnly = changedAfterReview.length > 0 && changedAfterReview.every((file) =>
-    (file === reviewPath && reviewAddedOnce) || file.startsWith('.agents/tasks/') || file.startsWith('.agents/notes/'),
-  );
-  return metadataOnly ? [subjectHead] : [];
+  return trailingArtifactIssues(rootDir, { subjectHead, branch, taskDirectory: relativeDirectory }).ok ? [subjectHead] : [];
 }
 
 export function nativeReadinessFor(branch, rootDir = ROOT) {
@@ -103,7 +111,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   const { headSha, baseSha, changedPathsHash, changeFingerprint } = snapshot;
   const review = entry ? readReviewAtRef(rootDir, branch, entry.relativeDirectory) : null;
   const reviewSubjectHeads = entry ? acceptedReviewSubjectHeads(rootDir, branch, headSha, review, entry.relativeDirectory) : [];
-  const reviewFingerprint = review?.subjectHead ? hashChangeFingerprint(rootDir, 'dev', review.subjectHead) : null;
+  const reviewFingerprint = review?.subjectHead ? resolveSubjectSnapshot(rootDir, { base: 'dev', subjectHead: review.subjectHead }).changeFingerprint : null;
   const notePaths = task?.references?.notes ?? [];
   const existingNotePaths = notePaths.filter((note) => shOk(rootDir, `git cat-file -e ${branch}:${note}`));
   const noteReport = evaluateNoteRequirement({
@@ -116,7 +124,7 @@ export function nativeReadinessFor(branch, rootDir = ROOT) {
   });
   const provenanceIssues = [];
   if (task?.createdFromSha && !shOk(rootDir, `git merge-base --is-ancestor ${task.createdFromSha} ${branch}`)) provenanceIssues.push('task createdFromSha 不是待合入分支的祖先');
-  const attestationIssues = entry ? attestationsAtRef(rootDir, branch, entry.relativeDirectory, policy.requiredAttestations, policy.policyHash, snapshot) : policy.requiredAttestations.map((name) => `缺少 human attestation: ${name}`);
+  const attestationIssues = entry ? attestationsAtRef(rootDir, branch, entry.relativeDirectory, policy.requiredAttestations, policy.policyHash, snapshot, review?.subjectHead) : policy.requiredAttestations.map((name) => `缺少 human attestation: ${name}`);
   const readiness = evaluateNativeReadiness({
     task, taskBranch: branch, branchHead: headSha, baseSha, policy,
     changedPathsHash, changeFingerprint, reviewFingerprint, policyHash: policy.policyHash, startSnapshot: snapshot, endSnapshot: snapshot, requiredGates: gates, evidence, review,
@@ -153,7 +161,8 @@ export function main({ argv = process.argv.slice(2), rootDir = ROOT, dryRun = fa
   if (!readiness.ok) fail(`live readiness 未通过，中止合并\n${readiness.issues.join('\n')}`);
   if (dryRun) return { ok: true, branch, readiness };
 
-  const mergeMessage = message ?? `merge: ${branch} 合入 dev`;
+  const sourceHead = sh(rootDir, `git rev-parse ${branch}`);
+  const mergeMessage = buildIntegrationMessage(message, { taskId: readiness.taskId, branch, sourceHead });
   mergeWithMessage(rootDir, `git merge --no-ff ${branch}`, mergeMessage);
   console.log(`✓ 已合并 ${branch} → dev（${mergeMessage}）`);
   if (noCleanup || !shOk(rootDir, `git merge-base --is-ancestor ${branch} dev`)) return;

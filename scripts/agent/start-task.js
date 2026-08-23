@@ -40,7 +40,8 @@ export function slugifyTitle(title) {
 export function deriveBranchName({ kind = 'chore', app = null, title }) {
   const slug = slugifyTitle(title);
   if (kind === 'app') { if (!app) throw new Error('app 任务必须提供 --app'); return `app/${app}/${slug}`; }
-  if (kind === 'ui' || kind === 'tauri') return `ui/${slug}`;
+  if (kind === 'tauri') return `native/${slug}`;
+  if (kind === 'ui') return `framework/${slug}`;
   if (kind === 'native') return `native/${slug}`;
   if (kind === 'framework') return `framework/${slug}`;
   if (kind === 'docs') return `docs/${slug}`;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { classifyChangedPaths } from './change-scope.js';
+import { classifyArtifacts } from './change-artifacts.js';
 
 const RELEASE_PATH = /^(CHANGELOG\.md|scripts\/release\.js|src-tauri\/tauri\.conf\.json)$/;
 const VISUAL_PATH = /\.css$|visual|snapshot/i;
@@ -22,7 +23,7 @@ function addUnique(target, ...values) {
 export function inferBranchKind(branch = '') {
   const value = normalize(branch);
   if (value.startsWith('app/')) return 'app';
-  if (value.startsWith('ui/')) return 'ui';
+  if (value.startsWith('ui/')) return 'framework';
   if (value.startsWith('native/')) return 'native';
   if (value.startsWith('framework/')) return 'framework';
   if (value.startsWith('docs/')) return 'docs';
@@ -32,16 +33,23 @@ export function inferBranchKind(branch = '') {
 }
 
 function primarySurface(classification, paths) {
-  const priority = ['tauri', 'framework', 'workflow', 'scripts', 'app', 'build', 'tests', 'docs', 'other'];
+  const priority = ['governance', 'tauri', 'framework', 'workflow', 'scripts', 'app', 'build', 'tests', 'docs', 'other'];
   return priority.find((surface) => classification.surfaces.includes(surface)) ?? (paths.length ? 'other' : 'empty');
 }
 
-function buildClassification(paths, branchKind) {
-  const base = classifyChangedPaths(paths);
+function buildClassification(paths, branchKind, artifacts) {
+  const riskPaths = [...artifacts.subjectPaths, ...artifacts.docsPaths];
+  const base = classifyChangedPaths(riskPaths);
+  const surfaces = [...new Set([
+    ...(artifacts.governancePaths.length ? ['governance'] : []),
+    ...base.surfaces,
+  ])];
   return {
     ...base,
+    surfaces,
+    docsOnly: artifacts.subjectPaths.length === 0 && artifacts.governancePaths.length === 0 && artifacts.docsPaths.length > 0,
     branchKind,
-    primary: primarySurface(base, paths),
+    primary: primarySurface({ ...base, surfaces }, paths),
   };
 }
 
@@ -63,16 +71,18 @@ export function hashPolicy(policy) {
 
 export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.changedPaths ?? [], branchKind = inferBranchKind(snapshot.branch) } = {}) {
   const paths = uniqueSorted(changedPaths);
-  const classification = buildClassification(paths, branchKind);
+  const artifacts = classifyArtifacts(paths);
   const has = (predicate) => paths.some(predicate);
+  const classification = buildClassification(paths, branchKind, artifacts);
   const hasSurface = (surface) => classification.surfaces.includes(surface);
-  const notesChanged = has((path) => path.startsWith('.agents/notes/'));
-  const documentationChanged = has((path) => path.startsWith('docs/') || path.startsWith('.agents/') || path.endsWith('.md'));
+  const notesChanged = artifacts.decisionPaths.length > 0;
+  const documentationChanged = artifacts.docsPaths.length > 0 || artifacts.governancePaths.length > 0 || notesChanged;
   const releaseChange = has((path) => RELEASE_PATH.test(path));
   const visualChange = has((path) => VISUAL_PATH.test(path));
   const appLocal = hasSurface('app') && classification.surfaces.every((surface) => ['app', 'tests', 'docs'].includes(surface));
   const docsOnly = classification.docsOnly;
-  const workflow = hasSurface('workflow') || hasSurface('scripts');
+  const governance = artifacts.governancePaths.length > 0;
+  const workflow = hasSurface('workflow') || hasSurface('scripts') || governance;
   const framework = hasSurface('framework') || branchKind === 'framework' || branchKind === 'ui';
   const tauri = hasSurface('tauri') || branchKind === 'native';
   const build = hasSurface('build');
@@ -85,7 +95,10 @@ export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.ch
   if (workflow) addUnique(requiredChecks, 'scripts-unit', 'workflow-fixture', 'build');
   if (tauri) {
     addUnique(requiredChecks, 'rust-check', 'web-contract');
-    if (has((path) => /permission|capabilit/i.test(path))) addUnique(requiredChecks, 'permission-check');
+    if (has((path) => /permission|capabilit/i.test(path))) {
+      addUnique(requiredChecks, 'permission-schema-check');
+      addUnique(requiredAttestations, 'permission-review');
+    }
     if (classification.desktopOnly) addUnique(requiredAttestations, 'desktop-manual');
   }
   if (framework) {
@@ -108,13 +121,20 @@ export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.ch
   const policy = {
     policyVersion: 1,
     classification,
+    artifacts,
     requiresTask,
     requiresNote,
     requiredChecks,
     requiresReview,
     requiredAttestations,
   };
-  return { ...policy, policyHash: hashPolicy(policy) };
+  const policyArtifacts = {
+    ...artifacts,
+    paths: artifacts.paths.filter((path) => artifacts.roleByPath[path] !== 'sidecar'),
+    sidecarPaths: [],
+    roleByPath: Object.fromEntries(Object.entries(artifacts.roleByPath).filter(([, role]) => role !== 'sidecar')),
+  };
+  return { ...policy, policyHash: hashPolicy({ ...policy, artifacts: policyArtifacts }) };
 }
 
 export function policyGates(policy = {}) {

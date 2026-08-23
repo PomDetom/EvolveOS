@@ -45,7 +45,7 @@ export function reviewReadiness({ review = null, headSha = null, changeFingerpri
     if (review.result !== 'approved') issues.push('review result 不是 approved');
     if (requiresFreshMetadata && !review.reviewer) issues.push('review 缺少 reviewer');
     if (requiresFreshMetadata && !review.reviewTime) issues.push('review 缺少 reviewTime');
-    if (expectedFingerprint && review.changeFingerprint !== expectedFingerprint) issues.push('review changeFingerprint 过期');
+    if (expectedFingerprint && (review.subjectFingerprint ?? review.changeFingerprint) !== expectedFingerprint) issues.push('review subjectFingerprint 过期');
     const findings = review.findings ?? {};
     if (Array.isArray(findings.critical) && findings.critical.length) issues.push('存在未解决 Critical findings');
     if (Array.isArray(findings.important) && findings.important.length) issues.push('存在未解决 Important findings');

@@ -44,11 +44,7 @@ export function assessBranchChanges(branch, files) {
     };
   }
 
-  if (/^ui\//.test(branch)) {
-    return { kind: 'ui', ok: true, violations: [], note: '框架改动：分支上受影响子系统定向回归；全量仅 dev→main/hotfix→main；框架 owner 评审' };
-  }
-
-  if (/^framework\//.test(branch)) {
+  if (/^(?:ui|framework)\//.test(branch)) {
     const allowed = (f) => FRAMEWORK_PREFIXES.some((prefix) => f.startsWith(prefix))
       || /^tests\/(unit|e2e)\//.test(f) || f.startsWith('docs/') || f.startsWith('.agents/tasks/') || f.startsWith('.agents/notes/') || f === 'AGENTS.md' || f === 'docs/AGENTS.md';
     const violations = files.filter((f) => !allowed(f));

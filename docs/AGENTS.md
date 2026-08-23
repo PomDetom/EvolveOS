@@ -6,24 +6,22 @@
   - `integration/`：应用接入指南（`app-integration.md`）+ Tauri 桌面壳配置（`tauri-integration.md`）。
   - `handoffs/`：历史阶段交接（`HANDOFF-B*.md`，只读存档，不改写）。
   - `superpowers/`：历史 SDD 归档——`specs/`、`plans/`、`sdd/` 均只读，不承载新任务状态。
-- 会话开始先读执行留痕（`docs/superpowers/sdd/progress-*.md`），从第一个未完成任务恢复；**已完成任务不得重新派发**。
+- 新任务从 Git HEAD/diff、`.agents/tasks/` recovery manifest、`.agents/notes/`、review 和验证证据恢复；`docs/superpowers/sdd/` 的进度账本只读保留，不再作为任务派发或生命周期状态来源。
 - 动画红线口径在 `src/AGENTS.md`（不在此重复）。
 
 Evolve Workflow Protocol 迁移规格：[`docs/superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md`](superpowers/specs/2026-08-18-evolve-workflow-protocol-design.md)。该规格只固定迁移约束；`docs/superpowers/sdd/` 的历史留痕仍按下文规则保留。
 
 文档规则只约束格式、质量和协作证据，不定义 workflow lifecycle 状态；workflow requirements 以 `.agents/protocol.json` 与 Change Policy 为准。TDD、独立 semantic review、pre-flight 和基线复跑仍是质量护栏。
 
-## 工作流红线（子代理驱动开发）
+## 质量与协作护栏
 
 - 每任务 TDD：写失败测试 → 确认红 → 实现 → 跑绿 → 提交。
-- 实施子代理按复杂度分级：机械转录用快速模型、集成判断用标准模型、整体审查用最强模型。
-- **每任务必须有独立评审**（规格符合 + 质量）；Critical/Important 进修复循环（≤5 轮：前 3 轮续派原实施者，后 2 轮换更强模型）；Minor 记入执行留痕留给收尾。
+- Change Policy 决定本次改动需要的 task、check、review 和 attestation；需要 review 时必须保留独立 semantic review，Critical/Important 未解决不得合入。
 - 新任务按 v2 需要时使用 `.agents/tasks/` recovery manifest；历史 `docs/superpowers/sdd/` 文件只读保留。
-- **并行实施子代理必须在独立 worktree**（各占一条分支）；同一 worktree 内串行；`ui/*` 全局串行（同一时刻只一个 ui 分支）；控制器不直接修改代码；不接受无评审的自评报告。
-- 派发实施子代理前先做 **pre-flight 计划-现实冲突扫描**（对照计划代码段与当前代码/测试 mock 实际签名与成员形态），发现计划缺陷先呈报用户再派发。
+- 并行实施必须使用独立 worktree；`ui/*` 是 `framework/*` 的历史别名并沿用同一边界检查。
 - 子代理报告 e2e 失败为「无关 flake」时，控制器须**独立隔离复跑确认**后再放行，不直接采信。
 - 全量 e2e 旋转失败判「环境 flake」的最硬证据：**stash 本次改动后对同批失败用例跑旧代码基线对照**（同批同样失败 = 与改动无关）。
-- **dev→main / hotfix→main 合并后全量回归**（`npm test` + `npm run test:e2e` + `npm run build`）通过再删分支收尾；dev 阶段只跑改动影响面定向测试。
+- **dev→main / hotfix→main 合并后全量回归**（`npm test` + `npm run test:e2e` + `npm run build`）通过再删分支收尾；dev 阶段按 Change Policy 跑改动影响面测试。
 - Windows 下提交前用 `git status`/`git diff --stat` 核对，防 Cargo.toml 等被构建触碰文件的行尾（LF/CRLF）噪声混入提交。
 - 后台子代理中途 yield（仍在跑 e2e）会留下未提交工作树改动：恢复/续跑前先 `git status` 检查，勿直接派发新任务。
 

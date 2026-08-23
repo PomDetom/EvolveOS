@@ -11,11 +11,13 @@ const snapshot = {
 
 function validAttestation(overrides = {}) {
   return {
+    schemaVersion: 1,
     type: 'human',
     name: 'desktop-manual',
     scopeHash: attestationScopeHash({ policyHash, snapshot }),
     policyHash,
     subjectHead: snapshot.headSha,
+    subjectFingerprint: snapshot.changeFingerprint,
     confirmedBy: 'Windows QA',
     confirmedAt: '2026-08-22T10:00:00.000Z',
     ...overrides,

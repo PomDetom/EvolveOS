@@ -15,15 +15,20 @@ export function attestationScopeHash({ policyHash, snapshot } = {}) {
   return createHash('sha256').update(stablePolicySerialize({ policyHash, snapshot: snapshotFacts(snapshot) })).digest('hex');
 }
 
-export function validateHumanAttestation(attestation, { policyHash = null, snapshot = null, name = null } = {}) {
+export function validateHumanAttestation(attestation, { policyHash = null, snapshot = null, subjectSnapshot = snapshot, currentSnapshot = null, name = null } = {}) {
   const errors = [];
   if (!attestation || typeof attestation !== 'object' || Array.isArray(attestation)) return { ok: false, errors: ['attestation 必须是 JSON 对象'] };
+  if (attestation.schemaVersion !== 1) errors.push('attestation.schemaVersion 必须为 1');
   if (attestation.type !== 'human') errors.push('attestation.type 必须为 human');
   if (name && attestation.name !== name) errors.push(`attestation.name 不一致: ${attestation.name}`);
   if (typeof attestation.scopeHash !== 'string' || !/^[0-9a-f]{64}$/i.test(attestation.scopeHash)) errors.push('attestation.scopeHash 必须为 64 位哈希');
   if (policyHash && attestation.policyHash !== policyHash) errors.push('attestation policyHash 与当前 Policy 不一致');
-  if (policyHash && attestation.scopeHash !== attestationScopeHash({ policyHash, snapshot })) errors.push('attestation scopeHash 与当前 snapshot 不一致');
-  if (snapshot?.headSha && attestation.subjectHead !== snapshot.headSha) errors.push('attestation subjectHead 与当前 HEAD 不一致');
+  if (policyHash && attestation.scopeHash !== attestationScopeHash({ policyHash, snapshot: subjectSnapshot })) errors.push('attestation scopeHash 与 subject snapshot 不一致');
+  if (subjectSnapshot) {
+    if (attestation.subjectHead !== subjectSnapshot.headSha) errors.push('attestation subjectHead 与 subject snapshot 不一致');
+    if (attestation.subjectFingerprint !== subjectSnapshot.changeFingerprint) errors.push('attestation subjectFingerprint 与 subject snapshot 不一致');
+  }
+  if (currentSnapshot?.headSha && currentSnapshot.headSha === attestation.subjectHead) errors.push('attestation 必须是 subject 后的 trailing artifact');
   if (typeof attestation.confirmedBy !== 'string' || !attestation.confirmedBy.trim()) errors.push('attestation.confirmedBy 不能为空');
   if (typeof attestation.confirmedAt !== 'string' || !attestation.confirmedAt.trim()) errors.push('attestation.confirmedAt 不能为空');
   return { ok: errors.length === 0, errors };
