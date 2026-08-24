@@ -3,12 +3,14 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { evaluateChangePolicy, stablePolicySerialize } from '../../scripts/agent/change-policy.js';
-import { buildChangeSnapshot } from '../../scripts/agent/change-scope.js';
+import { buildPolicySnapshot, evaluateChangePolicy, stablePolicySerialize } from '../../scripts/agent/change-policy.js';
+import { buildChangeScope, buildChangeSnapshot } from '../../scripts/agent/change-scope.js';
 import { selectGates } from '../../scripts/agent/select-gates.js';
 import { validateTask } from '../../scripts/agent/task-schema.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { runStatelessVerification } from '../../scripts/agent/verify.js';
+import { evaluateNativeReadiness } from '../../scripts/merge-to-dev-agent-utils.js';
+import { evaluateNoteRequirement } from '../../scripts/agent/note-gate.js';
 import { nextTaskId } from '../../scripts/agent/start-task.js';
 import { buildRecoveryTask } from '../../scripts/agent/start-task.js';
 
@@ -85,6 +87,16 @@ describe('EWP v2.2 Change Policy', () => {
     expect(policy).not.toHaveProperty('state');
   });
 
+  test('base branch snapshots keep scope and checks on the same policy hash', () => {
+    const baseSnapshot = snapshot(['docs/guide.md'], 'dev');
+    const scope = buildChangeScope({ snapshot: baseSnapshot, branch: 'dev', changedPaths: baseSnapshot.changedPaths });
+    const checks = buildPolicySnapshot({ snapshot: baseSnapshot, branchKind: 'base' });
+
+    expect(scope.classification.branchKind).toBe('base');
+    expect(scope.policyHash).toBe(checks.policyHash);
+    expect(() => selectGates({ kind: 'base', snapshot: baseSnapshot, changedPaths: baseSnapshot.changedPaths, policy: checks.policy })).not.toThrow();
+  });
+
   test('checks and verify consume the same policy hash and gate list', async () => {
     const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
     const policy = evaluateChangePolicy({ snapshot: currentSnapshot });
@@ -105,6 +117,48 @@ describe('EWP v2.2 Change Policy', () => {
     expect(report.policyHash).toBe(policy.policyHash);
     expect(report.startSnapshot).toEqual(report.endSnapshot);
     expect(report.snapshotStable).toBe(true);
+  });
+
+  test('scope, checks and verify share one canonical policy snapshot contract', async () => {
+    const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
+    const scope = buildChangeScope({ snapshot: currentSnapshot, base: 'dev', head: 'HEAD', branch: currentSnapshot.branch, changedPaths: currentSnapshot.changedPaths });
+    const checks = buildPolicySnapshot({ snapshot: currentSnapshot, branchKind: 'chore' });
+    const report = await runStatelessVerification({
+      rootDir: process.cwd(),
+      base: 'dev',
+      head: 'HEAD',
+      snapshot: currentSnapshot,
+      policy: checks.policy,
+      gates: selectGates({ kind: 'chore', changedPaths: currentSnapshot.changedPaths, includeBoundary: true, policy: checks.policy, snapshot: currentSnapshot }),
+      runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
+      writeCache: false,
+    });
+
+    expect(scope.policyHash).toBe(checks.policyHash);
+    expect(checks.policyHash).toBe(report.policyHash);
+    expect(evaluateNativeReadiness({ policy: scope.policy, requireEvidence: false }).policyHash).toBe(report.policyHash);
+  });
+
+  test('verify rejects a policy that does not match its supplied snapshot', async () => {
+    const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
+    const stalePolicy = evaluateChangePolicy({ snapshot: { ...currentSnapshot, changedPaths: ['docs/stale.md'] }, changedPaths: ['docs/stale.md'] });
+
+    await expect(runStatelessVerification({
+      rootDir: process.cwd(), base: 'dev', head: 'HEAD', snapshot: currentSnapshot,
+      policy: stalePolicy, runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }), writeCache: false,
+    })).rejects.toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+  });
+
+  test('scope, checks and Note gate reject a policy that does not match their snapshot', () => {
+    const docsSnapshot = snapshot(['docs/guide.md'], 'docs/guide');
+    const stalePolicy = evaluateChangePolicy({ snapshot: snapshot(['scripts/agent/verify.js'], 'chore/stale') });
+
+    expect(() => buildChangeScope({ snapshot: docsSnapshot, branch: 'docs/guide', changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+    expect(() => selectGates({ kind: 'docs', snapshot: docsSnapshot, changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+    expect(() => evaluateNoteRequirement({ snapshot: docsSnapshot, branchKind: 'docs', changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
   });
 
   test('verify rejects a worktree snapshot that drifts during gate execution', async () => {

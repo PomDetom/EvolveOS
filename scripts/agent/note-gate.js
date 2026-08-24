@@ -1,14 +1,19 @@
-import { evaluateChangePolicy } from './change-policy.js';
+import { buildPolicySnapshot, policyMatchesSnapshot } from './change-policy.js';
 
 function normalize(value) { return String(value ?? '').replaceAll('\\', '/'); }
 function noteLifecycle(notePath) { return normalize(notePath).match(/^\.agents\/notes\/([^/]+)\//)?.[1] ?? null; }
 
 export function noteRequiredForPaths(changedPaths = [], options = {}) {
-  return evaluateChangePolicy({ snapshot: options.snapshot, changedPaths, branchKind: options.branchKind }).requiresNote;
+  return buildPolicySnapshot({ snapshot: options.snapshot, changedPaths, branchKind: options.branchKind }).policy.requiresNote;
 }
 
 export function evaluateNoteRequirement({ task = null, changedPaths = [], notePaths = null, existingNotePaths = [], noteLifecycles = {}, requireImplemented = false, policy = null, snapshot = null, branchKind = null } = {}) {
-  const resolvedPolicy = policy ?? evaluateChangePolicy({ snapshot, changedPaths, branchKind });
+  // Merge and verify pass their canonical Policy directly.  The fallback is
+  // only for standalone callers; this gate never falls back to legacy paths.
+  if (policy && !policyMatchesSnapshot(policy, { snapshot, changedPaths, branchKind })) {
+    throw new Error('调用方 policy 与 Change Policy snapshot 不一致');
+  }
+  const resolvedPolicy = policy ?? buildPolicySnapshot({ snapshot, changedPaths, branchKind }).policy;
   const required = resolvedPolicy.requiresNote;
   const normalizedNotes = (notePaths ?? task?.references?.notes ?? []).map(normalize);
   if (!required) return { ok: true, required: false, issues: [], notePaths: normalizedNotes };

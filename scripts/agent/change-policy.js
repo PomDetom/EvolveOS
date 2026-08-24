@@ -29,6 +29,7 @@ export function inferBranchKind(branch = '') {
   if (value.startsWith('docs/')) return 'docs';
   if (value.startsWith('hotfix/')) return 'hotfix';
   if (value.startsWith('chore/')) return 'chore';
+  if (value === 'dev' || value === 'main') return 'base';
   return value ? 'unknown' : null;
 }
 
@@ -135,6 +136,28 @@ export function evaluateChangePolicy({ snapshot = {}, changedPaths = snapshot.ch
     roleByPath: Object.fromEntries(Object.entries(artifacts.roleByPath).filter(([, role]) => role !== 'sidecar')),
   };
   return { ...policy, policyHash: hashPolicy({ ...policy, artifacts: policyArtifacts }) };
+}
+
+// This is the canonical hand-off between Git-fact collection and every Policy
+// consumer.  It deliberately keeps the source snapshot intact while exposing
+// the Policy-owned views that must never be reconstructed from legacy scope
+// classification by a downstream caller.
+export function buildPolicySnapshot({ snapshot = {}, changedPaths = snapshot.changedPaths ?? [], branchKind = inferBranchKind(snapshot.branch) } = {}) {
+  const paths = uniqueSorted(changedPaths);
+  const resolvedSnapshot = { ...snapshot, changedPaths: paths };
+  const policy = evaluateChangePolicy({ snapshot: resolvedSnapshot, changedPaths: paths, branchKind });
+  return {
+    snapshot: resolvedSnapshot,
+    policy,
+    policyHash: policy.policyHash,
+    artifacts: policy.artifacts,
+    classification: policy.classification,
+  };
+}
+
+export function policyMatchesSnapshot(policy, { snapshot = {}, changedPaths = snapshot.changedPaths ?? [], branchKind = inferBranchKind(snapshot.branch) } = {}) {
+  if (!policy?.policyHash) return false;
+  return policy.policyHash === buildPolicySnapshot({ snapshot, changedPaths, branchKind }).policyHash;
 }
 
 export function policyGates(policy = {}) {

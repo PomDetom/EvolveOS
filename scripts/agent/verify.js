@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildChangeSnapshot, hashChangeFingerprint, hashChangedPaths } from './change-scope.js';
-import { evaluateChangePolicy } from './change-policy.js';
+import { buildPolicySnapshot } from './change-policy.js';
 import { gateDefinition } from './gate-registry.js';
 import { selectGates } from './select-gates.js';
 import { findTask } from './validate-task.js';
@@ -107,7 +107,9 @@ export async function runStatelessVerification({ rootDir = process.cwd(), taskId
   const facts = changedPaths
     ? { ...initialFacts, changedPaths: paths, changedPathsHash: hashChangedPaths(paths), changeFingerprint: hashChangeFingerprint(rootDir, base, head, paths) }
     : initialFacts;
-  const resolvedPolicy = policy ?? evaluateChangePolicy({ snapshot: facts, changedPaths: paths });
+  const canonicalPolicy = buildPolicySnapshot({ snapshot: facts, changedPaths: paths }).policy;
+  if (policy && policy.policyHash !== canonicalPolicy.policyHash) throw new Error('调用方 policy 与 Change Policy snapshot 不一致');
+  const resolvedPolicy = policy ?? canonicalPolicy;
   const canonicalGates = selectGates({ changedPaths: paths, includeBoundary: true, policy: resolvedPolicy, snapshot: facts });
   if (gates && JSON.stringify(gates) !== JSON.stringify(canonicalGates)) throw new Error('调用方 gates 与 Change Policy 不一致');
   const selectedGates = canonicalGates;
@@ -154,7 +156,7 @@ export async function main(argv = process.argv.slice(2), rootDir = process.cwd()
   let snapshot;
   try { snapshot = buildChangeSnapshot(rootDir, base, args.head); } catch (error) { io.error(`✗ 无法读取 Git diff: ${error.message}`); return 1; }
   const paths = snapshot.changedPaths;
-  const policy = evaluateChangePolicy({ snapshot, branchKind: task?.kind === 'release' ? 'release' : undefined });
+  const policy = buildPolicySnapshot({ snapshot, branchKind: task?.kind === 'release' ? 'release' : undefined }).policy;
   const gates = selectGates({ changedPaths: paths, taskKind: task?.kind, includeBoundary: true, policy, snapshot });
   const plan = makeGatePlan(args.taskId, gates, { rootDir, base, head: args.head, changedPaths: paths, snapshot, policy });
   if (args.dryRun) { io.log(renderDryRun(args.taskId, plan)); return 0; }
