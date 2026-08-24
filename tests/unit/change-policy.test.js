@@ -87,20 +87,33 @@ describe('EWP v2.2 Change Policy', () => {
     expect(policy).not.toHaveProperty('state');
   });
 
-  test('base branch snapshots keep scope and checks on the same policy hash', () => {
-    const baseSnapshot = snapshot(['docs/guide.md'], 'dev');
-    const scope = buildChangeScope({ snapshot: baseSnapshot, branch: 'dev', changedPaths: baseSnapshot.changedPaths });
+  test.each(['dev', 'main'])('%s snapshot is always classified as base', (branch) => {
+    const baseSnapshot = snapshot(['docs/guide.md'], branch);
+    const scope = buildChangeScope({ snapshot: baseSnapshot, branch, changedPaths: baseSnapshot.changedPaths });
     const checks = buildPolicySnapshot({ snapshot: baseSnapshot, branchKind: 'base' });
 
     expect(scope.classification.branchKind).toBe('base');
     expect(scope.policyHash).toBe(checks.policyHash);
     expect(() => selectGates({ kind: 'base', snapshot: baseSnapshot, changedPaths: baseSnapshot.changedPaths, policy: checks.policy })).not.toThrow();
+    const chorePolicy = buildPolicySnapshot({ snapshot: baseSnapshot, branchKind: 'chore' }).policy;
+    expect(() => selectGates({ kind: 'base', snapshot: baseSnapshot, changedPaths: baseSnapshot.changedPaths, policy: chorePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+  });
+
+  test('chore snapshot accepts the matching chore policy', () => {
+    const choreSnapshot = snapshot(['docs/guide.md'], 'chore/policy-contract');
+    const scope = buildChangeScope({ snapshot: choreSnapshot, branch: choreSnapshot.branch, changedPaths: choreSnapshot.changedPaths });
+    const checks = buildPolicySnapshot({ snapshot: choreSnapshot, branchKind: 'chore' });
+
+    expect(scope.classification.branchKind).toBe('chore');
+    expect(scope.policyHash).toBe(checks.policyHash);
+    expect(() => selectGates({ kind: 'chore', snapshot: choreSnapshot, changedPaths: choreSnapshot.changedPaths, policy: checks.policy })).not.toThrow();
   });
 
   test('checks and verify consume the same policy hash and gate list', async () => {
     const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
     const policy = evaluateChangePolicy({ snapshot: currentSnapshot });
-    const gates = selectGates({ kind: 'chore', changedPaths: currentSnapshot.changedPaths, policy, snapshot: currentSnapshot, includeBoundary: true });
+    const gates = selectGates({ kind: policy.classification.branchKind, changedPaths: currentSnapshot.changedPaths, policy, snapshot: currentSnapshot, includeBoundary: true });
     const report = await runStatelessVerification({
       rootDir: process.cwd(),
       base: 'dev',
@@ -122,14 +135,14 @@ describe('EWP v2.2 Change Policy', () => {
   test('scope, checks and verify share one canonical policy snapshot contract', async () => {
     const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
     const scope = buildChangeScope({ snapshot: currentSnapshot, base: 'dev', head: 'HEAD', branch: currentSnapshot.branch, changedPaths: currentSnapshot.changedPaths });
-    const checks = buildPolicySnapshot({ snapshot: currentSnapshot, branchKind: 'chore' });
+    const checks = buildPolicySnapshot({ snapshot: currentSnapshot });
     const report = await runStatelessVerification({
       rootDir: process.cwd(),
       base: 'dev',
       head: 'HEAD',
       snapshot: currentSnapshot,
       policy: checks.policy,
-      gates: selectGates({ kind: 'chore', changedPaths: currentSnapshot.changedPaths, includeBoundary: true, policy: checks.policy, snapshot: currentSnapshot }),
+      gates: selectGates({ kind: checks.classification.branchKind, changedPaths: currentSnapshot.changedPaths, includeBoundary: true, policy: checks.policy, snapshot: currentSnapshot }),
       runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
       writeCache: false,
     });
