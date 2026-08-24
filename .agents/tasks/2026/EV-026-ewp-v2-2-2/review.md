@@ -1,24 +1,24 @@
-# EV-026 Review
+# EV-026 Taxonomy Contract Review
 
-**Subject head:** `1df0c347087138ad9aa079346715fbdaf5d02a7d`
+**Subject head:** `8a3b598c95fdb594112c786a2e3ee2d6d4007338`
 
-**Subject fingerprint:** `c2b7a351bf6d048d1f0ffe96c71b39bd30891bb9454da1541ca3601bd90073cf`
+**Subject fingerprint:** `ee23734cfc81fcaed3171b068267c91a3d357245c1bf712ac11b92923b5f2819`
 
-**Policy hash:** `b1ffe0904f7c5fd52d699fced9aa6b039eabc4c9cd8545f454333a63879ed757`
+**Policy hash:** `3d9661a18bca8c23111246b74bc9be6c212173a41a16add5a423f63156f8300a`
 
-**Reviewer:** `Independent semantic review`
+**Reviewer:** `Taxonomy contract review`
 
-**Review time:** `2026-08-24T10:45:00.000Z`
+**Review time:** `2026-08-24T14:57:00.000Z`
 
 **Result:** `approved`
 
 ## Acceptance
 
-- [x] scope、checks、verify、Note gate 与 merge readiness 消费 artifact-aware canonical Policy
-- [x] 传入 Policy 与 snapshot 不一致时，所有 consumer 拒绝该调用
-- [x] `dev`/`main` 的 base taxonomy 在跨 consumer snapshot 中保持相同 policyHash
-- [x] trailing fixture 允许当前 task review/一级 attestation，并阻断 task、plan、Note、代码、其他 task 与嵌套 artifact
-- [x] 不新增 lifecycle state 或 manual gate
+- [x] `dev` 与 `main` snapshot 只会生成 `base` Policy。
+- [x] base snapshot 注入 `chore` Policy 会被严格拒绝。
+- [x] `chore/*` snapshot 配合 matching `chore` Policy 通过。
+- [x] scope、checks、verify 从同一 snapshot taxonomy 推导相同 `policyHash`。
+- [x] 没有放宽 mismatch 拒绝、新增 lifecycle state、manual gate 或 persisted workflow state。
 
 ## Findings
 
@@ -36,5 +36,6 @@ None.
 
 ## Evidence
 
-- Independent semantic review 在修复 stale-policy 注入和 base taxonomy 后复审批准。
-- `change-policy.test.js`：16/16 通过；`artifact-semantics.test.js`：17/17 通过；生产构建、boundary、docs、Notes、task、permission checks 均通过。
+- `tests/unit/change-policy.test.js`: 18 tests passed.
+- Official `agent:verify -- --no-cache`: boundary and full unit gate passed with stable start/end snapshot.
+- scope/checks, docs, Notes, task, permission checks and production build passed for the subject snapshot.
