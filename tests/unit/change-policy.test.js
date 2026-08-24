@@ -10,6 +10,7 @@ import { validateTask } from '../../scripts/agent/task-schema.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { runStatelessVerification } from '../../scripts/agent/verify.js';
 import { evaluateNativeReadiness } from '../../scripts/merge-to-dev-agent-utils.js';
+import { evaluateNoteRequirement } from '../../scripts/agent/note-gate.js';
 import { nextTaskId } from '../../scripts/agent/start-task.js';
 import { buildRecoveryTask } from '../../scripts/agent/start-task.js';
 
@@ -136,6 +137,18 @@ describe('EWP v2.2 Change Policy', () => {
       rootDir: process.cwd(), base: 'dev', head: 'HEAD', snapshot: currentSnapshot,
       policy: stalePolicy, runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }), writeCache: false,
     })).rejects.toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+  });
+
+  test('scope, checks and Note gate reject a policy that does not match their snapshot', () => {
+    const docsSnapshot = snapshot(['docs/guide.md'], 'docs/guide');
+    const stalePolicy = evaluateChangePolicy({ snapshot: snapshot(['scripts/agent/verify.js'], 'chore/stale') });
+
+    expect(() => buildChangeScope({ snapshot: docsSnapshot, branch: 'docs/guide', changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+    expect(() => selectGates({ kind: 'docs', snapshot: docsSnapshot, changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
+    expect(() => evaluateNoteRequirement({ snapshot: docsSnapshot, branchKind: 'docs', changedPaths: docsSnapshot.changedPaths, policy: stalePolicy }))
+      .toThrow('调用方 policy 与 Change Policy snapshot 不一致');
   });
 
   test('verify rejects a worktree snapshot that drifts during gate execution', async () => {

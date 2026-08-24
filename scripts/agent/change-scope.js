@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { assessBranchChanges } from '../boundary-check.js';
-import { buildPolicySnapshot } from './change-policy.js';
+import { buildPolicySnapshot, policyMatchesSnapshot } from './change-policy.js';
 import { findTask } from './validate-task.js';
 
 function normalize(value) { return String(value ?? '').replaceAll('\\', '/'); }
@@ -111,15 +111,13 @@ export function buildChangeScope({ task = null, base = 'dev', head = 'HEAD', cha
   const paths = [...new Set(changedPaths.map(normalize))].sort();
   const allowedPaths = Array.isArray(task?.allowedPaths) ? task.allowedPaths : [];
   const violations = task ? paths.filter((file) => !pathAllowed(file, allowedPaths)) : [];
+  const policyInputSnapshot = { ...(snapshot ?? {}), base, head, branch, changedPaths: paths };
+  if (policy && !policyMatchesSnapshot(policy, { snapshot: policyInputSnapshot })) {
+    throw new Error('调用方 policy 与 Change Policy snapshot 不一致');
+  }
   const policySnapshot = policy
-    ? {
-      snapshot: { ...(snapshot ?? {}), base, head, branch, changedPaths: paths },
-      policy,
-      policyHash: policy.policyHash,
-      artifacts: policy.artifacts,
-      classification: policy.classification,
-    }
-    : buildPolicySnapshot({ snapshot: { ...(snapshot ?? {}), base, head, branch, changedPaths: paths } });
+    ? { snapshot: policyInputSnapshot, policy, policyHash: policy.policyHash, artifacts: policy.artifacts, classification: policy.classification }
+    : buildPolicySnapshot({ snapshot: policyInputSnapshot });
   return {
     taskId: task?.id ?? null,
     branch,
