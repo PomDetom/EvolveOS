@@ -87,6 +87,16 @@ describe('EWP v2.2 Change Policy', () => {
     expect(policy).not.toHaveProperty('state');
   });
 
+  test('base branch snapshots keep scope and checks on the same policy hash', () => {
+    const baseSnapshot = snapshot(['docs/guide.md'], 'dev');
+    const scope = buildChangeScope({ snapshot: baseSnapshot, branch: 'dev', changedPaths: baseSnapshot.changedPaths });
+    const checks = buildPolicySnapshot({ snapshot: baseSnapshot, branchKind: 'base' });
+
+    expect(scope.classification.branchKind).toBe('base');
+    expect(scope.policyHash).toBe(checks.policyHash);
+    expect(() => selectGates({ kind: 'base', snapshot: baseSnapshot, changedPaths: baseSnapshot.changedPaths, policy: checks.policy })).not.toThrow();
+  });
+
   test('checks and verify consume the same policy hash and gate list', async () => {
     const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
     const policy = evaluateChangePolicy({ snapshot: currentSnapshot });

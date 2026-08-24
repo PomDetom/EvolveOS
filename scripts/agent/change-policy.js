@@ -29,6 +29,7 @@ export function inferBranchKind(branch = '') {
   if (value.startsWith('docs/')) return 'docs';
   if (value.startsWith('hotfix/')) return 'hotfix';
   if (value.startsWith('chore/')) return 'chore';
+  if (value === 'dev' || value === 'main') return 'base';
   return value ? 'unknown' : null;
 }
 
