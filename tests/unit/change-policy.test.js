@@ -3,12 +3,13 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { evaluateChangePolicy, stablePolicySerialize } from '../../scripts/agent/change-policy.js';
-import { buildChangeSnapshot } from '../../scripts/agent/change-scope.js';
+import { buildPolicySnapshot, evaluateChangePolicy, stablePolicySerialize } from '../../scripts/agent/change-policy.js';
+import { buildChangeScope, buildChangeSnapshot } from '../../scripts/agent/change-scope.js';
 import { selectGates } from '../../scripts/agent/select-gates.js';
 import { validateTask } from '../../scripts/agent/task-schema.js';
 import { assessBranchChanges } from '../../scripts/boundary-check.js';
 import { runStatelessVerification } from '../../scripts/agent/verify.js';
+import { evaluateNativeReadiness } from '../../scripts/merge-to-dev-agent-utils.js';
 import { nextTaskId } from '../../scripts/agent/start-task.js';
 import { buildRecoveryTask } from '../../scripts/agent/start-task.js';
 
@@ -105,6 +106,36 @@ describe('EWP v2.2 Change Policy', () => {
     expect(report.policyHash).toBe(policy.policyHash);
     expect(report.startSnapshot).toEqual(report.endSnapshot);
     expect(report.snapshotStable).toBe(true);
+  });
+
+  test('scope, checks and verify share one canonical policy snapshot contract', async () => {
+    const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
+    const scope = buildChangeScope({ snapshot: currentSnapshot, base: 'dev', head: 'HEAD', branch: currentSnapshot.branch, changedPaths: currentSnapshot.changedPaths });
+    const checks = buildPolicySnapshot({ snapshot: currentSnapshot, branchKind: 'chore' });
+    const report = await runStatelessVerification({
+      rootDir: process.cwd(),
+      base: 'dev',
+      head: 'HEAD',
+      snapshot: currentSnapshot,
+      policy: checks.policy,
+      gates: selectGates({ kind: 'chore', changedPaths: currentSnapshot.changedPaths, includeBoundary: true, policy: checks.policy, snapshot: currentSnapshot }),
+      runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
+      writeCache: false,
+    });
+
+    expect(scope.policyHash).toBe(checks.policyHash);
+    expect(checks.policyHash).toBe(report.policyHash);
+    expect(evaluateNativeReadiness({ policy: scope.policy, requireEvidence: false }).policyHash).toBe(report.policyHash);
+  });
+
+  test('verify rejects a policy that does not match its supplied snapshot', async () => {
+    const currentSnapshot = buildChangeSnapshot(process.cwd(), 'dev', 'HEAD');
+    const stalePolicy = evaluateChangePolicy({ snapshot: { ...currentSnapshot, changedPaths: ['docs/stale.md'] }, changedPaths: ['docs/stale.md'] });
+
+    await expect(runStatelessVerification({
+      rootDir: process.cwd(), base: 'dev', head: 'HEAD', snapshot: currentSnapshot,
+      policy: stalePolicy, runner: async () => ({ exitCode: 0, stdout: '', stderr: '' }), writeCache: false,
+    })).rejects.toThrow('调用方 policy 与 Change Policy snapshot 不一致');
   });
 
   test('verify rejects a worktree snapshot that drifts during gate execution', async () => {

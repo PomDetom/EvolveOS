@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "id": "EV-026",
+  "title": "EWP v2.2.2 Policy Snapshot Unification & Freshness Fixtures",
+  "branch": "chore/ewp-v2-2-2",
+  "baseBranch": "dev",
+  "createdFromSha": "723532684dd600821b8b523ffbfbcae80d1d207c",
+  "intent": "统一 scope、checks、verify、Note gate 与 merge readiness 对 Change Policy snapshot 和 policyHash 的消费，并以真实 Git fixture 固化 trailing artifact freshness。",
+  "allowedPaths": [
+    "scripts/agent/",
+    "scripts/merge-to-dev-agent-utils.js",
+    "scripts/merge-to-dev.js",
+    ".agents/",
+    "tests/unit/",
+    "docs/AGENTS.md",
+    "AGENTS.md"
+  ],
+  "acceptance": [
+    "scope 输出 artifact-aware canonical Policy、artifacts、classification 与非空 policyHash",
+    "scope、checks、verify 和 merge 对同一 snapshot 使用相同 policyHash",
+    "app 加 task/plan/review/attestation sidecar 不升级为 workflow risk，app 加 Note 保留必要 docs/notes checks",
+    "真实 Git fixture 证明 subject 后 task、plan、Note、代码变化均会使 trailing judgment stale",
+    "仅当前 task 的 review.md 与一级 attestations/*.json 可作为 trailing artifact，Git trailer integrated 语义保持不变",
+    "不新增 workflow lifecycle state 或 manual gate"
+  ],
+  "references": {
+    "spec": null,
+    "plan": ".agents/tasks/2026/EV-026-ewp-v2-2-2/plan.md",
+    "notes": [
+      ".agents/notes/implemented/process/2026-08-24-ewp-v2-2-2-policy-snapshot.md"
+    ]
+  },
+  "recovery": {
+    "state": "active",
+    "blockedReason": null
+  }
+}

@@ -39,6 +39,14 @@ function makeFixture() {
   return { root, taskDirectory };
 }
 
+function commitTrailing(root, relativePath, content) {
+  const file = path.join(root, relativePath);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, content);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', `trailing ${relativePath}`]);
+}
+
 describe('EWP v2.2.1 artifact semantics', () => {
   test('assigns governance, subject, decision and sidecar roles before docs suffix rules', () => {
     expect(artifactRole('AGENTS.md')).toBe('governance');
@@ -140,6 +148,66 @@ describe('EWP v2.2.1 artifact semantics', () => {
       git(root, ['add', '.']);
       git(root, ['commit', '-m', 'subject code C']);
       expect(trailingArtifactIssues(root, { subjectHead, branch: 'HEAD', taskDirectory }).ok).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('current task review is an allowed trailing artifact', () => {
+    const { root, taskDirectory } = makeFixture();
+    try {
+      const subjectHead = git(root, ['rev-parse', 'HEAD']);
+      commitTrailing(root, `${taskDirectory}/review.md`, '# independent review\n');
+      expect(trailingArtifactIssues(root, { subjectHead, branch: 'HEAD', taskDirectory })).toMatchObject({ ok: true, issues: [] });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test.each([
+    ['task.json', '{"schemaVersion":2}\n'],
+    ['plan.md', '# changed plan\n'],
+    ['.agents/notes/implemented/process/decision.md', '# changed Note\n'],
+    ['src-tauri/native.rs', 'changed code\n'],
+    ['.agents/tasks/2026/EV-999-other/review.md', '# other task review\n'],
+    ['.agents/tasks/2026/EV-025-fixture/attestations/nested/desktop-manual.json', '{}\n'],
+  ])('rejects forbidden trailing change: %s', (relativePath, content) => {
+    const { root, taskDirectory } = makeFixture();
+    try {
+      const subjectHead = git(root, ['rev-parse', 'HEAD']);
+      const target = relativePath.includes('/') ? relativePath : `${taskDirectory}/${relativePath}`;
+      commitTrailing(root, target, content);
+      expect(trailingArtifactIssues(root, { subjectHead, branch: 'HEAD', taskDirectory }).issues)
+        .toContain(`subject 之后存在不允许的 trailing artifact: ${target}`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test.each([
+    ['subjectHead', 'c'.repeat(40), 'subjectHead 与 subject snapshot 不一致'],
+    ['subjectFingerprint', 'd'.repeat(64), 'subjectFingerprint 与 subject snapshot 不一致'],
+    ['policyHash', 'e'.repeat(64), 'policyHash 与 subject policy 不一致'],
+  ])('rejects drifted trailing attestation %s', (field, value, issue) => {
+    const { root, taskDirectory } = makeFixture();
+    try {
+      const subjectHead = git(root, ['rev-parse', 'HEAD']);
+      const subjectSnapshot = resolveSubjectSnapshot(root, { base: 'dev', subjectHead });
+      const policy = evaluateChangePolicy({ snapshot: subjectSnapshot });
+      const attestation = {
+        schemaVersion: 1,
+        type: 'human',
+        name: 'desktop-manual',
+        subjectHead,
+        subjectFingerprint: subjectSnapshot.changeFingerprint,
+        policyHash: policy.policyHash,
+        scopeHash: attestationScopeHash({ policyHash: policy.policyHash, snapshot: subjectSnapshot }),
+        confirmedBy: 'Windows QA',
+        confirmedAt: '2026-08-23T10:00:00.000Z',
+        [field]: value,
+      };
+      commitTrailing(root, `${taskDirectory}/attestations/desktop-manual.json`, `${JSON.stringify(attestation, null, 2)}\n`);
+      expect(subjectBindingIssues(attestation, { subjectSnapshot, policyHash: policy.policyHash })).toContain(issue);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

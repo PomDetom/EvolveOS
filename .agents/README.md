@@ -14,7 +14,7 @@ v2 recovery manifest 使用严格字段集合：未知字段和旧 FSM/evidence 
 
 ## v2.2 Change Policy
 
-`scripts/agent/change-policy.js` 是 workflow requirements 的唯一解释层。它消费 change snapshot 和 branch taxonomy，输出 classification、task/note/check/review/attestation 要求及 `policyHash`；scope、checks、Note、verify 和 merge 必须消费同一结果。verify evidence 绑定 `policyHash`、`startSnapshot` 和 `endSnapshot`，执行期间 snapshot 漂移即失败。
+`scripts/agent/change-policy.js` 是 workflow requirements 的唯一解释层。它消费 change snapshot 和 branch taxonomy，输出 classification、task/note/check/review/attestation 要求及 `policyHash`；scope、checks、Note、verify 和 merge 必须消费同一结果。`agent:scope` 直接输出 canonical Policy、artifacts、classification 和 `policyHash`，不得再以旧通用路径分类作为 Policy 结论。verify evidence 绑定 `policyHash`、`startSnapshot` 和 `endSnapshot`，执行期间 snapshot 漂移即失败。
 
 自动 evidence、semantic review 和 human attestation 分离：自动 evidence 仍在 `.git/evolve-agent/evidence/`，review 绑定 `Subject head`/`changeFingerprint`，人工记录放在 task 的 `attestations/` 下。task 新写入使用 `createdFromSha` provenance；历史 `baseSha` task 仅只读兼容。
 
